@@ -79,12 +79,7 @@ import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspe
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
 import { useSubjectTabs } from '../../../../composables/subject-tabs';
 import { promptComparisonRouteFor } from '../../../../composables/prompt-comparison';
-import type {
-  DeclaredEntryDto,
-  FileDetailDto,
-  PromptPresentationDto,
-  SourceKind,
-} from '../../../../../shared/api-types';
+import type { DeclaredEntryDto, SourceKind } from '../../../../../shared/api-types';
 
 const sessionViewState = useSessionViewState();
 
@@ -364,12 +359,11 @@ const invocationNames = computed(() => {
  * URL's own. The path check keeps a slow previous detail from rendering under
  * this route's heading.
  *
- * The variant is deliberately not checked, the same way the rule route leaves
- * it unchecked: one file can hold recognitions of two kinds — a
- * `.claude/commands/CLAUDE.md` is a Claude command by its directory and a
- * Claude instruction file by its name, so it is a row in both inventories —
- * while `get-file-detail` is addressed by the path alone and answers with the
- * first variant its fixed order reaches.
+ * The variant is this route's own or the plain file: `get-file-detail` is
+ * asked for this kind, so a file another kind also owns — a
+ * `.claude/commands/CLAUDE.md` is an instruction file by its name — arrives as
+ * the command variant here and as the instructions variant on that route
+ * (session.ts § fileDetail).
  */
 const openDetail = computed(() => {
   const detail = entryDetail.value;
@@ -377,48 +371,16 @@ const openDetail = computed(() => {
 });
 
 /**
- * The file's own presentation — the one scan-time parse, published on every
- * variant that carries one — as this kind's two halves. Null when extraction
- * failed all-or-nothing, and null for a variant that publishes none: a rule
- * file is served whole and a custom agent publishes its own two halves under
- * its own shape, so a file two kinds own shows its complete source under the
- * file tab either way (FR-028).
+ * The file's own presentation — the one scan-time parse, published on the
+ * command variant of the detail (PromptFileDetailDto). Null when extraction
+ * failed all-or-nothing, which is when there is nothing parsed to show and the
+ * failure's diagnostic says so (FR-028), and null for the plain file, which
+ * has nothing read out of it.
  */
-const presentation = computed(() =>
-  openDetail.value === null ? null : presentationOf(openDetail.value),
-);
-
-/**
- * A variant of another kind is read too, and mapped rather than discarded, as
- * the agent detail maps one: `get-file-detail` is addressed by the path alone
- * and answers with the first variant its fixed order reaches (session.ts
- * § fileDetail), so a `.claude/commands/CLAUDE.md` — a Claude command by its
- * directory and a Claude instruction file by its name — arrives here as the
- * instructions variant. Its `MarkdownPresentationDto` holds the same two values
- * this page draws, from the same one parse: the frontmatter block is the
- * metadata and the body is the prompt, which is exactly the split every
- * Markdown command rule performs. Requiring this route's own variant would
- * report a parsed file as unparsed.
- *
- * The mapping is unreachable for a Gemini CLI command: a `.toml` is admitted by
- * no Markdown-kind rule, so nothing but this kind's variant can arrive for one.
- */
-function presentationOf(detail: FileDetailDto): PromptPresentationDto | null {
-  if (
-    detail.kind === 'rule' ||
-    detail.kind === 'agent' ||
-    detail.kind === 'settings/config' ||
-    detail.kind === 'file'
-  ) {
-    return null;
-  }
-  if (detail.kind === 'prompt/command') {
-    return detail.presentation;
-  }
-  return detail.presentation === null
-    ? null
-    : { metadata: detail.presentation.frontmatter, promptText: detail.presentation.bodyText };
-}
+const presentation = computed(() => {
+  const detail = openDetail.value;
+  return detail !== null && detail.kind === 'prompt/command' ? detail.presentation : null;
+});
 
 /**
  * The metadata as the YAML document the detail renders (FR-007,
@@ -489,7 +451,12 @@ const request = useDetailRequest({
   selection: null,
   ready: () => owner.value.length > 0,
   perform: () => {
-    void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value);
+    void pageOwnership.openFileDetail(
+      openPath.value,
+      openPath.value,
+      openSource.value,
+      'prompt/command',
+    );
   },
   focusHeading: () => page.value?.focusHeading(),
 });

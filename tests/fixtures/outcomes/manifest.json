@@ -9,12 +9,12 @@
     "global-homes": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/global-homes/build-fixtures.ts",
-      "sha256": "35db3df0b84a1a0d56071890d1d58954d254899a720a5f328149de866e0ca878"
+      "sha256": "8706ab4bb9cda4a643d6d72dc0a1ee43c50bab29f652964a6498a10f86403ba6"
     },
     "repositories": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/repositories/build-fixtures.ts",
-      "sha256": "647cf3e8ad21383d36c98f565c6f93c46eaaba6b0be93b443579d037e4673db6"
+      "sha256": "ea7d5a8b7ba05a023095b3056881b5c6560c1a13b84fbbaaefd90e463ceae310"
     },
     "secrets": {
       "kind": "deterministic-builder",
@@ -44,7 +44,7 @@
     "tests/e2e/claude-custom-agents-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-custom-agents-detail.spec.ts",
-      "sha256": "78b38a465135f2138a667aeb564f1102deacf46929c5b5984c6e6c000a1f179b"
+      "sha256": "88f961e7e425f502f8c4f8919db7524b6b2c0254c0dff25774e361b1fd69a585"
     },
     "tests/e2e/claude-custom-agents-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -119,7 +119,7 @@
     "tests/e2e/claude-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-skills-detail.spec.ts",
-      "sha256": "25447c6133dae378aa7c35767610dd52bb611d14d43e2cf90004ab61cb2f38ac"
+      "sha256": "45996ef068bddc24babd86a39ac24c886c7a9db40952a41f53c7db6443dc567b"
     },
     "tests/e2e/claude-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",

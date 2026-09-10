@@ -62,6 +62,7 @@ import { CustomAgentComparisonState } from '../composables/custom-agent-comparis
 import { SkillComparisonState } from '../composables/skill-comparison';
 import type {
   FileDetailDto,
+  FileDetailKind,
   FileOpenTarget,
   GlobalBatchStatusDto,
   GlobalConsentPreviewDto,
@@ -1229,7 +1230,7 @@ export class SessionViewState {
   }
 
   /**
-   * Captures the four proposed Global roots and replaces the host's
+   * Captures the five proposed Global roots and replaces the host's
    * unconsented preview (contracts/http-api.md
    * § create-global-consent-preview). It submits no confirmation: what comes
    * back is what the reader is then asked to review, and enabling Global
@@ -1746,8 +1747,9 @@ export class SessionViewState {
     owns: () => boolean,
     slot: FileDetailSlot,
     source: SourceSelector,
+    kind: FileDetailKind,
   ): Promise<FileDetailDto | null> {
-    const outcome = await this.#client.fetchFileDetail(sourceRelativePath, source);
+    const outcome = await this.#client.fetchFileDetail(sourceRelativePath, source, kind);
     switch (outcome.kind) {
       case 'adopted':
         return owns() ? outcome.detail : null;
@@ -1889,12 +1891,18 @@ export class SessionViewState {
    * ownership check, so the three ways an invocation stops owning the page —
    * a purge cleared it, `closeFileDetail` left it, a newer `openFileDetail` superseded
    * it — cannot each grow their own handling.
+   *
+   * `kind` is the asking page's, and both requests carry it: the entry point
+   * is that kind's file, and a companion selected inside it is asked for as
+   * that kind reads it — which is nothing, so it answers as the plain file
+   * (contracts/http-api.md § get-file-detail).
    */
   public async openFileDetail(
     entryPath: string,
     openPath: string,
-    owner?: symbol,
-    source: SourceSelector = 'repository',
+    owner: symbol | undefined,
+    source: SourceSelector,
+    kind: FileDetailKind,
   ): Promise<void> {
     this.#detailOwner = owner ?? null;
     this.#detailRequestVersion += 1;
@@ -1957,7 +1965,7 @@ export class SessionViewState {
     // After the drop, which clears the previous address with the rest: the
     // new selection's address is what the next call compares against.
     this.#openDetailAddress = { source, entryPath };
-    const entry = held ?? (await this.#fetchOwnedFileDetail(entryPath, owns, 'page', source));
+    const entry = held ?? (await this.#fetchOwnedFileDetail(entryPath, owns, 'page', source, kind));
     if (entry === null || !owns()) {
       return;
     }
@@ -1978,7 +1986,8 @@ export class SessionViewState {
     const companion =
       openPath === entryPath
         ? null
-        : (heldCompanion ?? (await this.#fetchOwnedFileDetail(openPath, owns, 'pane', source)));
+        : (heldCompanion ??
+          (await this.#fetchOwnedFileDetail(openPath, owns, 'pane', source, kind)));
     if ((openPath !== entryPath && companion === null) || !owns()) {
       return;
     }

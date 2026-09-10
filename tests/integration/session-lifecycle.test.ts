@@ -109,7 +109,7 @@ describe('a committed generation replaces what pointed at the last one (T928)', 
     // The identity a client holds is the Source-relative Path, and while the
     // generation holds it the detail resolves.
     expect(
-      context.session.fileDetail('.claude/skills/leaving/SKILL.md', 'repository'),
+      context.session.fileDetail('.claude/skills/leaving/SKILL.md', 'repository', 'skill'),
     ).not.toBeNull();
 
     rmSync(join(root, '.claude/skills/leaving'), { recursive: true, force: true });
@@ -120,9 +120,11 @@ describe('a committed generation replaces what pointed at the last one (T928)', 
     // generation that had it: a stale identity resolves to nothing, which the
     // host publishes as its own rejection (contracts/http-api.md
     // § get-file-detail).
-    expect(context.session.fileDetail('.claude/skills/leaving/SKILL.md', 'repository')).toBeNull();
     expect(
-      context.session.fileDetail('.claude/skills/arriving/SKILL.md', 'repository'),
+      context.session.fileDetail('.claude/skills/leaving/SKILL.md', 'repository', 'skill'),
+    ).toBeNull();
+    expect(
+      context.session.fileDetail('.claude/skills/arriving/SKILL.md', 'repository', 'skill'),
     ).not.toBeNull();
     const snapshot = context.session.snapshot();
     expect(snapshot.repositoryGeneration).toBe(2);
@@ -216,13 +218,17 @@ describe('a committed generation replaces what pointed at the last one (T928)', 
     // browser's held-slot rule — a file detail opening over a carrier detail —
     // is the view state's and is asserted under a DOM
     // (`tests/unit/app/session-view-state.test.ts`).
-    const skill = context.session.fileDetail('.claude/skills/deploy/SKILL.md', 'repository');
+    const skill = context.session.fileDetail(
+      '.claude/skills/deploy/SKILL.md',
+      'repository',
+      'skill',
+    );
     const carrier = context.session.mcpCarrierDetail('.mcp.json', 'repository');
     expect(skill).not.toBeNull();
     expect(carrier).not.toBeNull();
-    expect(context.session.fileDetail('.claude/skills/deploy/SKILL.md', 'repository')).toEqual(
-      skill,
-    );
+    expect(
+      context.session.fileDetail('.claude/skills/deploy/SKILL.md', 'repository', 'skill'),
+    ).toEqual(skill);
     expect(context.session.mcpCarrierDetail('.mcp.json', 'repository')).toEqual(carrier);
   });
 });
@@ -295,7 +301,7 @@ describe('one Global batch commits once, and no poll sees less (T994)', () => {
       const between = session.snapshot();
       expect(between.globalGeneration).toBeNull();
       expect(between.sources.filter((source) => source.kind === 'global')).toEqual([]);
-      expect(session.fileDetail('CLAUDE.md', 'global-claude')).toBeNull();
+      expect(session.fileDetail('CLAUDE.md', 'global-claude', 'instructions')).toBeNull();
     }
 
     coordinator.completeGlobalBatch(settled.scanRequestId, results);
@@ -551,7 +557,7 @@ describe('the browser purge and fence across disable (T1021, T1026/T1027)', () =
     const repositoryBefore = before.sources.find((source) => source.kind === 'repository')!;
     // An open Global detail holds authored content the purge must remove.
     const claudeSelector = 'global-claude';
-    await state.openFileDetail('CLAUDE.md', 'CLAUDE.md', undefined, claudeSelector);
+    await state.openFileDetail('CLAUDE.md', 'CLAUDE.md', undefined, claudeSelector, 'instructions');
     expect(state.entryDetail.value).not.toBeNull();
 
     await state.requestGlobalDisable();

@@ -72,6 +72,15 @@ describe('the user-visible copy of the closed vocabularies', () => {
     expect(WIRE_TOKENS).toContain('utf-8-replaced');
     expect(WIRE_TOKENS).toContain('all-remain');
     expect(WIRE_TOKENS).toContain('copilot-vscode');
+    expect(WIRE_TOKENS).toContain('gemini-cli');
+  });
+
+  it('labels the fourth tool and its one surface as the product shows them', () => {
+    // The label is the product's own name and the surface is named within it,
+    // so the pair reads "Gemini CLI · CLI" wherever a row states both
+    // (specs/002-gemini-cli-support/data-model.md § VendorSurface).
+    expect(SUPPORTED_TOOL_TEXT.gemini).toBe('Gemini CLI');
+    expect(VENDOR_SURFACE_TEXT['gemini-cli']).toBe('CLI');
   });
 
   it.each(Object.entries(TABLES))('renders no wire token as itself: %s', (_name, table) => {
@@ -89,7 +98,7 @@ describe('the user-visible copy of the closed vocabularies', () => {
       // too. A sentence may quote a path, and a path segment carries a slash
       // rather than a vendor prefix.
       expect(text, `${key} renders a product identifier`).not.toMatch(
-        /(?:codex|claude|copilot)\.[a-z]/u,
+        /(?:codex|claude|copilot|gemini)\.[a-z]/u,
       );
     }
   });

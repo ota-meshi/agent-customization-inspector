@@ -40,7 +40,7 @@
  * they describe the published order rather than impose one, so a table that
  * reorders is followed rather than regrouped.
  *
- * All three products' skills share this one list for the reason the agent
+ * All four products' skills share this one list for the reason the agent
  * metadata does: a key the open file does not declare simply never appears,
  * and neighbouring entries are a reading order rather than a claim that two
  * products' keys mean the same thing.
@@ -214,7 +214,7 @@ export const LEADING_PROMPT_METADATA_KEYS: readonly string[] = [
  *   agent profile format read from the editor side.
  *
  * The order itself is composed here rather than transcribed, which is the one
- * difference from the lists above: no page enumerates all three products'
+ * difference from the lists above: no page enumerates all four products'
  * agent fields, so there is no published order to take, and the grouping below
  * answers a reader's questions in turn instead. Each key stays checkable
  * against the table its group names it from.
@@ -263,7 +263,7 @@ export const LEADING_AGENT_METADATA_KEYS: readonly string[] = [
   'disable-model-invocation',
   'user-invocable',
 
-  // Which MCP servers it may reach: three products spelling one declaration
+  // Which MCP servers it may reach: four products spelling one declaration
   // three ways — `mcp_servers` Codex's, `mcpServers` Claude Code's,
   // `mcp-servers` GitHub's and VS Code's — kept adjacent so a file using any
   // of them shows it in the same place a reader looked for the others.
@@ -292,9 +292,9 @@ export const LEADING_AGENT_METADATA_KEYS: readonly string[] = [
  * gets — the keys the vendors' carrier schemas commonly declare.
  *
  * Composed here rather than transcribed, like the agent list and for the same
- * reason: the four carrier schemas this product reads — Codex's
- * `[mcp_servers.*]` tables, Claude's `mcpServers` map, and Copilot's two
- * documented shapes — publish no common table to take an order from. What the
+ * reason: the five carrier schemas this product reads — Codex's
+ * `[mcp_servers.*]` tables, Claude's and Gemini CLI's `mcpServers` maps, and
+ * Copilot's two documented shapes — publish no common table to take an order from. What the
  * grouping answers is the order the questions arrive in for a reader looking
  * at one server.
  *

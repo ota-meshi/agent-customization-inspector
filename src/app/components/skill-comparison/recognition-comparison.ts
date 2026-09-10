@@ -336,36 +336,15 @@ class SideDeclarations {
       return;
     }
     const detail = side.detail;
-    // The parse is the file's, one per kind (FR-028), and every Markdown
-    // kind's variant carries the same one for the same bytes
-    // (candidate.ts § recognizeSkill), so this asks what the adopted variant
-    // carries rather than requiring it to be this kind's: `get-file-detail`
-    // is addressed by the path alone and answers with the first variant its
-    // fixed order reaches (session.ts § fileDetail), which is that function's
-    // business rather than this surface's. What the page renders is the
-    // document, and every parse-carrying variant holds it the same way. The
-    // excluded variants are the ones that carry no Markdown parse at all: a
-    // rule file is published whole, a custom agent publishes its declarations
-    // without a body, and an unrecognized file has nothing read out of it, so
-    // a definition-owning file that somehow arrives as one declares nothing to
-    // compare.
-    if (
-      detail.kind === 'rule' ||
-      detail.kind === 'agent' ||
-      detail.kind === 'settings/config' ||
-      detail.kind === 'file'
-    ) {
+    // The parse is the file's, one per kind (FR-028), and only this kind's
+    // variant carries it: the detail was asked for as a skill, so a
+    // definition-owning file that answers as another variant — the plain
+    // file, which has nothing read out of it — declares nothing to compare
+    // (session.ts § fileDetail).
+    if (detail.kind !== 'skill') {
       this.state = 'not-a-skill';
       this.entries = null;
       this.bodyText = null;
-      return;
-    }
-    // The command variant carries the same two halves under its own kind's
-    // names (api-types.ts § PromptPresentationDto), so it is read by them.
-    if (detail.kind === 'prompt/command') {
-      this.state = detail.presentation === null ? 'extraction-failed' : 'parsed';
-      this.entries = detail.presentation === null ? null : detail.presentation.metadata;
-      this.bodyText = detail.presentation === null ? null : detail.presentation.promptText;
       return;
     }
     const presentation = detail.presentation;

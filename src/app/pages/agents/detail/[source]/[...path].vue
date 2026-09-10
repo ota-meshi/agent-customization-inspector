@@ -445,10 +445,11 @@ const agentNamesLabel = computed(() =>
  * URL's own. The path check keeps a slow previous detail from rendering under
  * this route's heading.
  *
- * The variant is deliberately not checked, the same way the prompt route
- * leaves it unchecked: `get-file-detail` is addressed by the path alone and
- * answers with the first variant its fixed order reaches, which is that
- * function's business rather than this surface's (session.ts § fileDetail).
+ * The variant is this route's own or the plain file: `get-file-detail` is
+ * asked for this kind, so a file another kind also owns — a
+ * `.claude/agents/CLAUDE.md` is an instruction file by its name — arrives as
+ * the agent variant here and as the instructions variant on that route
+ * (session.ts § fileDetail).
  */
 const openDetail = computed(() => {
   const detail = entryDetail.value;
@@ -465,43 +466,12 @@ const openDetail = computed(() => {
  * detail, and an inner computed its null branch never reads would hold the
  * previous file's parse until something read it again (FR-027).
  *
- * A variant of another kind is read too, and mapped rather than discarded: one
- * physical file can hold two recognitions, and `get-file-detail` is addressed
- * by the path alone and answers with the first variant its fixed order reaches
- * (session.ts § fileDetail). A `.claude/agents/CLAUDE.md` is the shipped case —
- * a Claude subagent by its directory and a Claude instruction file by its
- * name — and it arrives here as the instructions variant. Its
- * `MarkdownPresentationDto` holds the same two values this page draws, from
- * the same one parse: the frontmatter block is what a Markdown agent declares
- * and the body is the system prompt it runs with, which is exactly the split
- * `ClaudeCompiledAgentRule` performs. Requiring this route's own variant would
- * report a parsed file as unparsed.
- *
- * The mapping is unreachable for a Codex agent: a `.toml` is admitted by no
- * Markdown-kind rule, so nothing but an agent variant can arrive for one.
+ * Only this kind's variant carries the two halves: the detail was asked for as
+ * an agent, so a file of another kind answers as the plain file, which has
+ * nothing read out of it (session.ts § fileDetail).
  */
 function presentationOf(detail: FileDetailDto): AgentPresentationDto | null {
-  if (detail.kind === 'rule' || detail.kind === 'settings/config' || detail.kind === 'file') {
-    return null;
-  }
-  if (detail.kind === 'agent') {
-    return detail.presentation;
-  }
-  if (detail.presentation === null) {
-    return null;
-  }
-  // A command variant carries the same two halves under its own kind's names
-  // (api-types.ts § PromptPresentationDto), so it is read by them.
-  if (detail.kind === 'prompt/command') {
-    return {
-      metadata: detail.presentation.metadata,
-      instructionsText: detail.presentation.promptText,
-    };
-  }
-  return {
-    metadata: detail.presentation.frontmatter,
-    instructionsText: detail.presentation.bodyText,
-  };
+  return detail.kind === 'agent' ? detail.presentation : null;
 }
 
 /**
@@ -597,7 +567,7 @@ const request = useDetailRequest({
   selection: null,
   ready: () => owner.value.length > 0,
   perform: () => {
-    void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value);
+    void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value, 'agent');
   },
   focusHeading: () => page.value?.focusHeading(),
 });

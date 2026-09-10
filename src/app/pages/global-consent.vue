@@ -136,7 +136,7 @@ const consentSummary = computed(() => {
     // Two states, not one: a first consent reads every directory the reader
     // ticked, and a retry reads exactly the subset the same preview can retry
     // (contracts/http-api.md § enable-global `retryableTools`) — so `these
-    // directories`, standing over all four rows, would overclaim on a retry.
+    // directories`, standing over all five rows, would overclaim on a retry.
     //
     // Split on `controls.length` rather than on the count, because that is
     // what the confirm control's own label switches on: split on anything else
@@ -575,9 +575,9 @@ watch(
         <h3>Scan status</h3>
         <!-- The Global sequence's committed generation, which FR-030 puts on
              this Source family's own surface beside its roots, statuses, and
-             rescans. Once for the family rather than once per member: the four
+             rescans. Once for the family rather than once per member: the five
              homes commit as one batch into one sequence, so a number per row
-             would be one fact written four times. Absent until that sequence
+             would be one fact written five times. Absent until that sequence
              exists, because there is no committed generation to state before
              the first batch commits. The Repository panel's own idiom
              (`ScanProgress.vue`), so a reader coming from it finds the same

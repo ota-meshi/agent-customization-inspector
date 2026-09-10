@@ -169,7 +169,7 @@ describe('a Global commit displays authored content exactly (T995)', () => {
     const scanRequestId = await settleEnable(session, coordinator, homes);
     await commitEnable(session, coordinator, homes, scanRequestId);
 
-    const detail = session.fileDetail('CLAUDE.md', 'global-claude');
+    const detail = session.fileDetail('CLAUDE.md', 'global-claude', 'instructions');
     if (detail === null || !('sourceText' in detail.file)) {
       throw new Error('expected a readable CLAUDE.md detail');
     }
@@ -199,7 +199,7 @@ describe('a Global commit displays authored content exactly (T995)', () => {
     const scanRequestId = await settleEnable(session, coordinator, homes);
     await commitEnable(session, coordinator, homes, scanRequestId);
 
-    const replaced = session.fileDetail('settings.json', 'global-claude');
+    const replaced = session.fileDetail('settings.json', 'global-claude', 'settings/config');
     if (replaced === null || !('sourceText' in replaced.file)) {
       throw new Error('expected a readable settings.json detail');
     }
@@ -208,7 +208,7 @@ describe('a Global commit displays authored content exactly (T995)', () => {
     expect(replaced.file.encoding).toBe('utf-8-replaced');
     expect(replaced.file.sourceText).toBe('{�}');
 
-    const binary = session.fileDetail('AGENTS.md', 'global-codex');
+    const binary = session.fileDetail('AGENTS.md', 'global-codex', 'instructions');
     if (binary === null) {
       throw new Error('expected the binary AGENTS.md detail');
     }
@@ -261,7 +261,7 @@ describe('a Global commit displays authored content exactly (T995)', () => {
     const snapshot = session.snapshot();
     expect(snapshot.globalGeneration).toBeNull();
     expect(snapshot.sources.filter((source) => source.kind === 'global')).toEqual([]);
-    expect(session.fileDetail('CLAUDE.md', 'global-claude')).toBeNull();
+    expect(session.fileDetail('CLAUDE.md', 'global-claude', 'instructions')).toBeNull();
     expect(session.globalConsent?.batchStatus?.phase).toBe('failed');
     expect(session.globalConsent?.batchStatus?.failureRef).toEqual({
       kind: 'error',

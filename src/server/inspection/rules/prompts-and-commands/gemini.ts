@@ -87,9 +87,10 @@ export class GeminiCompiledCommandRule
    * google-gemini/gemini-cli, measured 2026-09-10) enumerates every `.toml` at
    * any depth,
    * splits the extension-less relative path on the separator, replaces every
-   * character outside `[A-Za-z0-9_.-]` in a segment with `_`, cuts a segment
-   * longer than 50 characters to its first 47 followed by `...`, and joins
-   * with `:`. The depth is the documented rule carried through, which the
+   * UTF-16 code unit outside `[A-Za-z0-9_.-]` in a segment with `_` — its
+   * regex carries no `u` flag, so a character beyond the Basic Multilingual
+   * Plane is two units and becomes `__` — cuts a segment longer than 50
+   * characters to its first 47 followed by `...`, and joins with `:`. The depth is the documented rule carried through, which the
    * loader corroborates; the sanitization and the truncation are the loader's
    * alone, matched here so the row is named what the product invokes —
    * `my command.toml` is `/my_command` there, and a row named `my command`
@@ -115,7 +116,11 @@ export class GeminiCompiledCommandRule
     const leaf = segments.at(-1)!;
     return [...segments.slice(0, -1), leaf.slice(0, -'.toml'.length)]
       .map((segment) => {
-        const sanitized = segment.replaceAll(/[^A-Za-z0-9_.-]/gu, '_');
+        // The vendor's own expression, flag for flag: without `u` a regex
+        // matches UTF-16 code units, so `😀.toml` is `/__` there, and a
+        // code-point replacement would name a `/_` the product does not have.
+        // eslint-disable-next-line require-unicode-regexp -- the measured rule is the flagless regex's unit semantics
+        const sanitized = segment.replaceAll(/[^A-Za-z0-9_.-]/g, '_');
         return sanitized.length > 50 ? `${sanitized.slice(0, 47)}...` : sanitized;
       })
       .join(':');

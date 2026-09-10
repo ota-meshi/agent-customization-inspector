@@ -2140,9 +2140,12 @@ describe('normative relationship-only registry', () => {
     (match) => match[1]!,
   );
 
-  it('defines exactly twelve relationship-only rule IDs', () => {
-    expect(declared).toHaveLength(12);
-    expect(new Set(declared).size).toBe(12);
+  it('defines exactly fifteen relationship-only rule IDs', () => {
+    // Twelve from the three original vendor contracts and three for Gemini CLI
+    // — its context import, its component references, and its agent
+    // context — each a definition here and never a shipped rule.
+    expect(declared).toHaveLength(15);
+    expect(new Set(declared).size).toBe(15);
   });
 
   it('ships none of them as a rule', () => {

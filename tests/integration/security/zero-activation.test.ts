@@ -568,7 +568,7 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
 
     vi.clearAllMocks();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const detail = session.fileDetail(fixture.skillPath, 'repository');
+    const detail = session.fileDetail(fixture.skillPath, 'repository', 'skill');
 
     expect(detail?.file.sourceRelativePath).toBe(fixture.skillPath);
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -1055,7 +1055,7 @@ describe('Claude rule inspection evaluates no glob (T430)', () => {
 
     vi.clearAllMocks();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const detail = session.fileDetail(fixture.secretRulePath, 'repository');
+    const detail = session.fileDetail(fixture.secretRulePath, 'repository', 'rule');
 
     // Served from the committed generation: the credential and the
     // environment reference reach the response exactly as authored, neither
@@ -1290,7 +1290,7 @@ describe('Claude command inspection runs nothing (T450)', () => {
 
     vi.clearAllMocks();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const detail = session.fileDetail(fixture.secretCommandPath, 'repository');
+    const detail = session.fileDetail(fixture.secretCommandPath, 'repository', 'prompt/command');
 
     // Served from the committed generation: the credential and the
     // environment reference reach the response exactly as authored, neither
@@ -1498,7 +1498,7 @@ describe('Codex rule inspection enforces nothing (T412)', () => {
     // policy's own function, because a permissions row names a policy rather
     // than a file, so the file function holds nothing at the path
     // (contracts/http-api.md § get-permission-policy-detail).
-    expect(session.fileDetail(fixture.secretRulePath, 'repository')).toBeNull();
+    expect(session.fileDetail(fixture.secretRulePath, 'repository', 'rule')).toBeNull();
     expect(
       detail?.form === 'whole-document' &&
         detail.file.encoding === 'utf-8' &&
@@ -1634,7 +1634,7 @@ describe('Claude MCP inspection connects to nothing (T315, T326)', () => {
     ]);
     expect(JSON.stringify(carrier)).not.toContain('sourceText');
     expect(session.mcpCarrierDetail(fixture.mcpFrontmatterSkillPath, 'repository')).toBeNull();
-    const ownerDetail = session.fileDetail(fixture.mcpFrontmatterSkillPath, 'repository');
+    const ownerDetail = session.fileDetail(fixture.mcpFrontmatterSkillPath, 'repository', 'skill');
     expect(ownerDetail?.kind).toBe('skill');
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
@@ -1964,7 +1964,11 @@ describe('Copilot settings inspection activates nothing (T635)', () => {
 
     vi.clearAllMocks();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const detail = session.fileDetail('.github/copilot/settings.json', 'repository');
+    const detail = session.fileDetail(
+      '.github/copilot/settings.json',
+      'repository',
+      'settings/config',
+    );
     if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
       throw new Error('the settings file published no readable detail of its own');
     }
@@ -2028,7 +2032,11 @@ describe('Claude settings inspection activates nothing (T614)', () => {
 
     vi.clearAllMocks();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const detail = session.fileDetail(fixture.declaringCarrierPath, 'repository');
+    const detail = session.fileDetail(
+      fixture.declaringCarrierPath,
+      'repository',
+      'settings/config',
+    );
     if (detail?.kind !== 'settings/config') {
       throw new Error('the settings file published no detail of its own');
     }
@@ -2206,7 +2214,7 @@ describe('Codex custom-agent inspection activates nothing (T519)', () => {
 
     vi.clearAllMocks();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const detail = session.fileDetail(fixture.mcpSpellingAgentPath, 'repository');
+    const detail = session.fileDetail(fixture.mcpSpellingAgentPath, 'repository', 'agent');
     if (detail?.kind !== 'agent' || detail.presentation === null) {
       throw new Error('expected a parsed custom-agent detail');
     }
@@ -2325,7 +2333,7 @@ describe('Claude subagent inspection activates nothing (T539)', () => {
 
     vi.clearAllMocks();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const detail = session.fileDetail(fixture.mcpFrontmatterAgentPath, 'repository');
+    const detail = session.fileDetail(fixture.mcpFrontmatterAgentPath, 'repository', 'agent');
     if (detail?.kind !== 'agent' || detail.presentation === null) {
       throw new Error('expected a parsed subagent detail');
     }
@@ -2618,7 +2626,7 @@ describe('Copilot custom-agent inspection activates nothing (T558)', () => {
 
     vi.clearAllMocks();
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const detail = session.fileDetail(fixture.mcpFrontmatterAgentPath, 'repository');
+    const detail = session.fileDetail(fixture.mcpFrontmatterAgentPath, 'repository', 'agent');
     if (detail?.kind !== 'agent' || detail.presentation === null) {
       throw new Error('expected a parsed agent-profile detail');
     }

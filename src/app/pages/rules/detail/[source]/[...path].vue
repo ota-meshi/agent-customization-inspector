@@ -143,14 +143,9 @@ const recognitions = computed(() => owner.value?.recognitions ?? []);
  * URL's own. The path check keeps a slow previous detail from rendering under
  * this route's heading.
  *
- * The variant is deliberately not checked. One file can hold recognitions of
- * two kinds — a `.claude/rules/CLAUDE.md` is a Claude rule by its directory
- * and a Claude instruction file by its name, so it is a row in both
- * inventories — while `get-file-detail` is addressed by the path alone and
- * answers with the first variant its fixed order reaches. Requiring `rule`
- * here would turn this page into a dead end for exactly the files two of this
- * product's own inventories link to. What the page renders is the document,
- * which every variant carries the same way.
+ * The variant is not checked: `get-file-detail` is asked for this kind, so the
+ * answer is the rule variant or the plain file, and both carry the document
+ * whole, which is all this page renders (session.ts § fileDetail).
  */
 const openDetail = computed(() => {
   const detail = entryDetail.value;
@@ -184,7 +179,7 @@ const request = useDetailRequest({
   selection: null,
   ready: () => owner.value !== null,
   perform: () => {
-    void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value);
+    void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value, 'rule');
   },
   focusHeading: () => page.value?.focusHeading(),
 });

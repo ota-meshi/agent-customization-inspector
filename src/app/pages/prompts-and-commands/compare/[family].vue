@@ -393,13 +393,10 @@ watch(
 function fileFacts(detail: FileDetailDto): string {
   const facts = [
     ...sourceFactsOf(sources.value, detail.file.sourceId),
-    // This page's own kind, never the adopted variant's. Both sides are files
-    // of one invocation-name row, while `get-file-detail` is addressed by the
-    // path alone and answers with the first variant its fixed order reaches —
-    // so a `.claude/commands/CLAUDE.md`, a command by its directory and an
-    // instruction file by its name, would otherwise be captioned
-    // "Instructions" on the page that compares it as a command
-    // (session.ts § fileDetail).
+    // This page's own kind, never the adopted variant's: both sides are files
+    // of one invocation-name row, and a side the request answered as the
+    // plain file would otherwise be captioned as unrecognized on the page that
+    // compares it as a command (session.ts § fileDetail).
     CUSTOMIZATION_KIND_TEXT['prompt/command'],
     FILE_ENCODING_TEXT[detail.file.encoding],
   ];

@@ -60,7 +60,7 @@ than one. These are maintenance records; no response carries one (QR-005).
 | `gemini.behavior.repo.settings` | CLI | Project root | `.gemini/settings.json` | The project settings layer, above user settings and below system settings in the documented precedence; ignored in an untrusted folder | `gemini.settings.precedence` | Documented; trust conditional | `google.gemini-cli.configuration`, `google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.mcp` | CLI | Project root | `mcpServers` inside `.gemini/settings.json` | Servers are declared by name under `mcpServers`, with one required transport (`command`, `url`, or `httpUrl`) and optional `args`, `env`, `cwd`, `headers`, `timeout`, `trust`, `includeTools`, `excludeTools`; `$VAR_NAME` in `env` is expanded by the vendor at connection time; project servers do not connect in an untrusted folder | `gemini.mcp.configuration` | Documented; trust conditional | `google.gemini-cli.mcp-server`, `google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.hooks` | CLI | Project root | `hooks` inside `.gemini/settings.json` | Merged with the user, system, and extension layers in the documented precedence; each event holds hook definitions whose `hooks[].command` is a shell command the vendor runs; project hooks are fingerprinted and a changed one is treated as new | `gemini.hooks.merge` | Documented; trust and fingerprint conditional | `google.gemini-cli.hooks`, `google.gemini-cli.hooks-reference` |
-| `gemini.behavior.repo.commands` | CLI | Project root | `.gemini/commands/**/*.toml` | The command name is the file's path relative to `commands/` with the separator converted to `:` and the extension removed, at any depth; each segment's characters outside `[A-Za-z0-9_.-]` become `_` and a segment over 50 characters is cut to 47 plus `...`, which the loader does and the page does not say; a project command with a user command's name is always used; not loaded in an untrusted folder | `gemini.commands.selection` | Partially documented; trust conditional | `google.gemini-cli.custom-commands`, `google.gemini-cli.trusted-folders` |
+| `gemini.behavior.repo.commands` | CLI | Project root | `.gemini/commands/**/*.toml` | The command name is the file's path relative to `commands/` with the separator converted to `:` and the extension removed, at any depth; each segment's UTF-16 code units outside `[A-Za-z0-9_.-]` become `_` and a segment over 50 characters is cut to 47 plus `...`, which the loader does and the page does not say; a project command with a user command's name is always used; not loaded in an untrusted folder | `gemini.commands.selection` | Partially documented; trust conditional | `google.gemini-cli.custom-commands`, `google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.skills` | CLI | Project root | `.gemini/skills/<name>/SKILL.md`; `.agents/skills/<name>/SKILL.md` as its documented alias | The workspace tier, highest of four; a same-name skill in a higher tier wins, and within the tier the `.agents/skills/` copy wins over `.gemini/skills/`; unavailable in an untrusted folder | `gemini.skills.selection` | Documented; trust conditional | `google.gemini-cli.skills`, `google.gemini-cli.creating-skills`, `google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.agents` | CLI | Project root | `.gemini/agents/*.md` | Markdown with required YAML frontmatter; `name` is the tool name the agent is invoked by; enabled unless `experimental.enableAgents` is false | `gemini.agents.selection` | Documented; experimental | `google.gemini-cli.subagents` |
 | `gemini.behavior.repo.policies` | CLI | Project root | `.gemini/policies/*.toml` | The workspace tier of the policy engine, documented as currently non-functional: files there have no effect | `gemini.policies.tiers` | Documented as not loaded | `google.gemini-cli.policy-engine` |
@@ -236,8 +236,19 @@ a skill's companions are its census, as for every product.
    one nested example. It does not state a depth limit, and it does not say what becomes of
    a segment character the colon would make ambiguous. The vendor's loader
    (`packages/cli/src/services/FileCommandLoader.ts`, measured 2026-09-10) enumerates
-   `**/*.toml`, replaces every segment character outside `[A-Za-z0-9_.-]` with `_`, and cuts a
-   segment over 50 characters to its first 47 followed by `...`. The command unit matches all
-   three so a row is named what the product invokes; the depth is the documented rule
-   carried through, and the other two are a source measurement, not documentation, which is
-   why both command behaviors are `partially-documented`.
+   `**/*.toml`, replaces every UTF-16 code unit of a segment outside `[A-Za-z0-9_.-]` with `_`
+   — its regex carries no `u` flag, so a character beyond the Basic Multilingual Plane becomes
+   `__` — and cuts a segment over 50 characters to its first 47 followed by `...`. The command
+   unit matches all three so a row is named what the product invokes; the depth is the
+   documented rule carried through, and the other two are a source measurement, not
+   documentation, which is why both command behaviors are `partially-documented`.
+9. The hooks reference page states the `hooks` object as keyed by event name. The vendor's
+   hook registry (`HOOKS_CONFIG_FIELDS` in `packages/core/src/hooks/types.ts`, measured
+   2026-09-10) skips three keys of that object before reading event names — `enabled`,
+   `disabled`, and `notifications`, of which `disabled` is a list of hook names — and no
+   cited section states them. The hook unit copies no such key list: a `disabled` list is a
+   row by the shared structural reading, on both carriers, because what this product shows is
+   the file's own declarations (FR-025, FR-026) — a reader who wrote a disabled list needs it
+   stated rather than silently dropped — and a key list taken from the vendor would be a
+   classification kept in step with a source no page documents. The record stays
+   `documented`: the unit relies on nothing the page leaves out.

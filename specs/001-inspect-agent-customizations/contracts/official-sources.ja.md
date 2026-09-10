@@ -5,7 +5,7 @@
 **Registry version**: 2026-07-20
 **Official-source review**: 2026-07-20
 
-この台帳は、3つのvendor contractと[Runtime Composition](runtime-composition.ja.md)が使用する
+この台帳は、4つのvendor contractと[Runtime Composition](runtime-composition.ja.md)が使用する
 全`sourceId`の唯一のnormative ownerである。Vendor contractとcomposition contractは、全normative
 owner-to-source edgeをEvidence cell内の`sourceId`としてだけ記述する。定義済みIDを説明文中のnon-edge
 cross-referenceとして繰り返すことはできるが、そのURL、official host、review対象section、review dateを
@@ -136,7 +136,7 @@ issue/discussion statementはすべてのdocumentation classより下位であ�
 
 ## Presentation Allowlistのimplementation gate
 
-3つのvendor contractにある規範的なbilingual Presentation Allowlist rowは、すでに承認済みのdesign inputで
+4つのvendor contractにある規範的なbilingual Presentation Allowlist rowは、すでに承認済みのdesign inputで
 ある。Implementation gateは、凍結済みの英日rowと記録済みdigestだけをverifyし、allowlist set、identifier、
 admission済みsource form、正確なsource-form extractor applicability、relationship kindを新規作成または
 意味変更してはならない。Rowはmetadata fieldを列挙しない: skillの宣言はfileが書いたkeyであり、
@@ -154,7 +154,7 @@ digest inputとする。Heading、prose、blank line、連続table後のlineはh
 | OpenAI Codex | `2a598e1bd30690cfe07d64cd6e1a8c5d80512249eacb5e1e59741bd3d9194226` | `e985ad14696d2ef2a47e7fcacbdbb39a83864fdd4d5c62546112f25e62e98301` |
 | Gemini CLI | `fedf1e2053d3e0f1365d71e0aaea2c6d0323fb8215671ffb4b4d0a78773c9b7a` | `1370b7fa54d61539ceda6f646e657fb5db9a4408ac9e6ed932aa0218584e483f` |
 
-Implementation freeze testは6 inputすべてを正確に再計算し、fileごとにmatching headingと連続tableが正確に1つだけ
+Implementation freeze testは8 inputすべてを正確に再計算し、fileごとにmatching headingと連続tableが正確に1つだけ
 存在することを要求し、全digestをconstant timeで比較し、row IDと英日semantic parityを別に検証しなければならない。
 Tableまたはdigestのmissing、duplicate、empty、malformed、mismatchはimplementationをblockし、digest一致だけを
 semantic parityの証明にしてはならない。
@@ -259,7 +259,7 @@ filesystemまたはdecode方針をencodeしてはならない。このreconcilia
 | `openai.codex.skills` | <https://learn.chatgpt.com/docs/build-skills.md> | `learn.chatgpt.com` | `How ChatGPT and Codex use skills`; `Where Codex loads local skills`; `Distribute skills with plugins`; `Optional metadata` | `2026-08-27` |
 | `openai.codex.subagents` | <https://learn.chatgpt.com/docs/agent-configuration/subagents.md> | `learn.chatgpt.com` | `Orchestration and thread controls`; `Approvals and sandbox controls`; `Custom agents`; `Custom agent file schema` | `2026-08-27` |
 
-## Google official sources
+## Google公式ソース
 
 Google の行は Gemini CLI の文書サイトを引用する。そのページは末尾スラッシュ付きで配信され、
 redirect なしに直接応答する。同サイトの2つのパスは redirect するか応答しないため意図的に引用

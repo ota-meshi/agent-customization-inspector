@@ -20,10 +20,12 @@ halves: the admitted candidates in `expectedCandidatePaths`, and the neighbours 
 or read has found a defect rather than a stale fixture.
 
 A fixture is used by pointing the environment at built homes — `COPILOT_HOME`,
-`CLAUDE_CONFIG_DIR`, and `CODEX_HOME` for the three tool members, and `HOME`, from which
-the product derives the shared agent home `~/.agents` itself (FR-013, FR-045); all four
-come back from `environment` already keyed by name — because those properties are the
-product's only input here. It never takes a Global root as an argument.
+`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `GEMINI_CLI_HOME` for the four tool members, the
+last naming the directory under which the product joins `.gemini`
+(specs/002-gemini-cli-support/spec.md FR-011), and `HOME`, from which the product derives
+the shared agent home `~/.agents` itself (FR-013, FR-045); all five come back from
+`environment` already keyed by name — because those properties are the product's only
+input here. It never takes a Global root as an argument.
 
 Two rules hold for every home:
 

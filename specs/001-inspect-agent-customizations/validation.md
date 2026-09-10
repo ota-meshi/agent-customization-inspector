@@ -651,7 +651,7 @@ picker's own comment no longer counts six pages where there are seven.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 4**, canonical
-SHA-256 `d13165d21b28e15b4cfb266e0b3260508fd355c78775c50f5092756a2776d137`, recorded in
+SHA-256 `6aeda202a98d99277ffa595318e593695920b5d5da11956fa60b234d9ace4e01`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Version 4 is the Gemini CLI denominator
 (specs/002-gemini-cli-support): eight `(Gemini CLI, kind)` rows each for SC-003 and SC-005 —
 instructions, settings/config, MCP, hook, prompt/command, skill, agent, and permissions — the
@@ -750,17 +750,17 @@ above: `sc003.shared-file.repository-agents-md`, `sc003.shared-file.repository-r
 project every assertion in those specs passed; what the earlier execution recorded about the
 local macOS WebKit project stands as that execution's.
 
-**Denominators.** SC-003 covers 28 `(tool, kind)` rows at the Repository boundary — the exact
+**Denominators.** SC-003 covers 36 `(tool, kind)` rows at the Repository boundary — the exact
 set the shipped registry produces, cross-checked in the contract suite rather than restated —
 the four frozen selector families (`exact`, `direct-child`, `descendant-inventory`,
-`recursive-subtree`), the eight documented multi-tool attribution combinations, and the three
+`recursive-subtree`), the nine documented multi-tool attribution combinations, and the four
 Global source forms. The Global boundary has its own cases rather than a second case per row
 because it is admitted per consented member: the admission specs are what exercise it. SC-004
-covers three tools, five prohibited-effect classes, both source boundaries, and the three
+covers four tools, five prohibited-effect classes, both source boundaries, and the three
 classes that are about the environment moving under a running scan: an external writer
 changing a fixture mid-read, a directory removed, renamed, or created during enumeration, and
 a late result discarded after its authority was revoked. SC-005 covers
-the same 28 rows plus both display surfaces, both credential classes, and both
+the same 36 rows plus both display surfaces, both credential classes, and both
 referenced-variable states. SC-007 covers four file-confined outcome classes and five failure
 classes, the failed initial Global enable among them — a distinct outcome from a
 post-acceptance failure, because it creates neither Global Source nor generation. Each

@@ -190,6 +190,14 @@ export const GEMINI_REPO_MCP_BEHAVIOR = {
  * Recording the documented fact grants no execution authority: inspection
  * runs no declared command (FR-020), and whether a hook is approved is
  * runtime this tool never observes.
+ *
+ * The reference page states the object as keyed by event name and says
+ * nothing of the three keys that are settings rather than events —
+ * `enabled`, `disabled`, and `notifications` — which the vendor's hook
+ * registry skips before reading event names. The hook unit copies no such
+ * key list and publishes the object as the file wrote it
+ * (`rules/hooks/gemini.ts`), so the record relies on nothing the page leaves
+ * out and stays `documented`.
  */
 export const GEMINI_REPO_HOOKS_BEHAVIOR = {
   behaviorId: 'gemini.behavior.repo.hooks',
@@ -238,8 +246,8 @@ export const GEMINI_REPO_HOOKS_BEHAVIOR = {
  * `partially-documented`: the page states the naming rule in general terms
  * with one nested example, and says nothing about how deep a path may go or
  * what becomes of a segment character the colon would make ambiguous. The
- * vendor's loader answers both — every `.toml` at any depth, and each segment's characters
- * outside `[A-Za-z0-9_.-]` replaced with `_`, a segment over 50 characters
+ * vendor's loader answers both — every `.toml` at any depth, and each segment's UTF-16 code
+ * units outside `[A-Za-z0-9_.-]` replaced with `_`, a segment over 50 characters
  * cut to 47 plus `...` — which the command unit matches as a source
  * measurement (`rules/prompts-and-commands/gemini.ts`), not as documentation.
  */

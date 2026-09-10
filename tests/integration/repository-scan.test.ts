@@ -61,10 +61,12 @@ import {
   buildGeminiAgentFixture,
   buildGeminiCommandFixture,
   buildGeminiContextFilenameFixture,
+  buildGeminiInvalidContextFilenameFixture,
   buildGeminiInstructionFixture,
   buildGeminiSameNameSkillFixture,
   buildGeminiSettingsFixture,
   buildGeminiSkillFixture,
+  buildGeminiStringContextFilenameFixture,
 } from '../fixtures/repositories/build-fixtures';
 import { CLAUDE_REPOSITORY_RULES } from '../../src/server/inspection/rules/claude';
 import { CODEX_REPOSITORY_RULES } from '../../src/server/inspection/rules/codex';
@@ -299,7 +301,7 @@ describe("a skill's own directory is published with it", () => {
       // Read like any other file, and classified as nothing: no rule admitted
       // it, so it has no recognition, no kind, and no extractor applied to it.
       expect(file.diagnosticIds).toEqual([]);
-      const detail = context.session.fileDetail(file.sourceRelativePath, 'repository');
+      const detail = context.session.fileDetail(file.sourceRelativePath, 'repository', 'skill');
       expect(detail?.kind).toBe('file');
     }
   });
@@ -333,7 +335,7 @@ describe("a skill's own directory is published with it", () => {
     expect(publication.kind === 'publishable' && publication.outcome).toBe('complete');
     const row = snapshot.skills.find((entry) => entry.name === 'gar\uFFFDbled');
     expect(row).toBeDefined();
-    const detail = context.session.fileDetail(file!.sourceRelativePath, 'repository');
+    const detail = context.session.fileDetail(file!.sourceRelativePath, 'repository', 'skill');
     if (detail?.file.encoding !== 'utf-8-replaced') {
       throw new Error('expected the replacement-decoded variant');
     }
@@ -379,7 +381,7 @@ describe("a skill's own directory is published with it", () => {
     const readme = context.session
       .snapshot()
       .files.find((file) => file.sourceRelativePath === '.agents/skills/greet/README.md');
-    const detail = context.session.fileDetail(readme!.sourceRelativePath, 'repository');
+    const detail = context.session.fileDetail(readme!.sourceRelativePath, 'repository', 'skill');
     if (detail?.file.encoding !== 'utf-8') {
       throw new Error('expected a readable companion detail');
     }
@@ -4501,7 +4503,11 @@ describe('the unified settings and configuration inventory (T646)', () => {
         ],
       },
     ]);
-    const detail = context.session.fileDetail('.github/copilot/settings.json', 'repository');
+    const detail = context.session.fileDetail(
+      '.github/copilot/settings.json',
+      'repository',
+      'settings/config',
+    );
     if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
       throw new Error('expected the readable settings file detail');
     }
@@ -4660,7 +4666,11 @@ describe('the committed Claude settings inventory (T610)', () => {
     ]);
     // And the document still reaches its own detail whole, because that row's
     // subject is the file rather than the block a parser rejected.
-    const detail = context.session.fileDetail('.claude/settings.json', 'repository');
+    const detail = context.session.fileDetail(
+      '.claude/settings.json',
+      'repository',
+      'settings/config',
+    );
     if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
       throw new Error('expected the readable settings file detail');
     }
@@ -4823,7 +4833,7 @@ describe('the committed Codex custom-agent inventory (T509, T524)', () => {
     expect(failed.diagnosticIds).toEqual(malformed.diagnosticIds);
     // The complete source is still what the detail serves, and the parse
     // publishes nothing rather than the half that would have parsed (FR-028).
-    const detail = context.session.fileDetail(fixture.malformedAgentPath, 'repository');
+    const detail = context.session.fileDetail(fixture.malformedAgentPath, 'repository', 'agent');
     expect(detail).toMatchObject({ kind: 'agent', presentation: null });
     expect(detail!.file.encoding).toBe('utf-8');
   });
@@ -4834,7 +4844,7 @@ describe('the committed Codex custom-agent inventory (T509, T524)', () => {
     const context = bootstrap(fixture.root);
     await scanOnce(context);
 
-    const detail = context.session.fileDetail(fixture.mcpSpellingAgentPath, 'repository');
+    const detail = context.session.fileDetail(fixture.mcpSpellingAgentPath, 'repository', 'agent');
     if (detail?.kind !== 'agent' || detail.presentation === null) {
       throw new Error('expected a parsed custom-agent detail');
     }
@@ -4965,17 +4975,31 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
     expect(snapshot.instructions.map((entry) => entry.applicabilityRange)).toEqual([
       '.claude/agents/**',
     ]);
-    // The detail the fixed order settles on carries the parse both routes
-    // draw, in the shape that variant publishes it.
-    const detail = context.session.fileDetail('.claude/agents/CLAUDE.md', 'repository');
-    if (detail?.kind !== 'instructions' || detail.presentation === null) {
-      throw new Error('expected a parsed instructions detail');
+    // Each route asks for its own kind and receives that kind's parse of the
+    // one file, in the shape that variant publishes it (session.ts
+    // § fileDetail).
+    const asAgent = context.session.fileDetail('.claude/agents/CLAUDE.md', 'repository', 'agent');
+    if (asAgent?.kind !== 'agent' || asAgent.presentation === null) {
+      throw new Error('expected a parsed agent detail');
     }
-    expect(detail.presentation.frontmatter.map((entry) => entry.key)).toEqual([
+    expect(asAgent.presentation.metadata.map((entry) => entry.key)).toEqual([
       'name',
       'description',
     ]);
-    expect(detail.presentation.bodyText).toBe('\n# Body\n');
+    expect(asAgent.presentation.instructionsText).toBe('\n# Body\n');
+    const asInstructions = context.session.fileDetail(
+      '.claude/agents/CLAUDE.md',
+      'repository',
+      'instructions',
+    );
+    if (asInstructions?.kind !== 'instructions' || asInstructions.presentation === null) {
+      throw new Error('expected a parsed instructions detail');
+    }
+    expect(asInstructions.presentation.frontmatter.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+    ]);
+    expect(asInstructions.presentation.bodyText).toBe('\n# Body\n');
   });
 
   it('serves the two halves of a subagent detail and no MCP row for its frontmatter', async () => {
@@ -4984,7 +5008,11 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
     const context = bootstrap(fixture.root);
     await scanOnce(context);
 
-    const detail = context.session.fileDetail(fixture.mcpFrontmatterAgentPath, 'repository');
+    const detail = context.session.fileDetail(
+      fixture.mcpFrontmatterAgentPath,
+      'repository',
+      'agent',
+    );
     if (detail?.kind !== 'agent' || detail.presentation === null) {
       throw new Error('expected a parsed subagent detail');
     }
@@ -5010,7 +5038,11 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
 
     // The referencing agent's memory scope, preloaded skills, and agent
     // reference are declared values on the same terms.
-    const referencing = context.session.fileDetail(fixture.referencingAgentPath, 'repository');
+    const referencing = context.session.fileDetail(
+      fixture.referencingAgentPath,
+      'repository',
+      'agent',
+    );
     if (referencing?.kind !== 'agent' || referencing.presentation === null) {
       throw new Error('expected a parsed subagent detail');
     }
@@ -5799,7 +5831,11 @@ describe('the committed Gemini CLI context-file inventory (specs/002 T021)', () 
     const serialized = JSON.stringify(snapshot);
     expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
     expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
-    const detail = context.session.fileDetail(fixture.secretInstructionPath, 'repository');
+    const detail = context.session.fileDetail(
+      fixture.secretInstructionPath,
+      'repository',
+      'instructions',
+    );
     if (detail?.kind !== 'instructions' || detail.file.encoding !== 'utf-8') {
       throw new Error('expected the readable root context-file detail');
     }
@@ -5885,7 +5921,7 @@ describe('the committed Gemini CLI settings carrier (specs/002 T021)', () => {
     });
     expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
     expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
-    const detail = context.session.fileDetail(fixture.carrierPath, 'repository');
+    const detail = context.session.fileDetail(fixture.carrierPath, 'repository', 'settings/config');
     if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
       throw new Error('expected the readable settings detail');
     }
@@ -5956,7 +5992,11 @@ describe('the committed Gemini CLI settings carrier (specs/002 T021)', () => {
       snapshot.hooks.map((entry) => [entry.event, entry.declarations[0]!.parseStatus]),
     ).toEqual([[null, 'failed']]);
     // The document still reaches its own detail whole.
-    const detail = context.session.fileDetail('.gemini/settings.json', 'repository');
+    const detail = context.session.fileDetail(
+      '.gemini/settings.json',
+      'repository',
+      'settings/config',
+    );
     if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
       throw new Error('expected the readable settings detail');
     }
@@ -6005,14 +6045,22 @@ describe('the committed Gemini CLI command inventory (specs/002 T021)', () => {
     // The detail splits the prompt from the other declarations, with the
     // shell block as the characters that were written, run by nothing
     // (FR-006, FR-019); the file tab serves the TOML as written.
-    const detail = context.session.fileDetail(fixture.shellBlockCommandPath, 'repository');
+    const detail = context.session.fileDetail(
+      fixture.shellBlockCommandPath,
+      'repository',
+      'prompt/command',
+    );
     if (detail?.kind !== 'prompt/command' || detail.file.encoding !== 'utf-8') {
       throw new Error('expected the readable command detail');
     }
     expect(detail.presentation?.metadata.map((entry) => entry.key)).toEqual(['description']);
     expect(detail.presentation?.promptText).toContain('!{git diff --cached}');
     expect(detail.file.sourceText).toContain('prompt = """');
-    const broken = context.session.fileDetail(fixture.malformedCommandPath, 'repository');
+    const broken = context.session.fileDetail(
+      fixture.malformedCommandPath,
+      'repository',
+      'prompt/command',
+    );
     expect(broken).toMatchObject({ kind: 'prompt/command', presentation: null });
   });
 });
@@ -6059,7 +6107,8 @@ describe('the committed Gemini CLI skill inventory (specs/002 T021)', () => {
     expect(definitionsOf('broken')[0]).toMatchObject({ tool: 'gemini', parseStatus: 'failed' });
     // The published set is the admitted skills plus their companions; every
     // near miss — the nested `.gemini/skills/`, the missing name segment, the
-    // singular directory, the wrong-case leaf — is absent.
+    // skill directory two levels deep, the singular directory, the wrong-case
+    // leaf — is absent (SC-002, QR-002).
     expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
       [...fixture.expectedSkillPaths, ...fixture.expectedCompanionPaths].sort(),
     );
@@ -6120,7 +6169,7 @@ describe('the committed Gemini CLI sub-agent inventory (specs/002 T021)', () => 
     // (data-model.md § Inventory unit); the credential and the reference in
     // it reach the detail exactly as written (FR-025, FR-026).
     expect(snapshot.mcp).toEqual([]);
-    const detail = context.session.fileDetail(fixture.mcpSpellingAgentPath, 'repository');
+    const detail = context.session.fileDetail(fixture.mcpSpellingAgentPath, 'repository', 'agent');
     if (detail?.kind !== 'agent' || detail.presentation === null) {
       throw new Error('expected a parsed sub-agent detail');
     }
@@ -6137,6 +6186,139 @@ describe('the committed Gemini CLI sub-agent inventory (specs/002 T021)', () => 
 });
 
 describe('the Gemini CLI configured context filenames (specs/002 T052)', () => {
+  it('reads one configured name given as a string, at every depth, in place of the default', async () => {
+    const fixture = buildGeminiStringContextFilenameFixture(
+      'inspector-scan-gemini-context-filename-string',
+    );
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // A string is the one-name form of the setting: `AGENTS.md` is Gemini
+    // CLI's context file at the root and below, and the default `GEMINI.md`
+    // keeps Copilot's root recognition alone (FR-004, FR-013).
+    expectRepositoryInstructionSources(snapshot);
+    expect(normalizedInstructions(snapshot)).toEqual([
+      {
+        applicabilityRange: '**',
+        files: [
+          {
+            sourceRelativePath: 'AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, GEMINI_ONLY],
+          },
+          {
+            sourceRelativePath: 'GEMINI.md',
+            recognitions: [{ tool: 'copilot', surfaces: ['copilot-cli', 'copilot-cloud'] }],
+          },
+        ],
+      },
+      {
+        applicabilityRange: 'packages/api/**',
+        files: [
+          {
+            sourceRelativePath: 'packages/api/AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, GEMINI_ONLY],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('keeps the default name when the configured value is not one the setting accepts', async () => {
+    const fixture = buildGeminiInvalidContextFilenameFixture(
+      'inspector-scan-gemini-context-filename-invalid',
+    );
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // A number configures nothing: the grammar accepts a non-empty string or
+    // an array of them, so the default stands — `GEMINI.md` at the root and
+    // below is Gemini CLI's — and nothing is a parse failure, so the
+    // settings carrier carries no diagnostic (FR-004; research.md § 2).
+    expectRepositoryInstructionSources(snapshot);
+    expect(normalizedInstructions(snapshot)).toEqual([
+      {
+        applicabilityRange: '**',
+        files: [
+          {
+            sourceRelativePath: 'AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY],
+          },
+          {
+            sourceRelativePath: 'GEMINI.md',
+            recognitions: [
+              { tool: 'copilot', surfaces: ['copilot-cli', 'copilot-cloud'] },
+              GEMINI_ONLY,
+            ],
+          },
+        ],
+      },
+      {
+        applicabilityRange: 'packages/api/**',
+        files: [{ sourceRelativePath: 'packages/api/GEMINI.md', recognitions: [GEMINI_ONLY] }],
+      },
+    ]);
+    expect(snapshot.diagnostics).toEqual([]);
+    expect(snapshot.settings.map((entry) => entry.sourceRelativePath)).toEqual([
+      fixture.carrierPath,
+    ]);
+  });
+
+  it('serves a command file that a configured name also makes a context file under each kind', async () => {
+    // `context.fileName` admits a file by its name at any depth, so naming
+    // `build.toml` makes `.gemini/commands/build.toml` a Gemini CLI context
+    // file as well as a Gemini CLI command: two rows, one path. Each route asks
+    // for its own kind: the command route receives the TOML parse, and the
+    // instruction route the instruction reading, which is the whole text as a
+    // body with no frontmatter (session.ts § fileDetail; FR-006).
+    const root = createRepositoryFixtureRoot('inspector-scan-gemini-command-context-file');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.gemini/commands'), { recursive: true });
+    writeFileSync(
+      join(root, '.gemini/settings.json'),
+      '{ "context": { "fileName": "build.toml" } }\n',
+      'utf8',
+    );
+    writeFileSync(
+      join(root, '.gemini/commands/build.toml'),
+      'description = "Build the project"\nprompt = "Run the build and report failures."\n',
+      'utf8',
+    );
+    const context = bootstrap(root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    expect(snapshot.prompts.map((entry) => entry.name)).toEqual(['build']);
+    expect(
+      snapshot.instructions.flatMap((entry) => entry.files.map((file) => file.sourceRelativePath)),
+    ).toEqual(['.gemini/commands/build.toml']);
+    const asCommand = context.session.fileDetail(
+      '.gemini/commands/build.toml',
+      'repository',
+      'prompt/command',
+    );
+    if (asCommand?.kind !== 'prompt/command' || asCommand.presentation === null) {
+      throw new Error('expected a parsed command detail');
+    }
+    expect(asCommand.presentation.metadata.map((entry) => entry.key)).toEqual(['description']);
+    expect(asCommand.presentation.promptText).toBe('Run the build and report failures.');
+    const asInstructions = context.session.fileDetail(
+      '.gemini/commands/build.toml',
+      'repository',
+      'instructions',
+    );
+    if (asInstructions?.kind !== 'instructions' || asInstructions.presentation === null) {
+      throw new Error('expected a parsed instructions detail');
+    }
+    expect(asInstructions.presentation.frontmatter).toEqual([]);
+    expect(asInstructions.presentation.bodyText).toBe(
+      'description = "Build the project"\nprompt = "Run the build and report failures."\n',
+    );
+  });
+
   it('reads the configured names in place of the default, at every depth', async () => {
     const fixture = buildGeminiContextFilenameFixture('inspector-scan-gemini-context-filename');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));

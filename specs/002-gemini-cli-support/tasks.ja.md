@@ -238,3 +238,29 @@
 - どの task もブラウザ suite 全体を走らせない。それぞれ変更が届く spec を名指しする。
 - 起動するすべての host は `--no-open --port 0` を渡し、task の終了前に止める。
 - 触れたすべての文書の両言語版は同じ task で変える。
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: 2026-09-10 に `/speckit-converge` が仕様・計画・タスクとコードの間に見つけた差分。それぞれ出所とギャップ種別を添える。
+
+- [X] T068 Global boundary の integration gate に `gemini` メンバーを追加する — 5メンバーの transaction tuple と、`homes.expectedCandidatePaths.gemini` が admit され `homes.nearMissPaths.gemini` が列挙・open・read されないことを assert するメンバー別 scan case — `tests/integration/global-boundaries.test.ts`。T041 / FR-010 / SC-002 に基づく (partial)。
+- [X] T069 Gemini skill fixture の `nearMissPaths` に `.gemini/skills/<a>/<b>/SKILL.md` の near miss を `tests/fixtures/repositories/build-fixtures.ts` で追加し、`tests/integration/repository-scan.test.ts` でその拒否を assert する。SC-002 / QR-002 に基づく (partial)。
+- [X] T070 親 FR-018 の Gemini CLI 句に session と history state を `specs/001-inspect-agent-customizations/spec.md` と `spec.ja.md` で追加する。FR-010 に基づく (partial)。
+- [X] T071 親 FR-045 を `specs/001-inspect-agent-customizations/spec.md` と `spec.ja.md` で修正する — メンバーは FR-013 の5つの preview entry の1つであり、`skills/<skill-name>/SKILL.md` は Codex、Copilot、Gemini CLI が文書化する location である。FR-012 に基づく (partial)。
+- [X] T072 `tests/unit/app/session-view-state.test.ts` の `confirmedTools` case を5メンバーの tuple に拡張する。T039 / QR-002 に基づく (partial)。
+- [X] T073 `tests/unit/shared/display-text.test.ts` に `gemini` の label と mark の期待を追加し、product-identifier guard の正規表現に `gemini` を加える。T003 / QR-002 に基づく (partial)。
+- [X] T074 文字列の `context.fileName: "AGENTS.md"`（root `AGENTS.md`、入れ子の `AGENTS.md`、root `GEMINI.md`）と不正な値の built repository fixture を `tests/fixtures/repositories/build-fixtures.ts` に追加し、`tests/integration/repository-scan.test.ts` で assert する。T052 / FR-004 に基づく (partial)。
+- [X] T075 consent workflow の ground truth を更新する — `expectedDirectories` に `~/.gemini` を加え、`matchRule` が `GEMINI_CLI_HOME` とその `.gemini` join を名指す — `tests/usability/sc001-sc006-study-inputs/ground-truth.json` と `ground-truth.ja.json`。T060 / US2/AC1 に基づく (partial)。
+- [X] T076 `src/shared/api-types.ts` の `GlobalMemberId`、`GlobalPreviewEntryDto.member`、`GlobalConsentPreviewDto.entries` の doc comment と、`src/shared/api-text.ts` の `GLOBAL_MEMBER_TEXT` コメントにある `~/.agents` の一文を、4ツール・5メンバーに書き直す。T015 / FR-001 に基づく (partial)。
+- [X] T077 `specs/001-inspect-agent-customizations/contracts/runtime-composition.md` と `.ja.md` の `## Registry completeness` を4つの vendor contract が参照する47個の strategy ID に更新し、`src/shared/registries/shared/relations.ts` が既に持つ `gemini.behavior.user.extensions` と `google.gemini-cli.extensions-reference` を `shared.excluded.managed-remote-state` の行に加える。FR-015 / QR-004 に基づく (partial)。
+- [X] T078 `specs/001-inspect-agent-customizations/contracts/runtime-composition.md` と `.ja.md` の `## Normative relationship-only registry` に Gemini CLI の行 — context file の `@file.md` import、command の `!{...}` と `@{...}` 参照、skill の resource path、hook の `command`、agent の `mcpServers` と `tools` — を追加し、relationship-only ID の個数を更新する。FR-005 / QR-001 に基づく (partial)。
+- [X] T079 `specs/001-inspect-agent-customizations/validation.md` と `.ja.md` の `**Denominator。**` 段落を manifest version 4 の集合 — 36個の `(tool, kind)` row、4ツール、4つの Global source form — に更新する。T062 / QR-002 に基づく (partial)。
+- [X] T080 残る親 artifact を両言語で修正する — `spec.md` の User Story 1 scenario 1（「3ツールすべて」）と User Story 4 scenario 2（「4-member preview」）、`contracts/http-api.ja.md` のメンバー一覧（「0〜4個」「1〜4個」、`member: gemini` なし）、`quickstart.md`（「3つの tool-home 環境プロパティ」、Gemini CLI を欠く consent view の root 一覧、「3つすべての vendor-contract language pair」）、`contracts/official-sources.md` と `.ja.md`（「3つの vendor contract」「6 input すべて」）— `specs/001-inspect-agent-customizations/` 配下。FR-001 / QR-004 に基づく (partial)。
+- [X] T081 `specs/002-gemini-cli-support/data-model.md` と `data-model.ja.md` の `## VendorSurface` を訂正する。`VENDOR_SURFACE_TEXT['gemini-cli']` は `CLI` である。表は product 内の surface を名付け、product は `SUPPORTED_TOOL_TEXT` が名付けるからで、`src/shared/registries/behavior-text.ts` はそうしている。data-model.md § VendorSurface に基づく (contradicts)。
+- [X] T082 メンバー数を数えるコメントをすべて5メンバー・4 tool home に書き直す — `src/server/host/global-consent.ts`（module header、`GlobalRootInputCapture`、「fixed-four」「all four」）、`src/server/session/global-control.ts`、`src/server/inspection/global-admission.ts`、`src/server/host/devframe-app.ts`（「the four members」「all three tools」）、`src/app/session/api-client.ts`、`src/app/session/view-state.ts`、`src/server/host/file-opener.ts`、`src/app/pages/global-consent.vue`、`src/server/session/session.ts`。FR-001 / QR-001 に基づく (partial)。
+- [X] T083 ツール数を数えるコメントをすべて4 product に書き直す — `src/app/components/inspection/declaration-order.ts`（「All three products' skills」「all three products' agent fields」「three products spelling one declaration」「the four carrier schemas」）、`src/server/inspection/rules/mcp/server-map.ts`（「all four documents」）、`src/server/inspection/rules/agents/declared-name.ts`（「two of the three products」）、`src/app/components/inventory/rows/SkillRow.vue`、`src/app/components/inventory/rows/skill-row-files.ts`、`src/shared/api-types.ts` の同名 statement コメント、`src/app/composables/custom-agent-comparison.ts`。QR-001 に基づく (partial)。
+- [X] T084 `tests/unit/host/global-consent.test.ts`（「the four roots」「all four members」）、`tests/unit/session/coordinator.test.ts`（「all four tools」）、`tests/fixtures/global-homes/build-fixtures.ts`（「all four homes」）の古い個数を書き直し、`tests/fixtures/global-homes/README.md` と `README.ja.md` に `GEMINI_CLI_HOME` とその `.gemini` join を加える。QR-001 / QR-004 に基づく (partial)。
+- [X] T085 `README.md` と `README.ja.md` の repository path の一文に、他3ツールの例と並べて Gemini CLI の path の例を加える。T038 / QR-004 に基づく (partial)。
+- [X] T086 `specs/001-inspect-agent-customizations/contracts/official-sources.ja.md` の `## Google official sources` 見出しと `contracts/vendors/gemini-cli.ja.md` の section 見出しを、兄弟の日本語 contract と同じように日本語化する。QR-004 に基づく (partial)。

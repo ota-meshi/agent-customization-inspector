@@ -184,7 +184,7 @@ The CLI captures the invocation `process.cwd()` once. Omission uses that exact s
 option is resolved against the captured invocation directory. An explicit empty value exits
 with fixed actionable, source-value-free output before a session or browser attempt. A
 missing value is rejected at the same boundary by Gunshi's typed argument validation.
-Before editor-launcher discovery and session creation, the CLI also captures the three
+Before editor-launcher discovery and session creation, the CLI also captures the four
 documented tool-home environment properties once in fixed order and calls
 `node:os.homedir()` once unconditionally. That retained capture supplies both the eligible
 personal roots excluded from launcher lookup and every preview. Selection never calls
@@ -309,7 +309,7 @@ Expected:
   kinds never become eligible in another by tuple membership alone. A skill's declarations
   pass no such gate — they are the keys its file wrote — while a reference the allowlist
   does not name remains available only in complete source text. Before these tests or their
-  implementation begin, the Presentation Allowlist sections in all three vendor-contract
+  implementation begin, the Presentation Allowlist sections in all four vendor-contract
   language pairs must already enumerate every supported `(tool, kind)` and admitted source
   form. This gate verifies the approved rows and bilingual digest only; it must not author
   or semantically edit them. Any membership/source-form/extractor/relationship change stops

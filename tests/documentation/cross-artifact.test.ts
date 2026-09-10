@@ -485,15 +485,15 @@ describe('task set', () => {
   });
 
   it('freezes the Gemini CLI feature’s task and phase counts in both languages', () => {
-    // The same freeze for specs/002-gemini-cli-support (its T063): sixty-seven
-    // tasks in six phases, spelled here and in the task files both, so a task
+    // The same freeze for specs/002-gemini-cli-support (its T063): eighty-six
+    // tasks in seven phases, spelled here and in the task files both, so a task
     // or phase added without deciding to add one fails.
     const geminiEnglish = readArtifact('specs/002-gemini-cli-support/tasks.md');
     const geminiJapanese = readArtifact('specs/002-gemini-cli-support/tasks.ja.md');
-    expect(parseTasks(geminiEnglish).size).toBe(67);
-    expect(parseTasks(geminiJapanese).size).toBe(67);
-    expect(geminiEnglish.match(/^## Phase /gmu)).toHaveLength(6);
-    expect(geminiJapanese.match(/^## Phase /gmu)).toHaveLength(6);
+    expect(parseTasks(geminiEnglish).size).toBe(86);
+    expect(parseTasks(geminiJapanese).size).toBe(86);
+    expect(geminiEnglish.match(/^## Phase /gmu)).toHaveLength(7);
+    expect(geminiJapanese.match(/^## Phase /gmu)).toHaveLength(7);
   });
 
   it('keeps every task self-contained, with no out-of-line amendment', () => {

@@ -44,6 +44,18 @@ export class GeminiCompiledSettingsHookRule
    * on text the format cannot parse; the recognizer's extraction boundary
    * turns the throw into the recognition's `failed` state while the owner
    * stays an admitted candidate (FR-028).
+   *
+   * Every entry of that object goes to the shared structural reading as the
+   * file wrote it, the vendor's own settings keys included: its hook registry
+   * skips `enabled`, `disabled`, and `notifications` before reading event
+   * names (`HOOKS_CONFIG_FIELDS` in `packages/core/src/hooks/types.ts` of
+   * google-gemini/gemini-cli), so a `disabled` list of hook names is a row
+   * here that is no event there. It stays a row on purpose: what this product
+   * shows is the file's own declarations (FR-025, FR-026), a reader who wrote
+   * a disabled list needs it stated rather than silently dropped, and a key
+   * list copied from the vendor is a classification this product would then
+   * have to keep in step with a source no page documents
+   * (contracts/vendors/gemini-cli.md § Known uncertainties item 9).
    */
   public hookCarrierReadingOf(sourceText: string, sourceRelativePath: string): HookCarrierReading {
     const { entries } = new ParsedJsonDocument(sourceText, { tool: this.tool, sourceRelativePath });

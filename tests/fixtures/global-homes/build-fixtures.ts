@@ -104,7 +104,7 @@ export interface GlobalHomeCapabilities {
 
 /** One built set of five Global homes. */
 export interface GlobalHomeFixture {
-  /** The absolute directory holding all four homes; remove this to clean up. */
+  /** The absolute directory holding all five homes; remove this to clean up. */
   readonly base: string;
   /**
    * What a launch exports as `HOME` so `node:os.homedir()` lands on this

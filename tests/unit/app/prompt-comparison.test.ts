@@ -510,46 +510,6 @@ describe('prompt and command recognition comparison rows (T503)', () => {
     ]);
   });
 
-  it('reads the parse off whatever Markdown variant the path answered with', () => {
-    // One file can hold two Markdown kinds — a `.claude/commands/CLAUDE.md`
-    // is a Claude command by its directory and a Claude instruction file by
-    // its name — and `get-file-detail` is addressed by the path alone,
-    // answering with the first variant its fixed order reaches
-    // (session.ts § fileDetail). The parse is the same for the same bytes, so
-    // requiring this kind's own variant here would report a parsed file as
-    // unparsed.
-    const asPrompt = promptDetail('.claude/commands/CLAUDE.md', [
-      scalarEntry('description', 'Both kinds'),
-    ]);
-    if (asPrompt.kind !== 'prompt/command' || asPrompt.presentation === null) {
-      throw new Error('expected this kind’s parsed variant from the helper');
-    }
-    // The instructions variant carries the same two values under the Markdown
-    // shape's names, which is what the comparison maps back onto this kind's.
-    const bothKinds: FileDetailDto = {
-      kind: 'instructions',
-      file: asPrompt.file,
-      presentation: {
-        frontmatter: asPrompt.presentation.metadata,
-        bodyText: asPrompt.presentation.promptText,
-      },
-      diagnostics: asPrompt.diagnostics,
-    };
-    const comparison = new PromptRecognitionComparison(
-      side(bothKinds, [
-        invoked('CLAUDE', '.claude/commands/CLAUDE.md', 'claude', ['claude-cli-and-ide-clients']),
-      ]),
-      side(promptDetail(RIGHT_PATH, [scalarEntry('description', 'Editor')]), [
-        invoked('CLAUDE', RIGHT_PATH, 'copilot', ['copilot-vscode']),
-      ]),
-    );
-    expect(comparison.leftDeclarations).toBe('parsed');
-    expect(comparison.metadataDiff).toEqual({
-      originalText: 'description: Both kinds\n',
-      modifiedText: 'description: Editor\n',
-    });
-  });
-
   it('publishes descriptive rows only — no rank, no winner, no fabricated relationships', () => {
     // The comparison's whole shape is closed: per-tool side cells and the
     // two serialized documents. No field exists that could carry a

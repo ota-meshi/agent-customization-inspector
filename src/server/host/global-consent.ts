@@ -5,9 +5,9 @@
 //
 // Global inspection is disabled in every new session, and consent is what
 // authorizes reading the customization files the allowlist names below the
-// four member roots — the three product home directories and the shared agent
+// five member roots — the four product home directories and the shared agent
 // home (FR-045). This module owns everything that happens before that:
-// retaining the session-start capture of the three environment properties and
+// retaining the session-start capture of the four environment properties and
 // the one derived shared agent home, deciding each captured string's lexical
 // state, escaping it for display, and retaining the one preview record the
 // later enable request names.
@@ -214,7 +214,7 @@ export function classifyGlobalRoot(
 }
 
 /**
- * One session's startup capture of the three environment properties and,
+ * One session's startup capture of the four environment properties and,
  * exactly once, the home directory (data-model.md § GlobalRootInputCapture).
  *
  * The capture is session-local: the CLI creates it before launcher discovery,
@@ -455,12 +455,12 @@ export class GlobalConsentDomain {
  * It issues no filesystem call of its own and never inspects or converts a
  * Node error code — what an `EACCES` on a home directory means is the
  * inspection module's decision (QR-003) — and a throw propagates unchanged, so
- * a failure not confined to one member aborts the whole fixed-four
+ * a failure not confined to one member aborts the whole five-member
  * transaction.
  *
  * One function for every bound member rather than one per member. Whether a
  * proposed root can be read is a question about a directory, and the answer
- * comes from the same `admitGlobalRoot` for all four: a per-member copy would
+ * comes from the same `admitGlobalRoot` for all five: a per-member copy would
  * be this body written again under another name, free to drift from the others
  * while claiming to do the same thing. What a member's admission then
  * authorizes is the member's own, and that lives in its rule catalog
@@ -516,7 +516,7 @@ function lexicalRejection(entry: GlobalPreviewEntry): GlobalResolvedOutcome | nu
 }
 
 /**
- * Resolves every member of one fixed-four transaction against the frozen
+ * Resolves every member of one five-member transaction against the frozen
  * preview: the lexical refusals with no I/O, and each eligible entry through
  * its bound port (contracts/http-api.md § enable-global).
  *

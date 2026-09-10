@@ -39,7 +39,7 @@ qualifier は lifecycle の主張をせず、決して `stable` を意味しな�
 | Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
 |---|---|---|---|
 | `gemini.behavior.repo.context` | `partially-documented` | `[]` | 階層のページは workspace ディレクトリ、その親、アクセスされたディレクトリとその祖先の just-in-time scan を名指しするが、親への walk の境界も、ツールがアクセスする前に descendant が読まれるかも述べない |
-| `gemini.behavior.repo.commands` | `partially-documented` | `[]` | ページは命名規則を一般則として述べ、入れ子の例を1つ挙げる。パスが届く深さとセグメントの文字の sanitization は vendor の loader のもので、文書化ではなく計測である (§ Known uncertainties 項目 8) |
+| `gemini.behavior.repo.commands` | `partially-documented` | `[]` | ページは命名規則を一般則として述べ、入れ子の例を1つ挙げる。パスが届く深さとセグメントの文字の sanitization は vendor の loader のもので、文書化ではなく計測である (§ 既知の不確実性と必須condition fact 項目 8) |
 | `gemini.behavior.user.commands` | `partially-documented` | `[]` | project の行と同様: 同じ命名規則で、ページが loader に委ねる同じ2つの事実 |
 | `gemini.behavior.repo.agents` | `documented` | `[experimental]` | ページは project の場所を正確に名指しする。subagent は `experimental` 設定で toggle される |
 | `gemini.behavior.repo.policies` | `documented` | `[]` | ページは workspace tier が現在 non-functional だと述べる — 読まれない場所についての文書化された事実 |
@@ -52,7 +52,7 @@ qualifier は lifecycle の主張をせず、決して `stable` を意味しな�
 固定の qualifier 順は `preview`、`experimental`、`deprecated` である。ここに2つ以上持つ行は
 ない。これらは maintenance record であり、response はどれも運ばない (QR-005)。
 
-## Documented Repository behavior
+## 文書化済みRepository behavior
 
 | Behavior ID | Surface | Lookup base | Relative selector | Traversal or activation | Strategy | Status | Evidence |
 |---|---|---|---|---|---|---|---|
@@ -60,7 +60,7 @@ qualifier は lifecycle の主張をせず、決して `stable` を意味しな�
 | `gemini.behavior.repo.settings` | CLI | プロジェクトルート | `.gemini/settings.json` | project settings 層。文書化された precedence で user settings の上、system settings の下。untrusted folder では無視 | `gemini.settings.precedence` | Documented。trust conditional | `google.gemini-cli.configuration`、`google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.mcp` | CLI | プロジェクトルート | `.gemini/settings.json` 内の `mcpServers` | server は `mcpServers` の下に名前で宣言され、必須の transport 1つ (`command`、`url`、または `httpUrl`) と任意の `args`、`env`、`cwd`、`headers`、`timeout`、`trust`、`includeTools`、`excludeTools` を持つ。`env` の `$VAR_NAME` は接続時に vendor が展開する。project の server は untrusted folder では接続しない | `gemini.mcp.configuration` | Documented。trust conditional | `google.gemini-cli.mcp-server`、`google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.hooks` | CLI | プロジェクトルート | `.gemini/settings.json` 内の `hooks` | 文書化された precedence で user・system・extension の層と merge される。各 event は hook definition を持ち、その `hooks[].command` は vendor が実行する shell command である。project の hook は fingerprint され、変わったものは新規として扱われる | `gemini.hooks.merge` | Documented。trust と fingerprint conditional | `google.gemini-cli.hooks`、`google.gemini-cli.hooks-reference` |
-| `gemini.behavior.repo.commands` | CLI | プロジェクトルート | `.gemini/commands/**/*.toml` | command 名は `commands/` に対するファイルの相対パスで、区切りを `:` に変換し拡張子を除いたもの。深さは任意。各セグメントの `[A-Za-z0-9_.-]` 以外の文字は `_` になり、50文字を超えるセグメントは47文字と `...` に切り詰められる — loader はそうし、ページは述べない。user command と同名の project command が常に使われる。untrusted folder では読み込まれない | `gemini.commands.selection` | Partially documented。trust conditional | `google.gemini-cli.custom-commands`、`google.gemini-cli.trusted-folders` |
+| `gemini.behavior.repo.commands` | CLI | プロジェクトルート | `.gemini/commands/**/*.toml` | command 名は `commands/` に対するファイルの相対パスで、区切りを `:` に変換し拡張子を除いたもの。深さは任意。各セグメントの `[A-Za-z0-9_.-]` 以外の UTF-16 code unit は `_` になり、50文字を超えるセグメントは47文字と `...` に切り詰められる — loader はそうし、ページは述べない。user command と同名の project command が常に使われる。untrusted folder では読み込まれない | `gemini.commands.selection` | Partially documented。trust conditional | `google.gemini-cli.custom-commands`、`google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.skills` | CLI | プロジェクトルート | `.gemini/skills/<name>/SKILL.md`。文書化された alias として `.agents/skills/<name>/SKILL.md` | workspace tier、4つの中で最上位。上の tier の同名 skill が勝ち、tier 内では `.agents/skills/` のコピーが `.gemini/skills/` に勝つ。untrusted folder では利用不可 | `gemini.skills.selection` | Documented。trust conditional | `google.gemini-cli.skills`、`google.gemini-cli.creating-skills`、`google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.agents` | CLI | プロジェクトルート | `.gemini/agents/*.md` | 必須の YAML frontmatter 付き Markdown。`name` は agent を呼び出す tool 名。`experimental.enableAgents` が false でなければ有効 | `gemini.agents.selection` | Documented。experimental | `google.gemini-cli.subagents` |
 | `gemini.behavior.repo.policies` | CLI | プロジェクトルート | `.gemini/policies/*.toml` | policy engine の workspace tier。現在 non-functional と文書化: そこのファイルは効果を持たない | `gemini.policies.tiers` | 読み込まれないと文書化 | `google.gemini-cli.policy-engine` |
@@ -75,7 +75,7 @@ link` が作る symbolic link を通じてだけそこに届く。したがっ�
 `commands/`、`skills/`、`agents/`、`hooks/hooks.json`、`policies/`、context file はその
 manifest からルールを得ない (`gemini.excluded.extensions`。spec.md § Clarifications)。
 
-## Inspector Repository rules
+## Inspector Repository rule
 
 この表のすべての base は正確な Inspector Repository boundary — 選択された Repository root で、
 `Repository` と綴る。すべての `.gemini/` と `.agents/` の場所は選択された root 自身のディレクトリ
@@ -107,7 +107,7 @@ configuration reference 自体はコメントについて何も述べない)。`
 なら reject する行にその宣言を示す — より穏当な誤りで、Copilot の entry が既に受け入れている
 のと同じ取引である。
 
-## Derived Repository rules
+## Derived Repository rule
 
 `Status` は upstream の evidence についての人間可読な rationale である。上の canonical index が
 ルールの正確な documentation status を所有する。
@@ -122,7 +122,7 @@ context file そのものを名指しするので、導出が既定も所有し�
 しない。導出の隣に静的な `GEMINI.md` ルールがあれば、名前が設定されたときにそれを撤回する
 第2の mechanism が要る。常に plan を出す1つの導出はそれを要しない。
 
-## Documented User behavior
+## 文書化済みUser behavior
 
 この表は maintainer のために Gemini CLI が何を支持するかを記録する。Global 調査を広げない。
 user tier は home 下の `.gemini` ディレクトリである。`GEMINI_CLI_HOME` は `.gemini` が作られる
@@ -169,7 +169,7 @@ join の前に閉じた lexical-state アルゴリズムで分類されるので
 OAuth と account の credential、session と history の state、一時ファイルは同じディレクトリの
 下にあっても除外されたままである。
 
-## Relationship-only and excluded groups
+## Relationship-onlyとexcluded group
 
 relationship-only な `ruleId` の定義は
 [Runtime Composition](../runtime-composition.ja.md)
@@ -185,7 +185,7 @@ command の `!{...}` shell block と `@{...}` file injection、skill の resourc
 | `gemini.excluded.user-runtime` | `excluded` | どの Global rule も admit しない上の user surface: trusted-folder の記録、environment file、OAuth と account の credential、session と history の state、一時ファイル。およびすべての Source の外の管理者所有ディレクトリ下の system settings・system defaults・admin policies。これらは Source が届かないので behavior 行を持たない — Codex の user-runtime 除外が managed・system 設定について持つ配置と同じ | `gemini.behavior.user.trust-record`、`gemini.behavior.user.env` | FR-013、FR-014、FR-018、QR-001、QR-004、QR-005 (親)。FR-010 (この機能) | — | `documented` | `google.gemini-cli.trusted-folders`、`google.gemini-cli.configuration` |
 
 
-## Normative initial-release presentation allowlist
+## Initial releaseの規範的presentation allowlist
 
 この表は Gemini CLI についての閉じた FR-007 presentation allowlist である。kind の綴りは正確な
 `ToolRecognition.kind` の値である。既存の3 vendor と同様に、release は読んだ source の隣に
@@ -208,7 +208,7 @@ Gemini CLI の recognition は共有の `output style`、`rule`、`plugin`、`sk
 publish するのではなく除外する (§ Relationship-only and excluded groups)。skill の companion は
 すべてのプロダクトと同様にその census である。
 
-## Known uncertainties and required condition facts
+## 既知の不確実性と必須condition fact
 
 1. context 階層のページは workspace ディレクトリ、その親、アクセスされたディレクトリとその
    祖先の just-in-time scan を名指しするが、親への walk の境界を言葉で述べず
@@ -232,7 +232,17 @@ publish するのではなく除外する (§ Relationship-only and excluded gro
    パス、subdirectory は namespace、区切りは colon — 入れ子の例を1つ挙げる。深さの上限は述べず、
    colon が曖昧にするセグメントの文字がどうなるかも述べない。vendor の loader
    (`packages/cli/src/services/FileCommandLoader.ts`、2026-09-10 に計測) は `**/*.toml` を列挙し、
-   各セグメントの `[A-Za-z0-9_.-]` 以外の文字を `_` に置き換え、50文字を超えるセグメントを先頭
+   各セグメントの `[A-Za-z0-9_.-]` 以外の UTF-16 code unit を `_` に置き換え — その regex は `u`
+   flag を持たないので、基本多言語面の外の文字は `__` になる — 50文字を超えるセグメントを先頭
    47文字と `...` に切り詰める。command unit は行がプロダクトの呼び出す名前を持つよう3つとも合わせる。
    深さは文書化された規則の延長であり、他の2つは文書化ではなく source の計測である。それが2つの
    command behavior を `partially-documented` とする理由である。
+9. hooks の reference ページは `hooks` object を event 名をキーとするものとして述べる。vendor の
+   hook registry (`packages/core/src/hooks/types.ts` の `HOOKS_CONFIG_FIELDS`、2026-09-10 に計測)
+   は event 名を読む前にその object の3つのキー — `enabled`、`disabled`、`notifications`。うち
+   `disabled` は hook 名の list — を skip し、引用したどの節もこれを述べない。hook unit はそのような
+   キーの list を写さない。`disabled` の list は、どちらの carrier でも共有の構造的な読みにより行に
+   なる。このプロダクトが示すのはファイル自身の宣言であり (FR-025、FR-026)、disabled の list を
+   書いた reader にはそれが黙って落とされるのではなく述べられる必要があるから、そして vendor から
+   取った key list は、どのページも文書化しない source に合わせて保ち続ける分類になるからである。
+   record は `documented` のままである。unit はページが述べないものに依存しない。

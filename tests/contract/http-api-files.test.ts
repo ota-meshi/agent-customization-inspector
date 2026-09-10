@@ -52,6 +52,7 @@ import {
 import type {
   DeterministicRejection,
   FileDetailDto,
+  FileDetailKind,
   InspectionDataResult,
   HookCarrierDetailDto,
   McpCarrierDetailDto,
@@ -123,19 +124,21 @@ async function scannedFixture(): Promise<{
 async function getFileDetail(
   context: InspectorHostContext,
   sourceRelativePath: string,
+  kind: FileDetailKind,
   source: SourceSelector = 'repository',
 ): Promise<InspectionDataResult<FileDetailDto> | DeterministicRejection> {
   const fn = registerFunctions(context).get('agent-customization-inspector:get-file-detail')!;
-  // Both halves of the identity: the function names the Source as well as the
-  // path, because two Sources can hold one path (FR-030).
-  return (await fn.handler({ sourceRelativePath, source } as never)) as
+  // Both halves of the identity — the function names the Source as well as the
+  // path, because two Sources can hold one path (FR-030) — and the kind the
+  // asking route shows the file as (contracts/http-api.md § get-file-detail).
+  return (await fn.handler({ sourceRelativePath, source, kind } as never)) as
     InspectionDataResult<FileDetailDto> | DeterministicRejection;
 }
 
 describe('get-file-detail', () => {
   it('carries the epoch and both sequence generations beside the payload', async () => {
     const { context, skillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillPath);
+    const result = await getFileDetail(context, skillPath, 'skill');
     expect(Object.keys(result).toSorted()).toEqual([
       'data',
       'globalContentEpoch',
@@ -146,7 +149,7 @@ describe('get-file-detail', () => {
 
   it('returns the complete authored source exactly as it was read', async () => {
     const { context, sourceText, skillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillPath);
+    const result = await getFileDetail(context, skillPath, 'skill');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -163,7 +166,7 @@ describe('get-file-detail', () => {
 
   it('returns the skill as its declarations and its instructions, unmasked', async () => {
     const { context, skillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillPath);
+    const result = await getFileDetail(context, skillPath, 'skill');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -211,7 +214,7 @@ describe('get-file-detail', () => {
 
   it('returns diagnostics that carry no authored value', async () => {
     const { context, unparseableSkillPath } = await scannedFixture();
-    const result = await getFileDetail(context, unparseableSkillPath);
+    const result = await getFileDetail(context, unparseableSkillPath, 'skill');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -278,7 +281,9 @@ describe('get-file-detail', () => {
       throw new Error('the first scan was not admitted');
     }
     await executeRepositoryScan(context, admission.scanRequestId, source.sourceId, 'repository');
-    expect(await getFileDetail(context, '.agents/plugins/marketplace.json')).toEqual({
+    expect(
+      await getFileDetail(context, '.agents/plugins/marketplace.json', 'settings/config'),
+    ).toEqual({
       error: { code: 'stale-resource' },
     });
   });
@@ -376,7 +381,7 @@ describe('get-file-detail', () => {
     // so an extra positional argument beside it — and an extra key inside it —
     // are both input the function never reads.
     const result = (await (fn.handler as (...args: unknown[]) => unknown)(
-      { sourceRelativePath: skillPath, source: 'repository', neverRead: 'ignored' },
+      { sourceRelativePath: skillPath, source: 'repository', kind: 'skill', neverRead: 'ignored' },
       'never-read',
     )) as InspectionDataResult<FileDetailDto> | DeterministicRejection;
     if (!('data' in result)) {
@@ -391,14 +396,14 @@ describe('get-file-detail', () => {
 
   it('rejects a path the current generations do not hold as a stale resource', async () => {
     const { context } = await scannedFixture();
-    expect(await getFileDetail(context, 'not/a/committed/path.md')).toEqual({
+    expect(await getFileDetail(context, 'not/a/committed/path.md', 'skill')).toEqual({
       error: { code: 'stale-resource' },
     });
   });
 
   it('returns the instruction detail as its declarations and instructions, unmasked (T218)', async () => {
     const { context, fixture } = await scannedFixture();
-    const result = await getFileDetail(context, fixture.instructionPath);
+    const result = await getFileDetail(context, fixture.instructionPath, 'instructions');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -451,7 +456,7 @@ describe('get-file-detail', () => {
 
   it('returns the complete authored instruction source exactly as it was read (T218)', async () => {
     const { context, fixture } = await scannedFixture();
-    const result = await getFileDetail(context, fixture.instructionPath);
+    const result = await getFileDetail(context, fixture.instructionPath, 'instructions');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -468,7 +473,7 @@ describe('get-file-detail', () => {
     // detail — provenance is an internal read-authorization record no
     // response carries.
     const { context, fixture } = await scannedFixture();
-    const result = await getFileDetail(context, fixture.fallbackInstructionPath);
+    const result = await getFileDetail(context, fixture.fallbackInstructionPath, 'instructions');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -482,7 +487,7 @@ describe('get-file-detail', () => {
 
   it('publishes null presentation with the failure diagnostic for an unparseable instruction file (T218)', async () => {
     const { context, fixture } = await scannedFixture();
-    const result = await getFileDetail(context, fixture.unparseableInstructionPath);
+    const result = await getFileDetail(context, fixture.unparseableInstructionPath, 'instructions');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -520,7 +525,7 @@ describe('get-file-detail', () => {
     // the request a client retained resolves against the new committed
     // snapshot rather than dangling with the one it was captured under.
     expect(context.session.snapshot().repositoryGeneration).toBe(2);
-    const result = await getFileDetail(context, skillPath);
+    const result = await getFileDetail(context, skillPath, 'skill');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -533,7 +538,7 @@ describe('get-file-detail', () => {
 
   it('states the minimum metadata a detail must carry', async () => {
     const { context, skillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillPath);
+    const result = await getFileDetail(context, skillPath, 'skill');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -650,7 +655,7 @@ describe('get-file-detail over a consented member Source (T995)', () => {
     // The member Source's own identity answers with the authored bytes —
     // credential and environment reference literal, nothing masked or
     // resolved (FR-025, FR-026).
-    const detail = await getFileDetail(context, 'CLAUDE.md', 'global-claude');
+    const detail = await getFileDetail(context, 'CLAUDE.md', 'instructions', 'global-claude');
     if (!('data' in detail) || !('sourceText' in detail.data.file)) {
       throw new Error('expected a readable member detail');
     }
@@ -658,7 +663,7 @@ describe('get-file-detail over a consented member Source (T995)', () => {
     // The same path under the Repository Source resolves nowhere: the
     // identity is the Source-and-path pair, and this repository holds no
     // such file (FR-030, contracts/http-api.md § get-file-detail).
-    expect(await getFileDetail(context, 'CLAUDE.md', 'repository')).toEqual({
+    expect(await getFileDetail(context, 'CLAUDE.md', 'instructions', 'repository')).toEqual({
       error: { code: 'stale-resource' },
     });
   });
@@ -899,7 +904,7 @@ describe('get-mcp-carrier-detail for the Codex MCP carrier (T295)', () => {
     // the document the reader wrote — credentials included, because a file
     // the inspector read is the reader's own and nothing is masked
     // (FR-025, FR-026).
-    const detail = await getFileDetail(context, '.mcp.json');
+    const detail = await getFileDetail(context, '.mcp.json', 'instructions');
     if (!('data' in detail) || detail.data.kind !== 'instructions') {
       throw new Error('expected the instructions file detail');
     }
@@ -936,7 +941,7 @@ describe('get-mcp-carrier-detail for the Codex MCP carrier (T295)', () => {
     // `settings/config` row is the file. The MCP detail therefore publishes
     // declarations with no bytes, and the file detail the whole document
     // (contracts/http-api.md § get-file-detail).
-    const fileDetail = await getFileDetail(context, fixture.carrierPath);
+    const fileDetail = await getFileDetail(context, fixture.carrierPath, 'settings/config');
     if (!('data' in fileDetail) || fileDetail.data.kind !== 'settings/config') {
       throw new Error('expected the settings file detail');
     }
@@ -1030,7 +1035,7 @@ describe('get-mcp-carrier-detail for the Copilot CLI carriers (T346)', () => {
       error: { code: 'stale-resource' },
     });
     for (const carrier of [fixture.rootCarrierPath, fixture.githubCarrierPath]) {
-      expect(await getFileDetail(context, carrier)).toEqual({
+      expect(await getFileDetail(context, carrier, 'settings/config')).toEqual({
         error: { code: 'stale-resource' },
       });
     }
@@ -1165,7 +1170,7 @@ describe('get-mcp-carrier-detail for the Copilot VS Code carriers (T366)', () =>
       error: { code: 'stale-resource' },
     });
     for (const carrier of [fixture.vscodeCarrierPath, fixture.rootCarrierPath]) {
-      expect(await getFileDetail(context, carrier)).toEqual({
+      expect(await getFileDetail(context, carrier, 'settings/config')).toEqual({
         error: { code: 'stale-resource' },
       });
     }
@@ -1306,14 +1311,14 @@ describe('get-mcp-carrier-detail for Claude declarations (T316)', () => {
     // The file itself keeps its own kind's detail, source included: the
     // frontmatter is ordinary skill content, credential and all (FR-027),
     // while only the pure carrier's path is stale for get-file-detail.
-    const owner = await getFileDetail(context, fixture.mcpFrontmatterSkillPath);
+    const owner = await getFileDetail(context, fixture.mcpFrontmatterSkillPath, 'skill');
     if (!('data' in owner) || owner.data.kind !== 'skill') {
       throw new Error('expected the skill detail');
     }
     expect(owner.data.file.encoding === 'utf-8' && owner.data.file.sourceText).toContain(
       'mcpServers:',
     );
-    expect(await getFileDetail(context, fixture.carrierPath)).toEqual({
+    expect(await getFileDetail(context, fixture.carrierPath, 'settings/config')).toEqual({
       error: { code: 'stale-resource' },
     });
   });
@@ -1460,13 +1465,13 @@ describe('get-hook-carrier-detail for the Codex hook carriers (T847)', () => {
     // file's own bytes reach no response: `get-file-detail` answers the same
     // staleness outcome it gives a path no generation holds, rather than
     // handing back the source the hook detail deliberately omits (FR-007).
-    expect(await getFileDetail(context, fixture.standaloneCarrierPath)).toEqual({
+    expect(await getFileDetail(context, fixture.standaloneCarrierPath, 'settings/config')).toEqual({
       error: { code: 'stale-resource' },
     });
     // The config layer is its settings document besides, so that row answers
     // for it — with the complete TOML, `[hooks]` table included, which is the
     // one document seen under its own row.
-    const settings = await getFileDetail(context, fixture.inlineCarrierPath);
+    const settings = await getFileDetail(context, fixture.inlineCarrierPath, 'settings/config');
     if (!('data' in settings) || settings.data.kind !== 'settings/config') {
       throw new Error('expected the settings document detail');
     }
@@ -1690,7 +1695,7 @@ describe('get-file-detail for the Codex settings document (T593)', () => {
 
   it('serves the complete document under its own variant, with no presentation', async () => {
     const { context, fixture } = await scannedSettingsFixture();
-    const result = await getFileDetail(context, fixture.carrierPath);
+    const result = await getFileDetail(context, fixture.carrierPath, 'settings/config');
     if (!('data' in result) || result.data.kind !== 'settings/config') {
       throw new Error('expected the settings file detail');
     }
@@ -1726,20 +1731,20 @@ describe('get-file-detail for the Codex settings document (T593)', () => {
     // The nested layer is a near miss the walk never admitted, so no row of
     // any kind sits at it and both functions answer the same way.
     for (const nearMiss of fixture.nearMissPaths) {
-      expect(await getFileDetail(context, nearMiss), nearMiss).toEqual({
+      expect(await getFileDetail(context, nearMiss, 'settings/config'), nearMiss).toEqual({
         error: { code: 'stale-resource' },
       });
     }
     // A value of another type resolves the same way: the parameter validates
     // by resolution, so there is no separate malformed-argument outcome.
-    expect(await getFileDetail(context, 42 as unknown as string)).toEqual({
+    expect(await getFileDetail(context, 42 as unknown as string, 'skill')).toEqual({
       error: { code: 'stale-resource' },
     });
   });
 
   it('carries the epoch and both sequence generations beside the payload', async () => {
     const { context, fixture } = await scannedSettingsFixture();
-    const result = await getFileDetail(context, fixture.carrierPath);
+    const result = await getFileDetail(context, fixture.carrierPath, 'settings/config');
     expect(Object.keys(result).toSorted()).toEqual([
       'data',
       'globalContentEpoch',
@@ -2025,7 +2030,7 @@ describe('what a detail may and may not carry (T926)', () => {
         ]),
       );
     });
-    const result = await getFileDetail(context, '.claude/skills/replaced/SKILL.md');
+    const result = await getFileDetail(context, '.claude/skills/replaced/SKILL.md', 'skill');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -2046,7 +2051,7 @@ describe('what a detail may and may not carry (T926)', () => {
         Uint8Array.from([0x23, 0x00, 0x61]),
       );
     });
-    const result = await getFileDetail(context, '.claude/skills/binary/SKILL.md');
+    const result = await getFileDetail(context, '.claude/skills/binary/SKILL.md', 'skill');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
@@ -2091,7 +2096,7 @@ describe('what a detail may and may not carry (T926)', () => {
       throw injected;
     });
     try {
-      await expect(getFileDetail(context, skillPath)).rejects.toBe(injected);
+      await expect(getFileDetail(context, skillPath, 'skill')).rejects.toBe(injected);
     } finally {
       detail.mockRestore();
     }
@@ -2100,7 +2105,7 @@ describe('what a detail may and may not carry (T926)', () => {
 
   it('says what it read and never what it thinks of it', async () => {
     const { context, skillPath } = await scannedFixture();
-    const result = await getFileDetail(context, skillPath);
+    const result = await getFileDetail(context, skillPath, 'skill');
     const payload = JSON.stringify(result).toLowerCase();
     // The detail carries the file's own text and its own facts. A judgement
     // about it — a validation outcome, a verdict, a remediation — has no

@@ -1,8 +1,8 @@
-// The name two of the three products address a custom agent by: the `name` each
-// of them documents as the agent's identity.
+// The name three of the four products address a custom agent by: the `name`
+// each of them documents as the agent's identity.
 //
-// One rule rather than two that happen to agree — Codex and Claude Code
-// document the same field for the same purpose — while the third product's
+// One rule rather than three that happen to agree — Codex, Claude Code, and
+// Gemini CLI document the same field for the same purpose — while Copilot's
 // units answer from their own contract, which is why that answer is its own
 // module rather than a branch here.
 import type { DeclaredEntryDto } from '../../../../shared/api-types';

@@ -494,7 +494,7 @@ staleness、duplicate-work、その他inspection-state checkより前にfenceを
 retained graph stateをleakせずfence conflictが常に優先する。
 
 各Sourceは正確に1つのrootを持つ。Repository Sourceはmemberを持たず、sessionはGlobal Sourceを
-0〜4個、`member: codex`、`member: claude`、`member: copilot`、`member: agents` — 共有agent home（FR-045） — ごとに最大1個持つ。Global rootを別Source内の
+0〜5個、`member: codex`、`member: claude`、`member: gemini`、`member: copilot`、`member: agents` — 共有agent home（FR-045） — ごとに最大1個持つ。Global rootを別Source内の
 boundaryとして表現しない。
 `repositoryGeneration`と`globalGeneration`は2つのsequenceがそれぞれ独立してcommitした
 generationであり、`globalGeneration`はGlobal inspectionがdisabledでGlobal sequenceが存在しない間
@@ -642,21 +642,34 @@ Outcomes: fullまたはfenced DTO。
 
 ### `agent-customization-inspector:get-file-detail`
 
-Parameters: fileのidentity全体を、functionの単一argumentであるobjectとして渡す。
-すなわちcommit済みSource-relative Pathと、それを保持するSourceである（FR-030）。
-Global commitが第2のSourceをpublishした後は、両者が1つのpathを保持しうるため、
-path単独ではどのfileも指さない。SourceはSource IDではなくselector — `repository`
-または`global-<member>` — で名指す。IDはそれをmintしたlaunchのものである一方、読み手が
-保存したlinkはそのlaunchより長く生きなければならないからである。Selectorの検証は
-他のdetail parameterと同じくresolutionであってfilesystem operandではないため、
-commit済みSourceのどれも名乗らないselectorはどこにも解決されず、未知のpathと同じ
-`stale-resource` rejectionになる。
+Parameters: fileのidentity全体と求めるkindを、functionの単一argumentであるobjectとして渡す。
+すなわちcommit済みSource-relative Path、それを保持するSource（FR-030）、そして呼び出し側が
+そのfileをどのkindの読みとして示すかである。Global commitが第2のSourceをpublishした後は、
+両者が1つのpathを保持しうるため、path単独ではどのfileも指さない。SourceはSource IDではなく
+selector — `repository`または`global-<member>` — で名指す。IDはそれをmintしたlaunchのもので
+ある一方、読み手が保存したlinkはそのlaunchより長く生きなければならないからである。Selectorの
+検証は他のdetail parameterと同じくresolutionであってfilesystem operandではないため、commit済み
+Sourceのどれも名乗らないselectorはどこにも解決されず、未知のpathと同じ`stale-resource`
+rejectionになる。kindは7つのfile主題のkind — `instructions`、`skill`、`agent`、
+`prompt/command`、`rule`、`output style`、`settings/config` — のいずれかで、求めるrouteの
+自身のkindである。1つのfileが2つのkindを持ちうる — `.claude/agents/CLAUDE.md`はdirectoryに
+よりClaudeのsubagentであり名前によりinstruction fileである。`.gemini/commands/build.toml`は
+Gemini CLIのcommandであり、`context.fileName`が`build.toml`を名指せばcontext fileでもある —
+そして各kindはそのfileを自身のsyntaxで読むため、fileを1つのkindとして示すpageは、hostが選ばざる
+を得ない他のkindのparseを受け取るのではなく、そのkindのparseを求める。kindの検証もresolution
+である: どのrecognitionのkindにも等しくない値はどのrecognitionにも一致せず、答えはplain file
+か、pathが無いときと同じrejectionになる。
 
 ```json
-{ "sourceRelativePath": ".claude/skills/deploy/SKILL.md", "source": "repository" }
+{
+  "sourceRelativePath": ".claude/skills/deploy/SKILL.md",
+  "source": "repository",
+  "kind": "skill"
+}
 ```
 
-Active-generation file detailを1件返す。fileをrecognitionが所有するかどうかで判別される。
+Active-generation file detailを1件返す。求めたkindのrecognitionがfileを所有するかどうかで
+判別される。
 
 ```text
 FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' |
@@ -709,8 +722,9 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 ├── kind 'settings/config' — fileは認識されたsettingsまたはconfiguration file:
 │   ├── file — 上と同じ
 │   └── diagnostics[]
-└── kind 'file' — fileを所有するrecognitionが無い（censusだけが列挙したfile、
-    またはdiagnostic-onlyのcandidate）:
+└── kind 'file' — 求めたkindのrecognitionがfileを所有しない（censusだけが列挙した
+    file、diagnostic-onlyのcandidate、または他のkindのruleがadmitしたが求めたkindは
+    何も読み出さないfile）:
     ├── file — 上と同じ
     └── diagnostics[]
 ```
@@ -781,9 +795,9 @@ extractionは`(file, tool)`ごとになる。どの読み取りも同じshapeを
 どのtoolがこのfileを認識するか、各toolがそれを何として解決するか、そのparse stateはinventoryの
 事実であり、kindごとのinventoryがそれを運ぶ。skillのそれは`skills[].definitions[]`、
 instruction fileの認識toolはそのinventory row（`instructions[]`）、custom agentのそれは
-`agents[].definitions[]`でfileの隣に列挙される。どのkindのdetail routeもpathのみとする:
-1つのfileを読む2つのproductは同じbyteを読むため、toolごとのaddressは1つのdocumentに2つのURLを
-与えることになり、productが異なる点 — skillを呼び出す名前 — は、そのfileを抱えるrowから
+`agents[].definitions[]`でfileの隣に列挙される。どのkindのdetail routeもpathとそのkindであり、
+toolではない: 1つのfileを読む2つのproductは同じbyteを読むため、toolごとのaddressは1つのdocumentに
+2つのURLを与えることになり、productが異なる点 — skillを呼び出す名前 — は、そのfileを抱えるrowから
 pageがまとめて述べるためである。
 Admission recordも存在しない: どのruleがreadを認可しどこにmatchしたかは、commit済み
 generationの内部record（data-model.md § ToolRecognition）
@@ -805,7 +819,7 @@ formatであって、この製品ではない。
 keyである — ため、file間で宣言をmatchするclientは`key`単独ではなくこの組でmatchする。
 同じentry形は`keyKind`を含めて、nestした全`mapping` value内へ再帰する。
 
-Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。このfunctionが答えるのは主題がfile自身であるrowであるため、宣言を主題とするrowしか持たないpathは`FileDetail`を一切持たない: standaloneのMCP declaration carrier — MCP kindがrecognizeし、file主題のkindがclaimしないfile — は`get-mcp-carrier-detail`を通じて宣言を公開し、自身のbyteは決して示さない（FR-007）。authored sourceをserveすることが目的のfunctionは、それを差し控えねばならないvariantを運ばない。そのpathをこのfunctionへrequestすると、このfunctionがdetailを保持しない他のあらゆるpathと同じ`stale-resource` rejectionに解決される。file主題のrowも持つpathは、そのrowの下で答える。rowの主題こそがそのdetailの対象だからである（FR-007）: Codexの`project_doc_fallback_filenames` entryが`.mcp.json`を指名すると、そのcarrierはinstruction fileでもあり、instruction fileは完全なsourceを示すため、1つのpathが`get-mcp-carrier-detail`では宣言だけを、ここではdocument全体をserveする。MCP recognitionを持つのは明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、このfunctionが自身のkindの下でserveするpresentationに宣言済みkeyとして見えるだけで、どのMCP surfaceにも合流しない。
+Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。このfunctionが答えるのは主題がfile自身であるrowであるため、宣言を主題とするrowしか持たないpathは`FileDetail`を一切持たない: standaloneのMCP declaration carrier — MCP kindがrecognizeし、file主題のkindがclaimしないfile — は`get-mcp-carrier-detail`を通じて宣言を公開し、自身のbyteは決して示さない（FR-007）。authored sourceをserveすることが目的のfunctionは、それを差し控えねばならないvariantを運ばない。そのpathをこのfunctionへrequestすると、このfunctionがdetailを保持しない他のあらゆるpathと同じ`stale-resource` rejectionに解決される。求めたkindのrowも持つpathは、そのrowの下で答える。rowの主題こそがそのdetailの対象だからである（FR-007）: Codexの`project_doc_fallback_filenames` entryが`.mcp.json`を指名すると、そのcarrierはinstruction fileでもあり、instruction fileは完全なsourceを示すため、1つのpathが`get-mcp-carrier-detail`では宣言だけを、instruction fileとして求められればここではdocument全体をserveする。MCP recognitionを持つのは明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、このfunctionが自身のkindの下でserveするpresentationに宣言済みkeyとして見えるだけで、どのMCP surfaceにも合流しない。
 
 Permission policyも同じ条件で、2つのformのいずれもここでは差し控える: permissions rowが名指すのは、それを宣言するfileではなくpolicyであるため（data-model.md § 一覧の単位）、どちらのformもこのfunctionが答える主題ではない — Policy blockを宣言するcarrierは、そのblockを公開するためにadmitされたfileであり、file全体の内容がpolicyであるfileは、このfunctionが自身として述べることを何も持たないfileではなくpolicyである。permissions rowを持ちfile主題のrowを持たないpathは`stale-resource` rejectionに解決し、policyをserveするのは`get-permission-policy-detail`である。
 
@@ -1868,7 +1882,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    outcomeがrejected memberとadmitted memberをpartitionし、unexpectedなthrow/rejectionは
    invocationをordinary errorでrejectし、initial control/jobをactivateせずprovisional subsetを
    一切commitしない。Provisional enable workはSourceをpublishしない。正常なcompleteまたはpartial
-   batch commit 1件は1〜4個の別々にidentifiedされたGlobal Sourceをexact 1つのGlobal generation
+   batch commit 1件は1〜5個の別々にidentifiedされたGlobal Sourceをexact 1つのGlobal generation
    に同時に作り、memberごとに最大1個、Sourceごとに正確に1 rootとし、cross-member mergeも
    observableなper-member commitも行わない。1 fileに限定されないaccepted batch throw/rejectionはその1つの
    `scanRequestId`についてfailed requestのerror messageをfailed `batchStatus`にretainし、

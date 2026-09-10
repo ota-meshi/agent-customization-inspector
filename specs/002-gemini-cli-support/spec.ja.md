@@ -254,8 +254,9 @@ state、インストール済み extension のコピーが決して読まれな�
   (MUST NOT)。
 - **FR-006**: Gemini CLI custom command 行は vendor が呼び出すとおりに名付けられなければ
   ならない (MUST): `commands/` ディレクトリに対するファイルの相対パス（深さは任意）で、`.toml`
-  拡張子を除き、各セグメントの `[A-Za-z0-9_.-]` 以外の文字を `_` に置き換え、50文字を超える
-  セグメントを先頭47文字と `...` に切り詰め、セグメントを `:` で結んだもの。したがって
+  拡張子を除き、各セグメントの `[A-Za-z0-9_.-]` 以外の UTF-16 code unit を `_` に置き換え（基本
+  多言語面の外の文字は `__` になる）、50文字を超えるセグメントを先頭47文字と `...` に切り詰め、
+  セグメントを `:` で結んだもの。したがって
   `.gemini/commands/git/commit.toml` は `git:commit`、`.gemini/commands/review/security/deps.toml` は
   `review:security:deps`、`.gemini/commands/my command.toml` は `my_command` である。深さは文書化
   された規則であり、sanitization と切り詰めは vendor の loader のもので、source の計測として

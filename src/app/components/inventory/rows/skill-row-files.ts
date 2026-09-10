@@ -12,7 +12,7 @@
 // This groups the row's definitions by the file that carries them, so a file's
 // facts are stated once and each recognition keeps its own line beneath them.
 // The grouping is presentation only: no definition is merged away, because the
-// three products do not read a shared location under shared conditions —
+// four products do not read a shared location under shared conditions —
 // Claude Code discovers nested skill directories that Copilot's and Codex's
 // anchored lookups never reach, and each product's own lookup base stays a
 // runtime condition the Inspector does not observe (FR-009).

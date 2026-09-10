@@ -262,37 +262,13 @@ export class PromptRecognitionComparison {
 
 /**
  * One side's parse as this kind's two halves, or null when there is none. The
- * parse is the file's, one per kind (FR-028).
- *
- * Every Markdown-parse variant is accepted beside this kind's own and mapped
- * onto the same two halves, exactly as the prompt detail route maps them: one
- * file can hold two kinds — a `.claude/commands/CLAUDE.md` is a Claude command
- * by its directory and a Claude instruction file by its name — while
- * `get-file-detail` is addressed by the path alone and answers with the first
- * variant its fixed order reaches (session.ts § fileDetail), so a surface that
- * required its own kind would report a parsed file as unparsed. The excluded
- * variants carry no such split: a rule file is published whole, a custom agent
- * publishes its own two halves under its own shape (api-types.ts
- * § AgentPresentationDto), and an unrecognized file has nothing read out of
- * it.
+ * parse is the file's, one per kind (FR-028). Only this kind's variant
+ * carries it: the detail was asked for as a command, so a file of another kind
+ * answers as the plain file, which has nothing read out of it (session.ts
+ * § fileDetail).
  */
 function presentationOf(side: PromptComparisonSideInput): PromptPresentationDto | null {
-  const detail = side.detail;
-  if (
-    detail.kind === 'rule' ||
-    detail.kind === 'agent' ||
-    detail.kind === 'settings/config' ||
-    detail.kind === 'file'
-  ) {
-    return null;
-  }
-  if (detail.kind === 'prompt/command') {
-    return detail.presentation;
-  }
-  const presentation = detail.presentation;
-  return presentation === null
-    ? null
-    : { metadata: presentation.frontmatter, promptText: presentation.bodyText };
+  return side.detail.kind === 'prompt/command' ? side.detail.presentation : null;
 }
 
 /**

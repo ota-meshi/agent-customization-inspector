@@ -766,22 +766,35 @@ Outcomes: the full or fenced DTO.
 
 ### `agent-customization-inspector:get-file-detail`
 
-Parameters: the file's whole identity as the function's single argument — an object
-carrying the committed Source-relative Path and the Source that holds it (FR-030). A
-path alone names no file once a Global commit publishes a second Source, because both
-can hold one path. The Source is named by a selector — `repository` or
-`global-<member>` — rather than by a Source ID: an ID belongs to the launch that minted
-it, while a link a reader keeps has to outlive that launch. The selector resolves like
-every other detail parameter and is never a filesystem operand, so one no committed
-Source answers to resolves nowhere and takes the same `stale-resource` rejection an
-unknown path does.
+Parameters: the file's whole identity and the kind asked for, as the function's single
+argument — an object carrying the committed Source-relative Path, the Source that holds
+it (FR-030), and the kind whose reading of the file the caller shows. A path alone names
+no file once a Global commit publishes a second Source, because both can hold one path.
+The Source is named by a selector — `repository` or `global-<member>` — rather than by a
+Source ID: an ID belongs to the launch that minted it, while a link a reader keeps has to
+outlive that launch. The selector resolves like every other detail parameter and is never
+a filesystem operand, so one no committed Source answers to resolves nowhere and takes the
+same `stale-resource` rejection an unknown path does. The kind is one of the seven
+file-subject kinds — `instructions`, `skill`, `agent`, `prompt/command`, `rule`,
+`output style`, `settings/config` — and is the asking route's own: one file can hold two
+kinds — a `.claude/agents/CLAUDE.md` is a Claude subagent by its directory and an
+instruction file by its name; a `.gemini/commands/build.toml` is a Gemini CLI command and,
+once `context.fileName` names `build.toml`, a context file — and each kind reads the file
+in its own syntax, so the page that shows the file as one kind asks for that kind's
+parse rather than receiving whichever kind's the host would otherwise have to choose. The
+kind validates by resolution too: a value no recognition's kind equals matches no
+recognition, and the answer is the plain file or the same rejection a missing path takes.
 
 ```json
-{ "sourceRelativePath": ".claude/skills/deploy/SKILL.md", "source": "repository" }
+{
+  "sourceRelativePath": ".claude/skills/deploy/SKILL.md",
+  "source": "repository",
+  "kind": "skill"
+}
 ```
 
-Returns one active-generation file detail, discriminated by whether a recognition owns
-the file:
+Returns one active-generation file detail, discriminated by whether a recognition of the
+requested kind owns the file:
 
 ```text
 FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' |
@@ -839,8 +852,9 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 │   configuration file:
 │   ├── file — as above
 │   └── diagnostics[]
-└── kind 'file' — no recognition owns the file (a file only the census
-    lists, or a diagnostic-only candidate):
+└── kind 'file' — no recognition of the requested kind owns the file (a file
+    only the census lists, a diagnostic-only candidate, or a file another
+    kind's rule admitted that the requested kind reads nothing out of):
     ├── file — as above
     └── diagnostics[]
 ```
@@ -922,9 +936,10 @@ which tools recognize the file, what each resolves it as, and its parse state ar
 inventory's facts, and each kind's own inventory carries them. A skill's are
 `skills[].definitions[]`, an instruction file's are listed beside it on its inventory row
 (`instructions[]`), and a custom agent's on `agents[].definitions[]`. Every kind's detail
-route is the path alone: two products reading one file read the same bytes, so a per-tool
-address would give one document two URLs, and where the products differ — the name each
-invokes a skill by — the page states them together from the rows that hold the file. There is no admission record either: which rule
+route is the path and that kind, never a tool: two products reading one file read the same
+bytes, so a per-tool address would give one document two URLs, and where the products
+differ — the name each invokes a skill by — the page states them together from the rows
+that hold the file. There is no admission record either: which rule
 authorized a read, and where it matched, is an internal record of the committed
 generation (data-model.md § ToolRecognition); no
 session response carries it — a configured fallback instruction file's detail is
@@ -956,11 +971,12 @@ a file the MCP kind recognizes and no file-subject kind claims — publishes its
 through `get-mcp-carrier-detail` and never its own bytes (FR-007), and a function whose
 purpose is serving authored source carries no variant that must withhold it. Its path
 requested here resolves to the same `stale-resource` rejection as any path this function
-holds no detail for. A path that also carries a file-subject row is answered under that row
-instead, because a row's subject is what its detail is about (FR-007): a Codex
+holds no detail for. A path that also carries a row of the requested kind is answered under
+that row instead, because a row's subject is what its detail is about (FR-007): a Codex
 `project_doc_fallback_filenames` entry naming `.mcp.json` makes that carrier an instruction
 file besides, and an instruction file shows its complete source, so the one path serves its
-declarations alone through `get-mcp-carrier-detail` and its whole document here. Only the
+declarations alone through `get-mcp-carrier-detail` and, asked for as an instruction file,
+its whole document here. Only the
 explicit carriers hold MCP recognitions: a file
 of any other kind that spells MCP-looking configuration in its own content — a skill's
 or an agent's frontmatter, a settings file's inline map — is that kind's ordinary

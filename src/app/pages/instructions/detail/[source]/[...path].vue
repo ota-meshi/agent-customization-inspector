@@ -450,7 +450,12 @@ const request = useDetailRequest({
   selection: null,
   ready: () => owner.value !== null,
   perform: () => {
-    void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value);
+    void pageOwnership.openFileDetail(
+      openPath.value,
+      openPath.value,
+      openSource.value,
+      'instructions',
+    );
   },
   focusHeading: () => page.value?.focusHeading(),
 });

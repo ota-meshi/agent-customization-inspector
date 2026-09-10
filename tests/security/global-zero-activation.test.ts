@@ -380,13 +380,13 @@ describe('the fixed-five enable issues no product request and mutates nothing (T
     // a `!{...}` shell block: each is text the detail serves byte-exact and
     // nothing runs, connects to, or resolves (specs/002-gemini-cli-support
     // T022).
-    for (const [selector, home, path] of [
-      ['global-claude', fixture.homes.claude, 'settings.json'],
-      ['global-codex', fixture.homes.codex, 'config.toml'],
-      ['global-gemini', fixture.homes.gemini, 'settings.json'],
-      ['global-gemini', fixture.homes.gemini, 'commands/git/commit.toml'],
+    for (const [selector, home, path, kind] of [
+      ['global-claude', fixture.homes.claude, 'settings.json', 'settings/config'],
+      ['global-codex', fixture.homes.codex, 'config.toml', 'settings/config'],
+      ['global-gemini', fixture.homes.gemini, 'settings.json', 'settings/config'],
+      ['global-gemini', fixture.homes.gemini, 'commands/git/commit.toml', 'prompt/command'],
     ] as const) {
-      const detail = session.fileDetail(path, selector);
+      const detail = session.fileDetail(path, selector, kind);
       if (detail === null || !('sourceText' in detail.file)) {
         throw new Error(`expected a readable ${selector} ${path} detail`);
       }

@@ -31,6 +31,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as fsIo from '../../src/server/inspection/fs-io';
 import { admitGlobalRoot } from '../../src/server/inspection/global-admission';
 import { CLAUDE_GLOBAL_RULES } from '../../src/server/inspection/rules/claude';
+import {
+  GEMINI_AGENTS_HOME_RULES,
+  GEMINI_GLOBAL_RULES,
+} from '../../src/server/inspection/rules/gemini';
 import type { CompiledStaticCandidateRule } from '../../src/server/inspection/rules/registry';
 import {
   CODEX_AGENTS_HOME_RULES,
@@ -243,6 +247,74 @@ async function scanClaudeHome(home: string): Promise<{
     ),
   };
 }
+
+/** Scans one Gemini CLI home with the Global catalog and returns the published paths. */
+async function scanGeminiHome(home: string): Promise<{
+  readonly kind: string;
+  readonly paths: readonly string[];
+  readonly diagnosticCodes: readonly string[];
+}> {
+  const publication = await runSourceScan({
+    sourceId: 'global-gemini',
+    root: home,
+    rootFailureOwner: 'global:gemini',
+    scope: 'global',
+    rules: GEMINI_GLOBAL_RULES,
+  });
+  if (publication.kind !== 'publishable') {
+    return { kind: publication.kind, paths: [], diagnosticCodes: [] };
+  }
+  return {
+    kind: publication.kind,
+    paths: publication.files.map((file) => file.sourceRelativePath).toSorted(),
+    diagnosticCodes: publication.diagnostics.map((diagnostic) => diagnostic.code).toSorted(),
+  };
+}
+
+describe('what a consented Gemini CLI scan touches (specs/002 T041, T068)', () => {
+  it('reads exactly the contracted member files and leaves every neighbour untouched', async () => {
+    const homes = buildGlobalHomeFixture();
+    cleanups.push(() => rmSync(homes.base, { recursive: true, force: true }));
+    const before = observeTree(homes.homes.gemini);
+    // A realistic home: the admitted member files, an installed extension's
+    // own tree, the trusted-folder record, the credentials, the environment
+    // file, a hook script, and temporary session state.
+    expect(before.size).toBeGreaterThan(10);
+
+    const scanned = await scanGeminiHome(homes.homes.gemini);
+
+    // The member set specs/002-gemini-cli-support FR-010 names: the context
+    // file, the settings document, the commands at two depths, the personal
+    // skill, the subagent, and the user policy. Everything else in the home is
+    // excluded state (`gemini.excluded.extensions`, `gemini.excluded.user-runtime`).
+    expect(scanned.kind).toBe('publishable');
+    expect(scanned.paths).toEqual(homes.expectedCandidatePaths.gemini);
+    expect(scanned.diagnosticCodes).toEqual([]);
+    for (const nearMiss of homes.nearMissPaths.gemini) {
+      expect(scanned.paths, nearMiss).not.toContain(nearMiss);
+    }
+
+    // Nothing in the home changed, and nothing beside the admitted files was
+    // opened for reading (FR-018, FR-023, SC-002).
+    const after = observeTree(homes.homes.gemini);
+    expect([...after.keys()].toSorted()).toEqual([...before.keys()].toSorted());
+    for (const [path, observed] of after) {
+      expect(observed, path).toEqual(before.get(path));
+    }
+  });
+
+  it('names every neighbour the fixture writes, so none goes unasserted', () => {
+    const homes = buildGlobalHomeFixture();
+    cleanups.push(() => rmSync(homes.base, { recursive: true, force: true }));
+    // The home's own inventory of near misses is what the case above measures
+    // "untouched" over (tests/fixtures/global-homes/README.md).
+    const written = [...observeTree(homes.homes.gemini).keys()].filter((path) => path !== '.');
+    for (const nearMiss of homes.nearMissPaths.gemini) {
+      expect(written, nearMiss).toContain(nearMiss);
+    }
+    expect(written).toContain('GEMINI.md');
+  });
+});
 
 describe('the Codex Global instruction branch (T947)', () => {
   /**
@@ -641,7 +713,7 @@ describe('the widened Copilot member and the shared agent home (T977, T978, T113
       ['global-copilot', 'the copilot home copy'],
       ['global-agents', 'the shared agent home copy'],
     ] as const) {
-      const detail = session.fileDetail('skills/demo/SKILL.md', selector);
+      const detail = session.fileDetail('skills/demo/SKILL.md', selector, 'skill');
       if (detail?.kind !== 'skill') {
         throw new Error(`expected a skill detail for ${selector}`);
       }
@@ -912,13 +984,13 @@ describe('a Global batch beside the Repository sequence (T947)', () => {
     await commitCodexGlobalScan(session, coordinator, home.home);
 
     // The home's file, at the path the repository also publishes.
-    const global = session.fileDetail('AGENTS.md', 'global-codex');
+    const global = session.fileDetail('AGENTS.md', 'global-codex', 'instructions');
     if (global === null || !isReadableFile(global.file)) {
       throw new Error('expected the Global instruction detail');
     }
     expect(global.file.sourceText).toBe(CODEX_INSTRUCTION_CASES['non-empty'].write.text);
     // And the repository's own file, at the same path.
-    const repositoryDetail = session.fileDetail('AGENTS.md', 'repository');
+    const repositoryDetail = session.fileDetail('AGENTS.md', 'repository', 'instructions');
     if (repositoryDetail === null || !isReadableFile(repositoryDetail.file)) {
       throw new Error('expected the Repository instruction detail');
     }
@@ -928,7 +1000,7 @@ describe('a Global batch beside the Repository sequence (T947)', () => {
     expect(global.file.sourceId).not.toBe(repositoryDetail.file.sourceId);
     // A token no Source of this session answers to resolves nothing, which is
     // the `stale-resource` rejection the host returns for it.
-    expect(session.fileDetail('AGENTS.md', 'global-claude')).toBeNull();
+    expect(session.fileDetail('AGENTS.md', 'global-claude', 'instructions')).toBeNull();
   });
   it('opens each Source’s file from that Source’s own root (FR-022, FR-030)', async () => {
     // The same path in two Sources, and two different roots to open it from:
@@ -1027,7 +1099,7 @@ describe('the one fixed-four transaction over real roots (T991)', () => {
     if (registered.kind !== 'admitted') {
       throw new Error('expected the operation to be registered');
     }
-    const members = ['copilot', 'claude', 'codex', 'agents'] as const;
+    const members = ['copilot', 'claude', 'codex', 'gemini', 'agents'] as const;
     const settled = coordinator.settleGlobalEnable(
       registered.operationId,
       'preview-fixed-four',
@@ -1049,7 +1121,12 @@ describe('the one fixed-four transaction over real roots (T991)', () => {
       copilot: COPILOT_GLOBAL_RULES,
       claude: CLAUDE_GLOBAL_RULES,
       codex: CODEX_GLOBAL_RULES,
-      agents: [...CODEX_AGENTS_HOME_RULES, ...COPILOT_AGENTS_HOME_RULES],
+      gemini: GEMINI_GLOBAL_RULES,
+      agents: [
+        ...CODEX_AGENTS_HOME_RULES,
+        ...COPILOT_AGENTS_HOME_RULES,
+        ...GEMINI_AGENTS_HOME_RULES,
+      ],
     } as const;
     const results = [];
     for (const member of members) {
@@ -1077,13 +1154,13 @@ describe('the one fixed-four transaction over real roots (T991)', () => {
     }
     coordinator.completeGlobalBatch(settled.scanRequestId, results);
 
-    // One complete generation of the Global sequence, holding all four
+    // One complete generation of the Global sequence, holding all five
     // members together — never one commit per member (FR-014, FR-045).
     const snapshot = session.snapshot();
     expect(snapshot.globalGeneration).toBe(1);
     const globalSources = snapshot.sources.filter((source) => source.kind === 'global');
     expect(globalSources.map((source) => source.member)).toEqual([...members]);
-    // Separately identified: four distinct Source IDs, each generation 1,
+    // Separately identified: five distinct Source IDs, each generation 1,
     // each carrying the one shared batch request (FR-014).
     expect(new Set(globalSources.map((source) => source.sourceId)).size).toBe(members.length);
     for (const source of globalSources) {

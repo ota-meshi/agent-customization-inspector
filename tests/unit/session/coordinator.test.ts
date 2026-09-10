@@ -242,7 +242,7 @@ describe('the atomic disposition (T946)', () => {
     const operationId = register(coordinator);
     coordinator.settleGlobalEnable(operationId, PREVIEW_ID, [admitted('codex')]);
 
-    // The consent is for all four tools even in this slice, where only the
+    // The consent is for all five members even in this slice, where only the
     // Codex port is bound: what a reader confirmed is the whole preview, and
     // the absent controls are how the unbound members stay visible as
     // unevaluated rather than as refusals nothing produced.

@@ -8266,6 +8266,9 @@ export function buildGeminiSkillFixture(
   write(root, 'packages/api/.gemini/skills/deploy/SKILL.md', '# Deploy\n');
   // Near miss: no skill-name segment between `skills` and the file.
   write(root, '.gemini/skills/SKILL.md', 'no name segment\n');
+  // Near miss: a skill directory two levels deep — the selector admits one
+  // name segment, so a nested directory is neither a skill nor a companion.
+  write(root, '.gemini/skills/nested/deeper/SKILL.md', 'two levels deep\n');
   // Near miss: the singular directory spelling.
   write(root, '.gemini/skill/solo/SKILL.md', 'singular skill dir\n');
   // Near miss: the terminal literal is case-sensitive; it lives in its own
@@ -8296,6 +8299,7 @@ export function buildGeminiSkillFixture(
     nearMissPaths: [
       '.gemini/skill/solo/SKILL.md',
       '.gemini/skills/SKILL.md',
+      '.gemini/skills/nested/deeper/SKILL.md',
       '.gemini/skills/uppercase/SKILL.MD',
       '.git/.gemini/skills/hidden/SKILL.md',
       'README.md',
@@ -8586,6 +8590,66 @@ export function buildGeminiContextFilenameFixture(
       'packages/api/LOCAL.md',
     ],
   };
+}
+
+/**
+ * One built Gemini CLI fixture whose root `.gemini/settings.json` sets
+ * `context.fileName` to one string rather than an array
+ * (specs/002-gemini-cli-support/tasks.md T074; spec.md FR-004).
+ */
+export interface GeminiStringContextFilenameFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** The Source-relative Path of the root `.gemini/settings.json` that configures the name. */
+  readonly carrierPath: string;
+  /** The one context filename the carrier declares. */
+  readonly configuredFilename: string;
+}
+
+/**
+ * Builds a repository whose `context.fileName` is the string `"AGENTS.md"`: a
+ * root `AGENTS.md`, a nested `AGENTS.md`, and a root `GEMINI.md` the string
+ * replaces rather than joins (spec.md FR-004).
+ */
+export function buildGeminiStringContextFilenameFixture(
+  prefix = 'inspector-gemini-context-filename-string',
+  root = createRepositoryFixtureRoot(prefix),
+): GeminiStringContextFilenameFixture {
+  write(root, '.gemini/settings.json', '{ "context": { "fileName": "AGENTS.md" } }\n');
+  write(root, 'AGENTS.md', '# Agent context\n\nShared with the other tools.\n');
+  write(root, 'packages/api/AGENTS.md', '# API package context\n');
+  write(root, 'GEMINI.md', '# Not a Gemini CLI context file while a name is configured\n');
+  return { root, carrierPath: '.gemini/settings.json', configuredFilename: 'AGENTS.md' };
+}
+
+/**
+ * One built Gemini CLI fixture whose root `.gemini/settings.json` gives
+ * `context.fileName` a value the setting's grammar does not accept, so the
+ * default `GEMINI.md` stands (specs/002-gemini-cli-support/tasks.md T074;
+ * spec.md FR-004).
+ */
+export interface GeminiInvalidContextFilenameFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** The Source-relative Path of the root `.gemini/settings.json` holding the unusable value. */
+  readonly carrierPath: string;
+}
+
+/**
+ * Builds a repository whose `context.fileName` is a number: the grammar
+ * accepts a non-empty string or an array of them, so the value configures
+ * nothing, carries no diagnostic, and leaves a root and a nested `GEMINI.md`
+ * as the context files (spec.md FR-004; research.md § 2).
+ */
+export function buildGeminiInvalidContextFilenameFixture(
+  prefix = 'inspector-gemini-context-filename-invalid',
+  root = createRepositoryFixtureRoot(prefix),
+): GeminiInvalidContextFilenameFixture {
+  write(root, '.gemini/settings.json', '{ "context": { "fileName": 42 } }\n');
+  write(root, 'GEMINI.md', '# Root context\n');
+  write(root, 'packages/api/GEMINI.md', '# Nested context\n');
+  write(root, 'AGENTS.md', '# Not a Gemini CLI context file\n');
+  return { root, carrierPath: '.gemini/settings.json' };
 }
 
 /**

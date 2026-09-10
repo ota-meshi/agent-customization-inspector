@@ -27,8 +27,10 @@ compiler が検査しない2つの配列 `SUPPORTED_TOOL_ORDER` と `VENDOR_SURF
 
 ## VendorSurface
 
-`gemini-cli` を得る。`VENDOR_SURFACE_TEXT` では `Gemini CLI` と label され、
-`VENDOR_SURFACE_ORDER` では Codex の surface の後に並ぶ。すべての Gemini CLI behavior が名指し
+`gemini-cli` を得る。`VENDOR_SURFACE_TEXT` では `CLI` と label される — この表は product 内での
+surface を名付け、product 名は `SUPPORTED_TOOL_TEXT` が担うので、行は `behavior-text.ts` がこの組を
+綴るとおり「Gemini CLI · CLI」と読める — そして `VENDOR_SURFACE_ORDER` では Codex の surface の後に
+並ぶ。すべての Gemini CLI behavior が名指し
 する唯一の surface である。vendor はローカルファイルを異なって読む第2の client を文書化して
 いないからである (contracts/vendors/gemini-cli.md § Surface boundary)。
 

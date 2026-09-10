@@ -402,7 +402,9 @@ test('reports a link whose path the current scan does not hold', async ({ page }
 test('leaves the Codex detail beside it unchanged', async ({ page }) => {
   await openSkillFiles(page, '.agents/skills/codex-greet/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/codex-greet/');
-  await expect(page.locator('.aci-skill-detail__recognitions li')).toHaveCount(2);
+  // Codex, Copilot, and Gemini CLI all read `.agents/skills/`
+  // (specs/002-gemini-cli-support/spec.md FR-007), so the file states three.
+  await expect(page.locator('.aci-skill-detail__recognitions li')).toHaveCount(3);
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('# Codex');
 });
 

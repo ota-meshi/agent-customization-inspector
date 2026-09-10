@@ -468,13 +468,10 @@ watch(
 function fileFacts(detail: FileDetailDto): string {
   const facts = [
     ...sourceFactsOf(sources.value, detail.file.sourceId),
-    // This page's own kind, never the adopted variant's. Both sides are files
-    // of one agent-name row, while `get-file-detail` is addressed by the
-    // file identity alone and answers with the first variant its fixed order
-    // reaches — so a `.claude/agents/CLAUDE.md`, a subagent by its directory
-    // and an instruction file by its name, would otherwise be captioned
-    // "Instructions" on the page that compares it as a custom agent
-    // (session.ts § fileDetail).
+    // This page's own kind, never the adopted variant's: both sides are files
+    // of one agent-name row, and a side the request answered as the plain
+    // file would otherwise be captioned as unrecognized on the page that
+    // compares it as a custom agent (session.ts § fileDetail).
     CUSTOMIZATION_KIND_TEXT['agent'],
     FILE_ENCODING_TEXT[detail.file.encoding],
   ];

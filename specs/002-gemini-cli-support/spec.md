@@ -252,7 +252,8 @@ documented resolution without declaring which file is in effect.
   selected root.
 - **FR-006**: A Gemini CLI custom command row MUST be named as the vendor invokes it: the
   file's path relative to the `commands/` directory, at any depth, with the `.toml` extension
-  removed, every character of a segment outside `[A-Za-z0-9_.-]` replaced by `_`, a segment
+  removed, every UTF-16 code unit of a segment outside `[A-Za-z0-9_.-]` replaced by `_` — so a
+  character beyond the Basic Multilingual Plane becomes `__` — a segment
   longer than 50 characters cut to its first 47 followed by `...`, and the segments joined
   with `:` — so `.gemini/commands/git/commit.toml` is `git:commit`,
   `.gemini/commands/review/security/deps.toml` is `review:security:deps`, and

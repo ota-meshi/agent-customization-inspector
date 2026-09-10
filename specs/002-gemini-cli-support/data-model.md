@@ -28,8 +28,10 @@ are covered by their existing gates.
 
 ## VendorSurface
 
-Gains `gemini-cli`, labelled `Gemini CLI` in `VENDOR_SURFACE_TEXT` and ordered after the
-Codex surfaces in `VENDOR_SURFACE_ORDER`. It is the one surface every Gemini CLI behavior
+Gains `gemini-cli`, labelled `CLI` in `VENDOR_SURFACE_TEXT` — the table names the surface
+within its product, and `SUPPORTED_TOOL_TEXT` names the product, so a row reads
+"Gemini CLI · CLI" as `behavior-text.ts` spells the pair — and ordered after the Codex
+surfaces in `VENDOR_SURFACE_ORDER`. It is the one surface every Gemini CLI behavior
 names, because the vendor documents no second client that reads a local file differently
 (contracts/vendors/gemini-cli.md § Surface boundary).
 

@@ -1635,11 +1635,13 @@ export interface SettingsFileDetailDto extends FileDetailBase {
 }
 
 /**
- * Detail of a file no recognition owns: a census-listed companion, or a
- * diagnostic-only candidate whose bytes never parsed. At this level nothing
- * says the file is Markdown, so no parsed structure exists to publish — what
- * there is to show is the file itself: its complete source when its read
- * yielded text, its read outcome alone otherwise (FR-025).
+ * Detail of a file no recognition of the requested kind owns: a census-listed
+ * companion, a diagnostic-only candidate whose bytes never parsed, or a file
+ * another kind's rule admitted that the requested kind reads nothing out of.
+ * At this level nothing says the file is Markdown, so no parsed structure
+ * exists to publish — what there is to show is the file itself: its complete
+ * source when its read yielded text, its read outcome alone otherwise
+ * (FR-025).
  */
 export interface UnrecognizedFileDetailDto extends FileDetailBase {
   /** Discriminant: no recognition is attached to the file. */
@@ -2041,11 +2043,11 @@ export type SourceKind =
   | 'global';
 
 /**
- * One Global member: the three tool homes and the shared agent home
+ * One Global member: the four tool homes and the shared agent home
  * (spec.md § FR-013, FR-045). A member is what one preview entry, one control,
  * and at most one Global Source are about; `agents` is `~/.agents`, the
- * directory Codex and Copilot document for personal skills and the personal
- * plugin marketplace, which no setting relocates. Every `…Tools`-spelled
+ * directory Codex, Copilot, and Gemini CLI document for personal skills and
+ * Codex for the personal plugin marketplace, which no setting relocates. Every `…Tools`-spelled
  * control and batch field carries these member ids
  * (contracts/http-api.md § create-global-consent-preview).
  */
@@ -2490,8 +2492,8 @@ export interface GlobalPreviewEntryDto {
 export type SourceSelector = 'repository' | `global-${GlobalMemberId}`;
 
 /**
- * What one `get-file-detail` request names: both halves of the file's identity
- * (contracts/http-api.md § get-file-detail).
+ * What one detail request names: both halves of the file's identity
+ * (contracts/http-api.md § get-file-detail, § get-mcp-carrier-detail).
  *
  * Both, because both are needed: a consented Global home and the selected
  * repository can hold the same Source-relative Path, and a request naming the
@@ -2503,6 +2505,30 @@ export interface FileDetailParams {
   readonly sourceRelativePath: string;
   /** Which Source holds it; see {@link SourceSelector}. */
   readonly source: SourceSelector;
+}
+
+/**
+ * The kind a `get-file-detail` request asks for: every file-subject kind, the
+ * discriminant of the variant the answer takes when a recognition of that kind
+ * holds the path (contracts/http-api.md § get-file-detail). `file` is not
+ * among them — it is what the answer falls to when none does, never a kind a
+ * route asks for.
+ */
+export type FileDetailKind = Exclude<FileDetailDto['kind'], 'file'>;
+
+/**
+ * What one `get-file-detail` request names: the file's identity and the kind
+ * whose reading of it is asked for (contracts/http-api.md § get-file-detail).
+ *
+ * The kind is the asking route's, because one file can hold two kinds — a
+ * `.claude/agents/CLAUDE.md` is a subagent and an instruction file — and each
+ * kind reads it in its own syntax: the page that shows the file as one kind
+ * asks for that kind's parse rather than receiving whichever kind's the host
+ * would otherwise have to choose.
+ */
+export interface FileDetailRequestParams extends FileDetailParams {
+  /** The kind whose variant is asked for; see {@link FileDetailKind}. */
+  readonly kind: FileDetailKind;
 }
 
 /**
@@ -2761,7 +2787,7 @@ export interface GlobalConsentPreviewDto {
   readonly allowlistVersion: string;
   /** The shipped compiled traversal-plan set version this preview binds. */
   readonly traversalPlanVersion: string;
-  /** Exactly four rows: Copilot, Claude, Codex, then the shared agent home. */
+  /** Exactly five rows: Copilot, Claude, Codex, Gemini, then the shared agent home. */
   readonly entries: readonly GlobalPreviewEntryDto[];
   /**
    * The excluded rules' IDs, sorted, which drive the displayed exclusions. A

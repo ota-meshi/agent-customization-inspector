@@ -343,6 +343,36 @@ describe('the Gemini CLI settings carrier (FR-002, FR-009)', () => {
     }
   });
 
+  it('publishes the settings keys of the hooks object as the file wrote them', async () => {
+    // The vendor's registry skips `enabled`, `disabled`, and `notifications`
+    // before it reads event names, and no cited page states them. The reading
+    // here copies no such key list: a `disabled` list of hook names is a row
+    // by the shared structural rule, because the product shows the file's own
+    // declarations rather than the vendor's classification of them
+    // (contracts/vendors/gemini-cli.md § Known uncertainties item 9). The
+    // scalar and the mapping are omitted by the same structural rule.
+    const recognitions = await recognize(
+      '.gemini/settings.json',
+      carrierRules,
+      [
+        '{ "hooks": {',
+        '  "enabled": true,',
+        '  "disabled": ["my-hook-name"],',
+        '  "notifications": { "ToolPermission": true },',
+        '  "AfterTool": [{ "hooks": [{ "type": "command", "command": "./audit.sh" }] }]',
+        '} }',
+      ].join('\n'),
+    );
+    const hooks = recognitions[2]!.details;
+    if (hooks.kind !== 'hook') {
+      throw new Error('expected the hook recognition third');
+    }
+    expect(hooks.events.map((event) => event.event)).toEqual(['disabled', 'AfterTool']);
+    expect(hooks.events[0]!.groups).toEqual([
+      { kind: 'scalar', scalarKind: 'string', text: 'my-hook-name' },
+    ]);
+  });
+
   it('fails the MCP and hook readings of a document the format cannot parse, whole', async () => {
     const recognitions = await recognize(
       '.gemini/settings.json',
@@ -394,8 +424,8 @@ describe('the Gemini CLI command name and prompt (FR-006)', () => {
   it('spells a segment as the vendor’s loader does: sanitized, and cut past fifty characters', () => {
     // Undocumented and measured in `FileCommandLoader.ts` (spec.md FR-006;
     // contracts/vendors/gemini-cli.md § Known uncertainties item 8): a
-    // character outside `[A-Za-z0-9_.-]` becomes `_` — a space, a colon that
-    // would collide with the namespace separator, a non-ASCII letter — and a
+    // UTF-16 code unit outside `[A-Za-z0-9_.-]` becomes `_` — a space, a colon
+    // that would collide with the namespace separator, a non-ASCII letter — and a
     // segment over fifty characters keeps its first forty-seven plus `...`.
     // The row is named what the product invokes, not what the path spells.
     if (commandRule.kind !== 'prompt/command') {
@@ -406,6 +436,10 @@ describe('the Gemini CLI command name and prompt (FR-006)', () => {
     expect(commandRule.invocationNameOf('.gemini/commands/déploy/ship it.toml', [])).toBe(
       'd_ploy:ship_it',
     );
+    // The loader's regex has no `u` flag, so it replaces UTF-16 code units: a
+    // character beyond the Basic Multilingual Plane is two of them and becomes
+    // `__`, and a row named `_` would merge it with `_.toml`.
+    expect(commandRule.invocationNameOf('.gemini/commands/😀.toml', [])).toBe('__');
     const long = 'a'.repeat(60);
     expect(commandRule.invocationNameOf(`.gemini/commands/${long}.toml`, [])).toBe(
       `${'a'.repeat(47)}...`,

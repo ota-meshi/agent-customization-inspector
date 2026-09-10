@@ -205,8 +205,8 @@ export const GLOBAL_MEMBER_ORDER: readonly GlobalMemberId[] = [...SUPPORTED_TOOL
  * Not the tools' own captions, which is what a member label spread from
  * `SUPPORTED_TOOL_TEXT` used to be. A member says where a file came from and a
  * recognition says which product reads it, and those are different questions
- * with different answers: `~/.agents` is one directory that Codex and Copilot
- * both read (FR-045), so no product names it — and on a row that states both,
+ * with different answers: `~/.agents` is one directory that Codex, Copilot,
+ * and Gemini CLI all read (FR-045), so no product names it — and on a row that states both,
  * a product-named member said the same product twice while meaning something
  * else by it.
  */

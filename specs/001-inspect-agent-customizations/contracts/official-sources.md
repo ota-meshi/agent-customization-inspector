@@ -154,7 +154,7 @@ once here.
 
 ## Presentation Allowlist implementation gate
 
-The normative bilingual Presentation Allowlist rows in the three vendor contracts are
+The normative bilingual Presentation Allowlist rows in the four vendor contracts are
 already approved design input. The implementation gate verifies only the frozen English
 and Japanese rows and their recorded digest; it must not author or semantically edit the
 allowlist set, identifiers, admitted source forms, exact source-form extractor
@@ -175,7 +175,7 @@ No heading, prose, blank line, or line after that contiguous table is hashed.
 | OpenAI Codex | `2a598e1bd30690cfe07d64cd6e1a8c5d80512249eacb5e1e59741bd3d9194226` | `e985ad14696d2ef2a47e7fcacbdbb39a83864fdd4d5c62546112f25e62e98301` |
 | Gemini CLI | `fedf1e2053d3e0f1365d71e0aaea2c6d0323fb8215671ffb4b4d0a78773c9b7a` | `1370b7fa54d61539ceda6f646e657fb5db9a4408ac9e6ed932aa0218584e483f` |
 
-The implementation freeze test must recompute all six inputs exactly, require one and only
+The implementation freeze test must recompute all eight inputs exactly, require one and only
 one matching heading and contiguous table per file, compare every digest in constant time,
 and separately validate row IDs and English/Japanese semantic parity. A missing, duplicate,
 empty, malformed, or mismatched table or digest blocks implementation; a digest match alone

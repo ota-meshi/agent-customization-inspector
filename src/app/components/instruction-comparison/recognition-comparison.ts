@@ -260,36 +260,12 @@ export class InstructionRecognitionComparison {
 
 /**
  * One side's parse, or null when there is none. The parse is the file's, one
- * per kind (FR-028), and every Markdown kind's variant carries the same one
- * for the same bytes (candidate.ts § recognizeInstructions), so this asks what
- * the adopted variant carries rather than requiring it to be this kind's:
- * `get-file-detail` is addressed by the path alone and answers with the first
- * variant its fixed order reaches — the skill variant for a file both kinds
- * recognize — so a surface that required its own kind would report a parsed
- * file as unparsed (session.ts § fileDetail). What this page renders is the
- * document, and every parse-carrying variant holds it the same way — the
- * command variant under its own two names, which are mapped back onto the
- * block and the body they came from (api-types.ts § PromptPresentationDto).
- * The excluded variants are the ones that carry no Markdown parse at all: a
- * rule file is published whole, a custom agent publishes its declarations
- * without a body, and an unrecognized file has nothing read out of it.
+ * per kind (FR-028). Only this kind's variant carries it: the detail was
+ * asked for as an instruction file, so a file of another kind answers as the
+ * plain file, which has nothing read out of it (session.ts § fileDetail).
  */
 function presentationOf(side: InstructionComparisonSideInput): MarkdownPresentationDto | null {
-  const detail = side.detail;
-  if (
-    detail.kind === 'rule' ||
-    detail.kind === 'agent' ||
-    detail.kind === 'settings/config' ||
-    detail.kind === 'file'
-  ) {
-    return null;
-  }
-  if (detail.kind === 'prompt/command') {
-    return detail.presentation === null
-      ? null
-      : { frontmatter: detail.presentation.metadata, bodyText: detail.presentation.promptText };
-  }
-  return detail.presentation;
+  return side.detail.kind === 'instructions' ? side.detail.presentation : null;
 }
 
 /**

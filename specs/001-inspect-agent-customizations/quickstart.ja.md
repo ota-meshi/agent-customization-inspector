@@ -261,7 +261,7 @@ pnpm run test:e2e
   exact occurrenceであること、tuple membershipだけで1つのsource formのkindを別formへeligibleにしないことも証明する。
   Skillの宣言はこのgateを通らない。fileが書いたkeyだからである。Allowlistが記載していないreferenceは完全な
   source textからだけ利用可能とする。これらのtestまたはimplementationを開始する
-  前に、3つすべてのvendor-contract language pairのPresentation Allowlist sectionがsupportedな全`(tool, kind)`とadmit済み
+  前に、4つすべてのvendor-contract language pairのPresentation Allowlist sectionがsupportedな全`(tool, kind)`とadmit済み
   source formを列挙済みでなければならない。このgateは承認済みrowとbilingual digestを検証するだけで、rowを作成したり
   semanticに編集したりしてはならない。Membership/source-form/extractor/relationshipに変更が必要なら作業を停止し、
   design artifactを同期してplan/task generationを再実行する。

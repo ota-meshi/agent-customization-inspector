@@ -538,7 +538,7 @@ pageを6つと数えないようにした。
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 4**、canonical SHA-256
-`d13165d21b28e15b4cfb266e0b3260508fd355c78775c50f5092756a2776d137`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 4は
+`6aeda202a98d99277ffa595318e593695920b5d5da11956fa60b234d9ace4e01`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 4は
 Gemini CLIのdenominatorである（specs/002-gemini-cli-support）。SC-003とSC-005それぞれに8つの
 `(Gemini CLI, kind)` row — instructions、settings/config、MCP、hook、prompt/command、skill、agent、
 permissions — 、rootの`GEMINI.md`をGitHub CopilotとGemini CLIに帰属させる
@@ -625,16 +625,16 @@ incrementを要求するのはcase・required class・expected outcomeの変更�
 それらのspecの全assertionが通過した。localのmacOS WebKit projectについて先の実行が記録したことは、
 その実行のものとして立つ。
 
-**Denominator。** SC-003はRepository boundaryにおける28個の`(tool, kind)`
+**Denominator。** SC-003はRepository boundaryにおける36個の`(tool, kind)`
 row — 出荷済みregistryが生成する正確な集合であり、再記述ではなくcontract
 suiteで突合する — 、凍結された4つのselector
 family（`exact`、`direct-child`、`descendant-inventory`、`recursive-subtree`）、文書化済みのmulti-tool
-attribution組み合わせ8件、そして3つのGlobal source
+attribution組み合わせ9件、そして4つのGlobal source
 formを対象とする。Global boundaryにrowごとの2つ目のcaseを置かず独自のcaseを持たせるのは、それがconsented
 memberごとに許可されるためであり、それを実行するのはadmission
-specだからである。SC-004は3 tool、5つのprohibited-effect class、両方のsource
+specだからである。SC-004は4 tool、5つのprohibited-effect class、両方のsource
 boundary、そして走査中に環境が動く3つのclass — 外部writerによる読み取り中のfixture変更、列挙中のdirectory
-削除/rename/作成、権限失効後に到着した結果の破棄 — を対象とする。SC-005は同じ28 rowに加えて両方の表示surface、両方のcredential
+削除/rename/作成、権限失効後に到着した結果の破棄 — を対象とする。SC-005は同じ36 rowに加えて両方の表示surface、両方のcredential
 class、両方のreferenced-variable stateを対象とする。SC-007は4つのfile-confined outcome
 classと5つのfailure classを対象とし、後者にはfailed initial Global
 enableを含む。これはpost-acceptance failureとは別の結果であり、Global Sourceもgenerationも作らないためである。宣言済みの最小値はclassごとに1

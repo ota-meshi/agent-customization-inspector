@@ -200,12 +200,12 @@ test.describe('the complete literal Claude subagent detail', () => {
   });
 
   test('shows the parse of a file that is also an instruction file', async ({ page }) => {
-    // `.claude/agents/CLAUDE.md` is admitted by both rules, and
-    // `get-file-detail` answers with the instructions variant. The agent route
-    // maps that variant's two halves onto its own rather than showing an empty
-    // parse panel (pages/agents/[source]/[...path].vue § presentation). It is also two
-    // agent rows, because the two products name it differently: `CLAUDE` from
-    // the file, `overlapping` from the declaration.
+    // `.claude/agents/CLAUDE.md` is admitted by both rules, and each route
+    // asks `get-file-detail` for its own kind, so the agent route shows the
+    // agent parse and the instruction route the instruction parse of the one
+    // file (session.ts § fileDetail). It is also two agent rows, because the
+    // two products name it differently: `CLAUDE` from the file, `overlapping`
+    // from the declaration.
     await page.goto(
       new URL('/agents/detail/repository/.claude/agents/CLAUDE.md', host.origin).toString(),
     );

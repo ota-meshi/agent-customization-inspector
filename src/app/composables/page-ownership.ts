@@ -19,7 +19,11 @@ import {
 } from 'vue';
 import type { SessionViewState } from '../session/view-state';
 import { useSessionViewState } from './session-view-state';
-import type { PluginCarrierDetailParams, SourceSelector } from '../../shared/api-types';
+import type {
+  FileDetailKind,
+  PluginCarrierDetailParams,
+  SourceSelector,
+} from '../../shared/api-types';
 
 /**
  * One page instance's handle on the route-owned view state — the open detail
@@ -48,15 +52,16 @@ export class PageOwnership {
   }
 
   /**
-   * Opens one customization's file detail as this page's own request
-   * ({@link SessionViewState.openFileDetail}).
+   * Opens one customization's file detail as this page's own request, as the
+   * page's kind reads the file ({@link SessionViewState.openFileDetail}).
    */
   public async openFileDetail(
     entryPath: string,
     openPath: string,
-    source: SourceSelector = 'repository',
+    source: SourceSelector,
+    kind: FileDetailKind,
   ): Promise<void> {
-    await this.#viewState.openFileDetail(entryPath, openPath, this.#owner, source);
+    await this.#viewState.openFileDetail(entryPath, openPath, this.#owner, source, kind);
   }
 
   /**
