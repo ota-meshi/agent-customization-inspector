@@ -245,9 +245,10 @@ test('names a nested skill with the root-relative prefix and states the Claude r
 
 test('states a resolution for each product that recognizes the name twice', async ({ page }) => {
   // Two Codex skills declaring one name: Codex has two files to choose
-  // between, so the row carries its documented rule — and so does Copilot,
-  // which recognizes both files through the shared `.agents` spelling and has
-  // no single documented rule across its surfaces.
+  // between, so the row carries its documented rule — and so do the other two
+  // products that read the same files through the shared `.agents` spelling.
+  // Copilot has no single documented rule across its surfaces; Gemini CLI
+  // documents a source order (specs/002-gemini-cli-support/spec.md FR-007).
   await mkdir(join(fixture, '.agents/skills/salute'), { recursive: true });
   await mkdir(join(fixture, '.agents/skills/hail'), { recursive: true });
   for (const directory of ['salute', 'hail']) {
@@ -268,7 +269,12 @@ test('states a resolution for each product that recognizes the name twice', asyn
   await expect(grouped).toContainText(
     'GitHub Copilot depends on the surface; no single documented rule',
   );
-  await expect(grouped).not.toContainText('uses the first in its documented source order');
+  await expect(grouped).toContainText('Gemini CLI uses the first in its documented source order');
+  // One statement per product that recognizes the name twice, and no more.
+  // This stands where a negative naming one sentence stood: that sentence is
+  // now a third product's own documented rule, so what the row has to get
+  // right is the whole set rather than the absence of one member of it.
+  await expect(grouped.locator('.aci-skill-row__resolutions li')).toHaveCount(3);
 });
 
 test('lists each file once per recognition and no authored content', async ({ page }) => {
