@@ -175,6 +175,7 @@ test('renders exact metadata rows and matches declarations by key', async ({ pag
     'GitHub Copilot',
     'Claude Code',
     'OpenAI Codex',
+    'Antigravity CLI',
   ]);
   // The single-product sides are stated, not fabricated into rows: Claude
   // does not recognize `AGENTS.md`, Codex does not recognize `CLAUDE.md`.

@@ -565,7 +565,7 @@ silhouetteを3つ見分けるのではなく色をたどって目的のものを
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 5**、canonical SHA-256
-`6b9477725b2ebf6b0bdbdf47b0b2f7b3bdf29012af59c8a5227fb17f905b9d37`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 5は
+`2124b4a0624efc047f4bfc6018f2f9691698fb35bc7f712712c9d8e3b4ee8ba9`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 5は
 Antigravity CLIのdenominatorである（specs/003-antigravity-cli-support T063）。SC-003とSC-005それぞれに8つの
 `(Antigravity CLI, kind)` row — `sc00{3,5}.row.antigravity.{instructions,settings-config,mcp,hook,rule,skill,agent,permissions}`
 — に加えて`sc003.global-source-form.antigravity`と`sc004.tool.antigravity`を持つ。この読み手を運ぶ帰属caseは3つある。
@@ -588,14 +588,16 @@ setのために再実行していない。contract suiteは同じrunで
 canonical digestと73件のfixture digestすべてを再現した。
 
 **これを新しいsetにしたのはfixture byteの変更である**。versionは同じままである。denominatorは
-変わっていない — 同じ118 case、同じrequired class — 一方で2つのbuilderがファイルを1つずつ得た。
+変わっていない — 同じ118 case、同じrequired class — 一方で3つのfixtureがファイルを1つずつ得た。
 `tests/fixtures/global-homes/build-fixtures.ts`はフォルダ形のglobal custom agent
 `config/agents/triage/agent.md`を得た。これはvendorのsubagentsページがそのディレクトリについて
 与える2つ目の綴りであり、このリリースがadmitするものである。
 `tests/fixtures/repositories/build-fixtures.ts`は`.agents/skills/summarize.md`を得た。
 frontmatterブロックがYAMLでないフラットskillであり、起動できるfixtureで、ファイル形skillの
-ページが抽出に失敗したときに何を持つのかを示す。両方のbuilderのdigestと上のcanonical digestは
-一緒に再記録した。それがfixture byteの変更に求められることであり、それが認めることのすべてである。
+ページが抽出に失敗したときに何を持つのかを示す。自前のtreeを組み立てる
+`tests/e2e/antigravity-skills-detail.spec.ts`も、そこで検証するcaseのために同じファイルを得た。
+3つのdigestと上のcanonical digestは一緒に再記録した。それがfixture byteの変更に求められること
+であり、それが認めることのすべてである。
 
 その前のsetは、同じ118 caseをcanonical SHA-256
 `631d6d61020ce16665f690c15e167626e307943a72775081b8a759d0aacd484b`の下で保持し、2026-09-10に

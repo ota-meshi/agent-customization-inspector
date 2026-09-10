@@ -679,7 +679,7 @@ the vendor's own glyph.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 5**, canonical
-SHA-256 `6b9477725b2ebf6b0bdbdf47b0b2f7b3bdf29012af59c8a5227fb17f905b9d37`, recorded in
+SHA-256 `2124b4a0624efc047f4bfc6018f2f9691698fb35bc7f712712c9d8e3b4ee8ba9`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Version 5 is the Antigravity CLI denominator
 (specs/003-antigravity-cli-support T063): eight `(Antigravity CLI, kind)` rows each for
 SC-003 and SC-005 — `sc00{3,5}.row.antigravity.{instructions,settings-config,mcp,hook,rule,skill,agent,permissions}`
@@ -705,14 +705,15 @@ browser specs those fixtures cannot reach were not re-run for this set. The
 contract suite reproduced the canonical digest and all 73 fixture digests in the same run.
 
 **Fixture-byte changes are what made this a new set**, at the same version: the denominator is
-untouched — the same 118 cases, the same required classes — while two builders gained a file.
+untouched — the same 118 cases, the same required classes — while three fixtures gained a file.
 `tests/fixtures/global-homes/build-fixtures.ts` gained the folder-shaped global custom agent
 `config/agents/triage/agent.md`, the second spelling the vendor's subagents page gives for that
 directory and one this release admits; `tests/fixtures/repositories/build-fixtures.ts` gained
 `.agents/skills/summarize.md`, a flat skill whose frontmatter block is not YAML, so the
-launchable fixture shows what a file-shaped skill's page holds when its extraction fails.
-Both builders' digests and the canonical digest above were re-recorded together, which is what
-a fixture-byte change requires and all it authorizes.
+launchable fixture shows what a file-shaped skill's page holds when its extraction fails; and
+`tests/e2e/antigravity-skills-detail.spec.ts`, which builds its own tree, gained the same file
+for the case it asserts on. All three digests and the canonical digest above were re-recorded
+together, which is what a fixture-byte change requires and all it authorizes.
 
 The set before it carried the same 118 cases under canonical SHA-256
 `631d6d61020ce16665f690c15e167626e307943a72775081b8a759d0aacd484b`, executed on 2026-09-10 on
