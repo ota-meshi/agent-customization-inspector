@@ -78,6 +78,7 @@ rowへ解決するので、変更されたpageのreview setは`evidence`にそ�
 | Microsoft | `code.visualstudio.com` |
 | Anthropic | `code.claude.com` |
 | OpenAI | `learn.chatgpt.com`; `developers.openai.com` |
+| Google | `geminicli.com` |
 
 受理する第一者evidence classは、全vendor横断で1つのhierarchyを形成する。上記exact host上の
 general guide、reference page、version付きrelease noteまたはchangelogだけを受理classとする。
@@ -151,6 +152,7 @@ digest inputとする。Heading、prose、blank line、連続table後のlineはh
 | GitHub Copilot | `a6f35ab28711f719500e2a4121a9aeb9d56f74f5b4accecdcd3e9c4643416525` | `b1ec5038a7c581fea4d4ed9e0f83eb7ca730c18312c65a6689bfcc3a93a3a926` |
 | Claude Code | `2aad69c35c2ff0e348b62bd1f8f6007a538337f14d5ddaa08f6f159b3c46f858` | `15862bf76910e507d65ebabe865f61c5652167dcfbaad07600d29a244ac3c73a` |
 | OpenAI Codex | `2a598e1bd30690cfe07d64cd6e1a8c5d80512249eacb5e1e59741bd3d9194226` | `e985ad14696d2ef2a47e7fcacbdbb39a83864fdd4d5c62546112f25e62e98301` |
+| Gemini CLI | `fedf1e2053d3e0f1365d71e0aaea2c6d0323fb8215671ffb4b4d0a78773c9b7a` | `1370b7fa54d61539ceda6f646e657fb5db9a4408ac9e6ed932aa0218584e483f` |
 
 Implementation freeze testは6 inputすべてを正確に再計算し、fileごとにmatching headingと連続tableが正確に1つだけ
 存在することを要求し、全digestをconstant timeで比較し、row IDと英日semantic parityを別に検証しなければならない。
@@ -256,6 +258,32 @@ filesystemまたはdecode方針をencodeしてはならない。このreconcilia
 | `openai.codex.rules` | <https://learn.chatgpt.com/docs/agent-configuration/rules.md> | `learn.chatgpt.com` | `Rules`; `Create a rules file`; `Understand rule fields`; `Understand the rules language` | `2026-08-27` |
 | `openai.codex.skills` | <https://learn.chatgpt.com/docs/build-skills.md> | `learn.chatgpt.com` | `How ChatGPT and Codex use skills`; `Where Codex loads local skills`; `Distribute skills with plugins`; `Optional metadata` | `2026-08-27` |
 | `openai.codex.subagents` | <https://learn.chatgpt.com/docs/agent-configuration/subagents.md> | `learn.chatgpt.com` | `Orchestration and thread controls`; `Approvals and sandbox controls`; `Custom agents`; `Custom agent file schema` | `2026-08-27` |
+
+## Google official sources
+
+Google の行は Gemini CLI の文書サイトを引用する。そのページは末尾スラッシュ付きで配信され、
+redirect なしに直接応答する。同サイトの2つのパスは redirect するか応答しないため意図的に引用
+しない: `/docs/core/policy-engine/` と `/docs/cli/configuration/`。引用する形は
+`/docs/reference/policy-engine/` と `/docs/reference/configuration/` である。Gemini CLI の record
+が維持する主張のうち1つ — settings loader が parse の前にコメントを剥がすこと — はこれらのページ
+ではなく source の読み取りに依り、それを持つ record がそう述べる (contracts/vendors/gemini-cli.ja.md
+§ Known uncertainties and required condition facts)。この表の何もそれを確立しない。
+
+| `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
+|---|---|---|---|---|
+| `google.gemini-cli.configuration` | <https://geminicli.com/docs/reference/configuration/> | `geminicli.com` | `Configuration layers`; `Settings files`; `The .gemini directory in your project`; `Available settings in settings.json`; `Environment variables and .env files`; `Context files (hierarchical instructional context)` | `2026-09-09` |
+| `google.gemini-cli.creating-skills` | <https://geminicli.com/docs/cli/creating-skills/> | `geminicli.com` | `Skill structure`; `Metadata and triggers`; `Discovery aliases` | `2026-09-09` |
+| `google.gemini-cli.custom-commands` | <https://geminicli.com/docs/cli/custom-commands/> | `geminicli.com` | `File locations and precedence`; `Naming and namespacing`; `TOML file format (v1)`; `Required fields`; `Handling arguments` | `2026-09-09` |
+| `google.gemini-cli.extensions-reference` | <https://geminicli.com/docs/extensions/reference/> | `geminicli.com` | `Extension format`; `gemini-extension.json`; `Link a local extension` | `2026-09-09` |
+| `google.gemini-cli.gemini-ignore` | <https://geminicli.com/docs/cli/gemini-ignore/> | `geminicli.com` | `How it works`; `How to use .geminiignore` | `2026-09-09` |
+| `google.gemini-cli.gemini-md` | <https://geminicli.com/docs/cli/gemini-md/> | `geminicli.com` | `Understand the context hierarchy`; `Modularize context with imports`; `Customize the context file name` | `2026-09-09` |
+| `google.gemini-cli.hooks` | <https://geminicli.com/docs/hooks/> | `geminicli.com` | `Configuration`; `Configuration schema`; `Hook configuration fields`; `Security and risks` | `2026-09-09` |
+| `google.gemini-cli.hooks-reference` | <https://geminicli.com/docs/hooks/reference/> | `geminicli.com` | `Configuration schema`; `Hook definition`; `Hook configuration` | `2026-09-09` |
+| `google.gemini-cli.mcp-server` | <https://geminicli.com/docs/tools/mcp-server/> | `geminicli.com` | `Configure the MCP server in settings.json`; `Configuration structure`; `Configuration properties`; `Environment variable expansion`; `Server-specific configuration (mcpServers)` | `2026-09-09` |
+| `google.gemini-cli.policy-engine` | <https://geminicli.com/docs/reference/policy-engine/> | `geminicli.com` | `Priority system and tiers`; `Policy locations`; `TOML rule schema` | `2026-09-09` |
+| `google.gemini-cli.skills` | <https://geminicli.com/docs/cli/skills/> | `geminicli.com` | `Discovery tiers`; `Precedence and aliases`; `Managing skills` | `2026-09-09` |
+| `google.gemini-cli.subagents` | <https://geminicli.com/docs/core/subagents/> | `geminicli.com` | `Agent definition files`; `File format`; `Configuration schema`; `Disabling subagents` | `2026-09-09` |
+| `google.gemini-cli.trusted-folders` | <https://geminicli.com/docs/cli/trusted-folders/> | `geminicli.com` | `Why trust matters: The impact of an untrusted workspace`; `Overriding the trust file location` | `2026-09-09` |
 
 ## Offline validationと明示drift review
 

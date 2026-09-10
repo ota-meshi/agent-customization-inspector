@@ -49,11 +49,21 @@ Paths are relative to the inspected repository root.
 | Hooks | `.codex/hooks.json` and `.codex/config.toml` |
 | Plugins | `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json` |
 
+### Gemini CLI
+
+| Kind | Where |
+| --- | --- |
+| Instructions | `GEMINI.md` in any directory — or, when `.gemini/settings.json` sets `context.fileName`, the file or files it names, in any directory, in place of `GEMINI.md` |
+| Skills | `SKILL.md` in each directory under `.gemini/skills/` or `.agents/skills/` |
+| Agents | any `.md` file directly in `.gemini/agents/` |
+| Prompts and commands | any `.toml` file under `.gemini/commands/`, at any depth |
+| MCP, hooks, settings | `.gemini/settings.json` |
+
 ## In your personal setup
 
-Only after you opt in. There are four directories, not three: each tool's own home, and the
-shared agent home beside them. The consent page names all four before anything is read, and
-each path below is relative to the one it is listed under.
+Only after you opt in. The directories are each tool's own home, and the shared agent home
+beside them. The consent page names each of them before anything is read, and each path below
+is relative to the one it is listed under.
 
 ### Your Claude Code home
 
@@ -95,14 +105,28 @@ each path below is relative to the one it is listed under.
 | MCP, settings | `config.toml` |
 | Hooks | `hooks.json` and `config.toml` |
 
+### Your Gemini CLI home
+
+`.gemini` under `GEMINI_CLI_HOME`, or `~/.gemini`. The setting names the directory that holds
+`.gemini` rather than `.gemini` itself, so `GEMINI_CLI_HOME=/work` reads `/work/.gemini`.
+
+| Kind | Where |
+| --- | --- |
+| Instructions | `GEMINI.md` |
+| Skills | `SKILL.md` in each directory under `skills/` |
+| Agents | any `.md` file directly in `agents/` |
+| Prompts and commands | any `.toml` file under `commands/`, at any depth |
+| Permissions | any `.toml` file directly in `policies/` |
+| MCP, hooks, settings | `settings.json` |
+
 ### The shared agent home
 
-`~/.agents`, which is not any one tool's and does not move with `CODEX_HOME` or
-`COPILOT_HOME`.
+`~/.agents`, which is not any one tool's and does not move with `CODEX_HOME`,
+`COPILOT_HOME`, or `GEMINI_CLI_HOME`.
 
 | Kind | Where | Read by |
 | --- | --- | --- |
-| Skills | `SKILL.md` in each directory under `skills/` | OpenAI Codex and GitHub Copilot |
+| Skills | `SKILL.md` in each directory under `skills/` | OpenAI Codex, GitHub Copilot, and Gemini CLI |
 | Plugins | `plugins/marketplace.json` | OpenAI Codex |
 
 ## Two reads inside what was listed

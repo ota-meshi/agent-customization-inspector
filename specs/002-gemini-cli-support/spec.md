@@ -20,6 +20,10 @@ about four and five.
 
 ## Clarifications
 
+### Session 2026-09-10
+
+- Q: The custom-commands page names subdirectories as namespaces with one nested example; does a command at `.gemini/commands/x/y/z.toml` count, and is its name spelled as the loader spells it? → A: Yes on both. The page states the rule generally — the path relative to the commands directory, subdirectories as namespaces, the separator as `:` — without a depth limit, and the vendor's loader (`packages/cli/src/services/FileCommandLoader.ts`, measured 2026-09-10) enumerates `**/*.toml`, so `x/y/z.toml` is `/x:y:z` and the admitting rule keeps its recursive step. The loader also replaces every segment character outside `[A-Za-z0-9_.-]` with `_` and cuts a segment over 50 characters to 47 plus `...`, which no page states; the row matches that too, because a row named `my command` would report a command the product invokes as `/my_command`, and the two command behaviors are `partially-documented` with the measurement recorded in the vendor contract rather than promoted to documentation.
+
 ### Session 2026-09-09
 
 - Q: The feature description names "extensions" among the surfaces to recognize; Gemini CLI documents extensions only as installed copies under the home's `extensions/` directory and as a local directory linked into it for development. Which reading is in scope: exclude entirely, recognize a repository's own root `gemini-extension.json` as a plugin row, or inspect installed copies? → A: Exclude entirely. Installed extension copies are what the parent specification's FR-018 already excludes for every other vendor — a copy reproduced from its source rather than a customization the user authored — and the same reason holds here; a repository that is itself an extension is not recognized either, so no plugin-kind rule, manifest reader, or plugin-root census is part of this feature. The exclusion is recorded in the vendor contract with that reason.
@@ -182,6 +186,10 @@ documented resolution without declaring which file is in effect.
   the Gemini CLI home are listed as permissions, because the user tier is documented as loaded.
 - The Gemini CLI home is missing while the other four members exist: the member is recorded as
   absent, and the others commit, exactly as a missing Codex home is handled today.
+- The Gemini CLI home is a symbolic link, or `GEMINI_CLI_HOME` names a file rather than a
+  directory: a link is read through its target like every other path (parent FR-024), and a root
+  that is not a readable directory is recorded as that member's failed admission without
+  fallback (parent FR-014).
 - A skill is declared under `.gemini/skills/` with a `name` that differs from its directory: the
   row is named by the declared name, as every product's root skill row is.
 
@@ -195,11 +203,10 @@ documented resolution without declaring which file is in effect.
   user documentation — MUST name four, and the parent specification's statements written for
   three tools and four Global members MUST be amended in both languages to four tools and five
   members in the change that adds the tool: its FR-004 tool list, its Supported Initial Release
-  Customization Files table, its FR-013, FR-014, and FR-018 member counts and capture order, its
-  User Story 4, its Inspection Session and Source entities, and its Assumptions about Global
-  scope. Gemini CLI's mark MUST follow the vendor-mark rule the other three follow: a
-  single-colour glyph in the vendor's own desaturated colour, with the product name as its
-  accessible name.
+  Customization Files table, its FR-013, FR-014, and FR-018 member counts and capture order, its User Story 4, its Inspection Session and Source entities, and its Assumptions about Global
+  scope — together with the parent data model's root-capture and consent-preview entities and the
+  session API contract's consent preview, wherever they state a member count or the capture order. Gemini CLI's mark MUST follow the vendor-mark rule the other three follow: a single-colour glyph in the vendor's own desaturated colour, with the product name as its
+  accessible name, and with nothing resting on the colour alone (WCAG 1.4.1).
 - **FR-002**: The Repository inspection path allowlist MUST admit, for Gemini CLI, exactly these
   locations below the selected Repository root and no others: as instructions, the context file in any directory, through one derived rule whose
   filenames are `GEMINI.md` unless the repository's `.gemini/settings.json` declares
@@ -244,15 +251,22 @@ documented resolution without declaring which file is in effect.
   runtime-cwd and repository-root conditions and MUST NOT widen the allowlist beyond the
   selected root.
 - **FR-006**: A Gemini CLI custom command row MUST be named as the vendor invokes it: the
-  file's path relative to the `commands/` directory, with `/` replaced by `:` and the `.toml`
-  extension removed, so `.gemini/commands/git/commit.toml` is `git:commit`. The row's detail
+  file's path relative to the `commands/` directory, at any depth, with the `.toml` extension
+  removed, every character of a segment outside `[A-Za-z0-9_.-]` replaced by `_`, a segment
+  longer than 50 characters cut to its first 47 followed by `...`, and the segments joined
+  with `:` — so `.gemini/commands/git/commit.toml` is `git:commit`,
+  `.gemini/commands/review/security/deps.toml` is `review:security:deps`, and
+  `.gemini/commands/my command.toml` is `my_command`. The depth is the documented rule; the
+  sanitization and the truncation are the vendor loader's, recorded as a source measurement
+  (§ Clarifications Session 2026-09-10). The row's detail
   MUST show the TOML source as written, including `!{...}` shell blocks and `{{args}}`
   placeholders, none of which is evaluated. A command file the TOML parser cannot read, or one that declares no `prompt`, keeps the row
   its path names and carries a file-confined parse diagnostic, as every path-named product's
   command does.
 - **FR-007**: A Gemini CLI skill row MUST be named by the skill's authored frontmatter `name`,
-  falling back to the skill directory when the name is absent or empty, as every product's
-  root skill row is. The documented same-name resolution — a workspace skill over a user
+  falling back to the skill directory when the name is absent or empty, as every product's root
+  skill row is; the vendor's guidance that the name match its directory is not something the
+  inspector checks (parent specification FR-012). The documented same-name resolution — a workspace skill over a user
   skill, and within one tier the `.agents/skills/` copy over the `.gemini/skills/` copy —
   MUST be recorded as a runtime-composition strategy from which the row's same-name statement
   is derived, stated as what the vendor documents and never as which file a session loaded.
@@ -415,14 +429,16 @@ documented resolution without declaring which file is in effect.
   `extensions/`, `trustedFolders.json`, and `.env` — zero of those files are listed, and zero
   read requests are issued for them.
 - **SC-003**: Across sessions started with `GEMINI_CLI_HOME` absent, eligible, present-empty,
-  and relative, 100% of consent previews list five members, and the Gemini CLI entry's root
-  and classification match the closed outcome for that input in every case.
+  and relative, 100% of consent previews list five members, and the Gemini CLI entry's root and classification match, in every case, the closed outcome the
+  parent specification's Closed Global Root Admission Outcomes table and FR-011 fix for that input
+  (data-model.md § GlobalRootInputCapture).
 - **SC-004**: Across fixtures holding Gemini CLI hook commands, shell-block custom commands,
   and MCP declarations, inspection causes zero command executions, child processes, MCP
   connections, outbound requests, and inspected-source mutations.
 - **SC-005**: Both languages of `docs/which-files-are-listed.md` name every literal path
-  segment the shipped Gemini CLI rules admit, as the existing containment gate measures, and
-  the readme, legend, filter, and consent surface each name four tools in both languages.
+  segment the shipped Gemini CLI rules admit, as the existing containment gate measures — extended to require, for the derived rule, that both
+  pages mention `GEMINI.md` and `context.fileName` — and the readme, legend, filter, and consent
+  surface each name four tools in both languages.
 - **SC-006**: The official-source check reports every cited Gemini CLI URL answering directly
   on its official host and every cited section resolving, for 100% of Gemini CLI records.
 

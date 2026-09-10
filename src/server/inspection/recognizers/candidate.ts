@@ -55,6 +55,7 @@ import type {
   CompiledStaticMcpReadingRule,
   CompiledStaticPermissionsCarrierRule,
   CompiledStaticPluginRule,
+  CompiledStaticPromptRule,
   HookCarrierReading,
   PluginCarrierReading,
   SelectorOrigin,
@@ -71,6 +72,7 @@ import type {
   McpServerDeclarationDto,
   PluginCarrierKind,
   PluginDeclarationDto,
+  PromptPresentationDto,
   RecognitionParseStatus,
 } from '../../../shared/api-types';
 import type { RuleId } from '../../../shared/registries/identifier-types';
@@ -369,19 +371,21 @@ export type RecognitionDetails =
        */
       readonly invocationName: string;
       /**
-       * Every key the command file's frontmatter declares, in authored order;
-       * the source of the detail response's `presentation.frontmatter`. Empty
-       * when the file declares no frontmatter, and empty for a `failed`
-       * extraction, which publishes nothing while the complete source stays
-       * displayed (FR-028).
+       * Every declaration the command file makes except the one holding the
+       * prompt, in the file's own order — the frontmatter block of a Markdown
+       * command, the keys beside `prompt` of a TOML one; the source of the
+       * detail response's `presentation.metadata`. Empty when the file
+       * declares nothing else, and empty for a `failed` extraction, which
+       * publishes nothing while the complete source stays displayed (FR-028).
        */
-      readonly frontmatter: readonly DeclaredEntryDto[];
+      readonly metadata: readonly DeclaredEntryDto[];
       /**
-       * The file with its frontmatter block removed: the source of the detail
-       * response's `presentation.bodyText`. Empty for a `failed` extraction:
-       * extraction is all-or-nothing (FR-028).
+       * The prompt the file gives the reader's agent, as the admitting
+       * vendor's format resolved it: the source of the detail response's
+       * `presentation.promptText`. Empty for a `failed` extraction: extraction
+       * is all-or-nothing (FR-028).
        */
-      readonly bodyText: string;
+      readonly promptText: string;
     }
   /**
    * A permission policy a carrier declares as one block of a larger document:
@@ -690,10 +694,10 @@ export class ToolRecognition {
   }
 
   /**
-   * Builds one command recognition from the shared Markdown extraction: the
-   * declarations the file wrote and the instructions left once the block is
-   * removed (FR-007). Both are empty for a failed extraction, which publishes
-   * nothing while the complete source stays displayed (FR-028).
+   * Builds one command recognition from the admitting rule's own prompt
+   * reading: the metadata the file wrote and the prompt beside it (FR-007).
+   * Both are empty for a failed extraction, which publishes nothing while the
+   * complete source stays displayed (FR-028).
    *
    * Its own factory rather than the instruction one under another kind: the
    * two kinds ask their admitting rule different questions — what a file
@@ -703,22 +707,13 @@ export class ToolRecognition {
   public static recognizePrompt(
     sourceRelativePath: string,
     tool: SupportedTool,
-    extraction: RecognitionExtraction<ParsedMarkdownDocument | undefined>,
+    rule: CompiledStaticPromptRule,
+    extraction: RecognitionExtraction<PromptPresentationDto>,
     admissions: readonly RecognitionAdmission[],
   ): ToolRecognition {
-    // Asked of the admitting rule, which is where a product's own naming
-    // lives. Any admission answers: a recognition's admissions are one
-    // product's, and that product defines the answer once, so they cannot
-    // disagree. The narrowing is the compiler's own, over the `kind` that
-    // discriminates `CompiledCandidateRule` — nothing here asserts a
-    // capability the unit might not have.
-    const [admission] = admissions;
-    if (admission === undefined || admission.compiled.kind !== 'prompt/command') {
-      throw new TypeError('a command recognition has no rule that can answer its name');
-    }
     // The one parse the kind's own name may come out of: a prompt file
-    // declares its `name`, so the rule is asked with the declarations beside
-    // the path.
+    // declares its `name`, so the rule is asked with the metadata beside the
+    // path.
     //
     // A failed extraction hands the rule an empty list, so the name falls back
     // to the path — the same string the vendor's own fallback produces for a
@@ -729,7 +724,7 @@ export class ToolRecognition {
     // extraction Diagnostic this recognition carries — which every surface
     // showing the definition shows beside it, saying the declarations are
     // unknown rather than absent (FR-028).
-    const frontmatter = extraction.extracted?.frontmatterEntries ?? [];
+    const metadata = extraction.extracted?.metadata ?? [];
     return ToolRecognition.#assemble(
       sourceRelativePath,
       tool,
@@ -738,9 +733,9 @@ export class ToolRecognition {
         // Derived from the path, so a failed extraction takes nothing away
         // from it: the row keeps its identity while the declarations it could
         // not read stay unknown (FR-028).
-        invocationName: admission.compiled.invocationNameOf(sourceRelativePath, frontmatter),
-        frontmatter,
-        bodyText: extraction.extracted?.body ?? '',
+        invocationName: rule.invocationNameOf(sourceRelativePath, metadata),
+        metadata,
+        promptText: extraction.extracted?.promptText ?? '',
       },
       extraction.status,
       admissions,
@@ -1175,6 +1170,9 @@ class CandidateExtractions {
   /** The per-tool custom-agent presentation readings, each run on its first request. */
   #agent = new Map<SupportedTool, RecognitionExtraction<AgentPresentationDto>>();
 
+  /** The per-tool prompt presentation readings, each run on its first request. */
+  #prompt = new Map<SupportedTool, RecognitionExtraction<PromptPresentationDto>>();
+
   /** The per-tool plugin carrier readings, each run on its first request. */
   #plugin = new Map<SupportedTool, RecognitionExtraction<PluginCarrierReading>>();
 
@@ -1292,6 +1290,29 @@ class CandidateExtractions {
       rule.agentPresentationOf(text),
     );
     this.#agent.set(rule.tool, extraction);
+    return extraction;
+  }
+
+  /**
+   * The prompt presentation extraction, read by the admitting rule's own
+   * contract — which format a command file is written in, and where its
+   * declarations end and its prompt begins — is that vendor's fact
+   * (`rules/prompts-and-commands/compiled-rule.ts` § promptPresentationOf).
+   * Keyed by the tool for the reason the agent slot is: one physical file can
+   * be two vendors' command — a root `.claude/commands/*.md` is Claude's and
+   * the Copilot CLI's — and each publishes exactly its own vendor's reading.
+   * Within one tool the reading runs once, whichever of its admissions asks
+   * first.
+   */
+  public prompt(rule: CompiledStaticPromptRule): RecognitionExtraction<PromptPresentationDto> {
+    const existing = this.#prompt.get(rule.tool);
+    if (existing !== undefined) {
+      return existing;
+    }
+    const extraction = RecognitionExtraction.run(this.#sourceText, (text) =>
+      rule.promptPresentationOf(text),
+    );
+    this.#prompt.set(rule.tool, extraction);
     return extraction;
   }
 
@@ -1472,14 +1493,25 @@ export async function recognizeCandidateForVendors(
         throw new TypeError('an agent recognition has no rule that can split its presentation');
       }
       if (kind === 'prompt/command') {
-        // The same one parse the two other frontmatter-led kinds read: what a
-        // file declares does not depend on which kind asks for it.
-        return ToolRecognition.recognizePrompt(
-          input.matchedPath,
-          tool,
-          extractions.markdown(),
-          group,
-        );
+        // The reading is dispatched to the admission whose unit owns it, the
+        // way an agent's is: which format a command file is written in is the
+        // admitting vendor's fact, so the group's own unit reads it. A loop
+        // rather than `find` because a callback's narrowing does not reach the
+        // caller without a hand-authored predicate. Every shipped command rule
+        // compiles into such a unit, so a group without one cannot be produced
+        // by the shipped catalog and fails loudly here.
+        for (const { compiled } of group) {
+          if (compiled.kind === 'prompt/command') {
+            return ToolRecognition.recognizePrompt(
+              input.matchedPath,
+              tool,
+              compiled,
+              extractions.prompt(compiled),
+              group,
+            );
+          }
+        }
+        throw new TypeError('a command recognition has no rule that can read its prompt');
       }
       if (kind === 'permissions') {
         // Dispatched the way the MCP reading is, over the `kind` and

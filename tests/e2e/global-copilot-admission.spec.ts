@@ -1,4 +1,4 @@
-// T981: the Copilot member of the fixed-four confirmation, as a reader sees it
+// T981: the Copilot member of the fixed-five confirmation, as a reader sees it
 // (FR-013, FR-014, FR-015, FR-018, FR-023, FR-045).
 //
 // Copilot's production port is bound with the widened member set, so this
@@ -32,7 +32,7 @@ import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 /** The repository the session is launched against. */
 let repository: string;
 
-/** The four Global homes the environment points at. */
+/** The five Global homes the environment points at. */
 let homes: GlobalHomeFixture;
 
 let host: LaunchedHost;

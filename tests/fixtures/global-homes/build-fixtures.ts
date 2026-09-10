@@ -42,16 +42,17 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-/** The three tools a Global preview always names, in the contracted order. */
-export const GLOBAL_TOOL_ORDER = ['copilot', 'claude', 'codex'] as const;
+/** The four tools a Global preview always names, in the contracted order. */
+export const GLOBAL_TOOL_ORDER = ['copilot', 'claude', 'codex', 'gemini'] as const;
 
 /**
- * The four consented members, in the contracted preview order: the three tool
- * homes, then the shared agent home `~/.agents` that Codex and Copilot both
- * read (FR-045). The shared home has no environment property — a launch
- * points `homedir()` at {@link GlobalHomeFixture.home} instead.
+ * The five consented members, in the contracted preview order: the four tool
+ * homes, then the shared agent home `~/.agents` that Codex, Copilot, and
+ * Gemini CLI all read skills from (FR-045). The shared home has no environment
+ * property — a launch points `homedir()` at {@link GlobalHomeFixture.home}
+ * instead.
  */
-export const GLOBAL_MEMBER_ORDER = ['copilot', 'claude', 'codex', 'agents'] as const;
+export const GLOBAL_MEMBER_ORDER = ['copilot', 'claude', 'codex', 'gemini', 'agents'] as const;
 
 /** One consented member; see {@link GLOBAL_MEMBER_ORDER}. */
 export type GlobalMember = (typeof GLOBAL_MEMBER_ORDER)[number];
@@ -70,6 +71,12 @@ export const GLOBAL_HOME_VARIABLES: Readonly<Record<GlobalTool, string>> = {
   claude: 'CLAUDE_CONFIG_DIR',
   /** Codex's home override. */
   codex: 'CODEX_HOME',
+  /**
+   * Gemini CLI's override — of the directory its `.gemini` is created in, not
+   * of `.gemini` itself, so the fixture exports the base for it and the capture
+   * joins the suffix (specs/002-gemini-cli-support/spec.md FR-011).
+   */
+  gemini: 'GEMINI_CLI_HOME',
 };
 
 /** The directory each tool's documented default home is named by. */
@@ -80,6 +87,8 @@ export const GLOBAL_HOME_DEFAULT_SUFFIX: Readonly<Record<GlobalTool, string>> = 
   claude: '.claude',
   /** `~/.codex`. */
   codex: '.codex',
+  /** `~/.gemini`. */
+  gemini: '.gemini',
 };
 
 /**
@@ -93,7 +102,7 @@ export interface GlobalHomeCapabilities {
   readonly symlinks: boolean;
 }
 
-/** One built set of three Global homes. */
+/** One built set of five Global homes. */
 export interface GlobalHomeFixture {
   /** The absolute directory holding all four homes; remove this to clean up. */
   readonly base: string;
@@ -108,7 +117,7 @@ export interface GlobalHomeFixture {
   readonly homes: Readonly<Record<GlobalMember, string>>;
   /**
    * The environment values a suite exports to point the capture at these
-   * homes, keyed by the property name the capture reads — the three tool
+   * homes, keyed by the property name the capture reads — the four tool
    * overrides, plus the two properties `node:os.homedir()` answers from:
    * `HOME` on POSIX and `USERPROFILE`, which Windows prefers. The shared
    * agent home has no override of its own, so pinning both is what keeps its
@@ -146,6 +155,8 @@ export const GLOBAL_HOME_SECRETS: Readonly<Record<GlobalTool, string>> = {
   claude: 'sk-ant-globalclaude000000000000000000000000',
   /** Codex's home credential literal. */
   codex: 'sk-proj-globalcodex00000000000000000000000000',
+  /** Gemini CLI's home credential literal. */
+  gemini: 'AIzaGLOBALGEMINI000000000000000000000000',
 };
 
 /**
@@ -160,6 +171,8 @@ export const GLOBAL_HOME_ENVIRONMENT_REFERENCES: Readonly<Record<GlobalTool, str
   claude: '${GLOBAL_CLAUDE_ENDPOINT}',
   /** Referenced in Codex's instruction text. */
   codex: '${GLOBAL_CODEX_ENDPOINT}',
+  /** Referenced in Gemini CLI's context text. */
+  gemini: '${GLOBAL_GEMINI_ENDPOINT}',
 };
 
 /**
@@ -173,6 +186,8 @@ export const GLOBAL_HOME_SENTINELS: Readonly<Record<GlobalTool, string>> = {
   claude: 'resolved-global-claude-sentinel',
   /** Sentinel for `GLOBAL_CODEX_ENDPOINT`. */
   codex: 'resolved-global-codex-sentinel',
+  /** Sentinel for `GLOBAL_GEMINI_ENDPOINT`. */
+  gemini: 'resolved-global-gemini-sentinel',
 };
 
 /**
@@ -234,7 +249,7 @@ function tryMaterializeSymlinks(
 }
 
 /**
- * Builds one realistic set of three Global homes under `base`, or under a
+ * Builds one realistic set of five Global homes under `base`, or under a
  * fresh OS temp directory when none is given. Deterministic: the same base
  * yields the same bytes, so a suite may assert an exact path list without a
  * golden file.
@@ -254,6 +269,7 @@ export function buildGlobalHomeFixture(
     copilot: join(root, GLOBAL_HOME_DEFAULT_SUFFIX.copilot),
     claude: join(root, GLOBAL_HOME_DEFAULT_SUFFIX.claude),
     codex: join(root, GLOBAL_HOME_DEFAULT_SUFFIX.codex),
+    gemini: join(root, GLOBAL_HOME_DEFAULT_SUFFIX.gemini),
     // Always the derived `.agents` below the home a launch exports (FR-045).
     agents: join(root, '.agents'),
   } as const;
@@ -668,6 +684,141 @@ export function buildGlobalHomeFixture(
   write(homes.codex, 'sessions/rollout.jsonl', '{"kind":"session"}\n');
   write(homes.codex, 'docs/AGENTS.md', '# a nested copy the rule is anchored above\n');
 
+  // ---- Gemini CLI (specs/002-gemini-cli-support FR-010): the global context
+  // file, the JSONC settings document carrying MCP servers and hooks, a
+  // namespaced command, a personal skill, a sub-agent, and a policy file —
+  // beside the extension copies, trust record, environment file, credentials,
+  // and temporary state the exclusions decline.
+  write(
+    homes.gemini,
+    'GEMINI.md',
+    [
+      '# Personal Gemini context',
+      '',
+      'Answer in the language the question was asked in.',
+      `Staging deploys report to ${GLOBAL_HOME_ENVIRONMENT_REFERENCES.gemini}.`,
+      '',
+    ].join('\n'),
+  );
+  // JSONC on purpose: the vendor's own loader strips comments before parsing,
+  // and a detail shows the document its author wrote (FR-007). The
+  // `context.fileName` here changes nothing about which home file is admitted
+  // (specs/002-gemini-cli-support/spec.md § Clarifications).
+  write(
+    homes.gemini,
+    'settings.json',
+    [
+      '{',
+      '  // Personal defaults for every project.',
+      '  "general": { "vimMode": true },',
+      '  "context": { "fileName": ["GEMINI.md", "AGENTS.md"] },',
+      '  "mcpServers": {',
+      '    "github": {',
+      '      "command": "npx",',
+      '      "args": ["-y", "@modelcontextprotocol/server-github"],',
+      '      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_TOKEN" }',
+      '    },',
+      '    "docs": { "httpUrl": "http://localhost:8080/mcp", "timeout": 30000 }',
+      '  },',
+      '  "hooks": {',
+      '    "BeforeTool": [',
+      '      {',
+      '        "matcher": "run_shell_command",',
+      '        "hooks": [{ "type": "command", "command": "$HOME/.gemini/hooks/audit.sh" }]',
+      '      }',
+      '    ]',
+      '  }',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  write(
+    homes.gemini,
+    'commands/refactor.toml',
+    [
+      'description = "Refactor the selected code without changing behavior."',
+      'prompt = """',
+      'Refactor the following for clarity. Keep every test green.',
+      '',
+      '{{args}}',
+      '"""',
+      '',
+    ].join('\n'),
+  );
+  write(
+    homes.gemini,
+    'commands/git/commit.toml',
+    [
+      'description = "Write a commit message for the staged changes."',
+      'prompt = """',
+      'Staged diff:',
+      '!{git diff --cached}',
+      '',
+      'Write a conventional commit message for it.',
+      '"""',
+      '',
+    ].join('\n'),
+  );
+  write(
+    homes.gemini,
+    'skills/changelog/SKILL.md',
+    [
+      '---',
+      'name: changelog',
+      'description: Draft a changelog entry from the staged diff.',
+      '---',
+      '',
+      'Summarize the staged changes as one changelog entry.',
+      '',
+    ].join('\n'),
+  );
+  write(homes.gemini, 'skills/README.md', '# personal skills live here\n');
+  write(
+    homes.gemini,
+    'agents/reviewer.md',
+    [
+      '---',
+      'name: reviewer',
+      'description: Reviews a diff for defects before it is committed.',
+      'tools: ["read_file", "grep_search"]',
+      '---',
+      '',
+      'Review the change for defects and report each with its line.',
+      '',
+    ].join('\n'),
+  );
+  // A nested agent file: the page names `agents/*.md` and no subtree.
+  write(homes.gemini, 'agents/archive/old.md', '---\nname: old\n---\n');
+  write(
+    homes.gemini,
+    'policies/safety.toml',
+    [
+      '[[rule]]',
+      'toolName = "run_shell_command"',
+      'commandPrefix = "rm -rf"',
+      'decision = "deny"',
+      'priority = 900',
+      '',
+    ].join('\n'),
+  );
+  write(homes.gemini, 'policies/archive/old.toml', '[[rule]]\ndecision = "deny"\n');
+  // The installed extension copy the exclusion declines, whole: its manifest
+  // and the command it bundles (specs/002-gemini-cli-support FR-016).
+  write(
+    homes.gemini,
+    'extensions/security-tools/gemini-extension.json',
+    `${JSON.stringify({ name: 'security-tools', version: '1.0.0' }, null, 2)}\n`,
+  );
+  write(homes.gemini, 'extensions/security-tools/commands/scan.toml', 'prompt = "Scan."\n');
+  // Runtime state and credentials beside the customizations (FR-018).
+  write(homes.gemini, 'trustedFolders.json', '{"/home/reader/app":"TRUST_FOLDER"}\n');
+  write(homes.gemini, '.env', `GEMINI_API_KEY=${GLOBAL_HOME_SECRETS.gemini}\n`);
+  write(homes.gemini, 'oauth_creds.json', `{"access_token":"${GLOBAL_HOME_SECRETS.gemini}"}\n`);
+  write(homes.gemini, 'google_accounts.json', '{"active":"reader@example.com"}\n');
+  write(homes.gemini, 'tmp/session.json', '{"kind":"session"}\n');
+  write(homes.gemini, 'hooks/audit.sh', INERT_EXECUTABLE_PAYLOAD);
+  chmodSync(join(homes.gemini, 'hooks/audit.sh'), 0o755);
+
   const expectedCandidatePaths: Record<GlobalMember, string[]> = {
     copilot: [
       'agents/security-auditor.agent.md',
@@ -703,6 +854,15 @@ export function buildGlobalHomeFixture(
       'hooks.json',
       'prompts/draftpr.md',
       'rules/safety.rules',
+    ],
+    gemini: [
+      'GEMINI.md',
+      'agents/reviewer.md',
+      'commands/git/commit.toml',
+      'commands/refactor.toml',
+      'policies/safety.toml',
+      'settings.json',
+      'skills/changelog/SKILL.md',
     ],
     agents: ['plugins/marketplace.json', 'skills/pathfinder/SKILL.md'],
   };
@@ -744,6 +904,19 @@ export function buildGlobalHomeFixture(
       'plugins/team-tools/0.1.0/plugin.json',
       'rules/archive/old.rules',
       'sessions/rollout.jsonl',
+    ],
+    gemini: [
+      '.env',
+      'agents/archive/old.md',
+      'extensions/security-tools/commands/scan.toml',
+      'extensions/security-tools/gemini-extension.json',
+      'google_accounts.json',
+      'hooks/audit.sh',
+      'oauth_creds.json',
+      'policies/archive/old.toml',
+      'skills/README.md',
+      'tmp/session.json',
+      'trustedFolders.json',
     ],
     agents: ['plugins/team-tools/plugin.json', 'skills/README.md'],
   };
@@ -794,6 +967,9 @@ export function buildGlobalHomeFixture(
       [GLOBAL_HOME_VARIABLES.copilot]: homes.copilot,
       [GLOBAL_HOME_VARIABLES.claude]: homes.claude,
       [GLOBAL_HOME_VARIABLES.codex]: homes.codex,
+      // The parent of `.gemini`, not `.gemini`: that is what the vendor
+      // documents the setting as, and the capture joins the suffix.
+      [GLOBAL_HOME_VARIABLES.gemini]: root,
       HOME: root,
       USERPROFILE: root,
     },

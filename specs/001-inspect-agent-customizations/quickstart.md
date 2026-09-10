@@ -136,13 +136,13 @@ only place the bound port is stated. Use `--port 0` for any launch that must not
 port someone is holding for their own use; the suites launch that way for the same reason
 (AGENTS.md § Agent-started process policy).
 
-`--inspect-personal-setup` also inspects the documented customization files in the four
+`--inspect-personal-setup` also inspects the documented customization files in the five
 member roots — the tools' own configuration directories and the shared agent home — the
 same read the consent page's checkbox authorizes, stated in the command instead. The flag
 _is_ the confirmation: the CLI constructs the preview from the immutable Global root inputs
 captured once at startup, confirms it, and waits for the batch to settle, so the printed URL
 appears with whatever that confirmation produced already committed. Where at least one root
-was admitted, that is the Global generation and its Sources on the inventory; where all four
+was admitted, that is the Global generation and its Sources on the inventory; where all five
 were rejected, the settled disposition is `active-no-job` and no Source or generation exists
 — only the control state each member's own `failureCode` explains. Neither the flag nor a preview
 request recaptures the environment properties or home directory. What each tool ended as,
@@ -714,7 +714,7 @@ Verify:
 
 ### 4. Opt in to Global inspection
 
-The whole opt-in ships: the preview, the fixed-four confirmation, per-member rescan,
+The whole opt-in ships: the preview, the fixed-five confirmation, per-member rescan,
 same-preview retry, and the priority disable barrier that removes every Global result
 again.
 
@@ -739,10 +739,11 @@ real home directory. Verify:
    own `PATH` and configured editor and whose resolution the operating system may route
    through a proposed root; it enumerates, reads, and publishes nothing from one, and offers
    no launcher inside one. Instrumented startup capture proves each
-   of `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` is captured exactly once in that
+   of `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `GEMINI_CLI_HOME` is captured exactly once in that
    order; only `undefined` is absent; and `node:os.homedir()` is called exactly once
    unconditionally — the shared agent home always derives from it. Active-platform
-   `node:path.join` applies only the fixed corresponding suffix. The same retained capture
+   `node:path.join` applies only the fixed corresponding suffix — onto a present eligible
+   `GEMINI_CLI_HOME` as well, which names the parent of the `.gemini` directory. The same retained capture
    supplies launcher exclusions and every preview, while neither a preview request nor
    `--inspect-personal-setup` rereads process inputs. No direct `HOME`/`USERPROFILE`
    selection or existence check occurs. A capture, classification, or display-escape throw
@@ -761,9 +762,12 @@ real home directory. Verify:
    fail after a complete preview becomes current; that is an ordinary request error and the
    newly created preview may remain retained. Neither failure grants authority, creates a
    job, or issues a `scanRequestId`.
-3. After opt-in, only the documented member candidates appear under zero to four
+3. After opt-in, only the documented member candidates appear under zero to five
    separately identified member Global Sources—at most one each for Copilot, Claude,
-   Codex, and the shared agent home—and every Source has exactly one root. Every admitted Source from the
+   Codex, Gemini CLI, and the shared agent home—and every Source has exactly one root. The
+   Gemini CLI home publishes its `GEMINI.md`, its `settings.json` under the settings, MCP,
+   and hook rows, its `commands/**/*.toml`, `skills/*/SKILL.md`, `agents/*.md`, and
+   `policies/*.toml`, and nothing beside them (specs/002-gemini-cli-support/spec.md FR-010). Every admitted Source from the
    initial/retry transaction appears together in one atomic Global generation — the enable
    commit creates the Global sequence at generation 1 without touching Repository views or
    state — with no observable
@@ -779,7 +783,7 @@ real home directory. Verify:
    tools from committing. An eligible
    absolute root remains eligible even when it is outside the ordinary home; its location
    alone does not reject it or grant pre-consent I/O.
-   An all-invalid preview, or an eligible preview whose four roots are all found absent
+   An all-invalid preview, or an eligible preview whose five roots are all found absent
    after consent, may still receive the one all-tools confirmation and
    deterministically becomes `active-no-job`.
 5. An unexpected injected admission failure aborts the whole transaction;
@@ -795,9 +799,9 @@ real home directory. Verify:
    never rereads the environment or reverse-converts `displayRoot`. Escape-collision, control-character, and backslash fixtures
    prove that the record preserves the separate fields and admission uses the stored raw value.
    A preview mixing eligible and invalid entries has no request-side tool
-   selector: initial enable derives fixed `confirmedTools: [copilot, claude, codex, agents]`,
-   evaluates all four, and returns disjoint `acceptedTools`/`rejectedTools` whose union is
-   all four. A `tools` key or other selector-shaped input is rejected. Retry derives the
+   selector: initial enable derives fixed `confirmedTools: [copilot, claude, codex, gemini, agents]`,
+   evaluates all five, and returns disjoint `acceptedTools`/`rejectedTools` whose union is
+   all five. A `tools` key or other selector-shaped input is rejected. Retry derives the
    complete fixed-order `retryableTools` projection—non-pending unpublished `admitted`
    controls plus `same-preview` rejected controls—and excludes published, pending, and lexical
    `new-preview-required` controls; the client cannot add, narrow, or reorder it. Reusing exact
@@ -875,9 +879,9 @@ real home directory. Verify:
    disabled with the fixed `global-enable-in-progress` conflict until all pending work finishes. It then uses
    the exact nonempty `retryableTools` projection and preserves successful Sources. Lexical
    `new-preview-required` controls require disable/new preview. Disable remains immediate.
-10. On initial activation, when all four members are deterministically rejected by lexical or
+10. On initial activation, when all five members are deterministically rejected by lexical or
     post-consent root validation, enable returns `active-no-job` with empty
-    `acceptedTools`, all four `rejectedTools`, and no Source/job/generation/stale entry.
+    `acceptedTools`, all five `rejectedTools`, and no Source/job/generation/stale entry.
     `globalControl` remains active with only the same-preview rejected controls retryable;
     lexical `new-preview-required` controls are excluded, so an all-lexically-invalid preview
     has empty `retryableTools` and requires disable/new preview. The preview route returns the
@@ -914,7 +918,7 @@ under `tests/usability/sc001-sc006-study-inputs/`.
 
 Prepare each session its own folder before the run: the packed release candidate installed
 where `npx --no-install` resolves it from that folder, the all-kind fixture built in place as
-that folder's `repository/` by `tests/fixtures/repositories/build-fixtures.ts`, and four
+that folder's `repository/` by `tests/fixtures/repositories/build-fixtures.ts`, and five
 personal-setup homes under a `HOME` of its own from
 `tests/fixtures/global-homes/build-fixtures.ts`. One shared host serves no run: twenty
 sessions are twenty launches and twenty consent states. Record every session in

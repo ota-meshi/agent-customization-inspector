@@ -632,7 +632,12 @@ useReportedPageSubject(titleSubject);
                use — sized to the block, because a frontmatter is short
                (SourceViewer § fitContent). YAML because the block is YAML:
                nothing here is markup, a link, or a resolved reference
-               (FR-025, FR-026, FR-033). -->
+               (FR-025, FR-026, FR-033). "Frontmatter" because every
+               instruction file this product reads is Markdown, so the word
+               names what the reader sees on screen; a kind whose keys can
+               arrive in another syntax says "Metadata" instead (the agent and
+               prompt details), and this label changes with it the day an
+               instruction file does. -->
           <SourceViewer
             v-else
             panel-label="Frontmatter"

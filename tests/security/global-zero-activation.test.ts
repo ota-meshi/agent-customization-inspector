@@ -1,4 +1,4 @@
-// T996: the fixed-four Global enable activates nothing (FR-013 through
+// T996: the fixed-five Global enable activates nothing (FR-013 through
 // FR-019, FR-022, FR-023, QR-002, QR-003). Consent admission probes roots,
 // the one batch scan reads the contracted member files, and the committed
 // generation serves what was read; none of them may execute, connect,
@@ -42,6 +42,10 @@ import {
   COPILOT_AGENTS_HOME_RULES,
   COPILOT_GLOBAL_RULES,
 } from '../../src/server/inspection/rules/copilot';
+import {
+  GEMINI_AGENTS_HOME_RULES,
+  GEMINI_GLOBAL_RULES,
+} from '../../src/server/inspection/rules/gemini';
 import { runSourceScan } from '../../src/server/inspection/scan';
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
 import {
@@ -202,22 +206,23 @@ describe('the enable-reachable module graph has no activation capability (T996)'
 });
 
 /** The fixed member order the batch settles in (FR-045). */
-const MEMBERS = ['copilot', 'claude', 'codex', 'agents'] as const;
+const MEMBERS = ['copilot', 'claude', 'codex', 'gemini', 'agents'] as const;
 
 /** The shipped per-member rule catalogs, exactly as the CLI composes them. */
 const CATALOGS = {
   copilot: COPILOT_GLOBAL_RULES,
   claude: CLAUDE_GLOBAL_RULES,
   codex: CODEX_GLOBAL_RULES,
-  agents: [...CODEX_AGENTS_HOME_RULES, ...COPILOT_AGENTS_HOME_RULES],
+  gemini: GEMINI_GLOBAL_RULES,
+  agents: [...CODEX_AGENTS_HOME_RULES, ...COPILOT_AGENTS_HOME_RULES, ...GEMINI_AGENTS_HOME_RULES],
 } as const;
 
 /**
- * Admits all four fixture homes, runs the one batch over them with the
+ * Admits all five fixture homes, runs the one batch over them with the
  * shipped catalogs, and commits the Global generation — the whole enable
  * path the CLI drives, minus the host neither half needs.
  */
-async function runFixedFourEnable(homes: Record<(typeof MEMBERS)[number], string>): Promise<{
+async function runFixedFiveEnable(homes: Record<(typeof MEMBERS)[number], string>): Promise<{
   readonly session: InspectionSession;
 }> {
   const session = new InspectionSession({
@@ -286,7 +291,7 @@ async function runFixedFourEnable(homes: Record<(typeof MEMBERS)[number], string
   return { session };
 }
 
-describe('the fixed-four enable issues no product request and mutates nothing (T996)', () => {
+describe('the fixed-five enable issues no product request and mutates nothing (T996)', () => {
   it('issues no socket, name resolution, subprocess, or browser launch across the whole batch', async () => {
     // The import graph proves the capability is absent from the modules; this
     // proves the running enable issues none of it. Sockets, DNS, SMB/UNC,
@@ -329,7 +334,7 @@ describe('the fixed-four enable issues no product request and mutates nothing (T
       return { host, name, original } as const;
     });
     try {
-      const { session } = await runFixedFourEnable(fixture.homes);
+      const { session } = await runFixedFiveEnable(fixture.homes);
       expect(session.snapshot().sources.filter((source) => source.kind === 'global')).toHaveLength(
         MEMBERS.length,
       );
@@ -344,13 +349,13 @@ describe('the fixed-four enable issues no product request and mutates nothing (T
     expect(observed).toEqual([]);
   });
 
-  it('leaves every byte, mode, time, and link of all four homes unchanged', async () => {
+  it('leaves every byte, mode, time, and link of all five homes unchanged', async () => {
     const fixture = buildGlobalHomeFixture('aci-zero-activation-tree');
     cleanups.push(() => rmSync(fixture.base, { recursive: true, force: true }));
     const before = snapshotTreeState(fixture.base);
     vi.clearAllMocks();
 
-    await runFixedFourEnable(fixture.homes);
+    await runFixedFiveEnable(fixture.homes);
 
     const after = snapshotTreeState(fixture.base);
     // Content, length, identity, link state, mode, and both file times are
@@ -368,11 +373,18 @@ describe('the fixed-four enable issues no product request and mutates nothing (T
     // read, never run, and never resolved (FR-019, FR-020, FR-026).
     const fixture = buildGlobalHomeFixture('aci-zero-activation-detail');
     cleanups.push(() => rmSync(fixture.base, { recursive: true, force: true }));
-    const { session } = await runFixedFourEnable(fixture.homes);
+    const { session } = await runFixedFiveEnable(fixture.homes);
 
+    // The Gemini CLI home's settings carry a hook `command`, a stdio server
+    // and an HTTP `mcpServers` declaration, and its namespaced command embeds
+    // a `!{...}` shell block: each is text the detail serves byte-exact and
+    // nothing runs, connects to, or resolves (specs/002-gemini-cli-support
+    // T022).
     for (const [selector, home, path] of [
       ['global-claude', fixture.homes.claude, 'settings.json'],
       ['global-codex', fixture.homes.codex, 'config.toml'],
+      ['global-gemini', fixture.homes.gemini, 'settings.json'],
+      ['global-gemini', fixture.homes.gemini, 'commands/git/commit.toml'],
     ] as const) {
       const detail = session.fileDetail(path, selector);
       if (detail === null || !('sourceText' in detail.file)) {

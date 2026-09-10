@@ -18,6 +18,10 @@
 
 ## Clarifications
 
+### Session 2026-09-10
+
+- Q: custom-commands のページは subdirectory を namespace として名指しし、入れ子の例を1つ挙げる。`.gemini/commands/x/y/z.toml` の command は対象になるか、その名前は loader が綴るとおりに綴られるか？ → A: どちらも yes。ページは規則を一般則として述べ — commands ディレクトリに対する相対パス、subdirectory は namespace、区切りは `:` — 深さの上限を置かない。vendor の loader (`packages/cli/src/services/FileCommandLoader.ts`、2026-09-10 に計測) は `**/*.toml` を列挙するので、`x/y/z.toml` は `/x:y:z` であり、admit する rule は再帰 step を保つ。loader はさらに各セグメントの `[A-Za-z0-9_.-]` 以外の文字を `_` に置き換え、50文字を超えるセグメントを47文字と `...` に切り詰めるが、どのページも述べていない。行はこれにも合わせる。`my command` と名付けた行は、プロダクトが `/my_command` として呼び出す command を報告することになるからである。2つの command behavior は `partially-documented` とし、計測は文書化へ昇格させず vendor contract に記録する。
+
 ### Session 2026-09-09
 
 - Q: 機能説明は認識すべき surface の中に「extensions」を挙げている。Gemini CLI が extension を文書化しているのは、home の `extensions/` ディレクトリ配下のインストール済みコピーとしてと、開発のためにそこへリンクされるローカルディレクトリとしてだけである。どの読みが scope 内か: 全面的に除外する、リポジトリ自身のルートの `gemini-extension.json` を plugin 行として認識する、インストール済みコピーも調査する。 → A: 全面的に除外する。インストール済み extension のコピーは、親仕様の FR-018 が他のすべての vendor について既に除外しているもの — ユーザーが書いたカスタマイズではなく、配布元から再現されるコピー — であり、同じ理由がここでも成り立つ。extension そのものであるリポジトリも認識しないので、plugin kind のルール、manifest reader、plugin-root census はこの機能の一部ではない。除外はその理由と共に vendor contract に記録する。
@@ -182,6 +186,9 @@ state、インストール済み extension のコピーが決して読まれな�
   からである。
 - 他の4メンバーが存在する一方で Gemini CLI home が存在しない: メンバーは absent として記録され、
   他は commit する。今日 Codex home の欠如が扱われるとおりに。
+- Gemini CLI home が symbolic link である、または `GEMINI_CLI_HOME` がディレクトリでなくファイルを
+  指す: link は他のすべてのパスと同様に対象を通じて読まれ (親 FR-024)、読める directory でない
+  root は fallback なしにそのメンバーの失敗した admission として記録される (親 FR-014)。
 - `.gemini/skills/` 配下の skill がディレクトリと異なる `name` を宣言する: すべてのプロダクトの
   root skill 行と同様に、行は宣言された名前で名付けられる。
 
@@ -197,9 +204,11 @@ state、インストール済み extension のコピーが決して読まれな�
   ために書かれた親仕様の記述は、ツールを追加する変更の中で両言語とも4ツールと5メンバーに
   改訂されなければならない (MUST): その FR-004 のツール一覧、Supported Initial Release
   Customization Files の表、FR-013・FR-014・FR-018 のメンバー数と capture 順、User Story 4、
-  Inspection Session と Source の entity、Global scope についての Assumptions。Gemini CLI の
-  mark は他の3つが従う vendor-mark のルールに従わなければならない (MUST): vendor 自身の彩度を
-  落とした色の単色 glyph で、accessible name としてプロダクト名を持つ。
+  Inspection Session と Source の entity、Global scope についての Assumptions — さらに、メンバー数や
+  capture 順を述べる箇所すべてについて、親 data model の root capture と consent preview の entity、
+  および session API contract の consent preview。Gemini CLI の mark は他の3つが従う vendor-mark の
+  ルールに従わなければならない (MUST): vendor 自身の彩度を落とした色の単色 glyph で、accessible
+  name としてプロダクト名を持ち、色だけに何も依存しない (WCAG 1.4.1)。
 - **FR-002**: Repository inspection path allowlist は、Gemini CLI について、選択された
   Repository root の下の正確に次の場所だけを admit しなければならない (MUST): instructions
   として、任意のディレクトリの context file。これは1本の派生ルールを通じ、その filename は
@@ -244,15 +253,20 @@ state、インストール済み extension のコピーが決して読まれな�
   behavior に記録されなければならず (MUST)、allowlist を選択された root の外へ広げてはならない
   (MUST NOT)。
 - **FR-006**: Gemini CLI custom command 行は vendor が呼び出すとおりに名付けられなければ
-  ならない (MUST): `commands/` ディレクトリに対するファイルの相対パスで、`/` を `:` に置き換え
-  `.toml` 拡張子を除いたもの。したがって `.gemini/commands/git/commit.toml` は `git:commit`
-  である。行の detail は `!{...}` shell block と `{{args}}` placeholder を含め TOML ソースを
+  ならない (MUST): `commands/` ディレクトリに対するファイルの相対パス（深さは任意）で、`.toml`
+  拡張子を除き、各セグメントの `[A-Za-z0-9_.-]` 以外の文字を `_` に置き換え、50文字を超える
+  セグメントを先頭47文字と `...` に切り詰め、セグメントを `:` で結んだもの。したがって
+  `.gemini/commands/git/commit.toml` は `git:commit`、`.gemini/commands/review/security/deps.toml` は
+  `review:security:deps`、`.gemini/commands/my command.toml` は `my_command` である。深さは文書化
+  された規則であり、sanitization と切り詰めは vendor の loader のもので、source の計測として
+  記録する (§ Clarifications Session 2026-09-10)。行の detail は `!{...}` shell block と `{{args}}` placeholder を含め TOML ソースを
   書かれたとおりに示さなければならず (MUST)、どれも評価されない。TOML parser が読めない、または `prompt` を宣言しない command ファイルは、
   そのパスが名指しする行を保ち、file-confined な parse diagnostic を持つ。path で名付ける
   すべてのプロダクトの command と同様である。
 - **FR-007**: Gemini CLI skill 行は skill の書かれた frontmatter `name` で名付けられなければ
   ならず (MUST)、名前が absent か空のときは skill ディレクトリに fallback する。すべての
-  プロダクトの root skill 行と同様である。文書化された同名の解決 — user skill より workspace
+  プロダクトの root skill 行と同様である。名前はディレクトリと一致すべきという vendor の指針を
+  inspector は検査しない (親仕様 FR-012)。文書化された同名の解決 — user skill より workspace
   skill、そして1つの tier の中では `.gemini/skills/` のコピーより `.agents/skills/` のコピー
   — は、行の同名 statement がそこから導出される runtime-composition strategy として記録され
   なければならず (MUST)、vendor が文書化していることとして述べられ、セッションがどのファイルを
@@ -417,13 +431,15 @@ state、インストール済み extension のコピーが決して読まれな�
   それらへの read request はゼロ発行される。
 - **SC-003**: `GEMINI_CLI_HOME` が absent・eligible・present-empty・relative で開始された
   セッションにわたって、consent preview の 100% が5メンバーを挙げ、Gemini CLI entry の root と
-  分類はすべての場合でその入力に対する閉じた outcome に一致する。
+  分類はすべての場合で、親仕様の Closed Global Root Admission Outcomes 表と FR-011 がその入力に
+  ついて固定する閉じた outcome に一致する (data-model.md § GlobalRootInputCapture)。
 - **SC-004**: Gemini CLI の hook command、shell-block custom command、MCP 宣言を持つ fixture に
   わたって、調査は command 実行、child process、MCP 接続、outbound request、調査対象ソースの
   変更をゼロ引き起こす。
 - **SC-005**: `docs/which-files-are-listed.md` の両言語が、出荷される Gemini CLI の rule が
-  admit するすべてのリテラルなパス segment を、既存の containment gate が測るとおりに名指しし、
-  readme・legend・filter・consent surface はそれぞれ両言語で4ツールを名指しする。
+  admit するすべてのリテラルなパス segment を、既存の containment gate が測るとおりに名指しし — その gate は派生ルールについて両ページが
+  `GEMINI.md` と `context.fileName` に言及することを要求するよう広げる — readme・legend・filter・
+  consent surface はそれぞれ両言語で4ツールを名指しする。
 - **SC-006**: official-source check は、Gemini CLI record の 100% について、引用されたすべての
   Gemini CLI URL が公式 host で直接応答し、引用されたすべての section が解決すると報告する。
 

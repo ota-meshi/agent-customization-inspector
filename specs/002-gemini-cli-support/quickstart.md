@@ -66,7 +66,7 @@ GEMINI_CLI_HOME=/path/to/fixture-home node dist/cli.mjs --no-open --port 0
 
 Open the consent page. Expected: five proposed directories, the fourth being
 `/path/to/fixture-home/.gemini` — the join the reference documents — and, after confirming,
-a `Gemini CLI home` Source publishing exactly `GEMINI.md`, `settings.json`,
+a `Gemini home` Source publishing exactly `GEMINI.md`, `settings.json`,
 `skills/*/SKILL.md`, `agents/*.md`, `commands/**/*.toml`, and `policies/*.toml`. A
 `GEMINI_CLI_HOME=` (empty) launch shows that entry as present-empty with no root.
 

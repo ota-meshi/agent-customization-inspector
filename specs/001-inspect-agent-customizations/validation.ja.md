@@ -25,7 +25,15 @@
 
 **変更。** commandは何も変更しない。報告するだけで、その後をreviewerが決める。
 
-**Network実行。** 2026-09-04、52 record全件に対して実行した。初回のrunは18 sectionをmissingと報告した。
+**Network実行。** 2026-09-10、65 record全件 — 13件の`google.gemini-cli.*` recordを含む — に対して実行した
+（specs/002-gemini-cli-support T066）。Googleのrecordはすべて解決した。各URLは`geminicli.com`上で直接`200`を
+返し、引用した全sectionが配信されたheadingとして解決した。Runはreviewerが解決すべきdriftを1 record報告したが、
+この機能の外である。`anthropic.claude-code.skills.locations-discovery`（`https://code.claude.com/docs/en/skills`）
+で、引用した`Where skills live`と`Discovery from parent and nested directories`がheadingとしてもtable of
+contentsのfragmentとしても配信されていなかった。消えたheadingが何を意味するかはlookupではなくreadingなので、
+そのrecordはそのまま残し、それを所有するreviewのためにここに記録する。
+
+2026-09-04、52 record全件に対して実行した。初回のrunは18 sectionをmissingと報告した。
 うち17件はcode.claude.comのページで、各headingが自身のanchor linkの内側にzero-width spaceを含んで
 配信されており、checkerのtext正規化がそれを残していた。現在はformat characterを落とすので、これらの
 sectionは配信されたheadingとして解決する。残る1件は`vscode.copilot.instructions`で、heading
@@ -92,6 +100,19 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 破壊的なpublic-contract変更も提案していない。このreviewによってtask setはsupersededにならない。
 
 ## Release gateの実行
+
+**Gemini CLIの変更は2026-09-10にgateを実行した**（specs/002-gemini-cli-support T064、T065）。
+`pnpm run test:docs` 42件、`pnpm run test:unit` 1275件、`pnpm run test:contract` 411件、
+`pnpm run test:integration` 282件、`pnpm run test:security` 5件、`pnpm run test:package` 53件がこのhost上で
+すべて通り、`pnpm run format`、`pnpm run lint`、型検査はcleanである。Browser側は、変更が届くspec — 13件の
+Gemini CLI specと、Outcome manifestによる基準の節で名指した既存spec — をChromium projectで実行したもので、
+suite全体ではない。これはagent実行のverification policyが求める形である（AGENTS.md § Agent-run Playwright
+verification policy）。3 browserのsuiteはこのcommitに対するCIのrunが実行する。READMEの2枚のscreenshotは、このtreeに
+対してcommit済みの対と同じ寸法 — CSS 1280×800、device scale factor 2 — で撮り直した。all-kind fixtureのSkill tab
+（凡例は4製品、`.agents/skills/`の行は3つのmarkを持つ）と、行自身のCompare linkが開く`changelog`比較 —
+`.agents/skills/`と`.gemini/skills/`のcopy、fixtureを起動してCompareを押した読者が着く対 — （認識表にGemini CLIの行が
+ある）である。一覧側のalt textは両READMEとも、共有名がまたぐfile数を数えるのをやめた。説明している行が今は3 fileに
+またがり、alt textの中の数はfixtureが変わるたびに偽になるからである。比較側のalt textは今の画像を説明している。
 
 **CLIのaccepted batch failureは伝播するようになった。**
 `tests/integration/cli-global-batch-failure.test.ts`が失敗していたのはこの点である。
@@ -516,8 +537,27 @@ pageを6つと数えないようにした。
 
 ## Outcome manifestによる基準
 
-凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 3**、canonical SHA-256
-`1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
+凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 4**、canonical SHA-256
+`d13165d21b28e15b4cfb266e0b3260508fd355c78775c50f5092756a2776d137`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 4は
+Gemini CLIのdenominatorである（specs/002-gemini-cli-support）。SC-003とSC-005それぞれに8つの
+`(Gemini CLI, kind)` row — instructions、settings/config、MCP、hook、prompt/command、skill、agent、
+permissions — 、rootの`GEMINI.md`をGitHub CopilotとGemini CLIに帰属させる
+`sc003.shared-file.repository-root-gemini-md`、`sc003.global-source-form.gemini`、`sc004.tool.gemini`を
+加え、`.agents/skills/`の2つの帰属caseはGemini CLIを3つ目の認識toolとして名指す。新しい`(tool, kind)` rowは
+denominatorの変更であり、fixture-byteの変更として3に留めるのではなくversionを進める理由である。この
+transitionはこのsession、すなわちagent駆動のreviewがreviewした（AGENTS.md § Evidence before conclusions）。
+比較したのは出荷済みregistryの`(tool, kind)` rowとcase IDで、`tests/contract/outcome-fixture-manifest.test.ts`が
+それをgateする。118 caseは2026-09-10にこのhost上で実行した。Gemini CLIのcaseは、それらが名指す13の新spec —
+`gemini-*-inventory`、`gemini-*-detail`、`gemini-skills-list`、`gemini-context-filename`、
+`gemini-same-name-skill`、`global-gemini-admission` — と、3つ目の認識がfixtureを変えた既存spec
+（`codex-skills-detail`、`copilot-instructions-inventory`、`copilot-skills-detail`、`copilot-skills-list`、
+`discovery`、`instructions-inventory`、`skills-comparison`、`skills-inventory`、`inventory-rows`、および
+`global-*`のadmission/consent spec）をChromium projectで実行し、vitestのcaseはRelease gateの実行に記録した
+gate script経由で実行した。Gemini CLIの変更が届かないbrowser specはこのsetのために再実行していない。
+contract suiteは同じrunでcanonical digestと79件のfixture digestすべてを再現した。
+
+その前のsetは`tests/fixtures/outcomes/manifest.json`の**version 3**、canonical SHA-256
+`1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`であった。その99
 caseは、2026-09-09に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
 suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由（405件、271件、5件pass）、
 browser specはmanifestが名指す65 specをChromium projectで実行した351件経由であり、このhost上の
@@ -754,6 +794,13 @@ jobは3つのoperating systemと2つの固定Node.js versionを要するが、�
 host 1台である。Certificationの結果はmatrix上のCI runが生むものであり、記録されているものはない。
 
 ## SC-001とSC-006のfirst-use session
+
+**Gemini CLIの変更に対してrunは要らなかった。** specs/002-gemini-cli-support/spec.md § Clarificationsは、
+20 sessionの評価を繰り返すのは指定したSC-006 fileのground truthが変わる場合だけと定めている。指定fileは
+prepared repositoryの`AGENTS.md`であり、`ground-truth.json`にあるそのground truth — Repository、GitHub Copilot
+とOpenAI Codexが認識、instruction file — は変わっていない。そのrepositoryは`context.fileName`を設定しておらず、
+Gemini CLIのdefault context fileは`GEMINI.md`だからである。Studyのguidanceはpageが列挙する製品にGemini CLIを
+加え、prepared stateとrubricは触れていない。
 
 **2026-09-05に、release candidateに対して、runnerが時計を持って実施した20件のagent駆動session。**
 buildはそのrun時点のtreeの`npm pack`である。後の編集はそこへ及ばず、下のdigestがsessionが実際に走らせたartifactを指す。tarballのSHA-256は

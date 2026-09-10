@@ -267,10 +267,12 @@ export class InstructionRecognitionComparison {
  * variant its fixed order reaches — the skill variant for a file both kinds
  * recognize — so a surface that required its own kind would report a parsed
  * file as unparsed (session.ts § fileDetail). What this page renders is the
- * document, and every parse-carrying variant holds it the same way. The two
- * excluded variants are the ones that carry no Markdown parse at all: a rule
- * file is published whole, a custom agent publishes its declarations without a
- * body, and an unrecognized file has nothing read out of it.
+ * document, and every parse-carrying variant holds it the same way — the
+ * command variant under its own two names, which are mapped back onto the
+ * block and the body they came from (api-types.ts § PromptPresentationDto).
+ * The excluded variants are the ones that carry no Markdown parse at all: a
+ * rule file is published whole, a custom agent publishes its declarations
+ * without a body, and an unrecognized file has nothing read out of it.
  */
 function presentationOf(side: InstructionComparisonSideInput): MarkdownPresentationDto | null {
   const detail = side.detail;
@@ -281,6 +283,11 @@ function presentationOf(side: InstructionComparisonSideInput): MarkdownPresentat
     detail.kind === 'file'
   ) {
     return null;
+  }
+  if (detail.kind === 'prompt/command') {
+    return detail.presentation === null
+      ? null
+      : { frontmatter: detail.presentation.metadata, bodyText: detail.presentation.promptText };
   }
   return detail.presentation;
 }

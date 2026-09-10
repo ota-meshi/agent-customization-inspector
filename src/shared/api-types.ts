@@ -1117,16 +1117,46 @@ export interface AgentFileDetailDto extends FileDetailBase {
 }
 
 /**
+ * What one prompt or command file declares, split the way its detail shows it
+ * (contracts/http-api.md § get-file-detail): the metadata a product reads as
+ * configuration, and the prompt it sends.
+ *
+ * Its own shape rather than {@link MarkdownPresentationDto}, for the reason
+ * {@link AgentPresentationDto} has one: the split is not always a frontmatter
+ * block. A Claude Code, Copilot, or Codex command is Markdown split at the
+ * frontmatter fence, while a Gemini CLI command is TOML whose `prompt` string
+ * is the prompt and whose remaining top-level keys are the metadata. Naming
+ * the halves after what they are lets every vendor spell the same two fields,
+ * and lets one detail surface render them the same way — the metadata as
+ * YAML, the prompt as Markdown.
+ */
+export interface PromptPresentationDto {
+  /**
+   * Every declaration the file makes except the one holding the prompt, in
+   * the file's own order — a VS Code prompt file's `name` among them, because
+   * the name is a declaration like any other on this surface and the row it
+   * heads is the inventory's fact (FR-007). Empty when the file declares
+   * nothing else.
+   */
+  readonly metadata: readonly DeclaredEntryDto[];
+  /**
+   * The prompt the file gives the reader's agent, as the parser resolved it:
+   * a Markdown file's body once its frontmatter block is removed, a Gemini
+   * CLI command's `prompt` string. Empty when the file declares none.
+   */
+  readonly promptText: string;
+}
+
+/**
  * Detail of a recognized command file: the file plus what the one scan-time
- * parse resolved (contracts/http-api.md § get-file-detail). A command file
- * carries a skill's frontmatter keys, so its detail leads with the
- * declarations the file wrote and the instructions that follow them, from the
- * same one parse the other Markdown kinds publish.
+ * parse resolved (contracts/http-api.md § get-file-detail). Its detail leads
+ * with the metadata the file wrote and the prompt that follows it, split as
+ * the admitting vendor's format splits them ({@link PromptPresentationDto}).
  *
  * No per-tool identity exists here, and no invocation name: which tools
  * recognize the file is the inventory's fact, and so is the name a reader
  * would type — the rule that admitted the file answers it, and a prompt file's
- * own `name` declaration arrives here as a frontmatter entry like every other
+ * own `name` declaration arrives here as a metadata entry like every other
  * key it wrote. The detail page states the name by reading the rows this file
  * is listed under, so the one fact is published once.
  */
@@ -1134,12 +1164,12 @@ export interface PromptFileDetailDto extends FileDetailBase {
   /** Discriminant: the file is a recognized command file. */
   readonly kind: 'prompt/command';
   /**
-   * The parsed declarations and instructions, or null exactly when extraction
-   * failed all-or-nothing (FR-028), the same rule the instructions variant
-   * states: nothing was parsed, the failure's Diagnostic is in `diagnostics`,
-   * and the complete source stays readable.
+   * The parsed metadata and prompt, or null exactly when extraction failed
+   * all-or-nothing (FR-028), the same rule the agent variant states: nothing
+   * was parsed, the failure's Diagnostic is in `diagnostics`, and the complete
+   * source stays readable.
    */
-  readonly presentation: MarkdownPresentationDto | null;
+  readonly presentation: PromptPresentationDto | null;
 }
 
 /**

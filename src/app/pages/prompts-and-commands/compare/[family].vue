@@ -878,7 +878,7 @@ onBeforeUnmount(() => {
             <!-- What the diff holds, said before it, as each block above says
                  what its own two sides are: this one is the files themselves,
                  with nothing removed or reordered (FR-027). -->
-            <p class="aci-note">Each side is the file exactly as written, frontmatter included.</p>
+            <p class="aci-note">Each side is the file exactly as written, metadata included.</p>
             <SourceDiff
               v-bind="readyView.diff"
               :register-content-owner="registerComparisonContentOwner"

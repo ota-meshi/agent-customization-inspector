@@ -46,7 +46,7 @@ tuple `[copilot, claude, codex, gemini, agents]` になる。親モデルが「�
 | `Inspection Session` | member Global Source | 0から5 |
 | `LifecycleOwnerKey` | `global:${GlobalMemberId}` | 導出。その rank は ladder ではなく `GLOBAL_MEMBER_ORDER` から読む |
 
-`GLOBAL_MEMBER_TEXT` は `gemini: 'Gemini CLI home'` を得る。`SOURCE_SELECTOR_TEXT` は
+`GLOBAL_MEMBER_TEXT` は `gemini: 'Gemini home'` を得る — member の表は `Copilot home`・`Codex home` と同じくベンダー名と接尾辞を落とし、tool の表は `Gemini CLI` のままである。`SOURCE_SELECTOR_TEXT` は
 `'global-gemini'` を得る。
 
 ## GlobalRootInputCapture
@@ -78,8 +78,8 @@ vendor contract の行ごとに1 record。ID は `identifier-types.ts` の閉じ
 
 | Union | Members |
 |---|---|
-| `GeminiBehaviorId` | `gemini.behavior.repo.context`、`.repo.settings`、`.repo.mcp`、`.repo.hooks`、`.repo.commands`、`.repo.skills`、`.repo.agents`、`.repo.policies`、`.repo.trust`、`.repo.ignore`、`.repo.env`、`gemini.behavior.user.home`、`.user.context`、`.user.settings`、`.user.commands`、`.user.skills`、`.user.agents`、`.user.policies`、`.user.extensions`、`.user.trust-record`、`.user.env`、`gemini.behavior.system.settings` |
-| `GeminiRuleId` | `gemini.derived.context-filename`、`gemini.repo.settings`、`.repo.mcp`、`.repo.hooks`、`.repo.command`、`.repo.skill`、`.repo.agent`、`gemini.global.instructions`、`.global.settings`、`.global.mcp`、`.global.hooks`、`.global.command`、`.global.skill`、`.global.agent`、`.global.policies`、`.global.agents-home.skill`、`gemini.excluded.repo-non-customizations`、`.excluded.extensions`、`.excluded.user-runtime`、`.excluded.system` |
+| `GeminiBehaviorId` | `gemini.behavior.repo.context`、`.repo.settings`、`.repo.mcp`、`.repo.hooks`、`.repo.commands`、`.repo.skills`、`.repo.agents`、`.repo.policies`、`.repo.trust`、`.repo.ignore`、`.repo.env`、`gemini.behavior.user.home`、`.user.context`、`.user.settings`、`.user.commands`、`.user.skills`、`.user.agents`、`.user.policies`、`.user.extensions`、`.user.trust-record`、`.user.env` |
+| `GeminiRuleId` | `gemini.derived.context-filename`、`gemini.repo.settings`、`.repo.mcp`、`.repo.hooks`、`.repo.command`、`.repo.skill`、`.repo.agent`、`gemini.global.instructions`、`.global.settings`、`.global.mcp`、`.global.hooks`、`.global.command`、`.global.skill`、`.global.agent`、`.global.policies`、`.global.agents-home.skill`、`gemini.excluded.repo-non-customizations`、`.excluded.extensions`、`.excluded.user-runtime` |
 | `GeminiStrategyId` | `gemini.context.layering`、`gemini.settings.precedence`、`gemini.mcp.configuration`、`gemini.hooks.merge`、`gemini.commands.selection`、`gemini.skills.selection`、`gemini.agents.selection`、`gemini.policies.tiers` |
 | `GoogleSourceId` | `google.gemini-cli.configuration`、`.gemini-md`、`.custom-commands`、`.skills`、`.creating-skills`、`.subagents`、`.hooks`、`.hooks-reference`、`.mcp-server`、`.policy-engine`、`.extensions-reference`、`.trusted-folders`、`.gemini-ignore` |
 

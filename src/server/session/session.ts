@@ -1778,8 +1778,8 @@ export class InspectionSession {
           presentation:
             recognition.parseStatus === 'parsed'
               ? {
-                  frontmatter: recognition.details.frontmatter,
-                  bodyText: recognition.details.bodyText,
+                  metadata: recognition.details.metadata,
+                  promptText: recognition.details.promptText,
                 }
               : null,
           diagnostics,

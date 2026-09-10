@@ -81,6 +81,7 @@ test('lists every range with each file’s recognizing products', async ({ page 
     'packages/api/.github/copilot-instructions.md',
     'packages/api/AGENTS.md',
     'packages/api/CLAUDE.md',
+    'packages/api/GEMINI.md',
     '.github/instructions/frontend.instructions.md',
     '.github/instructions/nested/backend.instructions.md',
     'packages/api/.github/instructions/api.instructions.md',
@@ -109,6 +110,13 @@ test('lists every range with each file’s recognizing products', async ({ page 
   // promotes a nested file (Phase 21).
   await expect(entryFor('packages/api/CLAUDE.md')).toContainText('Claude Code');
   await expect(entryFor('packages/api/CLAUDE.md')).not.toContainText('OpenAI Codex');
+  // The root `GEMINI.md` is Copilot's root alternative and Gemini CLI's own
+  // default context file; the nested one is Gemini CLI's alone, because its
+  // context file is read at every depth (specs/002-gemini-cli-support FR-013).
+  await expect(entryFor('GEMINI.md')).toContainText('GitHub Copilot');
+  await expect(entryFor('GEMINI.md')).toContainText('Gemini CLI');
+  await expect(entryFor('packages/api/GEMINI.md')).toContainText('Gemini CLI');
+  await expect(entryFor('packages/api/GEMINI.md')).not.toContainText('GitHub Copilot');
 
   // What no rule admits is simply absent — the excluded Copilot locations,
   // the nested fallback variant, the absent declared name, and the carrier.
@@ -119,7 +127,6 @@ test('lists every range with each file’s recognizing products', async ({ page 
   expect(text).not.toContain('.claude/rules/style.md');
   expect(text).not.toContain('.copilot/instructions/personal.instructions.md');
   expect(text).not.toContain('custom-instructions/team.instructions.md');
-  expect(text).not.toContain('packages/api/GEMINI.md');
 });
 
 test('names no Source and offers no Source filter with one Source carried', async ({ page }) => {

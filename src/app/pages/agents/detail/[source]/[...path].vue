@@ -487,12 +487,21 @@ function presentationOf(detail: FileDetailDto): AgentPresentationDto | null {
   if (detail.kind === 'agent') {
     return detail.presentation;
   }
-  return detail.presentation === null
-    ? null
-    : {
-        metadata: detail.presentation.frontmatter,
-        instructionsText: detail.presentation.bodyText,
-      };
+  if (detail.presentation === null) {
+    return null;
+  }
+  // A command variant carries the same two halves under its own kind's names
+  // (api-types.ts § PromptPresentationDto), so it is read by them.
+  if (detail.kind === 'prompt/command') {
+    return {
+      metadata: detail.presentation.metadata,
+      instructionsText: detail.presentation.promptText,
+    };
+  }
+  return {
+    metadata: detail.presentation.frontmatter,
+    instructionsText: detail.presentation.bodyText,
+  };
 }
 
 /**

@@ -165,7 +165,9 @@ export const LEADING_OUTPUT_STYLE_FRONTMATTER_KEYS: readonly string[] = [
  * One product's table again, and for the same reason: a Claude Code command
  * file and a Copilot CLI command file take their name from the path and have
  * no documented header, so the VS Code prompt file is the one location of this
- * kind whose frontmatter any vendor specifies.
+ * kind whose metadata any vendor specifies as a header; a Gemini CLI command's
+ * TOML declares `description` and `prompt` and no name, so the same leading key
+ * serves it.
  *
  * The list leads with `description` because that table does, not because this
  * product ranks it: a command file's `name` key is read by neither product
@@ -173,7 +175,7 @@ export const LEADING_OUTPUT_STYLE_FRONTMATTER_KEYS: readonly string[] = [
  * this kind does not have. Which name a row is grouped under stays the
  * admitting rule's answer either way (data-model.md § Inventory unit).
  */
-export const LEADING_PROMPT_FRONTMATTER_KEYS: readonly string[] = [
+export const LEADING_PROMPT_METADATA_KEYS: readonly string[] = [
   // What the prompt is for, and what a reader types to reach it: `name` is the
   // name used after `/` in chat, falling back to the file name, and
   // `argument-hint` is the hint shown in the chat input beside it.

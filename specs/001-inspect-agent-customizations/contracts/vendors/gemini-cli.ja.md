@@ -7,15 +7,12 @@
 
 この contract は、文書化された Gemini CLI の lookup behavior と Inspector の read allowlist を
 分離する。共通の matcher grammar と source-boundary のルールは
-[Inspection Path Allowlist Grammar and Index](../../../001-inspect-agent-customizations/contracts/inspection-path-allowlist.ja.md)
+[Inspection Path Allowlist Grammar and Index](../inspection-path-allowlist.ja.md)
 で定義される。composition と precedence は
-[Runtime Composition](../../../001-inspect-agent-customizations/contracts/runtime-composition.ja.md)
+[Runtime Composition](../runtime-composition.ja.md)
 で ID により定義され、evidence record は
-[Official Sources](../../../001-inspect-agent-customizations/contracts/official-sources.ja.md)
-で定義される。このファイルはこの機能の設計入力としてここに書かれ、registry を出荷する変更の
-中で既存の3つの vendor contract の隣、`contracts/vendors/` の下へ移す。相対リンクはこの場所から親仕様の contract を指しており、移動時に移動先に向けて
-書き直す。
-
+[Official Sources](../official-sources.ja.md)
+で定義される。
 `behaviorId` は Gemini CLI を記述する。`ruleId` は Inspector の policy を記述する。vendor の
 locator や behavior record が read authority を与えることは決してない。
 
@@ -28,9 +25,8 @@ Gemini CLI は1つの surface を持つ1つのプロダクトである: 直接�
 いないからである。異なるのは surface ではなく tier である: vendor は system tier（管理者が
 所有するディレクトリ下の settings・defaults・policies）、user tier（home 下の `.gemini`
 ディレクトリ）、project tier（プロジェクトルートの `.gemini` ディレクトリ）、extension tier
-（home の `extensions/` ディレクトリ下のインストール済みコピー）を文書化する。Inspector は
-project tier を Repository Source として、user tier を Gemini CLI Global member として読む。
-system tier と extension tier は記録され、除外される。
+（home の `extensions/` ディレクトリ下のインストール済みコピー）を文書化する。Inspector は project tier を Repository Source として、user tier を Gemini CLI Global member として読む。
+extension tier は記録され除外される。system tier は Source が届かないため、自身の behavior 行なしに除外される。
 
 ## Canonical evidence-assessment index
 
@@ -43,6 +39,8 @@ qualifier は lifecycle の主張をせず、決して `stable` を意味しな�
 | Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
 |---|---|---|---|
 | `gemini.behavior.repo.context` | `partially-documented` | `[]` | 階層のページは workspace ディレクトリ、その親、アクセスされたディレクトリとその祖先の just-in-time scan を名指しするが、親への walk の境界も、ツールがアクセスする前に descendant が読まれるかも述べない |
+| `gemini.behavior.repo.commands` | `partially-documented` | `[]` | ページは命名規則を一般則として述べ、入れ子の例を1つ挙げる。パスが届く深さとセグメントの文字の sanitization は vendor の loader のもので、文書化ではなく計測である (§ Known uncertainties 項目 8) |
+| `gemini.behavior.user.commands` | `partially-documented` | `[]` | project の行と同様: 同じ命名規則で、ページが loader に委ねる同じ2つの事実 |
 | `gemini.behavior.repo.agents` | `documented` | `[experimental]` | ページは project の場所を正確に名指しする。subagent は `experimental` 設定で toggle される |
 | `gemini.behavior.repo.policies` | `documented` | `[]` | ページは workspace tier が現在 non-functional だと述べる — 読まれない場所についての文書化された事実 |
 | `gemini.behavior.user.agents` | `documented` | `[experimental]` | project の行と同様: user の場所は同じ experimental gate の下で正確に名指しされる |
@@ -62,7 +60,7 @@ qualifier は lifecycle の主張をせず、決して `stable` を意味しな�
 | `gemini.behavior.repo.settings` | CLI | プロジェクトルート | `.gemini/settings.json` | project settings 層。文書化された precedence で user settings の上、system settings の下。untrusted folder では無視 | `gemini.settings.precedence` | Documented。trust conditional | `google.gemini-cli.configuration`、`google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.mcp` | CLI | プロジェクトルート | `.gemini/settings.json` 内の `mcpServers` | server は `mcpServers` の下に名前で宣言され、必須の transport 1つ (`command`、`url`、または `httpUrl`) と任意の `args`、`env`、`cwd`、`headers`、`timeout`、`trust`、`includeTools`、`excludeTools` を持つ。`env` の `$VAR_NAME` は接続時に vendor が展開する。project の server は untrusted folder では接続しない | `gemini.mcp.configuration` | Documented。trust conditional | `google.gemini-cli.mcp-server`、`google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.hooks` | CLI | プロジェクトルート | `.gemini/settings.json` 内の `hooks` | 文書化された precedence で user・system・extension の層と merge される。各 event は hook definition を持ち、その `hooks[].command` は vendor が実行する shell command である。project の hook は fingerprint され、変わったものは新規として扱われる | `gemini.hooks.merge` | Documented。trust と fingerprint conditional | `google.gemini-cli.hooks`、`google.gemini-cli.hooks-reference` |
-| `gemini.behavior.repo.commands` | CLI | プロジェクトルート | `.gemini/commands/**/*.toml` | command 名は `commands/` に対するファイルの相対パスで、区切りを `:` に変換し拡張子を除いたもの。user command と同名の project command が常に使われる。untrusted folder では読み込まれない | `gemini.commands.selection` | Documented。trust conditional | `google.gemini-cli.custom-commands`、`google.gemini-cli.trusted-folders` |
+| `gemini.behavior.repo.commands` | CLI | プロジェクトルート | `.gemini/commands/**/*.toml` | command 名は `commands/` に対するファイルの相対パスで、区切りを `:` に変換し拡張子を除いたもの。深さは任意。各セグメントの `[A-Za-z0-9_.-]` 以外の文字は `_` になり、50文字を超えるセグメントは47文字と `...` に切り詰められる — loader はそうし、ページは述べない。user command と同名の project command が常に使われる。untrusted folder では読み込まれない | `gemini.commands.selection` | Partially documented。trust conditional | `google.gemini-cli.custom-commands`、`google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.skills` | CLI | プロジェクトルート | `.gemini/skills/<name>/SKILL.md`。文書化された alias として `.agents/skills/<name>/SKILL.md` | workspace tier、4つの中で最上位。上の tier の同名 skill が勝ち、tier 内では `.agents/skills/` のコピーが `.gemini/skills/` に勝つ。untrusted folder では利用不可 | `gemini.skills.selection` | Documented。trust conditional | `google.gemini-cli.skills`、`google.gemini-cli.creating-skills`、`google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.agents` | CLI | プロジェクトルート | `.gemini/agents/*.md` | 必須の YAML frontmatter 付き Markdown。`name` は agent を呼び出す tool 名。`experimental.enableAgents` が false でなければ有効 | `gemini.agents.selection` | Documented。experimental | `google.gemini-cli.subagents` |
 | `gemini.behavior.repo.policies` | CLI | プロジェクトルート | `.gemini/policies/*.toml` | policy engine の workspace tier。現在 non-functional と文書化: そこのファイルは効果を持たない | `gemini.policies.tiers` | 読み込まれないと文書化 | `google.gemini-cli.policy-engine` |
@@ -129,22 +127,22 @@ context file そのものを名指しするので、導出が既定も所有し�
 この表は maintainer のために Gemini CLI が何を支持するかを記録する。Global 調査を広げない。
 user tier は home 下の `.gemini` ディレクトリである。`GEMINI_CLI_HOME` は `.gemini` が作られる
 ディレクトリ — home の代わりであって `.gemini` そのものではない — を指し、それが member root が
-どの場合でも join である理由である (この機能の FR-011)。`~/.agents/skills/` alias は shared
+どの場合でも join である理由である (specs/002-gemini-cli-support/spec.ja.md FR-011)。`~/.agents/skills/` alias は shared
 agent home にあり、それは設定が relocate しない別個に consent されるメンバーである (親 FR-045)。
 
 | Behavior ID | User behavior | User locator | Strategy / composition | Inspector status | Evidence |
 |---|---|---|---|---|---|
 | `gemini.behavior.user.home` | user 設定ディレクトリ | `<GEMINI_CLI_HOME または home>/.gemini/` | 下のすべての user tier locator はこれに対して解決する | Gemini CLI Global member root | `google.gemini-cli.configuration` |
-| `gemini.behavior.user.context` | global context file | `<user tier>/GEMINI.md` | `gemini.context.layering`。workspace と just-in-time のファイルの前に最初に読み込まれる | 下の `gemini.global.instructions` を通じてだけ accept。user tier 自身の `context.fileName` は settings-inputs condition でここでは何も変えない (spec.md § Clarifications) | `google.gemini-cli.gemini-md` |
+| `gemini.behavior.user.context` | global context file | `<user tier>/GEMINI.md` | `gemini.context.layering`。workspace と just-in-time のファイルの前に最初に読み込まれる | 下の `gemini.global.instructions` を通じてだけ accept。user tier 自身の `context.fileName` は settings-inputs condition でここでは何も変えない (specs/002-gemini-cli-support/spec.ja.md § Clarifications) | `google.gemini-cli.gemini-md` |
 | `gemini.behavior.user.settings` | user settings、MCP server、hooks | `<user tier>/settings.json` | `gemini.settings.precedence`、`gemini.mcp.configuration`、`gemini.hooks.merge` | 下の `gemini.global.settings`、`gemini.global.mcp`、`gemini.global.hooks` が accept | `google.gemini-cli.configuration`、`google.gemini-cli.mcp-server`、`google.gemini-cli.hooks` |
-| `gemini.behavior.user.commands` | user custom command | `<user tier>/commands/**/*.toml` | `gemini.commands.selection`。同名の project command が常に代わりに使われる | 下の `gemini.global.command` が accept | `google.gemini-cli.custom-commands` |
+| `gemini.behavior.user.commands` | user custom command | `<user tier>/commands/**/*.toml` | `gemini.commands.selection`。同名の project command が常に代わりに使われる。project command と同じく sanitization を含めて名付けられる | 下の `gemini.global.command` が accept | `google.gemini-cli.custom-commands` |
 | `gemini.behavior.user.skills` | user skill | `<user tier>/skills/<name>/SKILL.md`。文書化された alias として `$HOME/.agents/skills/<name>/SKILL.md` | `gemini.skills.selection`。user tier。workspace の下、extension skill の上。tier 内では alias が勝つ | 下の `gemini.global.skill` と、consent 済み shared agent home で `gemini.global.agents-home.skill` が accept (親 FR-045) | `google.gemini-cli.skills`、`google.gemini-cli.creating-skills` |
 | `gemini.behavior.user.agents` | personal custom agent | `<user tier>/agents/*.md` | `gemini.agents.selection` | 下の `gemini.global.agent` が accept | `google.gemini-cli.subagents` |
 | `gemini.behavior.user.policies` | user policy | `<user tier>/policies/*.toml` | `gemini.policies.tiers`。user tier。extension と default の policy の上、admin の下 | 下の `gemini.global.policies` が accept、`permissions` として認識 | `google.gemini-cli.policy-engine` |
 | `gemini.behavior.user.extensions` | インストール済み extension | `<user tier>/extensions/<name>/`。それぞれ `gemini-extension.json` と同梱 component を持ち、link された開発ディレクトリは symbolic link としてそこに現れる | すべての extension は起動時に読み込まれ、設定が merge される | `gemini.excluded.extensions` | `google.gemini-cli.extensions-reference` |
 | `gemini.behavior.user.trust-record` | trusted-folder の決定 | `<user tier>/trustedFolders.json`。`GEMINI_CLI_TRUSTED_FOLDERS_PATH` で relocate 可能 | すべての Repository trust condition が読む記録 | `gemini.excluded.user-runtime` | `google.gemini-cli.trusted-folders` |
 | `gemini.behavior.user.env` | user environment file | `<user tier>/.env`、および `~/.env` | process に読み込まれる環境変数 | `gemini.excluded.user-runtime` | `google.gemini-cli.configuration` |
-| `gemini.behavior.system.settings` | system の settings、defaults、policies | home の外の管理者所有ディレクトリ。`GEMINI_CLI_SYSTEM_SETTINGS_PATH` と `GEMINI_CLI_SYSTEM_DEFAULTS_PATH` で relocate 可能 | project 層の上 (settings)、他のすべての tier の上 (policies) | `gemini.excluded.system` | `google.gemini-cli.configuration`、`google.gemini-cli.policy-engine` |
+
 
 ## Inspector Global rule
 
@@ -174,7 +172,7 @@ OAuth と account の credential、session と history の state、一時ファ�
 ## Relationship-only and excluded groups
 
 relationship-only な `ruleId` の定義は
-[Runtime Composition](../../../001-inspect-agent-customizations/contracts/runtime-composition.ja.md)
+[Runtime Composition](../runtime-composition.ja.md)
 にある。Gemini CLI について、それらのルールは context file の `@file.md` import、custom
 command の `!{...}` shell block と `@{...}` file injection、skill の resource path、hook の
 `command`、agent の `mcpServers` と `tools` 参照を cover する。それらは決して対象の読み取りを
@@ -184,8 +182,8 @@ command の `!{...}` shell block と `@{...}` file injection、skill の resourc
 |---|---|---|---|---|---|---|---|
 | `gemini.excluded.repo-non-customizations` | `excluded` | `.gemini/policies/*.toml` (workspace policy tier。読み込まれないと文書化)、`.geminiignore` (ignore file。カスタマイズではなく、何を挙げるかを決めるために読まれない)、`.env` と `.gemini/.env` (credential)、`.gemini/hooks/` 下のスクリプト (hook 宣言が名指しする対象であって宣言ではない) | `gemini.behavior.repo.policies`、`gemini.behavior.repo.ignore`、`gemini.behavior.repo.env`、`gemini.behavior.repo.hooks` | FR-003、FR-004、FR-024、QR-001、QR-004、QR-005 (親)。FR-003 (この機能) | `gemini.policies.tiers` | `documented` | `google.gemini-cli.policy-engine`、`google.gemini-cli.gemini-ignore`、`google.gemini-cli.configuration`、`google.gemini-cli.hooks` |
 | `gemini.excluded.extensions` | `excluded` | user tier の `extensions/` 下のインストール済み extension コピー、およびリポジトリルートの `gemini-extension.json` とその隣の component ディレクトリ: インストール済みコピーは書かれたものではなく配布元から再現され、リポジトリルートの manifest を vendor が読むのはそのようなコピーを通じてだけである | `gemini.behavior.user.extensions` | FR-013、FR-014、FR-018、QR-001、QR-004、QR-005 (親)。FR-016 (この機能) | — | `documented` | `google.gemini-cli.extensions-reference` |
-| `gemini.excluded.user-runtime` | `excluded` | どの Global rule も admit しない上の user surface: trusted-folder の記録、environment file、OAuth と account の credential、session と history の state、一時ファイル | `gemini.behavior.user.trust-record`、`gemini.behavior.user.env` | FR-013、FR-014、FR-018、QR-001、QR-004、QR-005 (親)。FR-010 (この機能) | — | `documented` | `google.gemini-cli.trusted-folders`、`google.gemini-cli.configuration` |
-| `gemini.excluded.system` | `excluded` | すべての Source の外の管理者所有ディレクトリ下の system settings、system defaults、admin policies | `gemini.behavior.system.settings` | FR-013、FR-014、FR-018、QR-001、QR-004、QR-005 (親) | `gemini.settings.precedence`、`gemini.policies.tiers` | `documented` | `google.gemini-cli.configuration`、`google.gemini-cli.policy-engine` |
+| `gemini.excluded.user-runtime` | `excluded` | どの Global rule も admit しない上の user surface: trusted-folder の記録、environment file、OAuth と account の credential、session と history の state、一時ファイル。およびすべての Source の外の管理者所有ディレクトリ下の system settings・system defaults・admin policies。これらは Source が届かないので behavior 行を持たない — Codex の user-runtime 除外が managed・system 設定について持つ配置と同じ | `gemini.behavior.user.trust-record`、`gemini.behavior.user.env` | FR-013、FR-014、FR-018、QR-001、QR-004、QR-005 (親)。FR-010 (この機能) | — | `documented` | `google.gemini-cli.trusted-folders`、`google.gemini-cli.configuration` |
+
 
 ## Normative initial-release presentation allowlist
 
@@ -219,7 +217,7 @@ publish するのではなく除外する (§ Relationship-only and excluded gro
    深さで admit する。セッションが特定のファイルを読み込んだかは runtime の事実のまま。
 2. `context.fileName` は読み込む context file (群) の名前として文書化されている。それが global の
    `~/.gemini/GEMINI.md` も改名するかは述べられていない。Global rule は既定名だけを admit する
-   (spec.md § Clarifications)。
+   (specs/002-gemini-cli-support/spec.ja.md § Clarifications)。
 3. project settings、MCP server、hooks、command、skill は trusted folder でだけ読み込まれる。
    inventory に存在することは読み込みの証明ではない。
 4. workspace policy tier は現在 non-functional と文書化されている。除外はその一文に依り、
@@ -230,3 +228,11 @@ publish するのではなく除外する (§ Relationship-only and excluded gro
    受け付けるが、それは文書ではなく source の計測である。parser 表はそれをそのように記録する。
 7. subagent は既定で on の `experimental` 設定で gate される。行は `experimental` qualifier を
    持ち、それ以外は何も従わない。
+8. custom-commands のページは命名規則を一般則として述べ — commands ディレクトリに対する相対
+   パス、subdirectory は namespace、区切りは colon — 入れ子の例を1つ挙げる。深さの上限は述べず、
+   colon が曖昧にするセグメントの文字がどうなるかも述べない。vendor の loader
+   (`packages/cli/src/services/FileCommandLoader.ts`、2026-09-10 に計測) は `**/*.toml` を列挙し、
+   各セグメントの `[A-Za-z0-9_.-]` 以外の文字を `_` に置き換え、50文字を超えるセグメントを先頭
+   47文字と `...` に切り詰める。command unit は行がプロダクトの呼び出す名前を持つよう3つとも合わせる。
+   深さは文書化された規則の延長であり、他の2つは文書化ではなく source の計測である。それが2つの
+   command behavior を `partially-documented` とする理由である。

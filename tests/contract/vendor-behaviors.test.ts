@@ -104,7 +104,7 @@ describe('evidence citations', () => {
   function parseAllowedHosts(path: string) {
     const byVendor = new Map<string, Set<string>>();
     for (const line of readFileSync(path, 'utf8').split('\n')) {
-      const match = /^\| (GitHub|Microsoft|Anthropic|OpenAI) \| (.+) \|$/u.exec(line);
+      const match = /^\| (GitHub|Microsoft|Anthropic|OpenAI|Google) \| (.+) \|$/u.exec(line);
       if (match === null) {
         continue;
       }
@@ -297,7 +297,7 @@ describe('evidence citations', () => {
   // the built artifact (see `src/shared/registries/evidence-types.ts`).
   const cited = [...behaviors, ...strategies, ...Object.values(INSPECTION_RULES)];
 
-  it('cites exactly the 52 source records the registries maintain', () => {
+  it('cites exactly the 65 source records the registries maintain', () => {
     // T1042: the final count. A source record is one page this repository has
     // reviewed, and the number of them is a fact about the maintained registry
     // rather than a derivation, so the literal is written here and a citation
@@ -306,7 +306,7 @@ describe('evidence citations', () => {
     for (const record of cited) {
       for (const citation of record.evidence) sourceIds.add(citation.sourceId);
     }
-    expect(sourceIds.size).toBe(52);
+    expect(sourceIds.size).toBe(65);
   });
 
   it('gives every maintained record at least one citation', () => {
@@ -896,13 +896,13 @@ describe('the pure User-only facts the consent exclusions need (T931)', () => {
 });
 
 describe('final registry counts and maintenance-only reach', () => {
-  it('ships exactly 105 behaviors, 81 rules, and 39 strategies', () => {
+  it('ships exactly 126 behaviors, 100 rules, and 47 strategies', () => {
     // T1042: the frozen sizes of the three registries. They are spelled out
     // rather than derived so that a record added without deciding to add one
     // fails here (AGENTS.md § freeze).
-    expect(behaviors).toHaveLength(105);
-    expect(Object.values(INSPECTION_RULES)).toHaveLength(81);
-    expect(strategies).toHaveLength(39);
+    expect(behaviors).toHaveLength(126);
+    expect(Object.values(INSPECTION_RULES)).toHaveLength(100);
+    expect(strategies).toHaveLength(47);
   });
 
   it('keeps the maintenance fields off every wire DTO', () => {

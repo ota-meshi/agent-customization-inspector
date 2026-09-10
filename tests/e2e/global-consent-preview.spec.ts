@@ -7,7 +7,7 @@
 // by typing its URL, which is why the entry is asserted here rather than the
 // route being visited directly.
 //
-// What the page must do: name the four proposed directories and where each
+// What the page must do: name the five proposed directories and where each
 // came from, explain the read scope in words rather than in path patterns, and
 // state plainly which tools nothing can be inspected for. What it must not do:
 // read anything, or offer anything that enables inspection — no source result
@@ -31,7 +31,7 @@ import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 /** The repository the session is launched against; the consent page is not about it. */
 let repository: string;
 
-/** The four Global homes the environment points at. */
+/** The five Global homes the environment points at. */
 let homes: GlobalHomeFixture;
 
 let host: LaunchedHost;
@@ -92,7 +92,7 @@ test('is reached from the launch URL by following the inventory entry', async ({
   await expect(page.getByRole('heading', { name: /Inspect your personal setup/u })).toBeVisible();
 });
 
-test('names the four proposed directories, their origin, and their state', async ({ page }) => {
+test('names the five proposed directories, their origin, and their state', async ({ page }) => {
   await page.goto(host.origin);
   await page.getByRole('link', { name: /personal setup/iu }).click();
   // A fresh session holds no preview, so the reader is offered one — and the
@@ -105,13 +105,17 @@ test('names the four proposed directories, their origin, and their state', async
   await expect(main).toContainText('GitHub Copilot');
   await expect(main).toContainText('Claude Code');
   await expect(main).toContainText('OpenAI Codex');
+  await expect(main).toContainText('Gemini home');
   // Every root the environment set, shown as the escaped presentation of the
   // exact value — these homes are ordinary absolute paths, so the escaping is
-  // the identity on them.
+  // the identity on them. The Gemini CLI root is the `.gemini` below the
+  // directory its variable names, which is what the fixture's `homes.gemini`
+  // already is (specs/002-gemini-cli-support FR-011).
   for (const home of [
     homes.homes.copilot,
     homes.homes.claude,
     homes.homes.codex,
+    homes.homes.gemini,
     homes.homes.agents,
   ]) {
     await expect(main).toContainText(home);
@@ -129,7 +133,9 @@ test('explains the read scope in words and shows no path pattern', async ({ page
   const main = page.locator('main');
   // The plain-language scope: what is read, and what is not.
   await expect(main).toContainText('customization files');
-  await expect(main).toContainText('shared agent directory');
+  await expect(main).toContainText(
+    'shared agent directory that Codex, Copilot, and Gemini CLI all',
+  );
   await expect(main).toContainText('not credentials');
   // Neither version the preview binds is on screen: a reader can act on
   // neither, and the confirmation is where the pair is used.
@@ -206,7 +212,7 @@ test('is reviewable from the keyboard and reads nothing until confirmed', async 
   expect(text).not.toContain('Body of');
 });
 
-test('leaves every byte of all four homes exactly as it found them', async ({ page }) => {
+test('leaves every byte of all five homes exactly as it found them', async ({ page }) => {
   const before = observeTree(homes.base);
   expect(before.size).toBeGreaterThan(10);
 

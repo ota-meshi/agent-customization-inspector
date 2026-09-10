@@ -7,15 +7,11 @@
 
 This contract separates documented Gemini CLI lookup behavior from the Inspector's read
 allowlist. The common matcher grammar and source-boundary rules are defined in
-[Inspection Path Allowlist Grammar and Index](../../../001-inspect-agent-customizations/contracts/inspection-path-allowlist.md).
+[Inspection Path Allowlist Grammar and Index](../inspection-path-allowlist.md).
 Composition and precedence are defined by ID in
-[Runtime Composition](../../../001-inspect-agent-customizations/contracts/runtime-composition.md),
+[Runtime Composition](../runtime-composition.md),
 and evidence records are defined in
-[Official Sources](../../../001-inspect-agent-customizations/contracts/official-sources.md).
-This file is authored here as the feature's design input and moves beside the three
-existing vendor contracts, under `contracts/vendors/`, in the change that ships the
-registry; its relative links point at the parent specification's contracts from this location
-and are rewritten for the destination when it moves.
+[Official Sources](../official-sources.md).
 
 `behaviorId` describes Gemini CLI. `ruleId` describes Inspector policy. A vendor locator
 or behavior record never grants read authority.
@@ -30,8 +26,7 @@ differently. What differs is not the surface but the tier: the vendor documents 
 tier (settings, defaults, and policies under an administrator-owned directory), a user tier
 (the `.gemini` directory below the home), a project tier (the `.gemini` directory at the
 project root), and an extension tier (installed copies under the home's `extensions/`
-directory). The Inspector reads the project tier as its Repository Source and the user tier
-as its Gemini CLI Global member; the system and extension tiers are recorded and excluded.
+directory). The Inspector reads the project tier as its Repository Source and the user tier as its Gemini CLI Global member; the extension tier is recorded and excluded, and the system tier is excluded without a behavior row of its own, because no Source reaches it.
 
 ## Canonical evidence-assessment index
 
@@ -44,6 +39,8 @@ qualifiers make no lifecycle claim and never mean `stable`.
 | Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
 |---|---|---|---|
 | `gemini.behavior.repo.context` | `partially-documented` | `[]` | The hierarchy page names the workspace directories, their parents, and a just-in-time scan of an accessed directory and its ancestors, but states neither the boundary of the parent walk nor whether a descendant is read before a tool accesses it |
+| `gemini.behavior.repo.commands` | `partially-documented` | `[]` | The page states the naming rule in general terms with one nested example; the depth a path may reach and the sanitization of a segment's characters are the vendor loader's, measured rather than documented (§ Known uncertainties item 8) |
+| `gemini.behavior.user.commands` | `partially-documented` | `[]` | As the project row: the same naming rule, the same two facts the page leaves to the loader |
 | `gemini.behavior.repo.agents` | `documented` | `[experimental]` | The page names the project location exactly; subagents are toggled by an `experimental` setting |
 | `gemini.behavior.repo.policies` | `documented` | `[]` | The page states that the workspace tier is currently non-functional — a documented fact about a location that is not read |
 | `gemini.behavior.user.agents` | `documented` | `[experimental]` | As the project row: the user location is named exactly, under the same experimental gate |
@@ -63,7 +60,7 @@ than one. These are maintenance records; no response carries one (QR-005).
 | `gemini.behavior.repo.settings` | CLI | Project root | `.gemini/settings.json` | The project settings layer, above user settings and below system settings in the documented precedence; ignored in an untrusted folder | `gemini.settings.precedence` | Documented; trust conditional | `google.gemini-cli.configuration`, `google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.mcp` | CLI | Project root | `mcpServers` inside `.gemini/settings.json` | Servers are declared by name under `mcpServers`, with one required transport (`command`, `url`, or `httpUrl`) and optional `args`, `env`, `cwd`, `headers`, `timeout`, `trust`, `includeTools`, `excludeTools`; `$VAR_NAME` in `env` is expanded by the vendor at connection time; project servers do not connect in an untrusted folder | `gemini.mcp.configuration` | Documented; trust conditional | `google.gemini-cli.mcp-server`, `google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.hooks` | CLI | Project root | `hooks` inside `.gemini/settings.json` | Merged with the user, system, and extension layers in the documented precedence; each event holds hook definitions whose `hooks[].command` is a shell command the vendor runs; project hooks are fingerprinted and a changed one is treated as new | `gemini.hooks.merge` | Documented; trust and fingerprint conditional | `google.gemini-cli.hooks`, `google.gemini-cli.hooks-reference` |
-| `gemini.behavior.repo.commands` | CLI | Project root | `.gemini/commands/**/*.toml` | The command name is the file's path relative to `commands/` with the separator converted to `:` and the extension removed; a project command with a user command's name is always used; not loaded in an untrusted folder | `gemini.commands.selection` | Documented; trust conditional | `google.gemini-cli.custom-commands`, `google.gemini-cli.trusted-folders` |
+| `gemini.behavior.repo.commands` | CLI | Project root | `.gemini/commands/**/*.toml` | The command name is the file's path relative to `commands/` with the separator converted to `:` and the extension removed, at any depth; each segment's characters outside `[A-Za-z0-9_.-]` become `_` and a segment over 50 characters is cut to 47 plus `...`, which the loader does and the page does not say; a project command with a user command's name is always used; not loaded in an untrusted folder | `gemini.commands.selection` | Partially documented; trust conditional | `google.gemini-cli.custom-commands`, `google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.skills` | CLI | Project root | `.gemini/skills/<name>/SKILL.md`; `.agents/skills/<name>/SKILL.md` as its documented alias | The workspace tier, highest of four; a same-name skill in a higher tier wins, and within the tier the `.agents/skills/` copy wins over `.gemini/skills/`; unavailable in an untrusted folder | `gemini.skills.selection` | Documented; trust conditional | `google.gemini-cli.skills`, `google.gemini-cli.creating-skills`, `google.gemini-cli.trusted-folders` |
 | `gemini.behavior.repo.agents` | CLI | Project root | `.gemini/agents/*.md` | Markdown with required YAML frontmatter; `name` is the tool name the agent is invoked by; enabled unless `experimental.enableAgents` is false | `gemini.agents.selection` | Documented; experimental | `google.gemini-cli.subagents` |
 | `gemini.behavior.repo.policies` | CLI | Project root | `.gemini/policies/*.toml` | The workspace tier of the policy engine, documented as currently non-functional: files there have no effect | `gemini.policies.tiers` | Documented as not loaded | `google.gemini-cli.policy-engine` |
@@ -128,23 +125,23 @@ This is the arrangement `codex.derived.fallback-basename` already has, with one 
 This table records what Gemini CLI supports for maintainers. It does not expand Global
 inspection. The user tier is the `.gemini` directory below the home; `GEMINI_CLI_HOME`
 names the directory that `.gemini` is created in — the home's stand-in, not `.gemini`
-itself — which is why the member root is a join in every case (FR-011 of this feature).
+itself — which is why the member root is a join in every case (specs/002-gemini-cli-support/spec.md FR-011).
 The `~/.agents/skills/` alias lives in the shared agent home, a separately consented
 member that no setting relocates (parent FR-045).
 
 | Behavior ID | User behavior | User locator | Strategy / composition | Inspector status | Evidence |
 |---|---|---|---|---|---|
 | `gemini.behavior.user.home` | The user configuration directory | `<GEMINI_CLI_HOME or home>/.gemini/` | Every user-tier locator below resolves against it | The Gemini CLI Global member root | `google.gemini-cli.configuration` |
-| `gemini.behavior.user.context` | Global context file | `<user tier>/GEMINI.md` | `gemini.context.layering`; loaded first, before workspace and just-in-time files | Accepted only through `gemini.global.instructions` below; the user tier's own `context.fileName` is a settings-inputs condition and changes nothing here (spec.md § Clarifications) | `google.gemini-cli.gemini-md` |
+| `gemini.behavior.user.context` | Global context file | `<user tier>/GEMINI.md` | `gemini.context.layering`; loaded first, before workspace and just-in-time files | Accepted only through `gemini.global.instructions` below; the user tier's own `context.fileName` is a settings-inputs condition and changes nothing here (specs/002-gemini-cli-support/spec.md § Clarifications) | `google.gemini-cli.gemini-md` |
 | `gemini.behavior.user.settings` | User settings, MCP servers, and hooks | `<user tier>/settings.json` | `gemini.settings.precedence`, `gemini.mcp.configuration`, `gemini.hooks.merge` | Accepted by `gemini.global.settings`, `gemini.global.mcp`, and `gemini.global.hooks` below | `google.gemini-cli.configuration`, `google.gemini-cli.mcp-server`, `google.gemini-cli.hooks` |
-| `gemini.behavior.user.commands` | User custom commands | `<user tier>/commands/**/*.toml` | `gemini.commands.selection`; a project command of the same name is always used instead | Accepted by `gemini.global.command` below | `google.gemini-cli.custom-commands` |
+| `gemini.behavior.user.commands` | User custom commands | `<user tier>/commands/**/*.toml` | `gemini.commands.selection`; a project command of the same name is always used instead; named as the project commands are, sanitization included | Accepted by `gemini.global.command` below | `google.gemini-cli.custom-commands` |
 | `gemini.behavior.user.skills` | User skills | `<user tier>/skills/<name>/SKILL.md`; `$HOME/.agents/skills/<name>/SKILL.md` as the documented alias | `gemini.skills.selection`; the user tier, below workspace and above extension skills; within the tier the alias wins | Accepted by `gemini.global.skill` below and, at the consented shared agent home, by `gemini.global.agents-home.skill` (parent FR-045) | `google.gemini-cli.skills`, `google.gemini-cli.creating-skills` |
 | `gemini.behavior.user.agents` | Personal custom agents | `<user tier>/agents/*.md` | `gemini.agents.selection` | Accepted by `gemini.global.agent` below | `google.gemini-cli.subagents` |
 | `gemini.behavior.user.policies` | User policies | `<user tier>/policies/*.toml` | `gemini.policies.tiers`; the user tier, above extension and default policies and below admin | Accepted by `gemini.global.policies` below, recognized as `permissions` | `google.gemini-cli.policy-engine` |
 | `gemini.behavior.user.extensions` | Installed extensions | `<user tier>/extensions/<name>/`, each with `gemini-extension.json` and its bundled components; a linked development directory appears there as a symbolic link | Every extension is loaded at startup and its configuration merged | `gemini.excluded.extensions` | `google.gemini-cli.extensions-reference` |
 | `gemini.behavior.user.trust-record` | Trusted-folder decisions | `<user tier>/trustedFolders.json`, relocatable by `GEMINI_CLI_TRUSTED_FOLDERS_PATH` | The record every Repository trust condition reads | `gemini.excluded.user-runtime` | `google.gemini-cli.trusted-folders` |
 | `gemini.behavior.user.env` | User environment file | `<user tier>/.env`, and `~/.env` | Environment variables loaded into the process | `gemini.excluded.user-runtime` | `google.gemini-cli.configuration` |
-| `gemini.behavior.system.settings` | System settings, defaults, and policies | Administrator-owned directories outside the home, relocatable by `GEMINI_CLI_SYSTEM_SETTINGS_PATH` and `GEMINI_CLI_SYSTEM_DEFAULTS_PATH` | Above the project layer (settings) and above every other tier (policies) | `gemini.excluded.system` | `google.gemini-cli.configuration`, `google.gemini-cli.policy-engine` |
+
 
 ## Inspector Global rule
 
@@ -176,7 +173,7 @@ directory.
 ## Relationship-only and excluded groups
 
 Relationship-only `ruleId` definitions live in
-[Runtime Composition](../../../001-inspect-agent-customizations/contracts/runtime-composition.md).
+[Runtime Composition](../runtime-composition.md).
 For Gemini CLI, those rules cover `@file.md` imports in a context file, a custom command's
 `!{...}` shell blocks and `@{...}` file injections, a skill's resource paths, a hook's
 `command`, and an agent's `mcpServers` and `tools` references. They never authorize a
@@ -186,8 +183,8 @@ target read.
 |---|---|---|---|---|---|---|---|
 | `gemini.excluded.repo-non-customizations` | `excluded` | `.gemini/policies/*.toml` (the workspace policy tier, documented as not loaded), `.geminiignore` (an ignore file, which is not a customization and is not read to decide what is listed), `.env` and `.gemini/.env` (credentials), and scripts under `.gemini/hooks/` (targets a hook declaration names, not declarations) | `gemini.behavior.repo.policies`, `gemini.behavior.repo.ignore`, `gemini.behavior.repo.env`, `gemini.behavior.repo.hooks` | FR-003, FR-004, FR-024, QR-001, QR-004, QR-005 (parent); FR-003 (this feature) | `gemini.policies.tiers` | `documented` | `google.gemini-cli.policy-engine`, `google.gemini-cli.gemini-ignore`, `google.gemini-cli.configuration`, `google.gemini-cli.hooks` |
 | `gemini.excluded.extensions` | `excluded` | Installed extension copies under the user tier's `extensions/`, and a repository-root `gemini-extension.json` with the component directories beside it: an installed copy is reproduced from its source rather than authored, and a repository-root manifest is read by the vendor only through such a copy | `gemini.behavior.user.extensions` | FR-013, FR-014, FR-018, QR-001, QR-004, QR-005 (parent); FR-016 (this feature) | — | `documented` | `google.gemini-cli.extensions-reference` |
-| `gemini.excluded.user-runtime` | `excluded` | The user surfaces above that no Global rule admits: the trusted-folder record, environment files, OAuth and account credentials, session and history state, and temporary files | `gemini.behavior.user.trust-record`, `gemini.behavior.user.env` | FR-013, FR-014, FR-018, QR-001, QR-004, QR-005 (parent); FR-010 (this feature) | — | `documented` | `google.gemini-cli.trusted-folders`, `google.gemini-cli.configuration` |
-| `gemini.excluded.system` | `excluded` | System settings, system defaults, and admin policies under administrator-owned directories outside every Source | `gemini.behavior.system.settings` | FR-013, FR-014, FR-018, QR-001, QR-004, QR-005 (parent) | `gemini.settings.precedence`, `gemini.policies.tiers` | `documented` | `google.gemini-cli.configuration`, `google.gemini-cli.policy-engine` |
+| `gemini.excluded.user-runtime` | `excluded` | The user surfaces above that no Global rule admits: the trusted-folder record, environment files, OAuth and account credentials, session and history state, and temporary files; and the system settings, system defaults, and admin policies under administrator-owned directories outside every Source, which no behavior row locates because no Source reaches them — the arrangement Codex's user-runtime exclusion has for its managed and system configuration | `gemini.behavior.user.trust-record`, `gemini.behavior.user.env` | FR-013, FR-014, FR-018, QR-001, QR-004, QR-005 (parent); FR-010 (this feature) | — | `documented` | `google.gemini-cli.trusted-folders`, `google.gemini-cli.configuration` |
+
 
 ## Normative initial-release presentation allowlist
 
@@ -222,7 +219,7 @@ a skill's companions are its census, as for every product.
    its directory. The derived rule admits the context filename at every depth; whether a session loaded a given file stays a runtime fact.
 2. `context.fileName` is documented as the name of the context file or files to load. Whether
    it renames the global `~/.gemini/GEMINI.md` as well is not stated; the Global rule admits
-   the default name alone (spec.md § Clarifications).
+   the default name alone (specs/002-gemini-cli-support/spec.md § Clarifications).
 3. Project settings, MCP servers, hooks, commands, and skills load only in a trusted folder.
    Inventory existence is not proof of loading.
 4. The workspace policy tier is documented as currently non-functional. The exclusion rests
@@ -234,3 +231,13 @@ a skill's companions are its census, as for every product.
    table records it as such.
 7. Subagents are gated by an `experimental` setting that is on by default. The rows carry
    the `experimental` qualifier and nothing else follows from it.
+8. The custom-commands page states the naming rule generally — the path relative to the
+   commands directory, subdirectories as namespaces, the separator as a colon — and gives
+   one nested example. It does not state a depth limit, and it does not say what becomes of
+   a segment character the colon would make ambiguous. The vendor's loader
+   (`packages/cli/src/services/FileCommandLoader.ts`, measured 2026-09-10) enumerates
+   `**/*.toml`, replaces every segment character outside `[A-Za-z0-9_.-]` with `_`, and cuts a
+   segment over 50 characters to its first 47 followed by `...`. The command unit matches all
+   three so a row is named what the product invokes; the depth is the documented rule
+   carried through, and the other two are a source measurement, not documentation, which is
+   why both command behaviors are `partially-documented`.

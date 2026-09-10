@@ -189,8 +189,8 @@ export const SOURCE_KIND_TEXT: Readonly<Record<SourceKind, string>> = {
 };
 
 /**
- * The one contracted member order every Global projection uses: the three
- * tools in their own fixed order, then the shared agent home
+ * The one contracted member order every Global projection uses: the tools
+ * in their own fixed order, then the shared agent home
  * (spec.md § FR-013; contracts/http-api.md § create-global-consent-preview).
  * The capture reads the environment in this order and the confirmation fixes
  * `confirmedTools` to the same closed sequence.
@@ -217,7 +217,14 @@ export const GLOBAL_MEMBER_TEXT: Readonly<Record<GlobalMemberId, string>> = {
   claude: 'Claude home',
   /** `~/.codex`: Codex's own directory. */
   codex: 'Codex home',
-  /** `~/.agents`: the directory Codex and Copilot both read (FR-045). */
+  /**
+   * `~/.gemini`: Gemini CLI's own directory, the `.gemini` below `GEMINI_CLI_HOME`
+   * or the home. `Gemini` rather than the product's full name, as the other
+   * members drop the vendor and the suffix: this table names a directory by
+   * whose it is, while `SUPPORTED_TOOL_TEXT` names the product.
+   */
+  gemini: 'Gemini home',
+  /** `~/.agents`: the directory Codex, Copilot, and Gemini CLI all read skills from (FR-045). */
   agents: 'Shared agent home',
 };
 
@@ -232,6 +239,7 @@ export const SOURCE_SELECTOR_TEXT: Readonly<Record<SourceSelector, string>> = {
   'global-copilot': GLOBAL_MEMBER_TEXT.copilot,
   'global-claude': GLOBAL_MEMBER_TEXT.claude,
   'global-codex': GLOBAL_MEMBER_TEXT.codex,
+  'global-gemini': GLOBAL_MEMBER_TEXT.gemini,
   'global-agents': GLOBAL_MEMBER_TEXT.agents,
 };
 

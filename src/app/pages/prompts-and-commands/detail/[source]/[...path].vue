@@ -74,12 +74,17 @@ import {
 } from '../../../../../shared/entities';
 import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 import { AuthoredName } from '../../../../components/authored-name';
-import { LEADING_PROMPT_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
+import { LEADING_PROMPT_METADATA_KEYS } from '../../../../components/inspection/declaration-order';
 import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
 import { useSubjectTabs } from '../../../../composables/subject-tabs';
 import { promptComparisonRouteFor } from '../../../../composables/prompt-comparison';
-import type { DeclaredEntryDto, SourceKind } from '../../../../../shared/api-types';
+import type {
+  DeclaredEntryDto,
+  FileDetailDto,
+  PromptPresentationDto,
+  SourceKind,
+} from '../../../../../shared/api-types';
 
 const sessionViewState = useSessionViewState();
 
@@ -373,15 +378,33 @@ const openDetail = computed(() => {
 
 /**
  * The file's own presentation — the one scan-time parse, published on every
- * variant that carries one. Null when extraction failed all-or-nothing, and
- * null for a variant that publishes none: a rule file is served whole and a
- * custom agent publishes declarations without a body, so a file two kinds own
- * shows its complete source under the file tab either way (FR-028).
+ * variant that carries one — as this kind's two halves. Null when extraction
+ * failed all-or-nothing, and null for a variant that publishes none: a rule
+ * file is served whole and a custom agent publishes its own two halves under
+ * its own shape, so a file two kinds own shows its complete source under the
+ * file tab either way (FR-028).
  */
-const presentation = computed(() => {
-  const detail = openDetail.value;
+const presentation = computed(() =>
+  openDetail.value === null ? null : presentationOf(openDetail.value),
+);
+
+/**
+ * A variant of another kind is read too, and mapped rather than discarded, as
+ * the agent detail maps one: `get-file-detail` is addressed by the path alone
+ * and answers with the first variant its fixed order reaches (session.ts
+ * § fileDetail), so a `.claude/commands/CLAUDE.md` — a Claude command by its
+ * directory and a Claude instruction file by its name — arrives here as the
+ * instructions variant. Its `MarkdownPresentationDto` holds the same two values
+ * this page draws, from the same one parse: the frontmatter block is the
+ * metadata and the body is the prompt, which is exactly the split every
+ * Markdown command rule performs. Requiring this route's own variant would
+ * report a parsed file as unparsed.
+ *
+ * The mapping is unreachable for a Gemini CLI command: a `.toml` is admitted by
+ * no Markdown-kind rule, so nothing but this kind's variant can arrive for one.
+ */
+function presentationOf(detail: FileDetailDto): PromptPresentationDto | null {
   if (
-    detail === null ||
     detail.kind === 'rule' ||
     detail.kind === 'agent' ||
     detail.kind === 'settings/config' ||
@@ -389,37 +412,41 @@ const presentation = computed(() => {
   ) {
     return null;
   }
-  return detail.presentation;
-});
+  if (detail.kind === 'prompt/command') {
+    return detail.presentation;
+  }
+  return detail.presentation === null
+    ? null
+    : { metadata: detail.presentation.frontmatter, promptText: detail.presentation.bodyText };
+}
 
 /**
- * The frontmatter as the YAML document the detail renders (FR-007,
+ * The metadata as the YAML document the detail renders (FR-007,
  * frontmatter-yaml.ts): every declared key the file wrote, led by
- * {@link LEADING_PROMPT_FRONTMATTER_KEYS} and otherwise in the file's own
- * order, spelled back in the block's own language, so a reader compares it
- * against their file without translating and pastes from it without
- * converting.
+ * {@link LEADING_PROMPT_METADATA_KEYS} and otherwise in the file's own order.
+ * YAML for every vendor's file — the agent detail's choice, for the same
+ * reason: one surface, one spelling of a declaration set, whatever syntax the
+ * file carried it in.
  */
-const frontmatterText = computed(() => {
+const metadataText = computed(() => {
   const rank = (entry: DeclaredEntryDto): number => {
     // Only a string key can be one of the leading keys: a numeric key spelling
     // `name` is a different key (api-types.ts § DeclaredKeyKind).
-    const index =
-      entry.keyKind === 'string' ? LEADING_PROMPT_FRONTMATTER_KEYS.indexOf(entry.key) : -1;
-    return index === -1 ? LEADING_PROMPT_FRONTMATTER_KEYS.length : index;
+    const index = entry.keyKind === 'string' ? LEADING_PROMPT_METADATA_KEYS.indexOf(entry.key) : -1;
+    return index === -1 ? LEADING_PROMPT_METADATA_KEYS.length : index;
   };
   // `toSorted` is stable, so the keys past the leaders keep authored order.
   return frontmatterYamlText(
-    (presentation.value?.frontmatter ?? []).toSorted((left, right) => rank(left) - rank(right)),
+    (presentation.value?.metadata ?? []).toSorted((left, right) => rank(left) - rank(right)),
   );
 });
 
 /**
- * Whether the file left no prompt at all. Only an empty string counts: a body
- * of whitespace is what the file wrote after its frontmatter, and calling it
- * none would report a shortened value as the whole (FR-025).
+ * Whether the file left no prompt at all. Only an empty string counts: a
+ * prompt of whitespace is what the file wrote, and calling it none would
+ * report a shortened value as the whole (FR-025).
  */
-const bodyIsEmpty = computed(() => (presentation.value?.bodyText ?? '') === '');
+const promptIsEmpty = computed(() => (presentation.value?.promptText ?? '') === '');
 
 /**
  * The diagnostics of the open file. The detail response states each record
@@ -658,39 +685,50 @@ useReportedPageSubject(titleSubject);
         <DetailDiagnostics v-if="presentation === null" :diagnostics="openDiagnostics" />
 
         <div v-if="presentation" class="aci-prompt-detail__declarations">
-          <p v-if="presentation.frontmatter.length === 0" class="aci-note">
-            This file declares none.
-          </p>
+          <p v-if="presentation.metadata.length === 0" class="aci-note">This file declares none.</p>
           <!-- The declared keys as one read-only YAML document in the file's
                own order (FR-007), through the same viewer the prompt uses —
-               sized to the block, because a frontmatter is short
-               (SourceViewer § fitContent). YAML because the block is YAML:
+               sized to the block, because a metadata set is short
+               (SourceViewer § fitContent). "Metadata" rather than
+               "Frontmatter", because the keys arrive as a frontmatter fence
+               only for the products whose command file is Markdown: a Gemini
+               CLI command is TOML, and its keys sit beside its `prompt` — which
+               is why the wire shape is `PromptPresentationDto` rather than the
+               Markdown one (api-types.ts). The agent detail solved the same
+               problem the same way — its agents are declared as Markdown
+               frontmatter and as YAML — so the two pages share the word;
+               "Declaration" is not it, being what this product calls a
+               carrier's named declaration rendered as JSON (MCP, hooks,
+               plugins). YAML for both, the way an agent's metadata is:
                nothing here is markup, a link, or a resolved reference
                (FR-025, FR-026, FR-033). -->
           <SourceViewer
             v-else
-            panel-label="Frontmatter"
-            :source-text="frontmatterText"
+            panel-label="Metadata"
+            :source-text="metadataText"
             :source-relative-path="openPath"
-            content-label="Frontmatter of"
+            content-label="Metadata of"
             content-language="yaml"
           />
         </div>
 
         <div v-if="presentation" class="aci-prompt-detail__prompt">
-          <p v-if="bodyIsEmpty" class="aci-note">This file has none.</p>
-          <!-- The same read-only viewer the file tab uses, given the file's
-               own path so the body is highlighted as the Markdown it is.
-               Highlighting is tokenizing, not rendering: no heading becomes
-               large, no link becomes clickable, and no image loads (FR-033).
-               A name the prompt mentions stays text: nothing is resolved to
-               an agent, a skill, or another command (FR-019). -->
+          <p v-if="promptIsEmpty" class="aci-note">This file has none.</p>
+          <!-- The same read-only viewer the file tab uses, highlighted as the
+               Markdown a prompt is whatever file carried it — the path's own
+               claim would colour a TOML command's prompt as TOML, which the
+               prompt is not. Highlighting is tokenizing, not rendering: no
+               heading becomes large, no link becomes clickable, and no image
+               loads (FR-033). A name the prompt mentions stays text: nothing
+               is resolved to an agent, a skill, or another command, and a
+               `!{...}` shell block is characters (FR-019). -->
           <SourceViewer
             v-else
             panel-label="Prompt"
-            :source-text="presentation.bodyText"
+            :source-text="presentation.promptText"
             :source-relative-path="openPath"
             content-label="Prompt of"
+            content-language="markdown"
           />
         </div>
       </SubjectTabPanel>

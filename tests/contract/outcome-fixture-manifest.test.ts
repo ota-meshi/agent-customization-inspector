@@ -377,17 +377,18 @@ describe('outcome fixture manifest coverage', () => {
 
   it('SC-003 carries every documented shared-file attribution combination', () => {
     // Enumerated rather than bounded below by two tools: a floor would pass a
-    // manifest that dropped the one three-tool combination this release
+    // manifest that dropped one of the three-tool combinations this release
     // documents, which is the case a two-tool check is least able to see.
     const documented = new Map<string, readonly string[]>([
       ['repository-agents-md', ['OpenAI Codex', 'GitHub Copilot']],
       ['repository-root-claude-md', ['Claude Code', 'GitHub Copilot']],
-      ['repository-agents-skill', ['OpenAI Codex', 'GitHub Copilot']],
+      ['repository-root-gemini-md', ['GitHub Copilot', 'Gemini CLI']],
+      ['repository-agents-skill', ['OpenAI Codex', 'GitHub Copilot', 'Gemini CLI']],
       ['repository-claude-skill', ['Claude Code', 'GitHub Copilot']],
       ['repository-claude-settings', ['Claude Code', 'GitHub Copilot']],
       ['repository-root-mcp-json', ['Claude Code', 'GitHub Copilot']],
       ['repository-marketplace-json', ['Claude Code', 'OpenAI Codex', 'GitHub Copilot']],
-      ['global-shared-agent-home-skill', ['OpenAI Codex', 'GitHub Copilot']],
+      ['global-shared-agent-home-skill', ['OpenAI Codex', 'GitHub Copilot', 'Gemini CLI']],
     ]);
     const entry = manifest.criteria.find((candidate) => candidate.criterion === 'SC-003')!;
     const shared = entry.cases.filter((manifestCase) =>
@@ -420,6 +421,7 @@ describe('outcome fixture manifest coverage', () => {
       'sc003.global-source-form.claude',
       'sc003.global-source-form.codex',
       'sc003.global-source-form.copilot',
+      'sc003.global-source-form.gemini',
     ]);
   });
 });

@@ -47,7 +47,7 @@ const REPOSITORY_AGENTS_TEXT = `# instructions\n\n${REPOSITORY_AGENTS_MARKER}\n`
 /** The repository the session is launched against. */
 let repository: string;
 
-/** The three Global homes the environment points at. */
+/** The five Global homes the environment points at. */
 let homes: GlobalHomeFixture;
 
 let host: LaunchedHost;
@@ -125,7 +125,7 @@ test('confirms with no tool selector and states what was accepted', async ({ pag
   await page.goto(new URL('/global-consent', host.origin).toString());
 
   const main = page.locator('main');
-  // All four members are bound and every fixture root is readable, so each
+  // All five members are bound and every fixture root is readable, so each
   // control states its own outcome from the one shared batch (FR-014).
   await expect(main).toContainText('Codex home — Inspected');
   const outcomes = await page.locator('.aci-global-consent-page__outcomes li').allInnerTexts();
@@ -133,6 +133,7 @@ test('confirms with no tool selector and states what was accepted', async ({ pag
     'Copilot home — Inspected',
     'Claude home — Inspected',
     'Codex home — Inspected',
+    'Gemini home — Inspected',
     'Shared agent home — Inspected',
   ]);
   // Nothing here offers the confirmation again, and nothing offers it per

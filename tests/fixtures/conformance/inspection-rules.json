@@ -3530,6 +3530,753 @@
     ]
   },
   {
+    "ruleId": "gemini.derived.context-filename",
+    "tool": "gemini",
+    "discoveryClass": "bounded-derived-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": null,
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.gemini-md",
+        "url": "https://geminicli.com/docs/cli/gemini-md/",
+        "officialHost": "geminicli.com",
+        "sections": ["Understand the context hierarchy", "Customize the context file name"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "GEMINI.md is the default context filename, found in the workspace directories and their parents and just-in-time in any directory a tool accesses; context.fileName in settings.json names the file or files to load instead, as one name or a list."
+      },
+      {
+        "sourceId": "google.gemini-cli.configuration",
+        "url": "https://geminicli.com/docs/reference/configuration/",
+        "officialHost": "geminicli.com",
+        "sections": ["Available settings in settings.json"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "context.fileName accepts either a single string or an array of strings naming the context file or files to load into memory."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.excluded.extensions",
+    "tool": "gemini",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["global"],
+    "matcher": null,
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.extensions-reference",
+        "url": "https://geminicli.com/docs/extensions/reference/",
+        "officialHost": "geminicli.com",
+        "sections": ["Extension format", "Link a local extension"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "Extensions are loaded from <home>/.gemini/extensions, each a directory of gemini-extension.json and bundled components, and a local development directory reaches the CLI only through the symbolic link gemini extensions link creates there — so the installed copy is the only thing the vendor reads, and it is a copy this rule declines."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.excluded.repo-non-customizations",
+    "tool": "gemini",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["repository"],
+    "matcher": null,
+    "policyRefs": ["FR-003", "FR-004", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.policy-engine",
+        "url": "https://geminicli.com/docs/reference/policy-engine/",
+        "officialHost": "geminicli.com",
+        "sections": ["Policy locations"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "The workspace policy tier at .gemini/policies is currently non-functional and its files have no effect, so listing them as read would name a reader of a file the product does not read."
+      },
+      {
+        "sourceId": "google.gemini-cli.gemini-ignore",
+        "url": "https://geminicli.com/docs/cli/gemini-ignore/",
+        "officialHost": "geminicli.com",
+        "sections": ["How it works"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "A .geminiignore file tells the tools that respect it which paths to exclude; it is an exclusion list, not a customization the model reads."
+      },
+      {
+        "sourceId": "google.gemini-cli.configuration",
+        "url": "https://geminicli.com/docs/reference/configuration/",
+        "officialHost": "geminicli.com",
+        "sections": ["Environment variables and .env files"],
+        "reviewedOn": "2026-09-09",
+        "establishes": ".env files hold environment variables the CLI loads into its process — credentials rather than a customization — so this rule declines them."
+      },
+      {
+        "sourceId": "google.gemini-cli.hooks",
+        "url": "https://geminicli.com/docs/hooks/",
+        "officialHost": "geminicli.com",
+        "sections": ["Configuration"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "A hook is declared in settings.json and its command names a script such as one under .gemini/hooks/; the script is the declaration’s target, not a declaration, so this rule declines it."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.excluded.user-runtime",
+    "tool": "gemini",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["global"],
+    "matcher": null,
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.trusted-folders",
+        "url": "https://geminicli.com/docs/cli/trusted-folders/",
+        "officialHost": "geminicli.com",
+        "sections": ["Overriding the trust file location"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "trustedFolders.json in the user directory records trust decisions — runtime state the CLI writes, not a customization the reader authored — so this rule declines it."
+      },
+      {
+        "sourceId": "google.gemini-cli.configuration",
+        "url": "https://geminicli.com/docs/reference/configuration/",
+        "officialHost": "geminicli.com",
+        "sections": ["Configuration layers", "Environment variables and .env files"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "The user .env file holds environment variables, and the system defaults and system settings files live in administrator-owned directories outside the home; neither is a customization below a consented root, so this rule declines both."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.global.agent",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "agent",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "gemini"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "agents"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.subagents",
+        "url": "https://geminicli.com/docs/core/subagents/",
+        "officialHost": "geminicli.com",
+        "sections": ["Agent definition files"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "User-level custom agents are Markdown files at ~/.gemini/agents/*.md, the exact shape this rule admits below the consented boundary."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.global.agents-home.skill",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "skill",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "agents"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "FR-045", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.skills",
+        "url": "https://geminicli.com/docs/cli/skills/",
+        "officialHost": "geminicli.com",
+        "sections": ["Discovery tiers", "Precedence and aliases"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "User skills may live in the ~/.agents/skills/ alias, the interoperable path shared with other tools — the exact location this rule admits below the consented shared agent home."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.global.command",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "prompt/command",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "gemini"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "commands"
+          },
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.toml$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.custom-commands",
+        "url": "https://geminicli.com/docs/cli/custom-commands/",
+        "officialHost": "geminicli.com",
+        "sections": ["File locations and precedence", "Naming and namespacing"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "User commands are .toml files in ~/.gemini/commands/, namespaced by subdirectory — the recursion this rule admits below the consented boundary."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.global.hooks",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "hook",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "gemini"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.hooks",
+        "url": "https://geminicli.com/docs/hooks/",
+        "officialHost": "geminicli.com",
+        "sections": ["Configuration"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "The user settings at ~/.gemini/settings.json are one of the layers hooks are configured in."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.global.instructions",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "gemini"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "GEMINI.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.gemini-md",
+        "url": "https://geminicli.com/docs/cli/gemini-md/",
+        "officialHost": "geminicli.com",
+        "sections": ["Understand the context hierarchy"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "The global context file is ~/.gemini/GEMINI.md, the exact location this rule admits below the consented boundary."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.global.mcp",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "MCP",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "gemini"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.mcp-server",
+        "url": "https://geminicli.com/docs/tools/mcp-server/",
+        "officialHost": "geminicli.com",
+        "sections": ["Configure the MCP server in settings.json"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "The mcpServers object may be declared in the user config ~/.gemini/settings.json, the carrier this rule reads the declarations from."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.global.policies",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "permissions",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "gemini"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "policies"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.toml$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.policy-engine",
+        "url": "https://geminicli.com/docs/reference/policy-engine/",
+        "officialHost": "geminicli.com",
+        "sections": ["Policy locations", "TOML rule schema"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "User policies are the custom ~/.gemini/policies/*.toml files, each holding [[rule]] entries that decide whether a tool call is allowed, denied, or confirmed — the exact shape this rule admits as a permissions document."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.global.settings",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "settings/config",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "gemini"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.configuration",
+        "url": "https://geminicli.com/docs/reference/configuration/",
+        "officialHost": "geminicli.com",
+        "sections": ["Settings files"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "The user settings file is ~/.gemini/settings.json, the exact location this rule admits below the consented boundary."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.global.skill",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "skill",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "gemini"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.skills",
+        "url": "https://geminicli.com/docs/cli/skills/",
+        "officialHost": "geminicli.com",
+        "sections": ["Discovery tiers"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "User skills are located in ~/.gemini/skills/, the directory this rule admits a SKILL.md one level below."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.repo.agent",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "agent",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".gemini"
+          },
+          {
+            "kind": "literal",
+            "value": "agents"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.subagents",
+        "url": "https://geminicli.com/docs/core/subagents/",
+        "officialHost": "geminicli.com",
+        "sections": ["Agent definition files", "Disabling subagents"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "Project-level custom agents are Markdown files at .gemini/agents/*.md, the exact shape this rule admits, under an experimental setting that is on by default."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.repo.command",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "prompt/command",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".gemini"
+          },
+          {
+            "kind": "literal",
+            "value": "commands"
+          },
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.toml$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.custom-commands",
+        "url": "https://geminicli.com/docs/cli/custom-commands/",
+        "officialHost": "geminicli.com",
+        "sections": ["File locations and precedence", "Naming and namespacing"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "Project commands are .toml files in <project root>/.gemini/commands/, with subdirectories forming namespaces joined by a colon — the recursion this rule admits with its one trailing recursive step."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.repo.hooks",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "hook",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".gemini"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.hooks",
+        "url": "https://geminicli.com/docs/hooks/",
+        "officialHost": "geminicli.com",
+        "sections": ["Configuration"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "Hooks are configured in the hooks object of settings.json, whose project layer is .gemini/settings.json in the current directory."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.repo.mcp",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "MCP",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".gemini"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.mcp-server",
+        "url": "https://geminicli.com/docs/tools/mcp-server/",
+        "officialHost": "geminicli.com",
+        "sections": ["Configure the MCP server in settings.json", "Configuration structure"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "MCP servers are declared in the mcpServers object of settings.json, and the project scope of that file is .gemini/settings.json — the carrier this rule reads the declarations from."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.repo.settings",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "settings/config",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".gemini"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.configuration",
+        "url": "https://geminicli.com/docs/reference/configuration/",
+        "officialHost": "geminicli.com",
+        "sections": ["Settings files"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "The project settings file is .gemini/settings.json within the project root, which is the exact location this rule admits."
+      }
+    ]
+  },
+  {
+    "ruleId": "gemini.repo.skill",
+    "tool": "gemini",
+    "discoveryClass": "static-candidate",
+    "kind": "skill",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".gemini"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".agents"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.gemini-cli.skills",
+        "url": "https://geminicli.com/docs/cli/skills/",
+        "officialHost": "geminicli.com",
+        "sections": ["Discovery tiers"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "Workspace skills are located in .gemini/skills/ or the .agents/skills/ alias, the two locations this rule admits a SKILL.md one directory below."
+      },
+      {
+        "sourceId": "google.gemini-cli.creating-skills",
+        "url": "https://geminicli.com/docs/cli/creating-skills/",
+        "officialHost": "geminicli.com",
+        "sections": ["Skill structure", "Discovery aliases"],
+        "reviewedOn": "2026-09-09",
+        "establishes": "A skill is a directory holding a required SKILL.md beside optional scripts, references, and assets, and .agents/skills is an alias of .gemini/skills."
+      }
+    ]
+  },
+  {
     "ruleId": "shared.excluded.managed-remote-state",
     "tool": "shared",
     "discoveryClass": "excluded",

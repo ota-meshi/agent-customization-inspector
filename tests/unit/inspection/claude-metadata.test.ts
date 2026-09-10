@@ -668,7 +668,7 @@ describe('Claude command reading (T449)', () => {
   }
 
   it('reads every declared key in authored order, and the prompt after the block', async () => {
-    // A command file supports a skill's frontmatter keys, so the detail leads
+    // A command file supports a skill's metadata keys, so the detail leads
     // with the declarations the file wrote and the prompt that follows them
     // (FR-007). Keys are published in the file's own order, not sorted.
     const recognition = await recognizePrompt(
@@ -691,7 +691,7 @@ describe('Claude command reading (T449)', () => {
     expect(recognition.details).toEqual({
       kind: 'prompt/command',
       invocationName: 'deploy',
-      frontmatter: [
+      metadata: [
         {
           key: 'description',
           keyKind: 'string',
@@ -719,18 +719,18 @@ describe('Claude command reading (T449)', () => {
           value: { kind: 'scalar', scalarKind: 'string', text: 'opus' },
         },
       ],
-      bodyText: '\n# Deploy\n\nDeploy $1 after checking the working tree.\n',
+      promptText: '\n# Deploy\n\nDeploy $1 after checking the working tree.\n',
     });
     expect(recognition.parseStatus).toBe('parsed');
   });
 
-  it('publishes the whole file as the prompt when it declares no frontmatter', async () => {
+  it('publishes the whole file as the prompt when it declares no metadata', async () => {
     const recognition = await recognizePrompt('# Release\n\nCut a release.\n');
     expect(recognition.details).toEqual({
       kind: 'prompt/command',
       invocationName: 'deploy',
-      frontmatter: [],
-      bodyText: '# Release\n\nCut a release.\n',
+      metadata: [],
+      promptText: '# Release\n\nCut a release.\n',
     });
     expect(recognition.parseStatus).toBe('parsed');
   });
@@ -747,7 +747,7 @@ describe('Claude command reading (T449)', () => {
     expect(recognition.details).toMatchObject({
       kind: 'prompt/command',
       invocationName: 'frontend:component',
-      frontmatter: [
+      metadata: [
         {
           key: 'name',
           keyKind: 'string',
@@ -766,8 +766,8 @@ describe('Claude command reading (T449)', () => {
       // Derived from the path, so the row keeps its identity while the
       // declarations stay unknown.
       invocationName: 'deploy',
-      frontmatter: [],
-      bodyText: '',
+      metadata: [],
+      promptText: '',
     });
     expect(recognition.parseStatus).toBe('failed');
   });
@@ -779,7 +779,7 @@ describe('Claude command reading (T449)', () => {
       `---\ndescription: Publish with ${CONTENT_FIXTURE_SECRET}\nendpoint: \${DEPLOY_ENDPOINT}\n---\n\n# Publish\n`,
     );
     expect(recognition.details).toMatchObject({
-      frontmatter: [
+      metadata: [
         {
           key: 'description',
           value: { kind: 'scalar', text: `Publish with ${CONTENT_FIXTURE_SECRET}` },
@@ -806,8 +806,8 @@ describe('Claude command reading (T449)', () => {
     expect(recognition.details).toEqual({
       kind: 'prompt/command',
       invocationName: 'deploy',
-      frontmatter: [],
-      bodyText: [
+      metadata: [],
+      promptText: [
         '# Audit',
         '',
         '- Hand the diff to the code-reviewer subagent.',

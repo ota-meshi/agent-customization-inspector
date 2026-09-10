@@ -6,7 +6,7 @@
 diffs.**
 
 What is your repository telling AI coding agents? Not a question you can answer by opening
-one file. Claude Code, GitHub Copilot, and OpenAI Codex each look for instructions, skills,
+one file. Claude Code, GitHub Copilot, OpenAI Codex, and Gemini CLI each look for instructions, skills,
 MCP servers, hooks, and permission rules in paths of their own: `AGENTS.md` at the root, a
 `.claude/settings.json` a teammate added, a `copilot-instructions.md` that arrived with the
 repository, the same MCP server declared in three places. Some of it you wrote. Some of it
@@ -18,12 +18,12 @@ One command answers it:
 npx agent-customization-inspector
 ```
 
-A local page opens with the customization files the three tools look for in the current
+A local page opens with the customization files the four tools look for in the current
 directory — what each one is, which tool reads it, and exactly what it says.
 
 ## The answer looks like this
 
-![The inventory: the two Sources and their scan status above the kinds and their counts, and each row naming what it is, the files under it, the products that read each file with the surfaces that recognition rests on, and how they resolve a name two files share](docs/images/inventory.png)
+![The inventory: the two Sources and their scan status above the kinds and their counts, and each row naming what it is, the files under it, the products that read each file with the surfaces that recognition rests on, and how they resolve a name shared by more than one file](docs/images/inventory.png)
 
 Eleven kinds — **instructions, skills, MCP, agents, prompts and commands, rules,
 permissions, hooks, plugins, output styles, and settings** — with their counts down the
@@ -50,10 +50,10 @@ two readable copies opens a side-by-side diff.
 than by file: one server name, every file that declares it, and what each declaration says —
 so you can see for yourself which ones disagree.
 
-**"And my own setup, not the repository's?"** Four directories hold customizations that follow
-you into every project: `~/.claude`, `~/.codex`, and `~/.copilot` — or wherever
-`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `COPILOT_HOME` point instead — plus the shared
-`~/.agents`. Open *Personal setup* under *Sources* and the page names the four it resolved
+**"And my own setup, not the repository's?"** The customizations that follow you into every
+project live in `~/.claude`, `~/.codex`, `~/.copilot`, and `~/.gemini` — or wherever
+`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `COPILOT_HOME`, and `GEMINI_CLI_HOME` point instead — plus
+the shared `~/.agents`. Open *Personal setup* under *Sources* and the page names the ones it resolved
 before reading any of them; `--inspect-personal-setup` is that confirmation given on the
 command line, so it reads them before the page exists.
 
@@ -66,7 +66,7 @@ the default application* and *Open the folder this file is in*.
 | Option | What it does |
 |---|---|
 | `--root <path>` | Inspect this directory instead of the current one. |
-| `--inspect-personal-setup` | Also inspect the four personal directories above. Passing it *is* your consent — the page won't ask again. |
+| `--inspect-personal-setup` | Also inspect the personal directories above. Passing it *is* your consent — the page won't ask again. |
 | `--open` / `--no-open` | Open the browser automatically, or don't. On by default. |
 | `--port <number>` | Prefer this port. If it is taken, a free one is used instead; `0` always picks a free one. |
 | `--help`, `--version` | Print and exit, without starting a session. |

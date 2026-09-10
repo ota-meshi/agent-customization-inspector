@@ -288,6 +288,7 @@ test('shows the addressed definition and nothing about a runtime it cannot see',
       recognitions: [
         { product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' },
         { product: 'OpenAI Codex', surfaces: 'Local clients' },
+        { product: 'Gemini CLI', surfaces: 'CLI' },
       ],
     },
   ]);
@@ -391,7 +392,7 @@ test('opens a supporting file from the tree and keeps the skill on screen', asyn
   // its own, and a screen that reported that would be describing the file
   // instead of the skill the reader is looking at.
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/greet/');
-  await expect(page.locator('.aci-skill-detail__recognitions li')).toHaveCount(2);
+  await expect(page.locator('.aci-skill-detail__recognitions li')).toHaveCount(3);
   await expect(page.locator('.aci-skill-detail__file-title h3')).toHaveText(
     '.agents/skills/greet/scripts/run.sh',
   );
@@ -428,7 +429,7 @@ test('shows a binary asset as the fact it is, with nothing wrong', async ({ page
   expect(text).not.toContain('NUL');
   // And the skill above it is untouched: the asset changes what is shown, not
   // what was recognized.
-  await expect(page.locator('.aci-skill-detail__recognitions li')).toHaveCount(2);
+  await expect(page.locator('.aci-skill-detail__recognitions li')).toHaveCount(3);
 });
 
 test('leaves the reader in the tree when they select another file', async ({ page }) => {
@@ -468,7 +469,7 @@ test('names the skill in the address and the file it is showing in the query', a
 
   await page.goto(companionUrl);
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/greet/');
-  await expect(page.locator('.aci-skill-detail__recognitions li')).toHaveCount(2);
+  await expect(page.locator('.aci-skill-detail__recognitions li')).toHaveCount(3);
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
 });
 

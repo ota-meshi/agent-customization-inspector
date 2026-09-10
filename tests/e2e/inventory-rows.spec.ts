@@ -7,7 +7,7 @@
 // however many products recognize it, that each recognition still states the
 // documented surfaces its admitting rule rests on beside a mark that names the
 // product, that a declaration whose file is not its own says which kind of file
-// carries it, that the three vendor marks are three distinct glyphs in three
+// carries it, that the four vendor marks are four distinct glyphs in four
 // distinct colours which forced colours returns to one, and that a diagnostic
 // is stated by its kind at all times with the explanation disclosed rather than
 // standing.
@@ -138,15 +138,51 @@ test('states the documented surfaces beside a mark that names the product', asyn
       }),
     );
     for (const text of named) {
-      expect(text, kind).toMatch(/^(GitHub Copilot|Claude Code|OpenAI Codex)/u);
+      expect(text, kind).toMatch(/^(GitHub Copilot|Claude Code|OpenAI Codex|Gemini CLI)/u);
     }
   }
 
   // The legend names each mark once for the list, which is what lets the rows
-  // draw the product instead of spelling it.
+  // draw the product instead of spelling it — the fourth product included
+  // (specs/002-gemini-cli-support T035).
   const legend = page.locator('.aci-tool-legend');
   await expect(legend).toBeVisible();
   await expect(legend).toContainText('GitHub Copilot');
+  await expect(legend).toContainText('Gemini CLI');
+  // The Tool filter offers every product by name, in the closed tool order.
+  await expect(page.getByLabel('Tool', { exact: true }).locator('option')).toContainText([
+    /.*/u,
+    'GitHub Copilot',
+    'Claude Code',
+    'OpenAI Codex',
+    'Gemini CLI',
+  ]);
+});
+
+test('draws two marks on the root GEMINI.md line and three on an .agents skill line', async ({
+  page,
+}) => {
+  await page.goto(host.origin);
+  // The root `GEMINI.md` is Copilot's root alternative and Gemini CLI's own
+  // default context file: one file line, two marks (spec.md FR-013).
+  const instructions = await openKind(page, 'Instructions');
+  const geminiLine = instructions
+    .locator('.aci-source-family-blocks__members > li')
+    .filter({ has: page.getByText('GEMINI.md', { exact: true }) });
+  await expect(geminiLine.locator('.aci-recognition-marks__one')).toHaveCount(2);
+  await expect(geminiLine.locator('.aci-tool-mark--copilot')).toHaveCount(1);
+  await expect(geminiLine.locator('.aci-tool-mark--gemini')).toHaveCount(1);
+
+  // `.agents/skills/` is Codex's, Copilot's, and Gemini CLI's location: one
+  // file line, three marks.
+  const skills = await openKind(page, 'Skill');
+  const aliasLine = skills.locator('.aci-source-family-blocks__members > li').filter({
+    has: page.getByText(fixture.geminiSkillFixture.sharedSkillPath, { exact: true }),
+  });
+  await expect(aliasLine.locator('.aci-recognition-marks__one')).toHaveCount(3);
+  for (const mark of ['copilot', 'codex', 'gemini']) {
+    await expect(aliasLine.locator(`.aci-tool-mark--${mark}`)).toHaveCount(1);
+  }
 });
 
 test('says which kind of file carries a declaration that is not its own', async ({ page }) => {
@@ -158,15 +194,15 @@ test('says which kind of file carries a declaration that is not its own', async 
   }
 });
 
-test('draws three distinct marks in three distinct colours, and one under forced colours', async ({
+test('draws four distinct marks in four distinct colours, and one under forced colours', async ({
   page,
 }) => {
   await page.goto(host.origin);
-  // The instructions tree is read by all three products, so one list carries
-  // all three marks.
+  // The instructions tree is read by all four products, so one list carries
+  // all four marks.
   const panel = await openKind(page, 'Instructions');
 
-  const marks = ['copilot', 'claude', 'codex'] as const;
+  const marks = ['copilot', 'claude', 'codex', 'gemini'] as const;
   const read = async (): Promise<readonly { color: string; glyph: string }[]> => {
     const readings: { color: string; glyph: string }[] = [];
     for (const mark of marks) {
@@ -183,14 +219,14 @@ test('draws three distinct marks in three distinct colours, and one under forced
   };
 
   const chosen = await read();
-  // Three shapes, so the products stay apart for a reader who cannot see the
+  // Four shapes, so the products stay apart for a reader who cannot see the
   // colours at all — which is the whole of what the row rests on (WCAG 1.4.1).
-  expect(new Set(chosen.map((reading) => reading.glyph)).size).toBe(3);
+  expect(new Set(chosen.map((reading) => reading.glyph)).size).toBe(4);
   for (const reading of chosen) {
     expect(reading.glyph).not.toBe('');
   }
-  // Three colours, which is the scanning aid the brand marks are drawn in.
-  expect(new Set(chosen.map((reading) => reading.color)).size).toBe(3);
+  // Four colours, which is the scanning aid the brand marks are drawn in.
+  expect(new Set(chosen.map((reading) => reading.color)).size).toBe(4);
 
   await page.emulateMedia({ forcedColors: 'active' });
   // Emulation that the engine does not apply would leave this asserting the
@@ -206,7 +242,7 @@ test('draws three distinct marks in three distinct colours, and one under forced
   // shapes and the surfaces beside them carry everything they carried before
   // (AGENTS.md § Icon policy).
   expect(new Set(forced.map((reading) => reading.color)).size).toBe(1);
-  expect(new Set(forced.map((reading) => reading.glyph)).size).toBe(3);
+  expect(new Set(forced.map((reading) => reading.glyph)).size).toBe(4);
 
   await page.emulateMedia({ forcedColors: null });
 });

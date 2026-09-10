@@ -71,6 +71,7 @@ test('lists one unified skill inventory with each file’s recognition badges', 
   await expectTools('orbit', '.agents/skills/orbit/SKILL.md', [
     'GitHub Copilot VS Code, CLI, Cloud agent',
     'OpenAI Codex Local clients',
+    'Gemini CLI CLI',
   ]);
   await expectTools('voyage', '.claude/skills/lander/SKILL.md', [
     'GitHub Copilot VS Code, CLI, Cloud agent',

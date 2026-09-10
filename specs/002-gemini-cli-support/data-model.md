@@ -47,7 +47,7 @@ parent model says "exactly four" says five:
 | `Inspection Session` | member Global Sources | zero to five |
 | `LifecycleOwnerKey` | `global:${GlobalMemberId}` | derives; its rank is read from `GLOBAL_MEMBER_ORDER` rather than a ladder |
 
-`GLOBAL_MEMBER_TEXT` gains `gemini: 'Gemini CLI home'`; `SOURCE_SELECTOR_TEXT` gains
+`GLOBAL_MEMBER_TEXT` gains `gemini: 'Gemini home'` — the member table drops the vendor and the suffix, as `Copilot home` and `Codex home` do, while the tool table keeps `Gemini CLI`; `SOURCE_SELECTOR_TEXT` gains
 `'global-gemini'`.
 
 ## GlobalRootInputCapture
@@ -80,8 +80,8 @@ One record per row of the vendor contract; IDs are closed unions in
 
 | Union | Members |
 |---|---|
-| `GeminiBehaviorId` | `gemini.behavior.repo.context`, `.repo.settings`, `.repo.mcp`, `.repo.hooks`, `.repo.commands`, `.repo.skills`, `.repo.agents`, `.repo.policies`, `.repo.trust`, `.repo.ignore`, `.repo.env`, `gemini.behavior.user.home`, `.user.context`, `.user.settings`, `.user.commands`, `.user.skills`, `.user.agents`, `.user.policies`, `.user.extensions`, `.user.trust-record`, `.user.env`, `gemini.behavior.system.settings` |
-| `GeminiRuleId` | `gemini.derived.context-filename`, `gemini.repo.settings`, `.repo.mcp`, `.repo.hooks`, `.repo.command`, `.repo.skill`, `.repo.agent`, `gemini.global.instructions`, `.global.settings`, `.global.mcp`, `.global.hooks`, `.global.command`, `.global.skill`, `.global.agent`, `.global.policies`, `.global.agents-home.skill`, `gemini.excluded.repo-non-customizations`, `.excluded.extensions`, `.excluded.user-runtime`, `.excluded.system` |
+| `GeminiBehaviorId` | `gemini.behavior.repo.context`, `.repo.settings`, `.repo.mcp`, `.repo.hooks`, `.repo.commands`, `.repo.skills`, `.repo.agents`, `.repo.policies`, `.repo.trust`, `.repo.ignore`, `.repo.env`, `gemini.behavior.user.home`, `.user.context`, `.user.settings`, `.user.commands`, `.user.skills`, `.user.agents`, `.user.policies`, `.user.extensions`, `.user.trust-record`, `.user.env` |
+| `GeminiRuleId` | `gemini.derived.context-filename`, `gemini.repo.settings`, `.repo.mcp`, `.repo.hooks`, `.repo.command`, `.repo.skill`, `.repo.agent`, `gemini.global.instructions`, `.global.settings`, `.global.mcp`, `.global.hooks`, `.global.command`, `.global.skill`, `.global.agent`, `.global.policies`, `.global.agents-home.skill`, `gemini.excluded.repo-non-customizations`, `.excluded.extensions`, `.excluded.user-runtime` |
 | `GeminiStrategyId` | `gemini.context.layering`, `gemini.settings.precedence`, `gemini.mcp.configuration`, `gemini.hooks.merge`, `gemini.commands.selection`, `gemini.skills.selection`, `gemini.agents.selection`, `gemini.policies.tiers` |
 | `GoogleSourceId` | `google.gemini-cli.configuration`, `.gemini-md`, `.custom-commands`, `.skills`, `.creating-skills`, `.subagents`, `.hooks`, `.hooks-reference`, `.mcp-server`, `.policy-engine`, `.extensions-reference`, `.trusted-folders`, `.gemini-ignore` |
 

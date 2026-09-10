@@ -5,6 +5,7 @@
 // only `code` plus those values: scope, severity, and the actionable message
 // text are all derived from `code` through this one registry.
 // `lifecycleOwnerKey` is internal routing state and never serializes.
+import { GLOBAL_MEMBER_ORDER } from './api-text';
 import { createOpaqueId } from './entities';
 import type { GlobalMemberId } from './api-types';
 
@@ -316,7 +317,21 @@ export interface SerializedDiagnostic {
   readonly sourceRelativePath: string | null;
 }
 
-// Emission order is semantic — Repository, fixed Global tool order, then
+/**
+ * The rank of each Global member's lifecycle owner, read from the one
+ * contracted member order rather than restated here: a ladder spelling the
+ * members again would be a second copy of that order, and a member added to
+ * the order but not to the ladder would sort silently into the fallback rank
+ * (AGENTS.md § Implementation simplicity policy — publish one fact).
+ */
+const GLOBAL_OWNER_RANK: ReadonlyMap<LifecycleOwnerKey, number> = new Map(
+  GLOBAL_MEMBER_ORDER.map((member, index) => [`global:${member}` as const, index + 1]),
+);
+
+/** The rank after the Repository and every Global member: published Sources. */
+const PUBLISHED_SOURCE_RANK = GLOBAL_MEMBER_ORDER.length + 1;
+
+// Emission order is semantic — Repository, fixed Global member order, then
 // published Sources, then generation-owned candidates — because an opaque
 // Source ID must never supply the sort order (IDs are regenerated every
 // generation and would make output nondeterministic).
@@ -324,20 +339,15 @@ function lifecycleOwnerRank(key: LifecycleOwnerKey | null): number {
   if (key === 'repository') {
     return 0;
   }
-  if (key === 'global:copilot') {
-    return 1;
+  if (key === null) {
+    // Generation-owned candidates sort after lifecycle owners.
+    return PUBLISHED_SOURCE_RANK + 1;
   }
-  if (key === 'global:claude') {
-    return 2;
+  const memberRank = GLOBAL_OWNER_RANK.get(key);
+  if (memberRank !== undefined) {
+    return memberRank;
   }
-  if (key === 'global:codex') {
-    return 3;
-  }
-  if (key !== null && key.startsWith('published-source:')) {
-    return 4;
-  }
-  // Generation-owned candidates sort after lifecycle owners.
-  return 5;
+  return key.startsWith('published-source:') ? PUBLISHED_SOURCE_RANK : PUBLISHED_SOURCE_RANK + 1;
 }
 
 /** Within one owner rank, wider scopes emit first: source, then per-file. */

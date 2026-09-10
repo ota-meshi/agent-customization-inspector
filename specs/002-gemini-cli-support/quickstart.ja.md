@@ -65,7 +65,7 @@ GEMINI_CLI_HOME=/path/to/fixture-home node dist/cli.mjs --no-open --port 0
 
 consent ページを開く。期待: 5つの提案ディレクトリがあり、4つ目は
 `/path/to/fixture-home/.gemini` — reference が文書化する join — であり、確認後に
-`Gemini CLI home` Source が正確に `GEMINI.md`、`settings.json`、`skills/*/SKILL.md`、
+`Gemini home` Source が正確に `GEMINI.md`、`settings.json`、`skills/*/SKILL.md`、
 `agents/*.md`、`commands/**/*.toml`、`policies/*.toml` を publish する。`GEMINI_CLI_HOME=`
 (空) での起動はその entry を root なしの present-empty として示す。
 

@@ -135,6 +135,7 @@ const SAME_NAME_SKILL_RESOLUTIONS: Readonly<Record<SupportedTool, SameNameSkillR
     copilot: deriveSameNameSkillResolution('copilot'),
     claude: deriveSameNameSkillResolution('claude'),
     codex: deriveSameNameSkillResolution('codex'),
+    gemini: deriveSameNameSkillResolution('gemini'),
   };
 
 /** Derives one tool's statement from the strategies its shipped skill rule names. */

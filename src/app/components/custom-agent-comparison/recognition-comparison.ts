@@ -300,9 +300,11 @@ export class CustomAgentRecognitionComparison {
  * `get-file-detail` is addressed by the path alone and answers with the first
  * variant its fixed order reaches, the skill one first (session.ts
  * § fileDetail). A surface that required its own kind would report those
- * parsed files as unparsed. The excluded variants carry no such split: a rule
- * file is published whole, and an unrecognized file has nothing read out of
- * it.
+ * parsed files as unparsed. A command variant is mapped the same way — its
+ * metadata and prompt are the two halves under the names its own kind gives
+ * them (api-types.ts § PromptPresentationDto). The excluded variants carry no
+ * such split: a rule file is published whole, and an unrecognized file has
+ * nothing read out of it.
  */
 function presentationOf(side: CustomAgentComparisonSideInput): AgentPresentationDto | null {
   const detail = side.detail;
@@ -312,10 +314,20 @@ function presentationOf(side: CustomAgentComparisonSideInput): AgentPresentation
   if (detail.kind === 'agent') {
     return detail.presentation;
   }
-  const presentation = detail.presentation;
-  return presentation === null
+  if (detail.kind === 'prompt/command') {
+    return detail.presentation === null
+      ? null
+      : {
+          metadata: detail.presentation.metadata,
+          instructionsText: detail.presentation.promptText,
+        };
+  }
+  return detail.presentation === null
     ? null
-    : { metadata: presentation.frontmatter, instructionsText: presentation.bodyText };
+    : {
+        metadata: detail.presentation.frontmatter,
+        instructionsText: detail.presentation.bodyText,
+      };
 }
 
 /**

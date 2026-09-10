@@ -362,16 +362,19 @@ test('states tool recognition per tool and compares declared metadata once', asy
     'Instructions',
     'Source comparison',
   ]);
-  // The `.agents` file is recognized by GitHub Copilot and OpenAI Codex, the
-  // `.claude` file by GitHub Copilot and Claude Code: one recognition row
-  // per tool in the contracted order, each recognition distinguishable from
-  // the physical file (US3 scenario 2), captioned in words.
+  // The `.agents` file is recognized by GitHub Copilot, OpenAI Codex, and
+  // Gemini CLI, the `.claude` file by GitHub Copilot and Claude Code: one
+  // recognition row per tool in the contracted order, each recognition
+  // distinguishable from the physical file (US3 scenario 2), captioned in
+  // words.
   const toolTable = comparison.locator('table').first();
   await expect(toolTable.locator('tbody th')).toHaveText([
     'GitHub Copilot',
     'Claude Code',
     'OpenAI Codex',
+    'Gemini CLI',
   ]);
+  await expect(toolTable.locator('tr', { hasText: 'Gemini CLI' })).toContainText('Not recognized');
   await expect(toolTable.locator('tr', { hasText: 'GitHub Copilot' })).not.toContainText(
     'Not recognized',
   );

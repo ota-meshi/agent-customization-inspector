@@ -174,7 +174,7 @@ function promptDetail(
       sourceText,
       sizeBytes: sourceText.length,
     },
-    presentation: frontmatter === null ? null : { frontmatter, bodyText: sourceText },
+    presentation: frontmatter === null ? null : { metadata: frontmatter, promptText: sourceText },
     diagnostics: [],
   };
 }
@@ -477,7 +477,7 @@ describe('prompt and command recognition comparison rows (T503)', () => {
     // either side: the declarations are the files' one parse, not any tool's,
     // so no tool repeats or captions them (research.md § 7,
     // frontmatter-yaml.ts).
-    expect(comparison.frontmatterDiff).toEqual({
+    expect(comparison.metadataDiff).toEqual({
       originalText: [
         'description: Deploy the current branch',
         'argument-hint: "[environment]"',
@@ -503,7 +503,7 @@ describe('prompt and command recognition comparison rows (T503)', () => {
     );
     expect(comparison.leftDeclarations).toBe('extraction-failed');
     expect(comparison.rightDeclarations).toBe('parsed');
-    expect(comparison.frontmatterDiff).toBeNull();
+    expect(comparison.metadataDiff).toBeNull();
     expect(comparison.tools.map((row) => row.left?.invocationName ?? null)).toEqual([
       null,
       SHARED_NAME,
@@ -521,13 +521,18 @@ describe('prompt and command recognition comparison rows (T503)', () => {
     const asPrompt = promptDetail('.claude/commands/CLAUDE.md', [
       scalarEntry('description', 'Both kinds'),
     ]);
-    if (asPrompt.kind !== 'prompt/command') {
-      throw new Error('expected this kind’s variant from the helper');
+    if (asPrompt.kind !== 'prompt/command' || asPrompt.presentation === null) {
+      throw new Error('expected this kind’s parsed variant from the helper');
     }
+    // The instructions variant carries the same two values under the Markdown
+    // shape's names, which is what the comparison maps back onto this kind's.
     const bothKinds: FileDetailDto = {
       kind: 'instructions',
       file: asPrompt.file,
-      presentation: asPrompt.presentation,
+      presentation: {
+        frontmatter: asPrompt.presentation.metadata,
+        bodyText: asPrompt.presentation.promptText,
+      },
       diagnostics: asPrompt.diagnostics,
     };
     const comparison = new PromptRecognitionComparison(
@@ -539,7 +544,7 @@ describe('prompt and command recognition comparison rows (T503)', () => {
       ]),
     );
     expect(comparison.leftDeclarations).toBe('parsed');
-    expect(comparison.frontmatterDiff).toEqual({
+    expect(comparison.metadataDiff).toEqual({
       originalText: 'description: Both kinds\n',
       modifiedText: 'description: Editor\n',
     });
@@ -561,9 +566,9 @@ describe('prompt and command recognition comparison rows (T503)', () => {
       ]),
     );
     expect(Object.keys(comparison).sort()).toEqual([
-      'bodyDiff',
-      'frontmatterDiff',
       'leftDeclarations',
+      'metadataDiff',
+      'promptDiff',
       'rightDeclarations',
       'tools',
     ]);
@@ -575,7 +580,7 @@ describe('prompt and command recognition comparison rows (T503)', () => {
         }
       }
     }
-    expect(Object.keys(comparison.frontmatterDiff ?? {}).sort()).toEqual([
+    expect(Object.keys(comparison.metadataDiff ?? {}).sort()).toEqual([
       'modifiedText',
       'originalText',
     ]);

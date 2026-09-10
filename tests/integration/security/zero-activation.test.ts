@@ -1148,7 +1148,7 @@ describe('Claude command inspection runs nothing (T450)', () => {
         recognition.details.kind === 'prompt/command' &&
         recognition.sourceRelativePath === fixture.referencingCommandPath,
     );
-    expect(referencing?.details).toMatchObject({ kind: 'prompt/command', frontmatter: [] });
+    expect(referencing?.details).toMatchObject({ kind: 'prompt/command', metadata: [] });
     expect(Object.keys(referencing ?? {})).not.toContain('relationships');
   });
 
@@ -1303,7 +1303,7 @@ describe('Claude command inspection runs nothing (T450)', () => {
     // too, so the reader sees the value their own file wrote.
     const declared =
       detail !== null && detail.kind === 'prompt/command' ? detail.presentation : null;
-    expect(JSON.stringify(declared?.frontmatter)).toContain(FIXTURE_SECRET_LITERAL);
+    expect(JSON.stringify(declared?.metadata)).toContain(FIXTURE_SECRET_LITERAL);
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
     expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);

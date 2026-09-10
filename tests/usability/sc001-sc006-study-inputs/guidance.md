@@ -16,8 +16,8 @@ The command prints a URL. Copy it into the browser that was set up for this sess
 
 ## What you will see
 
-One page, listing the customization files that Claude Code, GitHub Copilot, and OpenAI
-Codex look for in that directory.
+One page, listing the customization files that Claude Code, GitHub Copilot, OpenAI Codex,
+and Gemini CLI look for in that directory.
 
 Kinds are listed down the left with a count beside each. Choosing a kind shows its rows on
 the right. What one row is depends on the kind: a file, or a name or a declared event that

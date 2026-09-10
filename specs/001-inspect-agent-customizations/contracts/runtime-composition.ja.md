@@ -45,6 +45,8 @@ recordであり、どのresponseも運ばない（QR-005）。
 | `codex.agents.inheritance` | `partially-documented` | `[]` | Project traversalとchild instruction inheritanceが不完全 |
 | `codex.skills.discovery` | `partially-documented` | `[]` | 引用sectionはretentionを確立するが、discovery scope間のprecedence/orderingは確立しない |
 | `codex.rules.resolution` | `partially-documented` | `[experimental]` | Nested recursionは未指定でrules featureはexperimental |
+| `gemini.context.layering` | `partially-documented` | `[]` | 親への walk の境界とアクセス前の descendant 読み取りは述べられていない |
+| `gemini.agents.selection` | `unknown` | `[experimental]` | ページは両方の agent の場所を名指しし、同名の組について何も確立しない。機能は experimental 設定で gate される |
 
 固定qualifier順は`preview`、`experimental`、`deprecated`で、arrayは重複を持たない。Typed registryはdefaultと
 exception tableをsubjectごとに1 recordへ展開する。以下のDocumentation status列とRequired conditions/status列は
@@ -184,6 +186,24 @@ Hosted ChatGPT Workはこれらのlocal fileを使用しない。
 | `codex.rules.resolution` | OpenAI Codex / local client | `filter`、`select-first` | Active User/trusted project layerのdirect `.rules` fileを評価し、matching decisionをdocumented restrictive resultでcombineする。Nested-directory recursionを推測しない | `codex.behavior.repo.rules`、`codex.behavior.user.rules` | `surface`、`engine-version`、`runtime-cwd`、`project-root`、`scope-availability`、`feature-state`、`trust`、`approval`、`enablement`、`selection`、`documentation-variant`、`managed-policy` | partially documented。Experimentalでnested recursionは未指定 | `openai.codex.rules` |
 | `codex.mcp.configuration` | OpenAI Codex / local client | `merge-map`、`replace` | Active User/profile/CLI/project config precedenceで`[mcp_servers.*]`を解決する。Trust、enablement、server availabilityを分離し、inspection中は接続しない | `codex.behavior.repo.mcp`、`codex.behavior.user.config` | `surface`、`engine-version`、`runtime-cwd`、`project-root`、`scope-availability`、`trust`、`approval`、`enablement`、`selection`、`settings-inputs`、`managed-policy`、`external-runtime` | documented | `openai.codex.config-basic`、`openai.codex.mcp` |
 | `codex.plugins.activation` | OpenAI Codex / ChatGPT desktop、plugin-management CLI、plugin-capable local client | `filter`、`select-first` | Exact repository marketplaceまたはpersonal marketplaceを発見し、selected marketplace/installationでplugin rootを確立し、manifestを要求し、installation、enablement、trust、component stateを分離する。Local activationをhosted ChatGPT Workへ投影しない | `codex.behavior.plugin.manifest`、`codex.behavior.repo.marketplace`、`codex.behavior.user.plugins` | `surface`、`engine-version`、`repository-root`、`scope-availability`、`feature-state`、`trust`、`approval`、`enablement`、`selection`、`plugin-state`、`installation`、`external-runtime` | documented。Activationはexternal state依存 | `openai.codex.plugins` |
+
+## Gemini CLI strategy
+
+Gemini CLI は1つの surface、terminal client を持つ (contracts/vendors/gemini-cli.ja.md
+§ Surface boundary)。以下で異なるのは tier — system、user、project、extension — であり、それは
+surface ではなく lookup base である。すべての project tier の入力は folder trust で gate され、
+それは現れる箇所では `filter` operation、それ以外では `trust` condition である。
+
+| Strategy ID | Tool / surface | Operation(s) | Runtime projection | Input behavior refs | Required condition facts | Documentation status | Official source refs |
+|---|---|---|---|---|---|---|---|
+| `gemini.context.layering` | Gemini CLI / CLI | `filter`、`concatenate` | global context file、次に workspace ディレクトリとその親のファイル、次にアクセスされたディレクトリの just-in-time file を読み込み、その順に concatenate する。trust が workspace のファイルを読み込むかを決める | `gemini.behavior.repo.context`、`gemini.behavior.repo.trust`、`gemini.behavior.user.context` | `surface`、`runtime-cwd`、`repository-root`、`worked-path`、`trust`、`settings-inputs` | partially documented。親への walk の境界とアクセス前の descendant 読み取りは述べられていない | `google.gemini-cli.gemini-md`、`google.gemini-cli.trusted-folders` |
+| `gemini.settings.precedence` | Gemini CLI / CLI | `merge-map`、`replace` | settings の層 — defaults、system defaults、user、project、system、environment、command line — を key ごとに merge し、上の層が下の層の値を置き換える。project 層は trusted folder でだけ適用 | `gemini.behavior.repo.settings`、`gemini.behavior.repo.trust`、`gemini.behavior.user.settings` | `surface`、`repository-root`、`trust`、`settings-inputs`、`managed-policy` | documented | `google.gemini-cli.configuration` |
+| `gemini.mcp.configuration` | Gemini CLI / CLI | `merge-map`、`filter` | settings 層とインストール済み extension の `mcpServers` map を server 名で merge する。`mcp.allowed`、`mcp.excluded`、trust がどれを接続するかを決める | `gemini.behavior.repo.mcp`、`gemini.behavior.repo.trust`、`gemini.behavior.user.extensions`、`gemini.behavior.user.settings` | `surface`、`trust`、`settings-inputs`、`enablement`、`plugin-state` | documented | `google.gemini-cli.mcp-server`、`google.gemini-cli.trusted-folders` |
+| `gemini.hooks.merge` | Gemini CLI / CLI | `append`、`filter` | すべての層の hook を走らせ、近い層が広い層に加わる。trust と project hook の fingerprint がどれを走らせるかを決める | `gemini.behavior.repo.hooks`、`gemini.behavior.repo.trust`、`gemini.behavior.user.extensions`、`gemini.behavior.user.settings` | `surface`、`trust`、`settings-inputs`、`plugin-state` | documented | `google.gemini-cli.hooks` |
+| `gemini.commands.selection` | Gemini CLI / CLI | `select-first` | user command と同名の project command が常に使われる。project command は trusted folder でだけ読み込まれる | `gemini.behavior.repo.commands`、`gemini.behavior.repo.trust`、`gemini.behavior.user.commands` | `surface`、`repository-root`、`trust` | documented | `google.gemini-cli.custom-commands` |
+| `gemini.skills.selection` | Gemini CLI / CLI | `select-first`、`filter` | より高い優先 tier — built-in、extension、user、workspace の昇順 — の同名 skill を使い、tier 内では `.agents/skills/` alias を `.gemini/skills/` より優先する。trust が workspace tier の利用可否を決める | `gemini.behavior.repo.skills`、`gemini.behavior.repo.trust`、`gemini.behavior.user.extensions`、`gemini.behavior.user.skills` | `surface`、`repository-root`、`trust`、`enablement`、`plugin-state` | documented | `google.gemini-cli.skills`、`google.gemini-cli.trusted-folders` |
+| `gemini.agents.selection` | Gemini CLI / CLI | `unknown-order` | project と user の agent はどちらも読み込まれる。同名の組の解決は文書化されていない | `gemini.behavior.repo.agents`、`gemini.behavior.repo.trust`、`gemini.behavior.user.agents` | `surface`、`feature-state`、`enablement`、`trust` | unknown。experimental | `google.gemini-cli.subagents` |
+| `gemini.policies.tiers` | Gemini CLI / CLI | `select-first` | 上の tier base が勝ち — default、extension、workspace、user、admin の昇順 — tier 内では高い `priority` が勝つ。workspace tier は読み込まれないと文書化 | `gemini.behavior.repo.policies`、`gemini.behavior.user.extensions`、`gemini.behavior.user.policies` | `surface`、`managed-policy`、`plugin-state`、`feature-state` | documented | `google.gemini-cli.policy-engine` |
 
 ## Normative relationship-only registry
 

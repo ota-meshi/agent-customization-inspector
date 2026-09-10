@@ -16,7 +16,9 @@ export type SupportedTool =
   /** Claude Code. */
   | 'claude'
   /** OpenAI Codex. */
-  | 'codex';
+  | 'codex'
+  /** Gemini CLI. */
+  | 'gemini';
 
 /**
  * The closed presentation order of {@link SupportedTool}
@@ -29,8 +31,10 @@ export const SUPPORTED_TOOL_ORDER: readonly SupportedTool[] = [
   'copilot',
   /** Claude recognitions sort after Copilot. */
   'claude',
-  /** Codex recognitions sort last. */
+  /** Codex recognitions sort after Claude. */
   'codex',
+  /** Gemini CLI recognitions sort last: the newest tool takes the next position rather than reordering the three the tests and documents already spell. */
+  'gemini',
 ];
 
 /**
@@ -242,6 +246,11 @@ export const SUPPORTED_TOOL_TEXT: Readonly<Record<SupportedTool, string>> = {
   claude: 'Claude Code',
   /** Label for OpenAI Codex. */
   codex: 'OpenAI Codex',
+  /**
+   * Label for Gemini CLI: the product's own name, with no company prefix, as
+   * Claude Code is named (specs/002-gemini-cli-support/spec.md § Clarifications).
+   */
+  gemini: 'Gemini CLI',
 };
 
 /**

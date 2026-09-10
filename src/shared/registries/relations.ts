@@ -22,6 +22,7 @@
 import { CLAUDE_RULE_RELATIONS, CLAUDE_STRATEGY_RELATIONS } from './claude/relations';
 import { CODEX_RULE_RELATIONS, CODEX_STRATEGY_RELATIONS } from './codex/relations';
 import { COPILOT_RULE_RELATIONS, COPILOT_STRATEGY_RELATIONS } from './copilot/relations';
+import { GEMINI_RULE_RELATIONS, GEMINI_STRATEGY_RELATIONS } from './gemini/relations';
 import { SHARED_RULE_RELATIONS } from './shared/relations';
 import type { RuleId, StrategyId } from './identifier-types';
 import type { RuleRelations, StrategyRelations } from './relation-types';
@@ -33,6 +34,7 @@ export const STRATEGY_RELATIONS: Readonly<Record<StrategyId, StrategyRelations>>
   ...COPILOT_STRATEGY_RELATIONS,
   ...CLAUDE_STRATEGY_RELATIONS,
   ...CODEX_STRATEGY_RELATIONS,
+  ...GEMINI_STRATEGY_RELATIONS,
 };
 
 /** Every inspection rule's outgoing edges, keyed by `ruleId`. */
@@ -40,5 +42,6 @@ export const RULE_RELATIONS: Readonly<Record<RuleId, RuleRelations>> = {
   ...COPILOT_RULE_RELATIONS,
   ...CLAUDE_RULE_RELATIONS,
   ...CODEX_RULE_RELATIONS,
+  ...GEMINI_RULE_RELATIONS,
   ...SHARED_RULE_RELATIONS,
 };

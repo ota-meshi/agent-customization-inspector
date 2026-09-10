@@ -12,8 +12,8 @@
 // that base, and a base declared in either would have to be imported back by
 // the other.
 import { CopilotCompiledRule } from '../vendor/copilot';
-import type { CompiledStaticPromptRule } from './compiled-rule';
-import type { DeclaredEntryDto } from '../../../../shared/api-types';
+import { markdownPromptPresentationOf, type CompiledStaticPromptRule } from './compiled-rule';
+import type { DeclaredEntryDto, PromptPresentationDto } from '../../../../shared/api-types';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
 
 /**
@@ -47,6 +47,11 @@ export class CopilotCompiledPromptRule
    */
   public invocationNameOf(sourceRelativePath: string): string {
     return sourceRelativePath.split('/').at(-1)!.slice(0, -'.md'.length);
+  }
+
+  /** A Copilot command file is Markdown: the shared reading of that format. */
+  public promptPresentationOf(sourceText: string): PromptPresentationDto {
+    return markdownPromptPresentationOf(sourceText);
   }
 
   /** Compiles one Copilot command record, rejecting one of another kind. */
@@ -99,6 +104,11 @@ export class CopilotCompiledPromptFileRule
       }
     }
     return sourceRelativePath.split('/').at(-1)!.slice(0, -'.prompt.md'.length);
+  }
+
+  /** A VS Code prompt file is Markdown: the shared reading of that format. */
+  public promptPresentationOf(sourceText: string): PromptPresentationDto {
+    return markdownPromptPresentationOf(sourceText);
   }
 
   /** Compiles one Copilot prompt-file record, rejecting one of another kind. */

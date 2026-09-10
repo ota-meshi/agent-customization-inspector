@@ -360,6 +360,14 @@ class SideDeclarations {
       this.bodyText = null;
       return;
     }
+    // The command variant carries the same two halves under its own kind's
+    // names (api-types.ts § PromptPresentationDto), so it is read by them.
+    if (detail.kind === 'prompt/command') {
+      this.state = detail.presentation === null ? 'extraction-failed' : 'parsed';
+      this.entries = detail.presentation === null ? null : detail.presentation.metadata;
+      this.bodyText = detail.presentation === null ? null : detail.presentation.promptText;
+      return;
+    }
     const presentation = detail.presentation;
     this.state = presentation === null ? 'extraction-failed' : 'parsed';
     this.entries = presentation === null ? null : presentation.frontmatter;
