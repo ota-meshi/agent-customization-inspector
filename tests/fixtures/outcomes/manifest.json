@@ -124,7 +124,7 @@
     "tests/e2e/claude-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-skills-list.spec.ts",
-      "sha256": "ee05a150703fd0c54948ea2554bfa9f0199ccc9ec6a61ae2d2271a67404036f2"
+      "sha256": "310d379b009863d3eb72df81dc0f197e6b84e01d29a85a2f47cb11963bea213f"
     },
     "tests/e2e/codex-config-detail.spec.ts": {
       "kind": "inline-fixture-suite",
