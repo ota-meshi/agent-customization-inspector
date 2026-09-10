@@ -155,7 +155,7 @@ test.describe('discovering the customizations of one repository', () => {
     // A file added while the session is up is not in the committed generation
     // until a rescan commits one that holds it: a generation is a whole state
     // as of its commit, not a stream of edits.
-    await writeFile(join(fixture, 'GEMINI.md'), '# Gemini instructions\n', 'utf8');
+    await writeFile(join(fixture, 'GEMINI.md'), '# Root context instructions\n', 'utf8');
     await page.getByRole('tab', { name: /Instructions/u }).click();
     await expect(page.getByRole('tabpanel')).not.toContainText('GEMINI.md');
 

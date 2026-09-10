@@ -31,8 +31,8 @@ export const VENDOR_SURFACE_ORDER: readonly VendorSurface[] = [
   'codex-local-clients',
   /** Codex's plugin surface follows it: a narrower set of the same product's clients. */
   'codex-plugin-clients',
-  /** Gemini CLI's one surface sorts last, as Gemini CLI does among the tools. */
-  'gemini-cli',
+  /** Antigravity CLI's one surface sorts last, as Antigravity CLI does among the tools. */
+  'antigravity-cli',
 ];
 
 /**
@@ -54,6 +54,6 @@ export const VENDOR_SURFACE_TEXT: Readonly<Record<VendorSurface, string>> = {
   'copilot-cli': 'CLI',
   /** Label for the hosted Copilot agent and the services behind it. */
   'copilot-cloud': 'Cloud agent',
-  /** Label for the Gemini CLI terminal client, the product's one surface. */
-  'gemini-cli': 'CLI',
+  /** Label for the Antigravity CLI terminal client, the product's one surface. */
+  'antigravity-cli': 'CLI',
 };

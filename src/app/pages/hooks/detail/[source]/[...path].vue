@@ -49,7 +49,7 @@ import {
 import { hookEventDetailRoute } from '../../../../components/hook-detail-route';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
-import type { SourceKind } from '../../../../../shared/api-types';
+import type { DeclaredEntryDto, SourceKind } from '../../../../../shared/api-types';
 import { hookComparisonRouteFor } from '../../../../composables/hook-comparison';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
 import { useDetailRequest } from '../../../../composables/detail-request';
@@ -401,38 +401,107 @@ const openEventCompareRoute = computed(() =>
 );
 
 /**
- * The events with the rendering each one's section needs: the declared event
- * heads its section — through the shared label rule, so a name of invisible
- * code points still identifies it — and its groups render as the JSON document
- * the file wrote under that key.
+ * The declarations with the rendering each one's section needs: the section's
+ * subject is one declaration rather than one event, because a carrier that
+ * maps a hook *name* to that hook's own events can declare one event twice
+ * (`api-types.ts` § DeclaredHookDto). A section is therefore identified and
+ * headed by the event and, where the file gave one, the hook's name — both
+ * through the shared label rule, so a name of invisible code points still
+ * identifies it — and its groups render as the JSON document the file wrote
+ * under those keys.
+ *
+ * Three of the four documented formats never name a declaration, and their
+ * sections are what they were: one event, headed by it, holding the document
+ * under its own key.
  */
-const eventBlocks = computed(() =>
-  (openDetail.value?.events ?? [])
-    .filter((event) => openEventName.value === null || event.event === openEventName.value)
-    .map((event) => ({
+const eventBlocks = computed(() => {
+  const blocks = (openDetail.value?.events ?? []).filter(
+    (event) => openEventName.value === null || event.event === openEventName.value,
+  );
+  // A carrier view holds several events, so each section names its own. A
+  // declaration view is already headed by the event, so its sections name it
+  // again only where there are two to tell apart — and then the name is what
+  // tells them apart, so the name is the whole heading.
+  const carrierView = openEventName.value === null;
+  const headed = carrierView || blocks.length > 1;
+  return blocks.map((event, index) => {
+    const hookName = event.namedHook === null ? null : new AuthoredName(event.namedHook.name);
+    // The event's own declared document: the key the file wrote and the groups
+    // under it, every value as resolved (FR-007). The key is kept because that
+    // is what a reader pastes — a bare list of groups would need the event
+    // name added back by hand.
+    const declared: DeclaredEntryDto = {
       key: event.event,
+      keyKind: 'string',
+      value: { kind: 'sequence', items: event.groups },
+    };
+    return {
+      // U+0000 joins the halves, as every composite key here does: no declared
+      // name contains it, so two sections never collide by concatenation. The
+      // event alone collided exactly when one carrier named two hooks that
+      // declare it.
+      key: `${event.namedHook?.name ?? ''}\u0000${event.event}`,
       // The declared event as the block's heading and its links need it, which
       // is the same unit the page's own heading reads ({@link AuthoredName}).
       name: new AuthoredName(event.event),
-      // The event as the pretty-printed JSON a reader can paste into their own
-      // hook map (declared-entries-json.ts): the key the file wrote and the
-      // groups under it, in the file's own order, every value as resolved
-      // (FR-007). The key is kept in the document because that is what a
-      // reader pastes — a bare list of groups would need the event name added
-      // back by hand.
-      jsonText: declaredEntriesJsonText([
-        {
-          key: event.event,
-          keyKind: 'string',
-          value: { kind: 'sequence', items: event.groups },
-        },
-      ]),
+      // The hook the file declared this event inside, or null in a format with
+      // no such level. Authored text like the event, so it is escaped and
+      // announced by the same rule.
+      hookName,
+      // What the section's own heading says, or null where the page's heading
+      // already says it — a declaration view holding one section.
+      //
+      // On a carrier view the event leads and the hook qualifies it. On a
+      // declaration view the event is the page's subject, so repeating it
+      // would print it three times on one screen and bury the one word that
+      // tells two sections apart behind a prefix they share: the name leads
+      // alone there, which is also what a reader skimming headings hears
+      // first. A section with no name falls back to the event rather than
+      // heading with nothing — no shipped format mixes named and unnamed
+      // declarations in one file, and an empty heading is not a thing to make.
+      heading: headed
+        ? {
+            name: carrierView
+              ? new AuthoredName(event.event)
+              : (hookName ?? new AuthoredName(event.event)),
+            qualifier: carrierView ? hookName : null,
+          }
+        : null,
+      // The declaration as the pretty-printed JSON a reader can paste into
+      // their own hook map (declared-entries-json.ts). A named declaration
+      // starts at the hook's name and carries that hook's own keys — the
+      // documented `enabled` among them — because that is the shape the file
+      // wrote and the shape a reader pastes back; nothing about those keys is
+      // interpreted, so `enabled: false` appears as the key it is and no
+      // surface calls the hook disabled (FR-009, FR-020).
+      jsonText: declaredEntriesJsonText(
+        event.namedHook === null
+          ? [declared]
+          : [
+              {
+                key: event.namedHook.name,
+                keyKind: 'string',
+                // This hook's own keys, then the event this section is about.
+                // The assembly is this surface's — the response publishes the
+                // hook's keys and this one event, not the file's interleaving
+                // of them — while every key inside stays the file's own.
+                value: { kind: 'mapping', entries: [...event.namedHook.fields, declared] },
+              },
+            ],
+      ),
       // The event's own comparison entry, so a carrier view offers one link
       // per declared event and a declaration view offers the one its heading
-      // is about (FR-011).
-      compareRoute: compareRouteForEvent(event.event),
-    })),
-);
+      // is about (FR-011). One link per event rather than per section: two
+      // sections of one event pair the same carriers, and two links with one
+      // accessible name and one destination would be the same control twice
+      // (WCAG 2.4.6).
+      compareRoute:
+        blocks.findIndex((candidate) => candidate.event === event.event) === index
+          ? compareRouteForEvent(event.event)
+          : null,
+    };
+  });
+});
 
 /** Whether extraction failed: the rows are unknown rather than absent (FR-028). */
 const declarationsFailed = computed(
@@ -694,12 +763,33 @@ useReportedPageSubject(titleSubject);
            The declaration view's event already heads the page, so its one
            section repeats no heading. -->
       <section v-for="event in eventBlocks" :key="event.key" class="aci-hook-detail__event">
-        <h3 v-if="openEventName === null" :aria-label="event.name.singleLineText">
-          <AuthoredNameText :name="event.name">
-            <span :class="event.name.isAuthored ? 'aci-authored-text' : 'aci-muted'">{{
-              event.name.text
+        <!-- The section names its own subject whenever the page's heading does
+             not ({@link eventBlocks} § heading). Where two names are drawn the
+             separator is the word `in` rather than a symbol, because a `·` or
+             a `/` can appear inside an authored name and the boundary would
+             stop being readable. -->
+        <h3
+          v-if="event.heading !== null"
+          :aria-label="
+            event.heading.qualifier === null
+              ? event.heading.name.singleLineText
+              : `${event.heading.name.singleLineText} in ${event.heading.qualifier.singleLineText}`
+          "
+        >
+          <AuthoredNameText :name="event.heading.name">
+            <span :class="event.heading.name.isAuthored ? 'aci-authored-text' : 'aci-muted'">{{
+              event.heading.name.text
             }}</span>
           </AuthoredNameText>
+          <template v-if="event.heading.qualifier !== null">
+            <span class="aci-hook-detail__in"> in </span>
+            <AuthoredNameText :name="event.heading.qualifier">
+              <span
+                :class="event.heading.qualifier.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+                >{{ event.heading.qualifier.text }}</span
+              >
+            </AuthoredNameText>
+          </template>
         </h3>
         <!-- The comparison this event's row leads to: the accessible name
              carries the declared event after the visible phrase, because a
@@ -741,7 +831,11 @@ useReportedPageSubject(titleSubject);
           panel-label="Declaration"
           :source-text="event.jsonText"
           :source-relative-path="openPath"
-          :content-label="`Declaration ${event.name.singleLineText} of`"
+          :content-label="
+            event.hookName === null
+              ? `Declaration ${event.name.singleLineText} of`
+              : `Declaration ${event.name.singleLineText} in ${event.hookName.singleLineText} of`
+          "
           content-language="json"
         />
       </section>
@@ -753,6 +847,15 @@ useReportedPageSubject(titleSubject);
 .aci-hook-detail__overview {
   border-bottom: 1px solid var(--aci-line);
   padding-bottom: 0.5rem;
+}
+
+/* The word joining a section's two authored halves. Muted so the two names
+   read as the subjects and the joining word as the frame around them; it is a
+   word rather than a symbol because a symbol can appear inside an authored
+   name and stop marking the boundary. */
+.aci-hook-detail__in {
+  color: var(--aci-muted);
+  font-weight: normal;
 }
 
 /* The comparison entry sits under the declaration it pairs, as the sibling

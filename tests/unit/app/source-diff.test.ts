@@ -1,24 +1,34 @@
-// T1209: the rows of a side-by-side source comparison — alignment, the
-// pairing of a replaced run of lines with its replacement, the characters a
-// changed line marks, and the cut of shiki's runs at those characters
-// (research.md § 7, FR-011, FR-025).
+// T1209: the rows of a side-by-side source comparison — what the editor's own
+// line diff (`vscode-diff`) is asked for, how its answers become rows and
+// marks, and the cut of shiki's runs at those marks (research.md § 7, FR-011,
+// FR-025).
 //
-// The real `diff` and the real shiki run here rather than doubles: what is
-// under test is what this product asks of them — that the comparison is
-// literal, whitespace included, and that a line's runs come out cut exactly at
-// its changed characters with their colour kept — and those are their
-// answers, which a stub would only restate.
+// The real diff and the real shiki run here rather than doubles: what is under
+// test is what this product asks of them — which line stands opposite which,
+// that a line kept at another indentation marks only the indentation, and that
+// a line's runs come out cut exactly at its marks with their colour kept — and
+// those are their answers, which a stub would only restate.
 import { describe, expect, it } from 'vitest';
 import { highlightSource } from '../../../src/app/composables/syntax-highlighting';
 import {
   LineComparison,
-  changedCharacters,
   splitRunsAtRanges,
+  type SourceDiffSide,
 } from '../../../src/app/components/comparison/source-diff-rows';
 
 /** Each row as `kind:original/modified`, with `-` for a side that shows nothing. */
 function rowSummary(comparison: LineComparison): string[] {
   return comparison.rows.map((row) => `${row.kind}:${row.original ?? '-'}/${row.modified ?? '-'}`);
+}
+
+/** Each line one side shows, its changed characters in brackets, blanks dropped. */
+function markedLines(comparison: LineComparison, side: SourceDiffSide): string[] {
+  return comparison
+    .sideLines(side, null)
+    .filter((line) => line.number !== null)
+    .map((line) =>
+      line.runs.map((run) => (run.changed ? `[${run.content}]` : run.content)).join(''),
+    );
 }
 
 describe('LineComparison', () => {
@@ -35,6 +45,21 @@ describe('LineComparison', () => {
     ]);
   });
 
+  it('stands a line the other side indented differently opposite it, marking that indentation', () => {
+    // The mapping moved out of the object that wrapped it, so its line sits
+    // two spaces further in. It is the same line, so it stands opposite
+    // itself rather than opposite whatever took its position, and the mark is
+    // the two spaces it gained — not the whole indentation of either side.
+    const comparison = new LineComparison('  "x": {\n    "Y": ["Foo"]\n  },', '  "Y": ["Foo"]');
+    expect(rowSummary(comparison)).toEqual(['removed:0/-', 'changed:1/0', 'removed:2/-']);
+    expect(markedLines(comparison, 'original')).toEqual([
+      '[  "x": {]',
+      '[  ]  "Y": ["Foo"]',
+      '[  },]',
+    ]);
+    expect(markedLines(comparison, 'modified')).toEqual(['  "Y": ["Foo"]']);
+  });
+
   it('pairs a replaced run with its replacement line by line, and the rest as one side’s own', () => {
     // Two lines replaced by three: the first two stand opposite their
     // replacements as changed rows, and the third replacement is an addition.
@@ -43,12 +68,15 @@ describe('LineComparison', () => {
   });
 
   it('compares lines literally, whitespace and endings included (FR-011)', () => {
-    // A trailing space and a Windows ending are differences a reader can
-    // act on, so neither is folded away.
-    expect(rowSummary(new LineComparison('a \n', 'a\n'))).toEqual(['changed:0/0', 'same:1/1']);
-    expect(rowSummary(new LineComparison('a\r\nb', 'a\nb'))).toEqual(['same:0/0', 'same:1/1']);
+    // A trailing space is a difference a reader can act on and one nothing
+    // else on the page shows, so it is marked rather than folded away.
+    const trailing = new LineComparison('a \n', 'a\n');
+    expect(rowSummary(trailing)).toEqual(['changed:0/0', 'same:1/1']);
+    expect(markedLines(trailing, 'original')).toEqual(['a[ ]', '']);
     // The lines themselves are split where the tokenizer splits them: at
-    // either ending, with the ending dropped from the line.
+    // either ending, with the ending dropped from the line, so a file written
+    // with Windows endings compares line for line against one without them.
+    expect(rowSummary(new LineComparison('a\r\nb', 'a\nb'))).toEqual(['same:0/0', 'same:1/1']);
     expect(new LineComparison('a\r\nb', '').originalLines).toEqual([
       ['a', 0],
       ['b', 3],
@@ -107,15 +135,6 @@ describe('LineComparison', () => {
     expect(Object.keys(changed.htmlStyle ?? {})).toEqual(
       expect.arrayContaining(['--shiki-light', '--shiki-dark']),
     );
-  });
-});
-
-describe('changedCharacters', () => {
-  it('names the words of a line its opposite lacks, the whitespace between words compared too', () => {
-    expect(changedCharacters('a  b', 'a b').map((range) => [range.start, range.end])).toEqual([
-      [1, 3],
-    ]);
-    expect(changedCharacters('same', 'same')).toEqual([]);
   });
 });
 

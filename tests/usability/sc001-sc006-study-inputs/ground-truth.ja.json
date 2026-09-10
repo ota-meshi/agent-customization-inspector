@@ -16,14 +16,17 @@
     "recognizing-tools": {
       "expected": [
         "GitHub Copilot",
-        "OpenAI Codex"
+        "OpenAI Codex",
+        "Antigravity CLI"
       ],
-      "matchRule": "順不同で両方。片方だけ、または Claude Code を挙げた回答は不正解とする。",
+      "matchRule": "順不同で3つすべて。足りない回答、または Claude Code を挙げた回答は不正解とする。",
       "accepted": [
         "GitHub Copilot",
         "Copilot",
         "OpenAI Codex",
-        "Codex"
+        "Codex",
+        "Antigravity CLI",
+        "Antigravity"
       ]
     },
     "file-type": {
@@ -58,7 +61,7 @@
         "~/.gemini",
         "~/.agents"
       ],
-      "matchRule": "順不同で5つすべて。機材が CLAUDE_CONFIG_DIR・CODEX_HOME・COPILOT_HOME で最初の3つを、GEMINI_CLI_HOME で Gemini CLI のホームをその配下の `.gemini` へと、別の場所へ向けている場合は、ページが示すその場所が正解になる。",
+      "matchRule": "順不同で5つすべて。機材が CLAUDE_CONFIG_DIR・CODEX_HOME・COPILOT_HOME で最初の3つを別の場所へ向けている場合は、ページが示すその場所が正解になる。`~/.gemini` を動かすプロパティは無いので、そこは常にホームディレクトリとの join である。",
       "unsuccessful": "ページに到達しなかった、またはディレクトリを挙げられなかった。"
     }
   }

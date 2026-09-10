@@ -1,5 +1,139 @@
 [
   {
+    "strategyId": "antigravity.agents.selection",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "operations": ["unknown-order"],
+    "documentationStatus": "unknown",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-subagents",
+        "url": "https://antigravity.google/docs/cli/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Custom Agents (Markdown Format)"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The CLI automatically discovers custom agents defined in Markdown with YAML frontmatter at .agents/agents/<name>.md or .agents/agents/<name>/agent.md in the workspace and in ~/.gemini/config/agents/ globally."
+      }
+    ]
+  },
+  {
+    "strategyId": "antigravity.context.layering",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "operations": ["concatenate"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-migration",
+        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "officialHost": "antigravity.google",
+        "sections": ["Context files and workspace rules"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The agent parses and enforces the rule constraints defined in the active directory’s GEMINI.md and AGENTS.md files, and automatically consults the global constraints at ~/.gemini/GEMINI.md."
+      }
+    ]
+  },
+  {
+    "strategyId": "antigravity.hooks.merge",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "operations": ["append"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Managing hooks"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Hooks intercept agent actions before or after execution and are defined inside a plugin’s hooks.json or configured inside the primary settings.json file."
+      }
+    ]
+  },
+  {
+    "strategyId": "antigravity.mcp.configuration",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "operations": ["merge-map"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-mcp",
+        "url": "https://antigravity.google/docs/cli/mcp/",
+        "officialHost": "antigravity.google",
+        "sections": ["Global and Workspace Server Configs", "MCP Configuration Structure"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Antigravity CLI separates MCP definitions into a global ~/.gemini/config/mcp_config.json and a workspace .agents/mcp_config.json, each a single mcpServers object mapping a server name to its configuration."
+      }
+    ]
+  },
+  {
+    "strategyId": "antigravity.permissions.precedence",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "operations": ["select-first"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-permissions",
+        "url": "https://antigravity.google/docs/cli/permissions/",
+        "officialHost": "antigravity.google",
+        "sections": ["Fine-grained permissions"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Permissions are evaluated across the deny, ask, and allow lists configured in ~/.gemini/antigravity-cli/settings.json, and conflicting rules are strictly evaluated in the priority order deny, then ask, then allow."
+      }
+    ]
+  },
+  {
+    "strategyId": "antigravity.rules.activation",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "operations": ["filter"],
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules-workflows/",
+        "officialHost": "antigravity.google",
+        "sections": ["Rules", "Workspace Rules"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "A rule declares how it is activated: manually by an at-mention, always on, by the model deciding from a natural-language description, or by a glob pattern that applies the rule to every file the pattern matches."
+      }
+    ]
+  },
+  {
+    "strategyId": "antigravity.skills.selection",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "operations": ["unknown-order"],
+    "documentationStatus": "unknown",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Creating local workspace skills", "Sharing global skills"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "A workspace skill placed in .agents/skills/ is compiled into a slash command when the CLI runs in that directory, and any markdown skill in ~/.gemini/antigravity-cli/skills/ is imported as a global slash command in any directory."
+      },
+      {
+        "sourceId": "google.antigravity.skills",
+        "url": "https://antigravity.google/docs/skills/",
+        "officialHost": "antigravity.google",
+        "sections": ["Where skills live", "How the agent uses skills"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Workspace-specific and global skills are both available, the agent is shown every available skill with its name and description and reads the full instructions of whichever looks relevant, and no order between the two scopes is stated."
+      }
+    ]
+  },
+  {
     "strategyId": "claude.agent-context.composition",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -948,174 +1082,6 @@
         "sections": ["Create a skill", "How Copilot uses skills"],
         "reviewedOn": "2026-07-15",
         "establishes": "The Create-a-skill location table documents the workspace and personal skill locations this selection reads across, and Copilot loads a relevant skill progressively — without documenting a duplicate-name precedence among the locations."
-      }
-    ]
-  },
-  {
-    "strategyId": "gemini.agents.selection",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "operations": ["unknown-order"],
-    "documentationStatus": "unknown",
-    "lifecycleQualifiers": ["experimental"],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.subagents",
-        "url": "https://geminicli.com/docs/core/subagents/",
-        "officialHost": "geminicli.com",
-        "sections": ["Agent definition files", "Disabling subagents"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Agents may be placed at the project level and at the user level; the page names both locations and establishes nothing about which wins when both declare one name, and the feature is toggled by an experimental setting."
-      }
-    ]
-  },
-  {
-    "strategyId": "gemini.commands.selection",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "operations": ["select-first"],
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.custom-commands",
-        "url": "https://geminicli.com/docs/cli/custom-commands/",
-        "officialHost": "geminicli.com",
-        "sections": ["File locations and precedence"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Commands are discovered from the user directory and then the project directory, and a project command with the same name as a user command is always used."
-      }
-    ]
-  },
-  {
-    "strategyId": "gemini.context.layering",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "operations": ["filter", "concatenate"],
-    "documentationStatus": "partially-documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.gemini-md",
-        "url": "https://geminicli.com/docs/cli/gemini-md/",
-        "officialHost": "geminicli.com",
-        "sections": ["Understand the context hierarchy"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The CLI concatenates the contents of every context file it finds — global, workspace and parent, and just-in-time — and sends them with every prompt, loading them in that order."
-      },
-      {
-        "sourceId": "google.gemini-cli.trusted-folders",
-        "url": "https://geminicli.com/docs/cli/trusted-folders/",
-        "officialHost": "geminicli.com",
-        "sections": ["Why trust matters: The impact of an untrusted workspace"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Automatic memory loading is disabled in an untrusted workspace, so trust filters which context files a session loads."
-      }
-    ]
-  },
-  {
-    "strategyId": "gemini.hooks.merge",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "operations": ["append", "filter"],
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.hooks",
-        "url": "https://geminicli.com/docs/hooks/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration", "Security and risks"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Hooks are merged from the project, user, system, and extension layers in that precedence, and a project hook whose fingerprint changed is treated as new and untrusted and warns before it runs."
-      }
-    ]
-  },
-  {
-    "strategyId": "gemini.mcp.configuration",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "operations": ["merge-map", "filter"],
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.mcp-server",
-        "url": "https://geminicli.com/docs/tools/mcp-server/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration structure", "Server-specific configuration (mcpServers)"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Servers are declared by name in the mcpServers object, at user or project scope, and the global mcp settings allow or exclude servers by name; an extension may declare servers of its own, which a user configuration can override."
-      },
-      {
-        "sourceId": "google.gemini-cli.trusted-folders",
-        "url": "https://geminicli.com/docs/cli/trusted-folders/",
-        "officialHost": "geminicli.com",
-        "sections": ["Why trust matters: The impact of an untrusted workspace"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Project-specific MCP servers do not connect in an untrusted workspace."
-      }
-    ]
-  },
-  {
-    "strategyId": "gemini.policies.tiers",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "operations": ["select-first"],
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.policy-engine",
-        "url": "https://geminicli.com/docs/reference/policy-engine/",
-        "officialHost": "geminicli.com",
-        "sections": ["Priority system and tiers", "Policy locations"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "A rule’s final priority is its tier base plus its own priority scaled below one, so a higher tier always wins and, within a tier, a higher priority value wins; the tiers rank default, extension, workspace, user, admin, with the workspace tier currently non-functional."
-      }
-    ]
-  },
-  {
-    "strategyId": "gemini.settings.precedence",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "operations": ["merge-map", "replace"],
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.configuration",
-        "url": "https://geminicli.com/docs/reference/configuration/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration layers", "Settings files"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Configuration is applied in layers from lowest to highest precedence — default values, the system defaults file, the user settings file, the project settings file, the system settings file, environment variables, and command-line arguments — with workspace settings overriding user settings for the same key."
-      }
-    ]
-  },
-  {
-    "strategyId": "gemini.skills.selection",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "operations": ["select-first", "filter"],
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.skills",
-        "url": "https://geminicli.com/docs/cli/skills/",
-        "officialHost": "geminicli.com",
-        "sections": ["Discovery tiers", "Precedence and aliases"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "When multiple skills share a name the version from the higher-precedence location is used, the tiers ranking built-in, extension, user, workspace from lowest to highest; within the user or workspace tier the .agents/skills/ alias takes precedence over the .gemini/skills/ directory."
-      },
-      {
-        "sourceId": "google.gemini-cli.trusted-folders",
-        "url": "https://geminicli.com/docs/cli/trusted-folders/",
-        "officialHost": "geminicli.com",
-        "sections": ["Why trust matters: The impact of an untrusted workspace"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Local agent skills are unavailable in an untrusted workspace."
       }
     ]
   }

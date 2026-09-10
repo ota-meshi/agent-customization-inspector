@@ -46,10 +46,13 @@ const RECORDED_DIGESTS = [
     japanese: 'e985ad14696d2ef2a47e7fcacbdbb39a83864fdd4d5c62546112f25e62e98301',
   },
   {
-    vendor: 'Gemini CLI',
-    file: 'gemini-cli',
-    english: 'fedf1e2053d3e0f1365d71e0aaea2c6d0323fb8215671ffb4b4d0a78773c9b7a',
-    japanese: '1370b7fa54d61539ceda6f646e657fb5db9a4408ac9e6ed932aa0218584e483f',
+    // T004: the fourth vendor's row moved with the vendor. The digests were
+    // recomputed from the shipped contract only after this suite was watched
+    // failing — it could not even read the file the removed vendor's row named.
+    vendor: 'Antigravity CLI',
+    file: 'antigravity-cli',
+    english: 'f311fd1d0bee9f81d03e4493e8fd4526cee5c3e19fda0ac07d2eaa5e92a5ca4c',
+    japanese: '52a1d8db154676ec4e428b0943e3bbc66e8cfd4f63037506c3f4a6b9d852f715',
   },
 ] as const;
 
@@ -155,7 +158,7 @@ describe('the recorded freeze table', () => {
     // the other is what this notices.
     const published = [
       ...registry.matchAll(
-        /^\| (GitHub Copilot|Claude Code|OpenAI Codex|Gemini CLI) \| `([0-9a-f]{64})` \| `([0-9a-f]{64})` \|$/gmu,
+        /^\| (GitHub Copilot|Claude Code|OpenAI Codex|Antigravity CLI) \| `([0-9a-f]{64})` \| `([0-9a-f]{64})` \|$/gmu,
       ),
     ];
     expect(published).toHaveLength(RECORDED_DIGESTS.length);

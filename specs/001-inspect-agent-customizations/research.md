@@ -218,7 +218,7 @@ policy).
 | Frontmatter           |                                                          `vfile-matter` 5.0.1, `vfile` 6.0.3 | Frontmatter delimiter handling. Deciding where a frontmatter block begins and ends means re-deciding BOM handling, line endings, and the closing-fence forms, so it is a parser rather than a regular expression. This one parses the block with the `yaml` engine already listed here; a package carrying its own `js-yaml` would give one document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is YAML 1.2                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | File opening          |                                                            `which` 6.0.1, `env-editor` 1.3.0 | The detail surfaces' open control (FR-022). `which` resolves the editor command a launch would run, so what the host offers and what it can start are one fact rather than two that can disagree; `env-editor` supplies where an installation puts that command when it is not on `PATH`, keeping those locations a maintained third-party fact instead of a table this repository would have to follow each editor's packaging with. `which` stays on 6.x because 7.0.0 declares `^24.15.0`, which excludes part of this project's own supported Node range; the launch itself reuses `open`, already listed above. A package that finds installed applications generally (`locate-app`) is rejected: it is CommonJS-only and pulls a prompt-engineering package and `crypto-js` into a production closure this project audits                                                             |
 | Icons                 | `unplugin-icons` 23.0.1, `@iconify-json/lucide` 1.2.124, `@iconify-json/simple-icons` 1.2.93 | Build-time icon compilation: each `~icons/<collection>/<name>` import becomes a component carrying that icon's own SVG, so the page fetches nothing and no icon runtime ships — the arrangement FR-022 requires, and the reason Iconify's API-backed runtime (`@nuxt/icon`, `@iconify/vue`) is rejected. Both collections ship their icon data with no license file of their own, so this repository carries each set's upstream text under `licenses/` for the notice document to read (FR-043)                                                                                                                                                                                                                                                                                                                                                                                            |
-| Source view/diff      |                                                `shiki` 4.4.3, `@shikijs/themes` 4.4.3, `diff` 9.0.0 | Tokenizer-only colouring on shiki's JavaScript regular-expression engine — no editor runtime, worker, or WebAssembly — with its bundled grammars fetched one chunk per language and the two themes imported statically; `diff` is Myers' line and word alignment for the comparison, computed on the page with no product-defined ceiling. Every one of them ships its own license file for the notice document to read (FR-043)                                                                                                                                                                                                                                                                                                                             |
+| Source view/diff      |                                       `shiki` 4.4.3, `@shikijs/themes` 4.4.3, `vscode-diff` 3.0.1 | Tokenizer-only colouring on shiki's JavaScript regular-expression engine — no editor runtime, worker, or WebAssembly — with its bundled grammars fetched one chunk per language and the two themes imported statically; `vscode-diff` is VS Code's own line diff published apart from the editor, computed on the page with no product-defined ceiling. Every one of them ships its own license file for the notice document to read (FR-043)                                                                                                                                                                                                                                                                                                                             |
 | Colour-scheme control |                                                                     `shine-and-bright` 0.3.0 | The switch the reader chooses the page's colour scheme with, drawn by the stylesheet that package ships: the component renders the markup those class names select and sets the package's own custom properties, so the sliding knob and the sun-to-moon transition are the package's rather than this repository's. A devDependency whose CSS the client bundle carries, like the icon and grammar packages above; it ships its own license file, so the notice document reads that text where those carry theirs under `licenses/` (FR-043). With forced colours active every `box-shadow` is dropped, which takes the sun and the moon with it while the button's and the knob's borders repaint and the knob still slides — measured 2026-08-25, and the control's accessible name is what states its purpose there (WCAG 1.4.11)                                                       |
 | Lint                  | ESLint 10.7.0, `@nuxt/eslint` 1.16.0, `@stylistic/eslint-plugin` 5.10.0, `@typescript-eslint/parser` 8.64.0 | Current compatible stable releases; `@stylistic` supplies the stylistic rules (e.g. `quotes`) ESLint 10 dropped from core. The parser is declared directly because this repository's own rule under `eslint-rules/` is tested through ESLint's `RuleTester`, which is handed a parser by the test rather than by a config: a transitive resolution reached through `@nuxt/eslint` is a version nothing here controls, and a test that imports one is asking for a package it does not declare. Nothing about the release changes with it — a devDependency the published payload never imports, no runtime behavior, no public contract, and no migration, on the same terms as every other tool in this table                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Unit/integration      |                                         Vitest and coverage-v8 4.1.10, Nuxt Test Utils 4.0.3 | Exact matching Vitest/coverage versions; Nuxt-supported test harness                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -372,7 +372,7 @@ so both resolve one module instance): the CLI and parser packages are
 npm-graph leaves, h3 is already in devframe's transitive host tree recorded above,
 devframe contributes that tree, and `open` brings the small helper-detection tree
 (`default-browser`, `is-wsl`, and their leaves) the lockfile pins with it.
-Nuxt/Vue/Vite/tsdown, shiki, `diff`, and test tooling are build-
+Nuxt/Vue/Vite/tsdown, shiki, `vscode-diff`, and test tooling are build-
 or development-only because their required output is assembled into the closed product
 assets. The lockfile and an isolated installed production closure are both audited.
 
@@ -876,12 +876,23 @@ text nodes, Vue text bindings, and the absence of links: nothing is resolved, op
 and the client loads no external worker, blob worker, or evaluated string; with the devframe
 host serving the Nuxt output directly (§ 8) there is no product-assembled CSP-hash manifest. A
 comparison is two `pre`s side by side, one per compared text, each holding one block per row of
-the comparison (`source-diff-rows.ts`): the lines are aligned by Myers' diff over the lines
-(`diff` § diffArrays), compared whole and exactly as authored, whitespace included, with no
-product-defined line or computation-time cutoff; a replaced run of lines stands opposite its
-replacement line by line, a line only one side has stands opposite a blank, and the characters
-of a changed line the other side lacks are marked at word granularity (`diff`
-§ diffWordsWithSpace) on a band of the row's colour taken one step stronger, drawn in the
+the comparison (`source-diff-rows.ts`): the diff is VS Code's own, published apart from the
+editor as `vscode-diff` — the `defaultLinesDiffComputer` its diff editor runs, and nothing else
+of it — computed on the page with no product-defined line or computation-time cutoff. What it
+buys is every judgment a comparison has to make and this repository would otherwise be
+inventing and tuning: which line of a replaced run a line is read against, where a mark begins
+and ends, whether a run two values happen to spell alike is common text or a coincidence
+between two changes. It is asked twice, for the two things this surface draws.
+`ignoreTrimWhitespace: true` reports only the lines that differ past their whitespace, which is
+where a row stands: a line the other side kept two spaces further in stands opposite that line
+rather than opposite whatever took its position, a replaced run stands opposite its replacement
+line by line for as far as both reach, and a line only one side has stands opposite a blank.
+`ignoreTrimWhitespace: false` reports every character that differs, which is what a mark
+covers: those two spaces rather than the whole indentation of both sides. The line alignment
+behind the two answers is one — the computer hashes trimmed lines whichever way the setting is
+set — so the rows of the first and the marks of the second describe one comparison. Both sides
+are shown exactly as authored, whitespace included, and a mark is drawn on a band of the row's
+colour taken one step stronger, in the
 theme's default text colour rather than the runs' own so the band has one contrast ratio to
 keep. A `+` or `-` in the number column carries the line's difference where colour cannot
 — under forced colours, and to a reader who does not tell the two row colours apart
@@ -953,8 +964,11 @@ reads it, while an editor brought a runtime an order of magnitude larger than th
 client together — the editor core alone was 672 KB compressed, and a skill detail mounted two
 of them — and its own key handling, focus model, and announcement machinery to keep inert.
 Tokenizing is the one thing an editor did that text does not, and shiki does that alone. Line
-alignment is a property of the comparison, and `diff` is a small, maintained implementation
-of Myers' algorithm that computes it with no product-defined ceiling. Recognition facts have domain
+alignment is a property of the comparison rather than of an editor, which is why the algorithm
+is taken without the editor around it: `vscode-diff` publishes VS Code's own line diff on its
+own, with no dependencies, and it decides with the editor's heuristics what a hand-written
+Myers pass leaves to the reader to squint at — a run of lines re-indented one level is the same
+lines, and a `.` two unrelated paths share is not text they have in common. Recognition facts have domain
 semantics — set-like recognitions and their surfaces are compared structurally in typed
 rows, while literal spelling differences remain observable in the source diff. A
 declaration block has no such structure to lose: it is one authored mapping per side
@@ -986,9 +1000,18 @@ executing, loading, or navigating.
   frontmatter YAML — is not that case: each side is one authored mapping, and its
   canonical document orders the fields identically on both sides.
 - A diff component (`@git-diff-view/vue`) was rejected because it carries its own highlighter
-  (`lowlight`) beside shiki, at 333 KB compressed against 3 KB for `diff`; a CodeMirror merge
-  view (`@codemirror/merge`), at 107 KB, would have been a second editor for the one thing an
-  editor is not needed for.
+  (`lowlight`) beside shiki, at 333 KB compressed; a CodeMirror merge view (`@codemirror/merge`),
+  at 107 KB, would have been a second editor for the one thing an editor is not needed for.
+- The `diff` package (Myers' algorithm, 3 KB compressed) was what this surface first computed
+  its rows and marks from, and it was replaced by `vscode-diff` at 19 KB compressed. Myers'
+  answer alone is not a diff a reader can look at: everything between the algorithm and the
+  screen — matching a line the other side re-indented, keeping a mark from breaking into
+  islands around characters two different values happen to share, extending a mark to the word
+  it lands in — is heuristics, and writing them here meant inventing and tuning judgments that
+  VS Code's diff editor has already settled against the diffs people read all day.
+- `@vscode/diff`, the same algorithm with a WebAssembly backend, is ruled out by the decision
+  above that no WebAssembly ships; `monaco-diff` re-exports it from `monaco-editor-core`, which
+  is the editor this section rejected.
 
 ## 8. Local session transport
 

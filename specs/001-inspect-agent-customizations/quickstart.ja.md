@@ -599,12 +599,12 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    そのoperandはmachine自身の`PATH`と設定済みeditorで、OSがその解決をproposed root経由で行い得る。この探索は
    proposed rootから何もenumerate・read・publishせず、その内側のlauncherをofferしない。Instrumented startup captureは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で正確に
    1回ずつcaptureし、`undefined`だけをabsentとし、`node:os.homedir()`を無条件で正確に1回callすることを
-   証明する — 共有agent homeは常にそこから導出される。Active-platformの`node:path.join`は対応する固定suffix
-   だけを適用する。同じretained captureをlauncher exclusionとすべてのpreviewに使い、preview requestも
+   証明する — 共有agent homeとAntigravity CLI homeは、どちらも常にそこから導出される。Active-platformの
+   `node:path.join`は対応する固定suffixだけを適用する。同じretained captureをlauncher exclusionとすべてのpreviewに使い、preview requestも
    `--inspect-personal-setup`もprocess inputを再読込しない。`HOME`/`USERPROFILE`の直接選択もexistence checkも
    行わない。Capture、classification、またはdisplay escapeのthrowはlauncher探索、session作成、browser
    attemptより前にstartupをfailさせる。
-2. Consent viewが正確なCopilot/Claude/Codex/Gemini CLI/共有agent home lexical root、input state、除外を表示し、
+2. Consent viewが正確なCopilot/Claude/Codex/Antigravity CLI/共有agent home lexical root、input state、除外を表示し、
    read scopeはpatternごとのpath表示ではなく平易な言葉で説明する。previewが束縛する2つのversionは
    どちらも表示しない。読み手はどちらに対しても行動できず、参照先もなく、それらが守るversion不一致は
    previewが画面にある間には起こりえない — 値はbuildの定数であり、異なるbuildは確認できるpreviewを
@@ -614,9 +614,11 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    completeなpreviewがcurrentになった後にfailし得る。その場合はordinary request errorとなり、新しく作成したpreviewが
    retainedされたままになり得る。どちらのfailureもauthorityやjobを作らず、`scanRequestId`を発行しない。
 3. Opt-in後は文書化されたmember candidateだけが0から5つの別識別member Global Sourceに表示される。
-   Copilot、Claude、Codex、Gemini CLI、共有agent homeごとに最大1つで、各Sourceは正確に1つのrootを持つ。Gemini CLI homeは
-   `GEMINI.md`、settings・MCP・hookの各rowに載る`settings.json`、`commands/**/*.toml`、`skills/*/SKILL.md`、
-   `agents/*.md`、`policies/*.toml`をpublishし、その他は何もpublishしない（specs/002-gemini-cli-support/spec.md FR-010）。Initial/retry transactionでadmitされた
+   Copilot、Claude、Codex、Antigravity CLI、共有agent homeごとに最大1つで、各Sourceは正確に1つのrootを持つ。
+   Antigravity CLI homeは`GEMINI.md`、`config/mcp_config.json`、`config/hooks.json`、`config/agents/*.md`、
+   `config/skills/*/SKILL.md`、2つのadmitされた形での端末自身の`antigravity-cli/skills/`、そしてsettings・
+   permissions・hookの各rowに載る`antigravity-cli/settings.json`をpublishし、その他は何もpublishしない
+   （specs/003-antigravity-cli-support/spec.md FR-009）。Initial/retry transactionでadmitされた
    全Sourceは、観測可能なper-tool commitなしに1つのatomicなGlobal generationへ一緒に現れる — enable commitは
    Repositoryのviewとstateに触れずにGlobal sequenceをgeneration 1で作成する。同じrowの2つのconsent済みhomeのreadableなfileを比較し
    — comparisonは1つのSource familyの内側に留まるため、Repository fileがそのpairのsideとして提示されることはない
@@ -639,7 +641,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    valueとstored planだけを使い、environmentを再読込せず、`displayRoot`をreverse-convertしない。Recordが別fieldを保持し、admissionが
    stored raw valueを使うことをescape-collision、control-character、backslash fixtureで証明する。
    Previewにeligibleとinvalidのentryが混在してもrequest側tool selectorは持たない。Initial enableは固定の
-   `confirmedTools: [copilot, claude, codex, gemini, agents]`を導出して5つすべてをevaluateする。Responseのdisjointな
+   `confirmedTools: [copilot, claude, codex, antigravity, agents]`を導出して5つすべてをevaluateする。Responseのdisjointな
    `acceptedTools`/`rejectedTools`のunionは5つすべてと一致する。`tools` keyなどselector-shaped inputはrejectする。
    Retryはnon-pending unpublished `admitted` controlと`same-preview` rejected controlからなるcomplete fixed-order
    `retryableTools` projectionをderiveし、published、pending、lexicalな`new-preview-required` controlを除外する。Clientは

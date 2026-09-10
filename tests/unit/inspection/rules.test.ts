@@ -40,6 +40,13 @@ import {
   buildPriorityMcpFixture,
   buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
+  buildAntigravitySkillFixture,
+  buildAntigravityRuleFixture,
+  buildAntigravityHookFixture,
+  buildAntigravityMcpFixture,
+  buildAntigravityAgentFixture,
+  buildAntigravityContextFixture,
+  type AntigravityFixture,
   FIXTURE_SECRET_LITERAL,
   type CommandFixture,
   type ClaudeAgentFixture,
@@ -61,8 +68,6 @@ import {
   type PriorityMcpFixture,
   type CopilotInstructionFixture,
   type CopilotSkillFixture,
-  buildGeminiSettingsFixture,
-  type GeminiSettingsFixture,
 } from '../../fixtures/repositories/build-fixtures';
 
 import {
@@ -82,12 +87,12 @@ import {
 } from '../../../src/server/inspection/rules/plugins/claude';
 import { ClaudeCompiledSettingsHookRule } from '../../../src/server/inspection/rules/hooks/claude';
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
-import { GEMINI_REPOSITORY_RULES } from '../../../src/server/inspection/rules/gemini';
 import { CopilotCompiledPluginCatalogRule } from '../../../src/server/inspection/rules/plugins/copilot';
 import {
   CopilotCompiledSettingsHookRule,
   CopilotCompiledStandaloneHookRule,
 } from '../../../src/server/inspection/rules/hooks/copilot';
+import { ANTIGRAVITY_REPOSITORY_RULES } from '../../../src/server/inspection/rules/antigravity';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
 import { RULE_RELATIONS } from '../../../src/shared/registries/relations';
 import {
@@ -951,48 +956,6 @@ describe('the anchored Codex MCP carrier inventory (T282)', () => {
     // Scanned alone, the rule admits exactly the root layer and nothing else:
     // no descendant, no spelling variant, no configured target.
     expect(result.files.map((file) => file.publicPath)).toEqual([mcpFixture.carrierPath]);
-  });
-});
-
-describe('the anchored Gemini CLI settings carrier (specs/002 T020)', () => {
-  let settingsFixture: GeminiSettingsFixture;
-
-  beforeAll(() => {
-    settingsFixture = buildGeminiSettingsFixture('inspector-gemini-settings-rules');
-  });
-
-  afterAll(() => {
-    rmSync(settingsFixture.root, { recursive: true, force: true });
-  });
-
-  it('admits the carrier once from all three of its rules, with one read', async () => {
-    const result = await scanWith(settingsFixture.root, GEMINI_REPOSITORY_RULES);
-    const carrier = result.files.find((file) => file.publicPath === settingsFixture.carrierPath);
-    expect(carrier).toBeDefined();
-    // Three admissions, one candidate: the settings document, the MCP carrier
-    // its `mcpServers` map makes it, and the hook carrier its `hooks` object
-    // makes it — recognized as `.claude/settings.json` and `.codex/config.toml`
-    // are, over one read (spec.md FR-002, FR-009).
-    expect(
-      resolveAdmittingRules(GEMINI_REPOSITORY_RULES, carrier!.admissions)
-        .map((admitted) => admitted.rule.ruleId)
-        .toSorted(),
-    ).toEqual(['gemini.repo.hooks', 'gemini.repo.mcp', 'gemini.repo.settings']);
-    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
-      String(call[0])
-        .slice(settingsFixture.root.length + 1)
-        .split(sep)
-        .join('/'),
-    );
-    expect(opened.filter((path) => path === settingsFixture.carrierPath)).toHaveLength(1);
-    // The nested layer, the named hook script, the environment file, the
-    // workspace policy tier the vendor documents as not loaded, and every
-    // spelling variant are admitted by nothing and opened by nothing.
-    const paths = new Set(result.files.map((file) => file.publicPath));
-    for (const nearMiss of settingsFixture.nearMissPaths) {
-      expect(paths.has(nearMiss), nearMiss).toBe(false);
-      expect(opened, nearMiss).not.toContain(nearMiss);
-    }
   });
 });
 
@@ -2787,6 +2750,8 @@ describe('the priority cross-vendor MCP matcher matrix (T390)', () => {
       .map((rule) => rule.ruleId)
       .toSorted();
     expect(mcpRuleIds).toEqual([
+      'antigravity.global.mcp',
+      'antigravity.repo.mcp',
       'claude.repo.mcp',
       'codex.global.config',
       'codex.repo.config',
@@ -2794,8 +2759,6 @@ describe('the priority cross-vendor MCP matcher matrix (T390)', () => {
       'copilot.repo.mcp',
       'copilot.repo.mcp.vscode',
       'copilot.repo.mcp.vscode-root',
-      'gemini.global.mcp',
-      'gemini.repo.mcp',
     ]);
     // An agent rule ships now, so the claim is stated where it can still be
     // wrong: no rule of the agent kind rests on an MCP behavior or is
@@ -4269,9 +4232,10 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
   /**
    * Which products may recognize an agent at a path, from the documentation
    * alone: a `.codex/agents/*.toml` is Codex's, a `.github/agents/` direct
-   * child is Copilot's, and a `.claude/agents/` file is Claude's at every
-   * depth and Copilot's only as a direct child, because no Copilot page
-   * documents a subfolder inside an agents directory.
+   * child is Copilot's, an `.agents/agents/` file is Antigravity CLI's in both
+   * of the two shapes that vendor documents, and a `.claude/agents/` file is
+   * Claude's at every depth and Copilot's only as a direct child, because no
+   * Copilot page documents a subfolder inside an agents directory.
    */
   function expectedToolsFor(sourceRelativePath: string): string[] {
     const segments = sourceRelativePath.split('/');
@@ -4281,8 +4245,8 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
     if (segments[0] === '.github') {
       return ['copilot'];
     }
-    if (segments[0] === '.gemini') {
-      return ['gemini'];
+    if (segments[0] === '.agents') {
+      return ['antigravity'];
     }
     return segments.length === 3 ? ['claude', 'copilot'] : ['claude'];
   }
@@ -4307,9 +4271,9 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
       [...agentsByPath.keys()].map((path) => path.split('/').slice(0, 2).join('/')),
     );
     expect([...directories].toSorted()).toEqual([
+      '.agents/agents',
       '.claude/agents',
       '.codex/agents',
-      '.gemini/agents',
       '.github/agents',
     ]);
     for (const [sourceRelativePath, recognitions] of agentsByPath) {
@@ -4660,4 +4624,81 @@ describe('the complete hook matcher set (T901)', () => {
       expect(admitted.has(owner), owner).toBe(false);
     }
   });
+});
+
+describe('the shipped Antigravity CLI Repository programs and their near misses (T021)', () => {
+  /** One built tree per selector family, so a near miss names its own family. */
+  let trees: Readonly<Record<string, AntigravityFixture>>;
+
+  beforeAll(() => {
+    trees = {
+      skills: buildAntigravitySkillFixture('inspector-antigravity-rules-skills'),
+      rules: buildAntigravityRuleFixture('inspector-antigravity-rules-rules'),
+      hooks: buildAntigravityHookFixture('inspector-antigravity-rules-hooks'),
+      mcp: buildAntigravityMcpFixture('inspector-antigravity-rules-mcp'),
+      agents: buildAntigravityAgentFixture('inspector-antigravity-rules-agents'),
+      context: buildAntigravityContextFixture('inspector-antigravity-rules-context'),
+    };
+  });
+
+  afterAll(() => {
+    for (const tree of Object.values(trees)) {
+      rmSync(tree.root, { recursive: true, force: true });
+    }
+  });
+
+  it('compiles each selector family to the program its contract names', () => {
+    const programOf = (ruleId: string) =>
+      ANTIGRAVITY_REPOSITORY_RULES.find((compiled) => compiled.rule.ruleId === ruleId)!.plan
+        .selectors;
+    // The flat skill is a direct child of `.agents/skills/`; the folder shape
+    // is one name segment then the fixed entry point, under both the current
+    // spelling and the superseded one the vendor still supports. No recursive
+    // token appears in either: no cited page documents a depth below these.
+    expect(programOf('antigravity.repo.skill.file')).toHaveLength(1);
+    expect(programOf('antigravity.repo.skill.file')[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.agents' },
+      { kind: 'literal', value: 'skills' },
+      { kind: 'regex', pattern: /\.md$/u },
+    ]);
+    expect(programOf('antigravity.repo.skill.directory')).toHaveLength(2);
+    expect(programOf('antigravity.repo.rule')).toHaveLength(2);
+    expect(programOf('antigravity.repo.hooks')).toHaveLength(1);
+    expect(programOf('antigravity.repo.mcp')).toHaveLength(1);
+    expect(programOf('antigravity.repo.agent.file')).toHaveLength(1);
+    expect(programOf('antigravity.repo.agent.directory')).toHaveLength(1);
+  });
+
+  it.each(['skills', 'rules', 'hooks', 'mcp', 'agents', 'context'] as const)(
+    'admits exactly the %s tree’s contracted paths',
+    async (family) => {
+      const tree = trees[family]!;
+      const result = await scanWith(tree.root, ANTIGRAVITY_REPOSITORY_RULES);
+      expect(result.files.map((file) => file.publicPath).toSorted()).toEqual([
+        ...tree.candidatePaths,
+      ]);
+    },
+  );
+
+  it.each(['skills', 'rules', 'hooks', 'mcp', 'agents', 'context'] as const)(
+    'reaches no near miss of the %s tree',
+    async (family) => {
+      const tree = trees[family]!;
+      const result = await scanWith(tree.root, ANTIGRAVITY_REPOSITORY_RULES);
+      const admitted = new Set(result.files.map((file) => file.publicPath));
+      for (const nearMiss of tree.nearMissPaths) {
+        expect(admitted.has(nearMiss), nearMiss).toBe(false);
+      }
+      // Not admitted is not enough: a near miss must never have been opened
+      // either, which is what the read spy answers
+      // (contracts/inspection-path-allowlist.md § Symlink and read invariants).
+      const read = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+      for (const nearMiss of tree.nearMissPaths) {
+        expect(
+          read.some((path) => path.endsWith(nearMiss.split('/').join(sep))),
+          nearMiss,
+        ).toBe(false);
+      }
+    },
+  );
 });

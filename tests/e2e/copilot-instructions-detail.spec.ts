@@ -88,7 +88,7 @@ test.beforeEach(async () => {
     '# API context\n',
     'utf8',
   );
-  await writeFile(join(fixture, 'GEMINI.md'), '# Gemini-compatible\n', 'utf8');
+  await writeFile(join(fixture, 'GEMINI.md'), '# Antigravity-compatible\n', 'utf8');
 
   // The named variable is really set in the host's environment (the spawned
   // CLI inherits it), so "resolves nowhere" is proven against a value that

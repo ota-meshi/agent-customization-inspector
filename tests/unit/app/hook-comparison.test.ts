@@ -22,6 +22,7 @@ import { hookComparisonRouteFor } from '../../../src/app/composables/hook-compar
 import { SessionViewState } from '../../../src/app/session/view-state';
 import { SESSION_RPC_FUNCTIONS } from '../../../src/app/session/api-client';
 import type {
+  DeclaredEntryDto,
   DeclaredValueDto,
   HookCarrierDetailDto,
   HookDeclarationDto,
@@ -148,9 +149,14 @@ function carrierDetail(
   };
 }
 
-/** One declared event whose groups are the values given. */
+/**
+ * One declared event whose groups are the values given, in a format that does
+ * not name its hooks — which is three of the four, so the comparison's cases
+ * are written against the unnamed shape and the named one is Antigravity CLI's
+ * own case (contracts/vendors/antigravity-cli.md § Known uncertainties item 9).
+ */
 function event(name: string, groups: readonly DeclaredValueDto[]): HookEventDeclarationDto {
-  return { event: name, groups };
+  return { event: name, namedHook: null, groups };
 }
 
 /** One scalar value as the wire publishes it. */
@@ -379,7 +385,7 @@ describe('hook declaration JSON serialization (T908)', () => {
         ],
       },
     ]);
-    const document = canonicalHookEventJsonText(declaration);
+    const document = canonicalHookEventJsonText([declaration]);
     expect(JSON.parse(document)).toEqual({
       PreToolUse: [
         {
@@ -401,16 +407,50 @@ describe('hook declaration JSON serialization (T908)', () => {
     expect(document.indexOf('"hooks"')).toBeLessThan(document.indexOf('"matcher"'));
   });
 
+  it('holds every declaration of the event a carrier makes, named by its hook', () => {
+    // A carrier of the named-hook format declares one event under as many
+    // names as its author wrote, so one side is all of them: serializing the
+    // first would drop the rest from the side without saying so
+    // (`api-types.ts` § DeclaredHookDto). The names order the document, which
+    // is what makes the two sides align line by line.
+    const named = (
+      hook: string,
+      fields: readonly DeclaredEntryDto[],
+      groups: readonly DeclaredValueDto[],
+    ): HookEventDeclarationDto => ({
+      event: 'PostToolUse',
+      namedHook: { name: hook, fields },
+      groups,
+    });
+    const document = JSON.parse(
+      canonicalHookEventJsonText([
+        named('lint-on-write', [], [text('first')]),
+        named(
+          'audit-writes',
+          [{ key: 'enabled', keyKind: 'string', value: text('false') }],
+          [text('second')],
+        ),
+      ]),
+    );
+    expect(document).toEqual({
+      // The hook's own keys travel with it, uninterpreted: `enabled` is a key
+      // the file wrote, not a state this product reports (FR-020).
+      'audit-writes': { enabled: 'false', PostToolUse: ['second'] },
+      'lint-on-write': { PostToolUse: ['first'] },
+    });
+    expect(Object.keys(document)).toEqual(['audit-writes', 'lint-on-write']);
+  });
+
   it('keeps a malformed group as authored, and an eventless declaration an empty list', () => {
     // A group that is not an object at all is published as the scalar it is:
     // a reader comparing their own files needs it shown rather than dropped
     // (FR-007).
-    expect(JSON.parse(canonicalHookEventJsonText(event('Stop', [text('always')])))).toEqual({
+    expect(JSON.parse(canonicalHookEventJsonText([event('Stop', [text('always')])]))).toEqual({
       Stop: ['always'],
     });
     // An event declared with no group serializes as the empty list, an
     // authored fact shown rather than an empty panel.
-    expect(canonicalHookEventJsonText(event('SessionStart', []))).toBe(
+    expect(canonicalHookEventJsonText([event('SessionStart', [])])).toBe(
       '{\n  "SessionStart": []\n}',
     );
   });

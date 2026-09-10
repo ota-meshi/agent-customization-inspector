@@ -363,7 +363,21 @@ describe('closed-catalog predicates', () => {
     // A near miss in spelling or case is not a member: the wire values are
     // exact, and a tab that opened on a guessed kind would show rows the URL
     // did not ask for.
-    for (const value of ['', 'Skill', 'skills', 'instruction', 'CLAUDE', 'Gemini', 'cursor']) {
+    //
+    // `gemini` is here as the member this release removed (T003): a URL saved
+    // while the fourth tool was that product must not open a tab, and this
+    // case failed while the union still named it
+    // (specs/003-antigravity-cli-support/spec.md § FR-001).
+    for (const value of [
+      '',
+      'Skill',
+      'skills',
+      'instruction',
+      'CLAUDE',
+      'gemini',
+      'Gemini',
+      'cursor',
+    ]) {
       expect(isCustomizationKind(value), value).toBe(false);
       expect(isSupportedTool(value), value).toBe(false);
     }

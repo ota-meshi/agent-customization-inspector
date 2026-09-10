@@ -2410,11 +2410,12 @@ describe('surface-qualified Copilot instruction recognition (T247, T257)', () =>
   it('names the two surfaces that document GEMINI.md and not the editor', async () => {
     // VS Code documents no `GEMINI.md` at all, so the editor is absent rather
     // than assumed from the other root alternative beside it.
-    const gemini = await recognizeCopilot('GEMINI.md', ['copilot.repo.instructions.gemini-root']);
-    expect(gemini.provenances.flatMap((provenance) => provenance.recognizingSurfaces)).toEqual([
-      'copilot-cli',
-      'copilot-cloud',
+    const rootContext = await recognizeCopilot('GEMINI.md', [
+      'copilot.repo.instructions.gemini-root',
     ]);
+    expect(rootContext.provenances.flatMap((provenance) => provenance.recognizingSurfaces)).toEqual(
+      ['copilot-cli', 'copilot-cloud'],
+    );
   });
 
   it('recognizes each admitted file as the instructions kind with its own range', async () => {

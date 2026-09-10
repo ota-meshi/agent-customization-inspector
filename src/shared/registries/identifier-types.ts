@@ -258,58 +258,47 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.vscode.user.hooks';
 
 /**
- * Gemini CLI behavior statements (contracts/vendors/gemini-cli.md
+ * Antigravity CLI behavior statements (contracts/vendors/antigravity-cli.md
  * § Documented Repository behavior, § Documented User behavior).
  */
-export type GeminiBehaviorId =
-  /** Gemini CLI context files: `GEMINI.md`, or the names `context.fileName` declares, loaded from the global file, the workspace directories and their parents, and just-in-time from accessed directories. */
-  | 'gemini.behavior.repo.context'
-  /** Gemini CLI `.env` files loaded into the process from the current directory upward and from `.gemini/.env`; credentials, not a customization. */
-  | 'gemini.behavior.repo.env'
-  /** Gemini CLI `hooks` declared in the project `.gemini/settings.json`, merged with the user, system, and extension layers. */
-  | 'gemini.behavior.repo.hooks'
-  /** Gemini CLI `.geminiignore` at the project root, honored by the tools that respect it; not a customization the model reads. */
-  | 'gemini.behavior.repo.ignore'
-  /** Gemini CLI `mcpServers` declared in the project `.gemini/settings.json`. */
-  | 'gemini.behavior.repo.mcp'
-  /** Gemini CLI project custom commands: every `.toml` file at any depth below `.gemini/commands/`, named by its `:`-joined path. */
-  | 'gemini.behavior.repo.commands'
-  /** Gemini CLI project sub-agents at `.gemini/agents/*.md`, Markdown with required YAML frontmatter. */
-  | 'gemini.behavior.repo.agents'
-  /** Gemini CLI workspace policies at `.gemini/policies/*.toml`, a tier the vendor documents as currently not loaded. */
-  | 'gemini.behavior.repo.policies'
-  /** Gemini CLI project settings at `.gemini/settings.json`, the project layer of the documented precedence. */
-  | 'gemini.behavior.repo.settings'
-  /** Gemini CLI workspace skills at `.gemini/skills/<name>/SKILL.md` and the `.agents/skills/` alias. */
-  | 'gemini.behavior.repo.skills'
-  /** Gemini CLI folder trust: an untrusted folder loads no project settings, `.env`, MCP server, command, or skill. */
-  | 'gemini.behavior.repo.trust'
-  /** Gemini CLI personal sub-agents at `<user tier>/agents/*.md`. */
-  | 'gemini.behavior.user.agents'
-  /** Gemini CLI personal custom commands: every `.toml` file at any depth below the user tier's `commands/`. */
-  | 'gemini.behavior.user.commands'
-  /** Gemini CLI global context file at `<user tier>/GEMINI.md`. */
-  | 'gemini.behavior.user.context'
-  /** Gemini CLI user environment files at `<user tier>/.env` and `~/.env`. */
-  | 'gemini.behavior.user.env'
-  /** Gemini CLI installed extensions under `<user tier>/extensions/`, each with `gemini-extension.json` and bundled components. */
-  | 'gemini.behavior.user.extensions'
-  /** The Gemini CLI user configuration directory: `.gemini` below `GEMINI_CLI_HOME`, or below the home when the setting is absent. */
-  | 'gemini.behavior.user.home'
-  /** Gemini CLI user policies at `<user tier>/policies/*.toml`. */
-  | 'gemini.behavior.user.policies'
-  /** Gemini CLI user settings, MCP servers, and hooks at `<user tier>/settings.json`. */
-  | 'gemini.behavior.user.settings'
-  /** Gemini CLI user skills at `<user tier>/skills/<name>/SKILL.md` and the `~/.agents/skills/` alias. */
-  | 'gemini.behavior.user.skills'
-  /** Gemini CLI trusted-folder decisions at `<user tier>/trustedFolders.json`; runtime state. */
-  | 'gemini.behavior.user.trust-record';
+export type AntigravityBehaviorId =
+  /** Antigravity CLI workspace context files: the `GEMINI.md` and `AGENTS.md` of the active directory, parsed alongside the global context file. */
+  | 'antigravity.behavior.repo.context'
+  /** Antigravity CLI workspace skills: a Markdown file at `.agents/skills/<name>.md` or a skill folder's `SKILL.md`, whose frontmatter names it and which becomes a slash command. */
+  | 'antigravity.behavior.repo.skills'
+  /** Antigravity CLI workspace rules below `.agents/rules/`, each activated manually, always, by model decision, or by a glob it declares. */
+  | 'antigravity.behavior.repo.rules'
+  /** Antigravity CLI workspace hook declarations: the standalone `.agents/hooks.json`. */
+  | 'antigravity.behavior.repo.hooks'
+  /** Antigravity CLI workspace custom agents: `.agents/agents/<name>.md` or `.agents/agents/<name>/agent.md`, Markdown with YAML frontmatter. */
+  | 'antigravity.behavior.repo.agents'
+  /** Antigravity CLI workspace MCP servers: the `mcpServers` object of `.agents/mcp_config.json`. */
+  | 'antigravity.behavior.repo.mcp'
+  /** The Antigravity CLI user tier: the `~/.gemini` directory holding the global context file, the shared `config/`, and the terminal's own `antigravity-cli/`. */
+  | 'antigravity.behavior.user.home'
+  /** Antigravity CLI global developer context: `<user tier>/GEMINI.md`. */
+  | 'antigravity.behavior.user.context'
+  /** Antigravity CLI global MCP servers: `<user tier>/config/mcp_config.json`. */
+  | 'antigravity.behavior.user.mcp'
+  /** Antigravity CLI global custom agents below `<user tier>/config/agents/`. */
+  | 'antigravity.behavior.user.agents'
+  /** Antigravity CLI global shared skills below `<user tier>/antigravity-cli/skills/`. */
+  | 'antigravity.behavior.user.skills'
+  /** Antigravity CLI user preferences: `<user tier>/antigravity-cli/settings.json`. */
+  | 'antigravity.behavior.user.settings'
+  /** Antigravity CLI permission lists — `allow`, `ask`, and `deny` — declared in the user settings file, evaluated deny before ask before allow. */
+  | 'antigravity.behavior.user.permissions'
+  /** Antigravity CLI user-tier hook declarations, configured in the standalone `<user tier>/config/hooks.json`, in the user settings file, or in a plugin's `hooks.json`. */
+  | 'antigravity.behavior.user.hooks'
+  /** Antigravity CLI installed plugin copies below `<user tier>/antigravity-cli/plugins/`, staged from their source with the manifest that tracks them. */
+  | 'antigravity.behavior.user.plugins';
 
 /**
  * Every documented vendor-behavior statement the product maintains. Each
  * vendor's sub-union joins here, and the behavior registry is keyed by it.
  */
-export type BehaviorId = ClaudeBehaviorId | CodexBehaviorId | CopilotBehaviorId | GeminiBehaviorId;
+export type BehaviorId =
+  ClaudeBehaviorId | CodexBehaviorId | CopilotBehaviorId | AntigravityBehaviorId;
 
 /**
  * Anthropic official documentation pages cited by the shipped records
@@ -450,36 +439,30 @@ export type VsCodeSourceId =
   | 'vscode.settings';
 
 /**
- * Google official documentation pages cited by the shipped records
+ * Google official source records for the Antigravity CLI documentation
  * (contracts/official-sources.md § Google official sources).
  */
 export type GoogleSourceId =
-  /** The configuration reference: settings file locations and layers, the user directory and `GEMINI_CLI_HOME`, `.env` files, and the settings catalog. */
-  | 'google.gemini-cli.configuration'
-  /** The creating-skills page: the skill directory structure, its frontmatter, and the `.agents/skills` alias. */
-  | 'google.gemini-cli.creating-skills'
-  /** The custom-commands page: where command files live, how their names derive from paths, and the TOML fields. */
-  | 'google.gemini-cli.custom-commands'
-  /** The extension reference: where extensions are installed, the manifest, and the components an extension bundles. */
-  | 'google.gemini-cli.extensions-reference'
-  /** The ignore-files page: where `.geminiignore` lives and which tools honor it. */
-  | 'google.gemini-cli.gemini-ignore'
-  /** The GEMINI.md page: the context hierarchy, imports, and the configurable context filename. */
-  | 'google.gemini-cli.gemini-md'
-  /** The hooks overview: where hooks are configured, their schema, and their security notes. */
-  | 'google.gemini-cli.hooks'
-  /** The hooks reference: the configuration schema in detail. */
-  | 'google.gemini-cli.hooks-reference'
-  /** The MCP servers page: the `mcpServers` object, its per-server properties, and environment-variable expansion. */
-  | 'google.gemini-cli.mcp-server'
-  /** The policy engine reference: policy file locations per tier and the TOML rule schema. */
-  | 'google.gemini-cli.policy-engine'
-  /** The Agent Skills overview: discovery tiers and same-name precedence. */
-  | 'google.gemini-cli.skills'
-  /** The subagents page: agent definition files, their format, and the experimental gate. */
-  | 'google.gemini-cli.subagents'
-  /** The trusted-folders page: what an untrusted folder does not load, and where the trust record lives. */
-  | 'google.gemini-cli.trusted-folders';
+  /** The migration page: workspace and global context files, skills paths, and the MCP configuration move. */
+  | 'google.antigravity.cli-migration'
+  /** The MCP page: both configuration locations, the server schema, and the remote key. */
+  | 'google.antigravity.cli-mcp'
+  /** The plugins and skills page: the plugin layout, both skill locations, and where hooks are configured. */
+  | 'google.antigravity.cli-plugins-skills'
+  /** The settings page: the user settings file and its location. */
+  | 'google.antigravity.cli-settings'
+  /** The background tasks and subagents page: the custom-agent format and both locations. */
+  | 'google.antigravity.cli-subagents'
+  /** The permissions page: the three lists and their precedence. */
+  | 'google.antigravity.cli-permissions'
+  /** The features page: the plugin staging layout and the settings-file customizations. */
+  | 'google.antigravity.cli-features'
+  /** The vendor's shared Agent Skills page, which documents the skill folder holding a `SKILL.md` at the workspace's `.agents/skills/` and records `.agent/skills` as the still-supported earlier spelling. */
+  | 'google.antigravity.skills'
+  /** The vendor's shared Rules page, which documents workspace rules at `.agents/rules`, the four activation modes, and the global `~/.gemini/GEMINI.md`. */
+  | 'google.antigravity.rules'
+  /** The vendor's shared Hooks page, which documents the `hooks.json` schema and places the file in the workspace's `.agents/` or the user tier's `config/`. */
+  | 'google.antigravity.hooks';
 
 /**
  * Every official documentation page a shipped record cites. A citation names
@@ -589,32 +572,31 @@ export type CopilotStrategyId =
   | 'copilot.vscode.hooks.composition';
 
 /**
- * Gemini CLI composition strategies (contracts/runtime-composition.md
- * § Gemini CLI strategies).
+ * Antigravity CLI runtime-composition strategies
+ * (contracts/runtime-composition.md).
  */
-export type GeminiStrategyId =
-  /** Gemini CLI sub-agent selection: project and user agents both load; no documented resolution for a same-name pair. */
-  | 'gemini.agents.selection'
-  /** Gemini CLI custom-command selection: a project command with a user command's name is always used. */
-  | 'gemini.commands.selection'
-  /** Gemini CLI context layering: the global file, the workspace files and their parents, and just-in-time files concatenated in that order, filtered by trust. */
-  | 'gemini.context.layering'
-  /** Gemini CLI hook merging: every layer's hooks run, filtered by trust and fingerprinting. */
-  | 'gemini.hooks.merge'
-  /** Gemini CLI MCP configuration: servers merged by name across layers, filtered by `mcp.allowed`/`mcp.excluded` and trust. */
-  | 'gemini.mcp.configuration'
-  /** Gemini CLI policy tiers: a higher tier base wins, then a higher `priority` within a tier. */
-  | 'gemini.policies.tiers'
-  /** Gemini CLI settings precedence: layers merged by key, a higher layer's value replacing a lower one's. */
-  | 'gemini.settings.precedence'
-  /** Gemini CLI skill selection: the higher tier's same-name skill is used; within a tier the `.agents/skills/` alias wins. */
-  | 'gemini.skills.selection';
+export type AntigravityStrategyId =
+  /** How the workspace context files and the global one are layered. */
+  | 'antigravity.context.layering'
+  /** How a workspace skill and a global skill of one name are selected between. */
+  | 'antigravity.skills.selection'
+  /** How workspace and global custom agents are selected between. */
+  | 'antigravity.agents.selection'
+  /** How the workspace and global MCP configurations compose. */
+  | 'antigravity.mcp.configuration'
+  /** How hook declarations from the settings file and from plugins merge. */
+  | 'antigravity.hooks.merge'
+  /** The documented permission precedence: deny, then ask, then allow. */
+  | 'antigravity.permissions.precedence'
+  /** Antigravity CLI rule activation: a workspace rule applies always, on request, on the model's judgement, or to the files its glob matches. */
+  | 'antigravity.rules.activation';
 
 /**
  * Every documented runtime composition or projection strategy. Each vendor's
  * sub-union joins here, and the strategy registry is keyed by it.
  */
-export type StrategyId = ClaudeStrategyId | CodexStrategyId | CopilotStrategyId | GeminiStrategyId;
+export type StrategyId =
+  ClaudeStrategyId | CodexStrategyId | CopilotStrategyId | AntigravityStrategyId;
 
 /**
  * Anthropic Claude Code inspection rules
@@ -798,49 +780,51 @@ export type CopilotRuleId =
   | 'copilot.repo.hooks.settings.claude';
 
 /**
- * Gemini CLI inspection rules (contracts/vendors/gemini-cli.md § Inspector
- * Repository rules, § Derived Repository rules, § Inspector Global rule,
+ * Antigravity CLI Inspector rules (contracts/vendors/antigravity-cli.md
+ * § Inspector Repository rules, § Inspector Global rule,
  * § Relationship-only and excluded groups).
  */
-export type GeminiRuleId =
-  /** The context filenames — `GEMINI.md`, or the names the repository `.gemini/settings.json` declares — at every depth, seeded by that carrier; read-authorizing `bounded-derived-candidate`. */
-  | 'gemini.derived.context-filename'
-  /** Installed extension copies under the user tier's `extensions/` and a repository-root `gemini-extension.json`, on record as excluded and admitted by nothing. */
-  | 'gemini.excluded.extensions'
-  /** The repository surfaces no rule admits — workspace policies, `.geminiignore`, `.env`, hook scripts — on record as excluded. */
-  | 'gemini.excluded.repo-non-customizations'
-  /** Every Gemini CLI user surface no Global rule admits — the trust record, environment files, credentials, session state, temporary files — on record as excluded. */
-  | 'gemini.excluded.user-runtime'
-  /** Personal sub-agents as direct-child Markdown of the consented boundary's `agents/`; read-authorizing `static-candidate`. */
-  | 'gemini.global.agent'
-  /** Personal skills `skills/<name>/SKILL.md` below the consented shared agent home (FR-045); read-authorizing `static-candidate`. */
-  | 'gemini.global.agents-home.skill'
-  /** Personal custom commands at any depth below the consented boundary's `commands/`; read-authorizing `static-candidate`. */
-  | 'gemini.global.command'
-  /** The consented-boundary-exact `settings.json` read for its `hooks` object; read-authorizing `static-candidate`. */
-  | 'gemini.global.hooks'
-  /** The consented-boundary-exact `GEMINI.md` global context file; read-authorizing `static-candidate`. */
-  | 'gemini.global.instructions'
-  /** The consented-boundary-exact `settings.json` read for its `mcpServers` map; read-authorizing `static-candidate`. */
-  | 'gemini.global.mcp'
-  /** Personal policy files `policies/*.toml` below the consented boundary, recognized as `permissions`; read-authorizing `static-candidate`. */
-  | 'gemini.global.policies'
-  /** The consented-boundary-exact `settings.json` read as the user settings document; read-authorizing `static-candidate`. */
-  | 'gemini.global.settings'
-  /** Personal skills `skills/<name>/SKILL.md` below the consented Gemini CLI boundary; read-authorizing `static-candidate`. */
-  | 'gemini.global.skill'
-  /** Repository sub-agents as direct-child Markdown of the root's `.gemini/agents/`; read-authorizing `static-candidate`. */
-  | 'gemini.repo.agent'
-  /** Repository custom commands at any depth below the root's `.gemini/commands/`; read-authorizing `static-candidate`. */
-  | 'gemini.repo.command'
-  /** The root-exact `.gemini/settings.json` read for its `hooks` object; read-authorizing `static-candidate`. */
-  | 'gemini.repo.hooks'
-  /** The root-exact `.gemini/settings.json` read for its `mcpServers` map; read-authorizing `static-candidate`. */
-  | 'gemini.repo.mcp'
-  /** The root-exact `.gemini/settings.json` read as the project settings document; read-authorizing `static-candidate`. */
-  | 'gemini.repo.settings'
-  /** Repository skills under `.gemini/skills/` and the `.agents/skills/` alias; read-authorizing `static-candidate`. */
-  | 'gemini.repo.skill';
+export type AntigravityRuleId =
+  /** The repository root's `GEMINI.md`, which GitHub Copilot also reads. */
+  | 'antigravity.repo.context.gemini-root'
+  /** The repository root's `AGENTS.md`, which Copilot and Codex also read. */
+  | 'antigravity.repo.context.agents-root'
+  /** A flat workspace skill: one Markdown file directly below `.agents/skills/`. */
+  | 'antigravity.repo.skill.file'
+  /** A workspace skill folder's `SKILL.md`, below `.agents/skills/` or the superseded `.agent/skills/`. */
+  | 'antigravity.repo.skill.directory'
+  /** A workspace rule below `.agents/rules/` or the superseded `.agent/rules/`. */
+  | 'antigravity.repo.rule'
+  /** The workspace's standalone hook carrier, `.agents/hooks.json`. */
+  | 'antigravity.repo.hooks'
+  /** A workspace custom agent written as one Markdown file below `.agents/agents/`. */
+  | 'antigravity.repo.agent.file'
+  /** A workspace custom agent written as `agent.md` inside its own directory below `.agents/agents/`. */
+  | 'antigravity.repo.agent.directory'
+  /** The workspace MCP carrier `.agents/mcp_config.json`. */
+  | 'antigravity.repo.mcp'
+  /** The consented home's global context file. */
+  | 'antigravity.global.context'
+  /** The consented home's global MCP carrier. */
+  | 'antigravity.global.mcp'
+  /** A custom agent below the consented home's `config/agents/`. */
+  | 'antigravity.global.agent'
+  /** A skill file below the consented home's `antigravity-cli/skills/`. */
+  | 'antigravity.global.skill'
+  /** The consented home's settings document, whose subject is the file. */
+  | 'antigravity.global.settings'
+  /** The permission lists the same settings carrier declares. */
+  | 'antigravity.global.permissions'
+  /** The consented home's standalone hook carrier, `config/hooks.json`. */
+  | 'antigravity.global.hooks'
+  /** The hook declarations the consented home's `antigravity-cli/settings.json` carries inline. */
+  | 'antigravity.global.hooks.inline'
+  /** Installed plugin copies and the manifest that tracks them: reproduced from their source rather than authored. */
+  | 'antigravity.excluded.plugins'
+  /** The workspace plugin directory no terminal page documents: `.agents/plugins/` and the `_agents/plugins/` spelling beside it. */
+  | 'antigravity.excluded.workspace-plugins'
+  /** The user-tier state no Global rule admits: credentials, session and history state, caches, and logs. */
+  | 'antigravity.excluded.user-runtime';
 
 /**
  * Cross-vendor inspection rules: policy no single vendor owns. Exactly one
@@ -857,4 +841,4 @@ export type SharedRuleId =
  * rule registry is keyed by it. This union is therefore the complete list of
  * rules that can authorize a read.
  */
-export type RuleId = ClaudeRuleId | CodexRuleId | CopilotRuleId | GeminiRuleId | SharedRuleId;
+export type RuleId = ClaudeRuleId | CodexRuleId | CopilotRuleId | AntigravityRuleId | SharedRuleId;

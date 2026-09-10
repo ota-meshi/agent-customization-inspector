@@ -31,6 +31,9 @@ export class ClaudeCompiledSkillRule extends ClaudeCompiledRule implements Compi
   /** Narrowed to the one kind this unit compiles; the constructor proves it. */
   declare public readonly kind: 'skill';
 
+  /** A directory: this vendor documents one skill shape, the folder holding an entry point. */
+  public readonly skillRowUnit: 'directory';
+
   /**
    * The name Claude Code shows for the skill. At the selected root it is the
    * declared `name`, with the skill directory as the fallback
@@ -81,5 +84,6 @@ export class ClaudeCompiledSkillRule extends ClaudeCompiledRule implements Compi
     if (rule.kind !== 'skill') {
       throw new TypeError(`rule ${rule.ruleId} is not a Claude skill rule`);
     }
+    this.skillRowUnit = 'directory';
   }
 }

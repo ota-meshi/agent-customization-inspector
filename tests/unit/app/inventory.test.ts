@@ -30,10 +30,7 @@ import type {
   SourceDto,
   SourceKind,
 } from '../../../src/shared/api-types';
-import {
-  SAME_NAME_SKILL_RESOLUTION_TEXT,
-  SUPPORTED_TOOL_ORDER,
-} from '../../../src/shared/entities';
+import { SUPPORTED_TOOL_ORDER } from '../../../src/shared/entities';
 import type { CustomizationKind, SupportedTool } from '../../../src/shared/entities';
 
 const REPOSITORY_SOURCE: SourceDto = {
@@ -82,6 +79,7 @@ function skillWithCompanions(
       sourceId: 'src-repo',
       sourceRelativePath: path,
       tool: 'codex' as const,
+      rowUnit: 'directory' as const,
       surfaces: [],
       parseStatus: 'parsed' as const,
       diagnosticIds: [],
@@ -865,6 +863,7 @@ describe('settings and configuration rows in the filtered view (T588)', () => {
         parseStatus: 'parsed',
         diagnosticIds: [],
         companionFiles: [],
+        rowUnit: 'directory',
       },
     ],
     sameNameResolutions: [],
@@ -979,6 +978,7 @@ describe('same-name resolutions in the filtered view', () => {
         parseStatus: 'parsed' as const,
         diagnosticIds: [],
         companionFiles: [],
+        rowUnit: 'directory',
       })),
       sameNameResolutions: [{ tool: 'claude', resolution: 'all-remain-context-selected' }],
     };
@@ -1017,6 +1017,7 @@ describe('same-name resolutions in the filtered view', () => {
           parseStatus: 'parsed' as const,
           diagnosticIds: [],
           companionFiles: [],
+          rowUnit: 'directory',
         },
       ],
       sameNameResolutions: [{ tool: 'claude', resolution: 'all-remain-context-selected' }],
@@ -1248,6 +1249,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
       parseStatus: 'parsed',
       diagnosticIds: [],
       companionFiles: [],
+      rowUnit: 'directory',
     });
     return [
       {
@@ -1306,7 +1308,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     // itself — the three tools that recognize here, in that order, and not
     // the fourth, which recognizes no file of this snapshot.
     expect(filters.view.availableTools.value).toEqual(
-      SUPPORTED_TOOL_ORDER.filter((tool) => tool !== 'gemini'),
+      SUPPORTED_TOOL_ORDER.filter((tool) => tool !== 'antigravity'),
     );
     expect(filters.view.availableKinds.value).toEqual(['skill']);
     expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual([
@@ -1338,46 +1340,51 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     expect(claudeRows[0]!.sameNameResolutions).toEqual([]);
   });
 
-  it("keeps Gemini CLI's first-found statement while both of its definitions show", () => {
-    // The `.gemini/skills/` file and its `.agents/skills/` alias declare one
-    // name, so Gemini CLI faces its own two-file collision and the row states
-    // the derived first-found rule in the words the label table gives it;
-    // narrowing to Gemini CLI keeps both definitions and the statement, and
-    // narrowing to a path hides one side and the statement with it (FR-007;
-    // specs/002-gemini-cli-support T059).
+  it("states nothing for Antigravity CLI's two-shape collision while both definitions show", () => {
+    // This vendor admits two skill shapes at one location, so a name spelled
+    // in both is one row with two of its definitions — and the row states no
+    // winner, because the pages state none: its one skills strategy carries
+    // `unknown-order` alone, and a group establishing only unresolved
+    // selection states no rule (`skill-resolution.ts`;
+    // specs/003-antigravity-cli-support/spec.md § FR-004;
+    // contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
+    //
+    // T004: the previous vocabulary's fourth vendor documented a first-found
+    // winner here, so this case asserted a statement; it fails against a
+    // registry that derives none, which is what the empty array proves.
     const definition = (path: string): SkillInventoryEntryDto['definitions'][number] => ({
       sourceId: 'src-repo',
       sourceRelativePath: path,
-      tool: 'gemini',
+      tool: 'antigravity',
       surfaces: [],
       parseStatus: 'parsed',
       diagnosticIds: [],
       companionFiles: [],
+      rowUnit: 'directory',
     });
     const entry: SkillInventoryEntryDto = {
       name: 'deploy',
       definitions: [
+        definition('.agents/skills/deploy.md'),
         definition('.agents/skills/deploy/SKILL.md'),
-        definition('.gemini/skills/deploy/SKILL.md'),
       ],
-      sameNameResolutions: [{ tool: 'gemini', resolution: 'select-first' }],
+      sameNameResolutions: [],
     };
     const snapshot = shallowRef<SessionSnapshot | null>(
       snapshotWith(
-        [file('.agents/skills/deploy/SKILL.md'), file('.gemini/skills/deploy/SKILL.md')],
+        [file('.agents/skills/deploy.md'), file('.agents/skills/deploy/SKILL.md')],
         [entry],
       ),
     );
     const filters = withSelection(snapshot);
-    expect(filters.view.availableTools.value).toEqual(['gemini']);
-    filters.tool.value = 'gemini';
+    expect(filters.view.availableTools.value).toEqual(['antigravity']);
+    filters.tool.value = 'antigravity';
     const [row] = filters.view.skillRows.value;
     expect(row!.definitions).toHaveLength(2);
-    expect(row!.sameNameResolutions).toEqual([{ tool: 'gemini', resolution: 'select-first' }]);
-    expect(SAME_NAME_SKILL_RESOLUTION_TEXT[row!.sameNameResolutions[0]!.resolution]).toBe(
-      'uses the first in its documented source order',
-    );
-    filters.searchQuery.value = '.gemini/';
+    expect(row!.sameNameResolutions).toEqual([]);
+    // Narrowing to one shape leaves one definition, and the row still states
+    // nothing: there was never a statement to lose.
+    filters.searchQuery.value = 'deploy/SKILL.md';
     expect(filters.view.skillRows.value[0]!.definitions).toHaveLength(1);
     expect(filters.view.skillRows.value[0]!.sameNameResolutions).toEqual([]);
   });
@@ -1475,6 +1482,10 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
           'companionFiles',
           'diagnosticIds',
           'parseStatus',
+          // The definition's row unit — its directory or the file itself —
+          // which is a fact about the admitting rule's shape, not authored
+          // content (spec.md § FR-004).
+          'rowUnit',
           'sourceId',
           'sourceRelativePath',
           'surfaces',

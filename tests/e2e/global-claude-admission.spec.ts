@@ -88,7 +88,7 @@ test('inspects Claude and Codex from one confirmation, each as its own Source', 
     [
       '/instructions/detail/global-claude/CLAUDE.md',
       '/instructions/detail/global-codex/AGENTS.override.md',
-      '/instructions/detail/global-gemini/GEMINI.md',
+      '/instructions/detail/global-antigravity/GEMINI.md',
       '/instructions/detail/repository/CLAUDE.md',
       '/instructions/detail/global-copilot/copilot-instructions.md',
       ...homes.expectedCandidatePaths.copilot
@@ -127,7 +127,7 @@ test('states each tool’s own outcome from the one shared batch', async ({ page
   await expect(main).toContainText('Copilot home — Inspected');
   await expect(main).toContainText('Claude home — Inspected');
   await expect(main).toContainText('Codex home — Inspected');
-  await expect(main).toContainText('Gemini home — Inspected');
+  await expect(main).toContainText('Antigravity home — Inspected');
   await expect(main).toContainText('Shared agent home — Inspected');
   const outcomes = await page.locator('.aci-global-consent-page__outcomes li').allInnerTexts();
   expect(outcomes).toHaveLength(5);

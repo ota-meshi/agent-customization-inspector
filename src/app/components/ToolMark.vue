@@ -26,7 +26,7 @@ import type { Component } from 'vue';
 import ClaudeIcon from '~icons/simple-icons/claude';
 import CopilotIcon from '~icons/simple-icons/githubcopilot';
 import CodexIcon from '~icons/simple-icons/openai';
-import GeminiIcon from '~icons/simple-icons/googlegemini';
+import AntigravityIcon from '~icons/thesvg/antigravity-google';
 import { SUPPORTED_TOOL_TEXT, type SupportedTool } from '../../shared/entities';
 
 const props = defineProps<{
@@ -58,8 +58,8 @@ const TOOL_GLYPH: Readonly<Record<SupportedTool, Component>> = {
   claude: ClaudeIcon,
   /** OpenAI Codex is drawn by OpenAI's mark, for the same reason. */
   codex: CodexIcon,
-  /** Gemini CLI is drawn by Google's Gemini mark, the one the product ships under. */
-  gemini: GeminiIcon,
+  /** Antigravity CLI is drawn by the product's own mark, the one it ships under. */
+  antigravity: AntigravityIcon,
 };
 </script>
 
@@ -109,7 +109,7 @@ const TOOL_GLYPH: Readonly<Record<SupportedTool, Component>> = {
   color: var(--aci-brand-codex);
 }
 
-.aci-tool-mark--gemini {
-  color: var(--aci-brand-gemini);
+.aci-tool-mark--antigravity {
+  color: var(--aci-brand-antigravity);
 }
 </style>

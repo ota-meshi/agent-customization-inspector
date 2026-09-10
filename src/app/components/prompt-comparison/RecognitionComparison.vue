@@ -171,8 +171,8 @@ function surfacesText(definition: PromptSideDefinition): string {
           <!-- What the diff holds, said before it: both sides are the
                canonical serialization of the metadata, not the files' own
                spellings — those stay in the source comparison below (FR-007).
-               "Metadata" rather than "frontmatter", because a Gemini CLI
-               command carries its keys as TOML beside its `prompt`; the
+               "Metadata" rather than "frontmatter", because a command file
+               need not carry its keys in a frontmatter fence at all; the
                canonical key order is stated too, because a reader comparing
                against their own file would otherwise read the order as
                authored. -->

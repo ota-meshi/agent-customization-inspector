@@ -213,6 +213,19 @@ export type RecognitionDetails =
        */
       readonly invocationName: string;
       /**
+       * What this recognition's row unit is — the directory whose entry point
+       * was matched, or the matched file itself — carried from the admitting
+       * rule (`../rules/skills/compiled-rule.ts` § skillRowUnit).
+       *
+       * Held rather than re-derived from the path, because which shape a rule
+       * admits is that rule's declared fact and a second derivation could
+       * disagree with it. What follows from it is the companion census: a
+       * `file` skill has no directory, so it ships no companions, where a
+       * `directory` skill's siblings are exactly what it ships
+       * (spec.md § FR-004).
+       */
+      readonly rowUnit: 'directory' | 'file';
+      /**
        * Every key the `SKILL.md` frontmatter declares, in authored order; the
        * source of the detail response's `presentation.frontmatter` (FR-007).
        * Empty when the file declares no frontmatter, and empty for a `failed`
@@ -638,6 +651,7 @@ export class ToolRecognition {
       {
         kind: 'skill',
         invocationName: admission.compiled.invocationNameOf(sourceRelativePath, frontmatter),
+        rowUnit: admission.compiled.skillRowUnit,
         frontmatter,
         bodyText: extraction.extracted?.body ?? '',
       },
@@ -1385,8 +1399,14 @@ export async function recognizeCandidateForVendors(
   // else (contracts/inspection-path-allowlist.md § Bounded companion census).
   const directories: string[] = [];
   for (const { compiled } of input.admissions) {
-    if (compiled.kind === 'skill') {
-      // A skill *is* its directory, so its entry point sits at the root of it.
+    // A directory-shaped skill *is* its directory, so its entry point sits at
+    // the root of it. A flat one occupies nothing: its siblings are other
+    // skills rather than its own companions, so enumerating the directory
+    // above it would publish the whole skills folder as one skill's census
+    // (spec.md § FR-004). Which shape a rule admits is the rule's own
+    // declared fact, never re-derived from the path here
+    // (`../rules/skills/compiled-rule.ts` § skillRowUnit).
+    if (compiled.kind === 'skill' && compiled.skillRowUnit === 'directory') {
       directories.push(input.matchedPath.slice(0, input.matchedPath.lastIndexOf('/') + 1));
       break;
     }

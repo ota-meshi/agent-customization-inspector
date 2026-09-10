@@ -72,6 +72,7 @@ function definition(tool: SupportedTool, path: string): SkillDefinitionDto {
     parseStatus: 'parsed',
     diagnosticIds: [],
     companionFiles: [],
+    rowUnit: 'directory',
   };
 }
 

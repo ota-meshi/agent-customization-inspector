@@ -105,17 +105,18 @@ test('names the five proposed directories, their origin, and their state', async
   await expect(main).toContainText('GitHub Copilot');
   await expect(main).toContainText('Claude Code');
   await expect(main).toContainText('OpenAI Codex');
-  await expect(main).toContainText('Gemini home');
+  await expect(main).toContainText('Antigravity home');
   // Every root the environment set, shown as the escaped presentation of the
   // exact value — these homes are ordinary absolute paths, so the escaping is
-  // the identity on them. The Gemini CLI root is the `.gemini` below the
-  // directory its variable names, which is what the fixture's `homes.gemini`
-  // already is (specs/002-gemini-cli-support FR-011).
+  // the identity on them. The Antigravity CLI root is the `.gemini` below the
+  // captured home directory, which no property relocates and which the
+  // fixture's `homes.antigravity` already is
+  // (specs/003-antigravity-cli-support FR-008).
   for (const home of [
     homes.homes.copilot,
     homes.homes.claude,
     homes.homes.codex,
-    homes.homes.gemini,
+    homes.homes.antigravity,
     homes.homes.agents,
   ]) {
     await expect(main).toContainText(home);
@@ -133,9 +134,7 @@ test('explains the read scope in words and shows no path pattern', async ({ page
   const main = page.locator('main');
   // The plain-language scope: what is read, and what is not.
   await expect(main).toContainText('customization files');
-  await expect(main).toContainText(
-    'shared agent directory that Codex, Copilot, and Gemini CLI all',
-  );
+  await expect(main).toContainText('shared agent directory that Codex and Copilot both read');
   await expect(main).toContainText('not credentials');
   // Neither version the preview binds is on screen: a reader can act on
   // neither, and the confirmation is where the pair is used.

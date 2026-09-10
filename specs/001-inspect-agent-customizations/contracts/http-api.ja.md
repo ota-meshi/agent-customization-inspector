@@ -596,7 +596,7 @@ generation replacementはそのsequenceのscoped modelだけをdisposeする。G
 
 `globalControl`はGlobal consent/control stateがinactiveな場合だけnullとなる。それ以外では`state`が
 `active`または`disabling`となり、`previewId`がfrozen active previewを識別する。`confirmedTools`は
-常にfixed closed `[copilot, claude, codex, gemini, agents]` all-members consent setとする。Initial enableとretryの
+常にfixed closed `[copilot, claude, codex, antigravity, agents]` all-members consent setとする。Initial enableとretryの
 validation/admissionはoperation-localのままとし、authority-freeな
 `globalEnableInProgress { kind, operationId, previewId }`だけを公開する。Initial enableでは
 `globalControl: null`を維持し、retryではresult-bound disposition 1件がatomic commitするまでexactな
@@ -653,8 +653,8 @@ Sourceのどれも名乗らないselectorはどこにも解決されず、未知
 rejectionになる。kindは7つのfile主題のkind — `instructions`、`skill`、`agent`、
 `prompt/command`、`rule`、`output style`、`settings/config` — のいずれかで、求めるrouteの
 自身のkindである。1つのfileが2つのkindを持ちうる — `.claude/agents/CLAUDE.md`はdirectoryに
-よりClaudeのsubagentであり名前によりinstruction fileである。`.gemini/commands/build.toml`は
-Gemini CLIのcommandであり、`context.fileName`が`build.toml`を名指せばcontext fileでもある —
+よりClaudeのsubagentであり名前によりinstruction fileである。`antigravity-cli/settings.json`は
+settings documentであり、permission policyであり、hook carrierでもある —
 そして各kindはそのfileを自身のsyntaxで読むため、fileを1つのkindとして示すpageは、hostが選ばざる
 を得ない他のkindのparseを受け取るのではなく、そのkindのparseを求める。kindの検証もresolution
 である: どのrecognitionのkindにも等しくない値はどのrecognitionにも一致せず、答えはplain file
@@ -738,8 +738,8 @@ detail responseは、pageが開けるものを何も渡さない。
 この木がresponseの形そのものである: clientは正確にこのfieldだけに依存できる。
 `prompt/command` variantが独自のshapeの`presentation`を持つのは、`agent` variantと同じ理由で、
 分割点が常にfrontmatter blockとは限らないためである。Claude Code、Copilot、Codexのcommandは
-frontmatter fenceで分割されるMarkdownだが、Gemini CLIのcommandは`prompt` stringがpromptで残りのkeyが
-metadataであるTOMLなので、半分はそれが何であるかで名付ける — `metadata[]`と`promptText` — 。
+frontmatter fenceで分割されるMarkdownだが、promptを1つのkeyとして宣言する形式では、そのkeyがpromptで
+隣のkeyがmetadataになるので、半分はそれが何であるかで名付ける — `metadata[]`と`promptText` — 。
 どのvendorの読み取りも同じ2 fieldを綴る。持たないのは、読み手が入力する名前である: これはdetailのfieldではなく
 ruleが答えるものであるため、inventoryの事実であり — 各`prompts[]` rowがgroup化される
 名前そのものであり — skillのinvocation nameが`skills[]`の事実であるのと同じで
@@ -984,6 +984,17 @@ Resultは`carrier`で判別される2つのshapeのいずれかを取る。docum
 contentと共にhook tableを含むfile — `.codex/config.toml`内のinlineな`[hooks]`、Claudeのroot
 settings documentの`hooks` object — は隣接するkeyを、それらを所有する同じfileのrecognitionに委ねる。
 
+documentedな形式のうち1つだけが、他の3つにはない階層を持つ: hookの*名前*をそのhook自身のevent
+とkeyに対応付けるcarrier — Antigravity CLIの`hooks.json`と、その設定documentの`hooks` object
+である。そうしたcarrierは1つのeventを2つの名前で2回宣言できるので、各宣言はcarrierが書いた名前と、
+その名前自身のkey — documentedな`enabled` flagを含む — を`namedHook`として携える。名前とfield
+listを並べるのではなく1つの入れ子の値にするのは、両者が1つの事実だからである: 形式はこの階層を
+持つか持たないかのどちらかである。名前について何も解釈せず、`enabled`についても何も解釈しない。
+`enabled: false`を「無効」「停止中」と描くsurfaceは無い — hookが走るかどうかはこの製品が観測しない
+実行時の事柄である（FR-009、FR-020、FR-026）。inventoryの行は影響を受けない: 行の単位は宣言された
+eventであり、行の中の1本はcarrierごとなので、1つのcarrierが同じeventを2回宣言してもそれは既に
+1本にまとまっている。
+
 どのfileがそれに当たるかは各vendorのcontractであり、documentedなhook locationが自動的に該当する
 わけではない: 他のcustomizationが何であるかの一部である宣言 — Claudeのskillやsubagentのfrontmatter
 `hooks`、plugin manifestやcatalog entryのもの — は、どのpathでもここでは解決されない。そのcustomization
@@ -1000,8 +1011,10 @@ HookCarrierDetail
 ├── events[] — 宣言。parserが解決した順に宣言されたeventごとに1つで、carrierが何も
 │   宣言しなければ空 — またはextractionがall-or-nothingでfailedになった場合に限り
 │   null（FR-028）。そのDiagnosticは下にある:
-│   └── event, groups[] — 宣言されたevent名と、それが宣言するmatcher group。各groupは
-│       そのitemが書いた値そのもので、detail surfaceが描画する共有のdeclared-value shapeを使う
+│   └── event, namedHook, groups[] — 宣言されたevent名、それが宣言された名前付きhook
+│       — eventを直接matcher groupに対応付ける形式のcarrierではnull — そして
+│       それが宣言するmatcher group。各groupはそのitemが書いた値そのもので、
+│       detail surfaceが描画する共有のdeclared-value shapeを使う
 ├── carrierFields[] — 'standalone'のみ: hook mapの傍らにあるtop-level entryすべて。
 │   `presentation.frontmatter`と同じentry shapeを使う
 └── diagnostics[]
@@ -1359,13 +1372,14 @@ GlobalConsentPreview
 ```
 
 Editor-launcher探索前のsession startupで、serverは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、
-`CODEX_HOME`、`GEMINI_CLI_HOME`をこの順で正確に1回ずつreadする。`undefined`だけをabsentとし、
+`CODEX_HOME`をこの順で正確に1回ずつreadする。`undefined`だけをabsentとし、
 empty stringはpresentとする。そのsessionでimport済み`node:os.homedir()`を
 正確に1回callし — 共有agent home memberは常にそこからderiveされる — 、対応するabsent entryについてactive-platformの`node:path.join`と固定suffix
-`.copilot`、`.claude`、`.codex`、`.gemini`を、共有agent homeについて固定suffix `.agents`を使う。`.gemini` suffixは
-presentでeligibleな`GEMINI_CLI_HOME`にもjoinする。Vendorはこの設定を`.gemini` directoryの親を指すものとして
-文書化しているからである（specs/002-gemini-cli-support/spec.md FR-011）。`member`はclosedな
-`copilot | claude | codex | gemini | agents`集合 — 4つのtool homeと共有agent home（FR-045） — の1つであり、
+`.copilot`、`.claude`、`.codex`、`.gemini`を、共有agent homeについて固定suffix `.agents`を使う。`.gemini`の
+memberは自身の設定を持たない。これを移動させるpropertyを引用可能なpageは無いので、そのrootはどの場合も
+home directoryとのjoinであり、originは常にdefault homeである（specs/003-antigravity-cli-support/spec.md
+FR-008）。`member`はclosedな
+`copilot | claude | codex | antigravity | agents`集合 — 4つのtool homeと共有agent home（FR-045） — の1つであり、
 `…Tools`と綴られるcontrol/batch fieldはすべてこのmember idを運ぶ。`HOME`、`USERPROFILE`その他home sourceを独自選択せず、
 lexical capture/joinはexistence checkを行わない。それらのvariableは候補Global rootの特定だけに
 使い、inspected content内のreferenceのsubstitutionには使わない。その1つのimmutable captureをsession全体で保持する。Eligible entryを選択済みRepository rootと合わせて完全なlauncher-exclusion setとし、許可されたcreate invocationはすべてprocess inputを再読込せず同じ4 stringを使う。Serializeしないfrozen internal
@@ -1440,7 +1454,7 @@ confirmationは、server導出の`retryableTools`が非空なら同一previewの
 traversal programだけを使い、environment inputを読み直さず、`displayRoot`をreverse-convertしない。
 Parameterは意図的にmember selectorを持たない。Initial
 enableは、すでにlexicalにinvalidなentryも含むfrozen preview entry 5件すべてからexact fixed
-`[copilot, claude, codex, gemini, agents]` setをderiveする。Retryはcurrent server-side `retryableTools` subset、
+`[copilot, claude, codex, antigravity, agents]` setをderiveする。Retryはcurrent server-side `retryableTools` subset、
 すなわちunpublishedかつnon-pendingのadmitted controlとsame-preview rejected controlだけをexactに
 deriveする。Lexical `new-preview-required` controlにはdisableとnew previewが必要となる。Clientは
 toolを追加、omit、remove、reorderできない。

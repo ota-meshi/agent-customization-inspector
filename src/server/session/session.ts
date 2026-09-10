@@ -410,15 +410,24 @@ function projectSkillInventory(
       surfaces: surfacesOf(recognition),
       parseStatus: recognition.parseStatus,
       diagnosticIds: recognition.diagnosticIds,
-      // The skill's own directory: a skill is its directory, so the entry
-      // point's path is where the files it ships are.
-      companionFiles: directoryFilesOf(
-        recognition.sourceId,
-        path.slice(0, path.lastIndexOf('/') + 1),
-        files,
-        recognized,
-        censusEscapedRoots,
-      ),
+      // A directory-shaped skill's own directory: the entry point's path is
+      // where the files it ships are. A flat one ships none — its siblings are
+      // other skills rather than its companions — so it publishes an empty
+      // list rather than the folder above it (spec.md § FR-004). Which shape
+      // this is comes from the recognition, which carried it from the
+      // admitting rule; deriving it from the path here would be a second
+      // answer that could disagree with the rule's own.
+      rowUnit: recognition.details.rowUnit,
+      companionFiles:
+        recognition.details.rowUnit === 'file'
+          ? []
+          : directoryFilesOf(
+              recognition.sourceId,
+              path.slice(0, path.lastIndexOf('/') + 1),
+              files,
+              recognized,
+              censusEscapedRoots,
+            ),
     });
   }
   // One collision gate per recognizing tool over the whole generation's
@@ -1279,15 +1288,23 @@ function unionOfServerReadings(
 }
 
 /**
- * The union of one hook carrier's parsed readings, one entry per declared
- * event in the readings' publish order
+ * The union of one hook carrier's parsed readings, one entry per declaration
+ * in the readings' publish order
  * ({@link InspectionSession.hookCarrierDetail}) — the hook counterpart of
  * {@link unionOfServerReadings}.
  *
- * A shared event is one declaration read twice: two products reading the same
- * text resolve the same groups, so the first occurrence carries what any later
- * one would. Two readings that differ do so because one of them rejected the
- * text, and a rejected reading contributes nothing here.
+ * A declaration is identified by its event *and* the hook the carrier named it
+ * inside, because one carrier of the named-hook format declares one event
+ * under as many names as its author wrote (`api-types.ts` § DeclaredHookDto).
+ * Keying by the event alone dropped every declaration of an event but the
+ * first, so a `hooks.json` naming two hooks that both declare `PostToolUse`
+ * published one of them. A format with no such level keys by its event, as it
+ * always did.
+ *
+ * A shared declaration is one declaration read twice: two products reading the
+ * same text resolve the same groups, so the first occurrence carries what any
+ * later one would. Two readings that differ do so because one of them rejected
+ * the text, and a rejected reading contributes nothing here.
  */
 function unionOfHookReadings(
   readings: readonly {
@@ -1295,18 +1312,21 @@ function unionOfHookReadings(
     readonly details: Extract<ToolRecognition['details'], { readonly kind: 'hook' }>;
   }[],
 ): readonly HookEventDeclarationDto[] {
-  const byEvent = new Map<string, HookEventDeclarationDto>();
+  const byDeclaration = new Map<string, HookEventDeclarationDto>();
   for (const reading of readings) {
     if (reading.parseStatus !== 'parsed') {
       continue;
     }
     for (const event of reading.details.events) {
-      if (!byEvent.has(event.event)) {
-        byEvent.set(event.event, event);
+      // U+0000 joins the halves: no declared name contains it, so two
+      // declarations never collide by concatenation.
+      const key = `${event.namedHook?.name ?? ''}\u0000${event.event}`;
+      if (!byDeclaration.has(key)) {
+        byDeclaration.set(key, event);
       }
     }
   }
-  return [...byEvent.values()];
+  return [...byDeclaration.values()];
 }
 
 /**
@@ -1633,10 +1653,10 @@ export class InspectionSession {
    *
    * The kind is the asking route's. One file can hold two kinds — a
    * `.claude/agents/CLAUDE.md` is a Claude subagent by its directory and an
-   * instruction file by its name; a `.gemini/commands/build.toml` is a Gemini
-   * CLI command and, once `context.fileName` names `build.toml`, a context
-   * file — and each kind's reading is its own: for a TOML file the command
-   * reading is a parse and the instruction reading is the whole text as a
+   * instruction file by its name; a `.codex/config.toml` is the settings
+   * document it is and an MCP carrier by the `[mcp_servers.*]` tables it
+   * declares — and each kind's reading is its own: for a TOML file the
+   * carrier reading is a parse and the settings reading is the whole text as a
    * body. So the answer is never a choice among the kinds a path holds: the
    * page asks for its kind and receives that kind's variant, or the plain file
    * when no recognition of that kind holds the path — a skill's companion, a

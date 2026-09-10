@@ -75,14 +75,13 @@ export type VendorSurface =
    */
   | 'copilot-cloud'
   /**
-   * The Gemini CLI terminal client, whether launched directly or through the
-   * IDE companion that drives the same client. One surface, because the vendor
-   * documents no second client that reads a local customization file
-   * differently; what differs for Gemini CLI is the tier — system, user,
-   * project, extension — and a tier is a lookup base, not a surface
-   * (contracts/vendors/gemini-cli.md § Surface boundary).
+   * Antigravity CLI's one surface: the terminal client. The vendor also
+   * documents a desktop application and editor extensions, which read
+   * customizations of their own, but this release recognizes the terminal
+   * alone, so no behavior names those
+   * (contracts/vendors/antigravity-cli.md § Surface boundary).
    */
-  | 'gemini-cli';
+  | 'antigravity-cli';
 
 /**
  * Which documented ownership scope a behavior belongs to

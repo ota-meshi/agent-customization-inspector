@@ -26,7 +26,7 @@
 import { CLAUDE_COMPOSITION_STRATEGIES } from './claude/strategies';
 import { CODEX_COMPOSITION_STRATEGIES } from './codex/strategies';
 import { COPILOT_COMPOSITION_STRATEGIES } from './copilot/strategies';
-import { GEMINI_COMPOSITION_STRATEGIES } from './gemini/strategies';
+import { ANTIGRAVITY_COMPOSITION_STRATEGIES } from './antigravity/strategies';
 import type { StrategyId } from './identifier-types';
 import type { RuntimeCompositionStrategy } from './strategy-types';
 
@@ -34,7 +34,7 @@ export type {
   ClaudeStrategyId,
   CodexStrategyId,
   CopilotStrategyId,
-  GeminiStrategyId,
+  AntigravityStrategyId,
   StrategyId,
 } from './identifier-types';
 export type { CompositionOperation, RuntimeCompositionStrategy } from './strategy-types';
@@ -50,5 +50,5 @@ export const RUNTIME_COMPOSITION_STRATEGIES: Readonly<
   ...COPILOT_COMPOSITION_STRATEGIES,
   ...CLAUDE_COMPOSITION_STRATEGIES,
   ...CODEX_COMPOSITION_STRATEGIES,
-  ...GEMINI_COMPOSITION_STRATEGIES,
+  ...ANTIGRAVITY_COMPOSITION_STRATEGIES,
 };

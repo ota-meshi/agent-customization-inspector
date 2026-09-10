@@ -392,8 +392,8 @@ onBeforeUnmount(() => {
   counter-increment: none;
 }
 
-/* The words of a changed line the other side lacks, on a band of the row's
-   colour taken one step stronger — the form every comparison a reader already
+/* The words a changed line has that the line opposite it does not, on a band
+   of the row's colour taken one step stronger — the form every comparison a reader already
    knows marks its words in, so it needs no explaining — and drawn in the
    theme's default text colour rather than each token's own. Two colour
    languages cannot share one character: the band says "this changed" and the

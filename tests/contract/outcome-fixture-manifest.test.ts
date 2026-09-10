@@ -379,16 +379,21 @@ describe('outcome fixture manifest coverage', () => {
     // Enumerated rather than bounded below by two tools: a floor would pass a
     // manifest that dropped one of the three-tool combinations this release
     // documents, which is the case a two-tool check is least able to see.
+    // T063: the fourth vendor moved three of these. It reads the repository
+    // root's `AGENTS.md` and `GEMINI.md`, so both gain it, and it reads no
+    // `~/.agents`, so the shared agent home's skill loses one — this case was
+    // watched failing against each of those before the row was rewritten
+    // (specs/003-antigravity-cli-support FR-002, FR-045).
     const documented = new Map<string, readonly string[]>([
-      ['repository-agents-md', ['OpenAI Codex', 'GitHub Copilot']],
+      ['repository-agents-md', ['OpenAI Codex', 'GitHub Copilot', 'Antigravity CLI']],
       ['repository-root-claude-md', ['Claude Code', 'GitHub Copilot']],
-      ['repository-root-gemini-md', ['GitHub Copilot', 'Gemini CLI']],
-      ['repository-agents-skill', ['OpenAI Codex', 'GitHub Copilot', 'Gemini CLI']],
+      ['repository-root-gemini-md', ['GitHub Copilot', 'Antigravity CLI']],
+      ['repository-agents-skill', ['OpenAI Codex', 'GitHub Copilot', 'Antigravity CLI']],
       ['repository-claude-skill', ['Claude Code', 'GitHub Copilot']],
       ['repository-claude-settings', ['Claude Code', 'GitHub Copilot']],
       ['repository-root-mcp-json', ['Claude Code', 'GitHub Copilot']],
       ['repository-marketplace-json', ['Claude Code', 'OpenAI Codex', 'GitHub Copilot']],
-      ['global-shared-agent-home-skill', ['OpenAI Codex', 'GitHub Copilot', 'Gemini CLI']],
+      ['global-shared-agent-home-skill', ['OpenAI Codex', 'GitHub Copilot']],
     ]);
     const entry = manifest.criteria.find((candidate) => candidate.criterion === 'SC-003')!;
     const shared = entry.cases.filter((manifestCase) =>
@@ -418,10 +423,10 @@ describe('outcome fixture manifest coverage', () => {
       .map((manifestCase) => manifestCase.caseId)
       .toSorted();
     expect(global).toEqual([
+      'sc003.global-source-form.antigravity',
       'sc003.global-source-form.claude',
       'sc003.global-source-form.codex',
       'sc003.global-source-form.copilot',
-      'sc003.global-source-form.gemini',
     ]);
   });
 });

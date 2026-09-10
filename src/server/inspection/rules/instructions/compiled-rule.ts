@@ -60,10 +60,9 @@ export interface CompiledStaticInstructionRule extends CompiledInspectionRule {
 }
 
 /**
- * A compiled derivation whose candidates are instruction files: Codex's
- * configured-basename derivation, whose plan is one exact Repository-root
- * selector per declared name, and Gemini CLI's context-filename derivation,
- * whose plan is one any-depth selector per name.
+ * A compiled derivation whose candidates are instruction files. One ships:
+ * Codex's configured-basename derivation, whose plan is one exact
+ * Repository-root selector per declared name.
  *
  * The derived counterpart of {@link CompiledStaticInstructionRule}, and its
  * own type for the same reason the static kinds are: a derivation of another
@@ -75,10 +74,10 @@ export interface CompiledDerivedInstructionRule extends CompiledDerivedRule {
   readonly kind: 'instructions';
   /**
    * The range one derived file governs, exactly as a static instruction unit
-   * answers it. The path is handed over because the answer can depend on it:
-   * Codex derives names at the Repository root alone and answers `**` for
-   * every file, while Gemini CLI derives its context filenames at every depth
-   * and answers the directory the file sits in.
+   * answers it. The path is handed over because the answer can depend on it —
+   * a derivation admitting names at every depth would answer the directory
+   * each file sits in — while the one shipped derivation admits names at the
+   * Repository root alone and answers `**` for every file.
    */
   applicabilityRangeOf(sourceRelativePath: string): string;
   /** Builds the per-attempt plan from the configuration values the reader validated. */

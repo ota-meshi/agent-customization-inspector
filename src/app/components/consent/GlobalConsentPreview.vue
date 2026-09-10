@@ -93,12 +93,12 @@ const exclusions = computed(() =>
       Inspecting your personal setup means reading the customization files each tool documents in
       its own configuration directory — instructions, and the skills, agents, prompts and commands,
       rules, permission policies, hooks, settings, output styles, and server declarations the tool
-      reads from there — plus the shared agent directory that Codex, Copilot, and Gemini CLI all
-      read skills from, where Codex also reads the personal plugin marketplace file. Nothing else in
-      those directories is read: not credentials, not saved sessions, and not anything the tools
-      generate for themselves. Installed plugin copies are not read either — a marketplace file says
-      where each plugin comes from and is read as that list, while the plugin folders it points at
-      stay unread.
+      reads from there — plus the shared agent directory that Codex and Copilot both read skills
+      from, where Codex also reads the personal plugin marketplace file. Nothing else in those
+      directories is read: not credentials, not saved sessions, and not anything the tools generate
+      for themselves. Installed plugin copies are not read either — a marketplace file says where
+      each plugin comes from and is read as that list, while the plugin folders it points at stay
+      unread.
     </p>
     <!-- Two sentences for two states, because the same page shows this preview
          before a confirmation and after one: "nothing has been read" is true of

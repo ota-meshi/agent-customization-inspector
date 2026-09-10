@@ -17,8 +17,8 @@ export type SupportedTool =
   | 'claude'
   /** OpenAI Codex. */
   | 'codex'
-  /** Gemini CLI. */
-  | 'gemini';
+  /** Antigravity CLI. */
+  | 'antigravity';
 
 /**
  * The closed presentation order of {@link SupportedTool}
@@ -33,8 +33,8 @@ export const SUPPORTED_TOOL_ORDER: readonly SupportedTool[] = [
   'claude',
   /** Codex recognitions sort after Claude. */
   'codex',
-  /** Gemini CLI recognitions sort last: the newest tool takes the next position rather than reordering the three the tests and documents already spell. */
-  'gemini',
+  /** Antigravity CLI recognitions sort last: the newest tool takes the next position rather than reordering the three the tests and documents already spell. */
+  'antigravity',
 ];
 
 /**
@@ -247,10 +247,10 @@ export const SUPPORTED_TOOL_TEXT: Readonly<Record<SupportedTool, string>> = {
   /** Label for OpenAI Codex. */
   codex: 'OpenAI Codex',
   /**
-   * Label for Gemini CLI: the product's own name, with no company prefix, as
-   * Claude Code is named (specs/002-gemini-cli-support/spec.md § Clarifications).
+   * Label for Antigravity CLI: the product's own name, with no company prefix,
+   * as Claude Code is named (specs/003-antigravity-cli-support/spec.md FR-001).
    */
-  gemini: 'Gemini CLI',
+  antigravity: 'Antigravity CLI',
 };
 
 /**

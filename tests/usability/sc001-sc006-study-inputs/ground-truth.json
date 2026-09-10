@@ -16,14 +16,17 @@
     "recognizing-tools": {
       "expected": [
         "GitHub Copilot",
-        "OpenAI Codex"
+        "OpenAI Codex",
+        "Antigravity CLI"
       ],
-      "matchRule": "both, in any order; a response naming only one, or naming Claude Code, is incorrect",
+      "matchRule": "all three, in any order; a response naming fewer, or naming Claude Code, is incorrect",
       "accepted": [
         "GitHub Copilot",
         "Copilot",
         "OpenAI Codex",
-        "Codex"
+        "Codex",
+        "Antigravity CLI",
+        "Antigravity"
       ]
     },
     "file-type": {
@@ -58,7 +61,7 @@
         "~/.gemini",
         "~/.agents"
       ],
-      "matchRule": "All five, in any order. The equipment may point the first three elsewhere through CLAUDE_CONFIG_DIR, CODEX_HOME, and COPILOT_HOME, and the Gemini CLI home to `.gemini` under GEMINI_CLI_HOME; the page then names those, and those are what counts.",
+      "matchRule": "All five, in any order. The equipment may point the first three elsewhere through CLAUDE_CONFIG_DIR, CODEX_HOME, and COPILOT_HOME; the page then names those, and those are what counts. No property relocates `~/.gemini`, so that one is always the home-directory join.",
       "unsuccessful": "The page was not reached, or the directories were not named."
     }
   }

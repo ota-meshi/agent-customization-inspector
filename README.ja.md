@@ -5,10 +5,10 @@
 **リポジトリ中のAIエージェント設定を、一枚に集めて、中身も差分も。**
 
 あなたのリポジトリは、AIコーディングエージェントに何と言っているのか。ファイルを1つ開いても答えは
-出ません。Claude Code、GitHub Copilot、OpenAI Codex、Gemini CLI は、指示・スキル・MCPサーバー・フック・権限
+出ません。Claude Code、GitHub Copilot、OpenAI Codex、Antigravity CLI は、指示・スキル・MCPサーバー・フック・権限
 ルールを、それぞれ自分のパスに探しにいきます。ルートの `AGENTS.md`、同僚が足した
 `.claude/settings.json`、最初からリポジトリに入っていた `copilot-instructions.md`、誰かが作り始めた
-`.gemini/commands/`、3か所で宣言された同じ名前のMCPサーバー。自分で書いたものもあれば、プロジェクトに付いてきたものもあります。1か所には
+`.agents/rules/`、3か所で宣言された同じ名前のMCPサーバー。自分で書いたものもあれば、プロジェクトに付いてきたものもあります。1か所には
 まとまっていません。
 
 答えを出すコマンドが1つあります。
@@ -50,8 +50,7 @@ trust・フラグ・組織ポリシーといった、このツールが見てい
 
 **「リポジトリではなく、自分の設定はどうなのか」** どのプロジェクトにも付いてくるカスタマイズは
 次の場所にあります。`~/.claude`、`~/.codex`、`~/.copilot`、`~/.gemini`（`CLAUDE_CONFIG_DIR`、
-`CODEX_HOME`、`COPILOT_HOME` が設定されていればそちら、`GEMINI_CLI_HOME` が設定されていればその
-配下の `.gemini`）と、共有の `~/.agents` です。左の「Sources」にある「Personal setup」を開くと、読む前に対象のディレクトリが提示されます。`--inspect-personal-setup` はその確認をコマンドラインで与えるもの
+`CODEX_HOME`、`COPILOT_HOME` が設定されていればそちら）と、共有の `~/.agents` です。左の「Sources」にある「Personal setup」を開くと、読む前に対象のディレクトリが提示されます。`--inspect-personal-setup` はその確認をコマンドラインで与えるもの
 なので、ページが開く前に読み取りが終わります。
 
 **「そのままファイルを開きたい」** まずここで開くと、そのファイルのページに、マシンにあるエディタ

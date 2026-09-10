@@ -25,8 +25,18 @@
 
 **変更。** commandは何も変更しない。報告するだけで、その後をreviewerが決める。
 
-**Network実行。** 2026-09-10、65 record全件 — 13件の`google.gemini-cli.*` recordを含む — に対して実行した
-（specs/002-gemini-cli-support T066）。Googleのrecordはすべて解決した。各URLは`geminicli.com`上で直接`200`を
+**Network実行。** 2026-09-10、62 record全件 — 10件の`google.antigravity.*` recordを含む — に対して
+実行した（specs/003-antigravity-cli-support T073）。Googleのrecordはすべて解決した。各URLは
+`antigravity.google`上で直接`200`を返し、引用した全sectionが配信されたheadingとして解決した。Runは
+reviewerが解決すべきdriftを1 record報告したが、この機能の外である。
+`anthropic.claude-code.skills.locations-discovery`（`https://code.claude.com/docs/en/skills`）で、
+引用した`Where skills live`と`Discovery from parent and nested directories`がheadingとしても
+table of contentsのfragmentとしても配信されていなかった。消えたheadingが何を意味するかはlookupでは
+なくreadingなので、そのrecordはそのまま残し、それを所有するreviewのためにここに記録する。4件の
+headingは配信されたtable of contents経由で解決した。いずれもClaude Code changelogのanchorである。
+
+同じ日に、65 record全件 — 13件の`google.gemini-cli.*` recordを含む — に対して実行した
+（このリリースの1つ前）。Googleのrecordはすべて解決した。各URLは`geminicli.com`上で直接`200`を
 返し、引用した全sectionが配信されたheadingとして解決した。Runはreviewerが解決すべきdriftを1 record報告したが、
 この機能の外である。`anthropic.claude-code.skills.locations-discovery`（`https://code.claude.com/docs/en/skills`）
 で、引用した`Where skills live`と`Discovery from parent and nested directories`がheadingとしてもtable of
@@ -101,7 +111,21 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 
 ## Release gateの実行
 
-**Gemini CLIの変更は2026-09-10にgateを実行した**（specs/002-gemini-cli-support T064、T065）。
+**Antigravity CLIの変更は2026-09-10にgateを実行した**（specs/003-antigravity-cli-support T071、T072）。
+`pnpm run test:docs` 42件、`pnpm run test:unit` 1291件、`pnpm run test:contract` 411件、
+`pnpm run test:integration` 275件、`pnpm run test:security` 5件、`pnpm run test:package` 53件が
+このhost上ですべて通り、`pnpm run format:check`・`pnpm run lint`・`pnpm run typecheck`もclean
+だった。Browser側は、この変更が届くspec — この機能の8つの新しいAntigravity CLI specと、Outcome
+manifestによる基準の節で名指した既存spec、1回のrunで194 case — をChromium projectで実行した。
+全suiteではない。それがagent-run verification policyの求めるものである
+（AGENTS.md § Agent-run Playwright verification policy）。3 browserのsuiteはCIがcommitに対して
+実行する。readmeの2枚のscreenshotは、commit済みの組と同じ寸法 — CSS pixelで1280×800、device
+scale factor 2 — でこのtreeに対して取り直した。1枚はall-kind fixtureのSkill tabで、legendは
+このリリースの4製品を持ち、`.agents/skills/`のrowは3つのmarkと、4つ目だけが読む平坦なファイルの
+rowを持つ。もう1枚は`changelog`のcomparison — `.agents/skills/`と`.github/skills/`のcopy — で、
+recognition tableにAntigravity CLIのrowがある。
+
+**このリリースの1つ前は2026-09-10にgateを実行した**。
 `pnpm run test:docs` 42件、`pnpm run test:unit` 1275件、`pnpm run test:contract` 411件、
 `pnpm run test:integration` 282件、`pnpm run test:security` 5件、`pnpm run test:package` 53件がこのhost上で
 すべて通り、`pnpm run format`、`pnpm run lint`、型検査はcleanである。Browser側は、変更が届くspec — 13件の
@@ -535,26 +559,70 @@ kindのもの。入力と意味が同一のpresentation primitiveは共有する
 pageを6つと数えないようにした。
 
 
+## 3つの隣に並ぶ4つ目のvendor mark
+
+**2026-09-10、両方のthemeで、rowが描くサイズで確認した**（specs/003-antigravity-cli-support T075）。
+fixture hostは`--no-open`と`--port 0`で起動し、記録したprocess IDで停止した。
+
+4つのmarkはlegendでも各recognitionの脇でも並ぶ。Copilotのsilhouette、Claudeのstarburst、Codexのring、
+そしてこのvendorの`A`である。それぞれ自身の彩度を落とした色で描かれるので、読み手は15pxの
+silhouetteを3つ見分けるのではなく色をたどって目的のものを見つけられ（AGENTS.md § Icon policy）、
+明るい地でも暗い地でも4つとも読める。
+
+修正ではなく記録に留める違いが1つある。新しいmarkは2本のstrokeで、他の3つは塗りの形なので、15pxでは
+インクの量がわずかに少ない。どちらのthemeでも読め、色が一目で区別を与え、markだけに依存するものは無い
+— legendがそれを名指し、隣のtextがsurfaceを述べる — ので、この重みの差は読み手に何も損なわせない。
+塗りに変えれば、vendor自身のglyphより重いmarkと引き換えになる。
+
+## 置き換えられたvendorの掃き出し
+
+**2026-09-10、4つ目のサポート対象toolが変わった後に検索した**（SC-006、
+specs/003-antigravity-cli-support T067）。出荷tree、その文書、そのgateを対象に、このリリースが
+サポートしない製品のidentifier・label・mark・contract・凍結件数を探した。見つかったものと対応:
+
+- 置き換えられたvendorのregistry module、compiled unit、e2e spec、repository fixture builder —
+  それらを生んだruleとともに削除した。
+- 親のdata model・quickstart・session API contractにあるそのmember idと、environment propertyを
+  名指していたすべてのartifact — このリリースのmemberと、propertyを持たないhome directoryとの
+  joinに置き換えた。
+- outcome manifestとそのcontract gateにあるrow — 置き換え、versionを進め、digestをすべて
+  取り直した。
+- taskとphaseの件数の凍結 — この機能のものに置き換え、先に落ちるところを確認した。
+- そのvendor自身のspecification directory — 削除し、それを引用していたartifactを付け替えた。
+
+3種類の出現は意図して残している。この tool自身が読むファイル名 `GEMINI.md` とディレクトリ
+`~/.gemini`。Copilotのbehavior `copilot.behavior.cli.instructions.gemini` とrule
+`copilot.repo.instructions.gemini-root` — これはCopilot自身によるそのファイル名の認識であり、
+vendorではなくファイルを名指す。そして `tests/unit/shared/entities.test.ts` の否定のcase —
+`gemini` がサポート対象toolでないことをassertするものであり、その内容は不在そのものである。
+
 ## Outcome manifestによる基準
 
-凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 4**、canonical SHA-256
-`f8d5334f19c57ece76ebf09b025a01048ca18cd6e64ae64390801f3bdae9a7f7`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 4は
-Gemini CLIのdenominatorである（specs/002-gemini-cli-support）。SC-003とSC-005それぞれに8つの
-`(Gemini CLI, kind)` row — instructions、settings/config、MCP、hook、prompt/command、skill、agent、
-permissions — 、rootの`GEMINI.md`をGitHub CopilotとGemini CLIに帰属させる
-`sc003.shared-file.repository-root-gemini-md`、`sc003.global-source-form.gemini`、`sc004.tool.gemini`を
-加え、`.agents/skills/`の2つの帰属caseはGemini CLIを3つ目の認識toolとして名指す。新しい`(tool, kind)` rowは
-denominatorの変更であり、fixture-byteの変更として3に留めるのではなくversionを進める理由である。この
+凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 5**、canonical SHA-256
+`631d6d61020ce16665f690c15e167626e307943a72775081b8a759d0aacd484b`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 5は
+Antigravity CLIのdenominatorである（specs/003-antigravity-cli-support T063）。SC-003とSC-005それぞれに8つの
+`(Antigravity CLI, kind)` row — `sc00{3,5}.row.antigravity.{instructions,settings-config,mcp,hook,rule,skill,agent,permissions}`
+— に加えて`sc003.global-source-form.antigravity`と`sc004.tool.antigravity`を持つ。帰属caseは3つ動いた。
+`sc003.shared-file.repository-root-gemini-md`はrootの`GEMINI.md`をGitHub CopilotとAntigravity CLIに帰属させ、
+`sc003.shared-file.repository-agents-md`はrootの`AGENTS.md`の3つ目の認識toolとしてAntigravity CLIを得て、
+`sc003.shared-file.global-shared-agent-home-skill`は1つ失う。この vendorは`~/.agents`を読まないからである（FR-045）。
+これは version 4を置き換える。version 4のdenominatorは置き換えられたvendorのものであり、その
+`(tool, kind)` row・`global-source-form` case・`sc004.tool` caseは、それらを生んだruleとともにmanifestを去った。
+またこの vendorでは`prompt/command`が`(tool, kind)`集合を去り、`rule`が入った。`(tool, kind)` rowは
+denominatorの変更であり、fixture-byteの変更としてversionを据え置くのではなく進める理由である。この
 transitionはこのsession、すなわちagent駆動のreviewがreviewした（AGENTS.md § Evidence before conclusions）。
 比較したのは出荷済みregistryの`(tool, kind)` rowとcase IDで、`tests/contract/outcome-fixture-manifest.test.ts`が
-それをgateする。118 caseは2026-09-10にこのhost上で実行した。Gemini CLIのcaseは、それらが名指す13の新spec —
-`gemini-*-inventory`、`gemini-*-detail`、`gemini-skills-list`、`gemini-context-filename`、
-`gemini-same-name-skill`、`global-gemini-admission` — と、3つ目の認識がfixtureを変えた既存spec
-（`codex-skills-detail`、`copilot-instructions-inventory`、`copilot-skills-detail`、`copilot-skills-list`、
-`discovery`、`instructions-inventory`、`skills-comparison`、`skills-inventory`、`inventory-rows`、および
-`global-*`のadmission/consent spec）をChromium projectで実行し、vitestのcaseはRelease gateの実行に記録した
-gate script経由で実行した。Gemini CLIの変更が届かないbrowser specはこのsetのために再実行していない。
-contract suiteは同じrunでcanonical digestと79件のfixture digestすべてを再現した。
+それをgateする。118 caseは2026-09-10にこのhost上で実行した。Antigravity CLIのcaseは、それらが名指す7つの新spec —
+`antigravity-skills-detail`、`antigravity-mcp-detail`、`antigravity-custom-agents-detail`、
+`antigravity-instructions-detail`、`antigravity-rules-detail`、`antigravity-hooks-detail`、
+`antigravity-settings-detail` — と`global-antigravity-admission`、そして4つ目の認識がfixtureを変えた既存spec
+（`codex-skills-detail`、`copilot-instructions-inventory`、`copilot-instructions-detail`、
+`copilot-skills-detail`、`copilot-skills-list`、`claude-skills-list`、`claude-skills-detail`、
+`comparison-layout`、`discovery`、`instructions-inventory`、`skills-comparison`、
+`skill-metadata-comparison`、`skills-inventory`、`inventory-rows`、`hooks-comparison`、
+`hooks-inventory`、および`global-*`のadmission/consent spec）をChromium projectで実行し、vitestのcaseは
+Release gateの実行に記録したgate script経由で実行した。この変更が届かないbrowser specはこのsetのために
+再実行していない。contract suiteは同じrunでcanonical digestと73件のfixture digestすべてを再現した。
 
 その前のsetは`tests/fixtures/outcomes/manifest.json`の**version 3**、canonical SHA-256
 `1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`であった。その99

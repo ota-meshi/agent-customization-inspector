@@ -146,13 +146,20 @@ const leftSide = computed(() => querySideOf(route.query, 'leftSource', 'left'));
 const rightSide = computed(() => querySideOf(route.query, 'rightSource', 'right'));
 
 /**
- * The compared file inside the copies, copy-relative. Absent means the
- * entries themselves: every copy's entry is its directory's `SKILL.md`, so
- * the default is the one relative path a pair of copies always shares.
+ * The compared file inside the copies, copy-relative — or null, which is the
+ * pair's own default: each side's entry file.
+ *
+ * The default is the entries rather than a relative spelling, because the two
+ * entries need not share one. A copy is a skill as one product resolves it,
+ * and one vendor resolves a skill from a flat Markdown file with no directory
+ * to be relative to (spec.md § FR-004); even among directory copies, the
+ * entry is the copy's own file rather than a fixed name. The copy-relative
+ * axis is how a pair of directory copies steps to their *other* files, not
+ * how the pair itself is decided.
  */
 const requestedFile = computed(() => {
   const value = queryPath('file');
-  return value === '' ? 'SKILL.md' : value;
+  return value === '' ? null : value;
 });
 
 /**
@@ -178,7 +185,8 @@ const hasPair = computed(
 const pendingPair = shallowRef<{
   readonly left: ComparisonSide;
   readonly right: ComparisonSide;
-  readonly file: string;
+  /** The compared-file coordinate, null for the pair's own default ({@link requestedFile}). */
+  readonly file: string | null;
 } | null>(null);
 
 // The route caught up (or the reader navigated): the query is the truth
@@ -196,10 +204,10 @@ const currentFile = computed(() => pendingPair.value?.file ?? requestedFile.valu
  * Replaces the compared coordinates in place. `replace` rather than `push`:
  * rapid switching among a skill's files is this page's working motion, and
  * a history entry per switch would make the back button replay every pair
- * the reader stepped through on the way. The default compared file rides as
- * an absent parameter, so the entry pair's URL is spelled one way.
+ * the reader stepped through on the way. The entry pair rides as an absent
+ * parameter, so the pair's own default URL is spelled one way.
  */
-function switchTo(left: ComparisonSide, right: ComparisonSide, file: string): void {
+function switchTo(left: ComparisonSide, right: ComparisonSide, file: string | null): void {
   if (family.value === null) {
     // Unreachable: the switchers render only behind a null pairFault, which
     // an unreadable family segment is one of. The guard is what lets this
@@ -212,13 +220,7 @@ function switchTo(left: ComparisonSide, right: ComparisonSide, file: string): vo
   // row, and re-deriving the row from the new pair would let a switch land on
   // a different row's copies.
   void router.replace(
-    skillComparisonRouteFor(
-      family.value,
-      rowNameParameter.value,
-      left,
-      right,
-      file === 'SKILL.md' ? undefined : file,
-    ),
+    skillComparisonRouteFor(family.value, rowNameParameter.value, left, right, file ?? undefined),
   );
 }
 
@@ -255,8 +257,18 @@ class SkillCopy {
   /** The copy's Source as the route names it; what a switch writes. */
   public readonly source: SourceSelector;
 
-  /** The copy directory inside its Source, trailing slash kept. */
-  public readonly directory: string;
+  /**
+   * The copy directory inside its Source, trailing slash kept — or null for a
+   * copy that has none.
+   *
+   * A copy is a skill as one product resolves it, and one vendor resolves a
+   * skill from a flat Markdown file directly below `.agents/skills/`
+   * (spec.md § FR-004). Such a copy is one file: the directory it happens to
+   * sit in holds every other flat skill beside it, so taking that as the
+   * copy's own would compose paths of files this copy does not have. Null is
+   * therefore left null rather than filled.
+   */
+  public readonly directory: string | null;
 
   /** The copy's entry file — the identity path a copy switch writes. */
   public readonly entryPath: string;
@@ -268,19 +280,45 @@ class SkillCopy {
    */
   public readonly members: Set<string>;
 
-  /** Records one copy directory; {@link population} adds the members. */
+  /** Records one copy; {@link population} adds the members. */
   public constructor(
     sourceId: string,
     source: SourceSelector,
-    directory: string,
+    directory: string | null,
     entryPath: string,
   ) {
-    this.key = fileIdentityKey(sourceId, directory);
+    this.key = fileIdentityKey(sourceId, directory ?? entryPath);
     this.sourceId = sourceId;
     this.source = source;
     this.directory = directory;
     this.entryPath = entryPath;
     this.members = new Set();
+  }
+
+  /**
+   * How this copy is spelled where one is named: its directory, or its own
+   * file where it has none. The same value its {@link key} is built from, so
+   * the option a reader picks and the copy it resolves to are one spelling.
+   */
+  public get identityPath(): string {
+    return this.directory ?? this.entryPath;
+  }
+
+  /**
+   * The path this copy holds at one compared-file coordinate: its entry for
+   * the pair's own default, and the directory-relative composition for a
+   * coordinate on the copy-relative axis.
+   *
+   * Null when the coordinate cannot name a file of this copy — a relative
+   * path against a copy with no directory. The callers report that as a link
+   * fault rather than composing a path the copy does not have
+   * ({@link standsAt}, {@link pairFault}).
+   */
+  public pathAt(relative: string | null): string | null {
+    if (relative === null) {
+      return this.entryPath;
+    }
+    return this.directory === null ? null : this.directory + relative;
   }
 }
 
@@ -387,8 +425,13 @@ const population = computed<CopyPopulation | null>(() => {
       // the switchers never offer a copy outside it.
       continue;
     }
-    const directory = directoryOf(definition.sourceRelativePath);
-    const key = fileIdentityKey(definition.sourceId, directory);
+    // The row unit is the definition's own published fact, never re-derived
+    // from the path: a file-shaped definition has no directory, and the one it
+    // sits in is shared with every other flat skill there
+    // (`api-types.ts` § SkillDefinitionDto.rowUnit).
+    const directory =
+      definition.rowUnit === 'file' ? null : directoryOf(definition.sourceRelativePath);
+    const key = fileIdentityKey(definition.sourceId, directory ?? definition.sourceRelativePath);
     let copy = files.get(key);
     if (copy === undefined) {
       copy = new SkillCopy(
@@ -425,10 +468,18 @@ function copyOfSide(side: ComparisonSide | null): SkillCopy | null {
     return null;
   }
   const sourceId = sessionSources.sourceIdFor(side.source);
-  return sourceId === null
-    ? null
-    : (population.value.get(fileIdentityKey(sourceId, directoryOf(side.sourceRelativePath))) ??
-        null);
+  if (sourceId === null) {
+    return null;
+  }
+  // A copy is keyed by its own spelling ({@link SkillCopy.identityPath}): the
+  // side's entry path for a copy that is one file, and the directory that
+  // path sits in for one that is a directory. The two spellings cannot
+  // collide, because a directory's keeps its trailing slash.
+  return (
+    population.value.get(fileIdentityKey(sourceId, side.sourceRelativePath)) ??
+    population.value.get(fileIdentityKey(sourceId, directoryOf(side.sourceRelativePath))) ??
+    null
+  );
 }
 
 /** The first compared copy; null while no row owns the pair. */
@@ -446,12 +497,8 @@ const comparedFile = computed(() => (owningRow.value === null ? null : currentFi
  * labels use; each side's Source is its copy's (FR-030). Null while no row
  * owns the pair.
  */
-const composedLeftPath = computed(() =>
-  leftCopy.value === null ? null : leftCopy.value.directory + currentFile.value,
-);
-const composedRightPath = computed(() =>
-  rightCopy.value === null ? null : rightCopy.value.directory + currentFile.value,
-);
+const composedLeftPath = computed(() => leftCopy.value?.pathAt(currentFile.value) ?? null);
+const composedRightPath = computed(() => rightCopy.value?.pathAt(currentFile.value) ?? null);
 
 /**
  * The copy-relative paths readable among one copy's attributed files, the
@@ -466,10 +513,16 @@ const composedRightPath = computed(() =>
  * offered file never moves the pair to another copy (FR-011, FR-030).
  */
 function readableRelatives(copy: SkillCopy): readonly string[] {
+  const directory = copy.directory;
+  if (directory === null) {
+    // A copy that is one file has no relative axis of its own: its entry is
+    // the whole of it, and the pair reaches that through its own default.
+    return [];
+  }
   const relatives: string[] = [];
   for (const path of copy.members) {
     if (readablePaths.value.has(fileIdentityKey(copy.sourceId, path))) {
-      relatives.push(path.slice(copy.directory.length));
+      relatives.push(path.slice(directory.length));
     }
   }
   return relatives;
@@ -480,15 +533,18 @@ function readableRelatives(copy: SkillCopy): readonly string[] {
  * readable or not; see {@link readableRelatives} for why membership is the
  * census's own fact rather than a re-attribution.
  */
-function ownedIn(copy: SkillCopy, relative: string): boolean {
-  return copy.members.has(copy.directory + relative);
+function ownedIn(copy: SkillCopy, relative: string | null): boolean {
+  const path = copy.pathAt(relative);
+  return path !== null && copy.members.has(path);
 }
 
 /** Whether one copy owns a readable file at `relative`; see {@link ownedIn}. */
-function readableIn(copy: SkillCopy, relative: string): boolean {
+function readableIn(copy: SkillCopy, relative: string | null): boolean {
+  const path = copy.pathAt(relative);
   return (
+    path !== null &&
     ownedIn(copy, relative) &&
-    readablePaths.value.has(fileIdentityKey(copy.sourceId, copy.directory + relative))
+    readablePaths.value.has(fileIdentityKey(copy.sourceId, path))
   );
 }
 
@@ -504,11 +560,13 @@ function readableIn(copy: SkillCopy, relative: string): boolean {
  * all — a hand-written link to a binary counterpart is inside the model and
  * settles as this surface's own not-readable statement.
  */
-function opposableAt(copy: SkillCopy, relative: string): boolean {
+function opposableAt(copy: SkillCopy, relative: string | null): boolean {
+  const path = copy.pathAt(relative);
   return (
     readableIn(copy, relative) ||
-    (!ownedIn(copy, relative) &&
-      !committedPaths.value.has(fileIdentityKey(copy.sourceId, copy.directory + relative)))
+    (path !== null &&
+      !ownedIn(copy, relative) &&
+      !committedPaths.value.has(fileIdentityKey(copy.sourceId, path)))
   );
 }
 
@@ -587,6 +645,12 @@ const fileOptions = computed<readonly ComparedFileOption[]>(() => {
   if (left === null || right === null) {
     return [];
   }
+  if (left.directory === null || right.directory === null) {
+    // No copy-relative axis: a copy that is one file has nothing to be
+    // relative to, so the pair has the one position its own default names —
+    // the two entries — and there is nothing to step through.
+    return [];
+  }
   const committed = committedPaths.value;
   const options: ComparedFileOption[] = [];
   const offer = (relative: string, other: SkillCopy, onlyIn: 'left' | 'right'): void => {
@@ -594,7 +658,7 @@ const fileOptions = computed<readonly ComparedFileOption[]>(() => {
       options.push(new ComparedFileOption(relative, null));
     } else if (
       !ownedIn(other, relative) &&
-      !committed.has(fileIdentityKey(other.sourceId, other.directory + relative))
+      !committed.has(fileIdentityKey(other.sourceId, `${other.directory}${relative}`))
     ) {
       options.push(new ComparedFileOption(relative, onlyIn));
     }
@@ -623,7 +687,9 @@ const fileOptions = computed<readonly ComparedFileOption[]>(() => {
  * comparable state the URL scheme can express — and the current copies offer
  * at least one comparable file.
  */
-const switchersAvailable = computed(() => owningRow.value !== null && fileOptions.value.length > 0);
+const switchersAvailable = computed(
+  () => owningRow.value !== null && leftCopy.value !== null && rightCopy.value !== null,
+);
 
 /**
  * Whether the compared-file switcher renders: only where the skill holds more
@@ -639,18 +705,56 @@ const fileSwitcherShown = computed(() => switchersAvailable.value && fileOptions
 const copySwitchersRendered = computed(() => switchersAvailable.value && copySwitchersShown.value);
 
 /**
+ * The copy-relative spelling of one copy's entry file, or null for a copy
+ * with no relative axis of its own. What the pair's own default names on
+ * that copy, said in the axis's vocabulary.
+ */
+function entryRelativeOf(copy: SkillCopy): string | null {
+  return copy.directory === null ? null : copy.entryPath.slice(copy.directory.length);
+}
+
+/**
+ * The coordinate a switch writes: the pair's own default — null — whenever
+ * the relative names each side's entry anyway, so the entry pair keeps one
+ * URL however a reader arrived at it.
+ */
+function normalizedFile(relative: string | null): string | null {
+  const left = leftCopy.value;
+  const right = rightCopy.value;
+  return relative !== null &&
+    left !== null &&
+    right !== null &&
+    entryRelativeOf(left) === relative &&
+    entryRelativeOf(right) === relative
+    ? null
+    : relative;
+}
+
+/**
  * The compared-file switcher binding: choosing a file moves the `file`
  * coordinate, so the two sides are always the same file of two copies. A
  * computed with a setter so the `<select>` binds with `v-model` and no
  * event handler reaches into the DOM for the chosen value.
+ *
+ * The pair's own default reads as the entries' own relative spelling, which
+ * is the option the list holds for it: the switcher renders only where the
+ * copy-relative axis exists, and a select bound to a value no option carries
+ * would show nothing selected.
  */
 const fileSelection = computed({
-  get: () => comparedFile.value ?? '',
+  get: () => {
+    const relative = comparedFile.value;
+    if (relative !== null) {
+      return relative;
+    }
+    const left = leftCopy.value;
+    return left === null ? '' : (entryRelativeOf(left) ?? '');
+  },
   set: (relative: string) => {
     const left = currentLeft.value;
     const right = currentRight.value;
     if (owningRow.value !== null && left !== null && right !== null) {
-      switchTo(left, right, relative);
+      switchTo(left, right, normalizedFile(relative));
     }
   },
 });
@@ -662,10 +766,15 @@ const fileSelection = computed({
  * committed file the copy does not own is neither; see
  * {@link fileOptions}.
  */
-function standsAt(copy: SkillCopy, relative: string): boolean {
+function standsAt(copy: SkillCopy, relative: string | null): boolean {
+  const path = copy.pathAt(relative);
+  // A coordinate the copy cannot compose a path from stands nowhere: a
+  // relative path written by hand against a copy that is one file names no
+  // file of it, and reporting it is what keeps a composed path this copy does
+  // not have off the screen.
   return (
-    ownedIn(copy, relative) ||
-    !committedPaths.value.has(fileIdentityKey(copy.sourceId, copy.directory + relative))
+    path !== null &&
+    (ownedIn(copy, relative) || !committedPaths.value.has(fileIdentityKey(copy.sourceId, path)))
   );
 }
 
@@ -691,17 +800,26 @@ function fileFor(copy: SkillCopy, otherCopy: SkillCopy): string | null {
   ) {
     return current;
   }
+  // The pair's own default when the current coordinate cannot be kept: the
+  // two entries, which every pair of copies has. A copy-relative fallback is
+  // taken first where the axis exists, so a switch among directory copies
+  // still lands on a file they share rather than stepping the reader back to
+  // the entries.
   return commonFiles(copy, otherCopy)[0] ?? null;
 }
 
 /**
  * Whether a copy can stand on the side whose opposite is `otherDirectory`:
- * the other side's own copy cannot — the two sides would hold one file
- * (FR-011) — and neither can a copy that would neither keep the current
- * file nor share any comparable file with the other side.
+ * only the other side's own copy cannot, because the two sides would then
+ * hold one file (FR-011).
+ *
+ * Nothing else disables an option any more. A pair with no comparable file on
+ * the copy-relative axis still has its own default — the two entries — so
+ * "shares no comparable file" is no longer a state a switch can land in
+ * ({@link fileFor}).
  */
 function copyDisabled(copy: SkillCopy, otherCopy: SkillCopy | null): boolean {
-  return otherCopy === null || copy === otherCopy || fileFor(copy, otherCopy) === null;
+  return otherCopy === null || copy === otherCopy;
 }
 
 /** The identity a copy switch writes into the URL: the copy's entry file. */
@@ -715,9 +833,8 @@ const leftCopySelection = computed({
   set: (key: string) => {
     const copy = population.value?.get(key);
     const other = rightCopy.value;
-    const relative = copy === undefined || other === null ? null : fileFor(copy, other);
-    if (copy !== undefined && other !== null && relative !== null) {
-      switchTo(sideOf(copy), sideOf(other), relative);
+    if (copy !== undefined && other !== null) {
+      switchTo(sideOf(copy), sideOf(other), fileFor(copy, other));
     }
   },
 });
@@ -728,9 +845,8 @@ const rightCopySelection = computed({
   set: (key: string) => {
     const copy = population.value?.get(key);
     const other = leftCopy.value;
-    const relative = copy === undefined || other === null ? null : fileFor(copy, other);
-    if (copy !== undefined && other !== null && relative !== null) {
-      switchTo(sideOf(other), sideOf(copy), relative);
+    if (copy !== undefined && other !== null) {
+      switchTo(sideOf(other), sideOf(copy), fileFor(copy, other));
     }
   },
 });
@@ -801,14 +917,15 @@ function openCurrent(): void {
     return;
   }
   const relative = currentFile.value;
-  const leftComposed: ComparisonSide = {
-    source: left.source,
-    sourceRelativePath: left.directory + relative,
-  };
-  const rightComposed: ComparisonSide = {
-    source: right.source,
-    sourceRelativePath: right.directory + relative,
-  };
+  const leftPath = left.pathAt(relative);
+  const rightPath = right.pathAt(relative);
+  if (leftPath === null || rightPath === null) {
+    // Narrowing only: every caller runs behind a null {@link pairFault},
+    // which rejects a coordinate a copy cannot compose a path from.
+    return;
+  }
+  const leftComposed: ComparisonSide = { source: left.source, sourceRelativePath: leftPath };
+  const rightComposed: ComparisonSide = { source: right.source, sourceRelativePath: rightPath };
   const committed = committedPaths.value;
   const leftCommitted = committed.has(
     fileIdentityKey(left.sourceId, leftComposed.sourceRelativePath),
@@ -1114,6 +1231,9 @@ const announcement = computed(() => {
     return 'Loading this comparison…';
   }
   if (status.value === 'ready') {
+    // The pair's own default is the two entries, which need not share one
+    // relative spelling, so the phrase names no file there — the two cards
+    // state each side's path in full.
     const relative = comparedFile.value;
     return relative === null
       ? 'Comparison ready.'
@@ -1132,7 +1252,9 @@ const retryable = computed(
 );
 
 /**
- * What a copy switcher option reads as: the copy's directory and, where the
+ * What a copy switcher option reads as: the copy's own spelling — its
+ * directory, or its file where it has none ({@link SkillCopy.identityPath}) —
+ * and, where the
  * copy's family holds more than one Source, the directory its Source was
  * admitted at — two homes can hold one directory spelling, and an option
  * list naming it once would offer the same word twice
@@ -1140,7 +1262,7 @@ const retryable = computed(
  */
 function copyLabel(copy: SkillCopy): string {
   return comparisonOptionLabel(
-    inlinePresentationLabel(copy.directory),
+    inlinePresentationLabel(copy.identityPath),
     comparisonSourceQualifierOf(sources.value, copy.sourceId),
   );
 }
@@ -1302,12 +1424,15 @@ const titleSubject = computed<string>(() => {
       const subject = named === null ? null : named.isEmpty ? named.singleLineText : named.authored;
       // The compared file rides in the title too: stepping the pair through
       // its files changes what the page shows, and two tabs on two files of
-      // one pair must not read identically (WCAG 2.4.2).
+      // one pair must not read identically (WCAG 2.4.2). The pair's own
+      // default adds nothing, because the two sides that already name it are
+      // the pair the title states.
       const base =
         subject === null
           ? `Comparing skill files — ${sides}`
           : `Comparing skill files: ${subject} — ${sides}`;
-      return `${base} — ${requestedFile.value}`;
+      const relative = requestedFile.value;
+      return relative === null ? base : `${base} — ${relative}`;
     }
     case 'stale':
       return 'Link not in this scan';

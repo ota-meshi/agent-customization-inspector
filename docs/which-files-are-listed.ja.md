@@ -49,15 +49,18 @@
 | Hooks | `.codex/hooks.json` と `.codex/config.toml` |
 | Plugins | `.agents/plugins/marketplace.json` と `.claude-plugin/marketplace.json` |
 
-### Gemini CLI
+### Antigravity CLI
+
+`.agent/` は `.agents/` の以前の綴りで、このツールは今もそれを読みます。
 
 | 種別 | 場所 |
 | --- | --- |
-| Instructions | 任意のディレクトリの `GEMINI.md`。ただし `.gemini/settings.json` が `context.fileName` を設定しているときは、`GEMINI.md` の代わりに、そこに挙げられたファイル（任意のディレクトリ） |
-| Skills | `.gemini/skills/` または `.agents/skills/` 配下の各ディレクトリの `SKILL.md` |
-| Agents | `.gemini/agents/` 直下の `.md` |
-| Prompts / commands | `.gemini/commands/` 配下の任意の深さの `.toml` |
-| MCP / hooks / settings | `.gemini/settings.json` |
+| Instructions | ルートの `GEMINI.md` と `AGENTS.md` |
+| Skills | `.agents/skills/` または `.agent/skills/` 配下の各ディレクトリの `SKILL.md`。`.agents/skills/` 直下の `.md` |
+| Agents | `.agents/agents/` 直下の `.md`。`.agents/agents/` 配下の各ディレクトリの `agent.md` |
+| Rules | `.agents/rules/` または `.agent/rules/` 直下の `.md` |
+| MCP | `.agents/mcp_config.json` |
+| Hooks | `.agents/hooks.json` |
 
 ## 個人設定
 
@@ -105,28 +108,27 @@ agent home です。Consent ページは何も読む前にそのすべてを示�
 | MCP / settings | `config.toml` |
 | Hooks | `hooks.json` と `config.toml` |
 
-### Gemini CLI のホーム
+### Antigravity CLI のホーム
 
-`GEMINI_CLI_HOME` 配下の `.gemini`、未設定なら `~/.gemini`。この設定は `.gemini` そのものではなく
-`.gemini` を置くディレクトリを指すので、`GEMINI_CLI_HOME=/work` なら `/work/.gemini` を読みます。
+`~/.gemini`。この場所を動かす設定はありません。その配下の `config/` は Antigravity のエディタと
+共有するディレクトリで、`antigravity-cli/` は端末自身のものです。
 
 | 種別 | 場所 |
 | --- | --- |
 | Instructions | `GEMINI.md` |
-| Skills | `skills/` 配下の各ディレクトリの `SKILL.md` |
-| Agents | `agents/` 直下の `.md` |
-| Prompts / commands | `commands/` 配下の任意の深さの `.toml` |
-| Permissions | `policies/` 直下の `.toml` |
-| MCP / hooks / settings | `settings.json` |
+| Skills | `config/skills/` または `antigravity-cli/skills/` 配下の各ディレクトリの `SKILL.md`。`antigravity-cli/skills/` 直下の `.md` |
+| Agents | `config/agents/` 直下の `.md` |
+| MCP | `config/mcp_config.json` |
+| Hooks | `config/hooks.json` と `antigravity-cli/settings.json` |
+| Permissions / settings | `antigravity-cli/settings.json` |
 
 ### 共有 agent home
 
-`~/.agents`。どのツールのものでもなく、`CODEX_HOME`、`COPILOT_HOME`、`GEMINI_CLI_HOME` を変えても
-動きません。
+`~/.agents`。どのツールのものでもなく、`CODEX_HOME` や `COPILOT_HOME` を変えても動きません。
 
 | 種別 | 場所 | 読むツール |
 | --- | --- | --- |
-| Skills | `skills/` 配下の各ディレクトリの `SKILL.md` | OpenAI Codex、GitHub Copilot、Gemini CLI |
+| Skills | `skills/` 配下の各ディレクトリの `SKILL.md` | OpenAI Codex と GitHub Copilot |
 | Plugins | `plugins/marketplace.json` | OpenAI Codex |
 
 ## 一覧に載せたものの内側で行う2つの読み取り

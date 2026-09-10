@@ -251,6 +251,18 @@ function directoryOf(path: string): string {
 }
 
 /**
+ * Whether this skill has a directory at all. A flat skill — one Markdown file
+ * with no folder, which one product documents at a location three others read
+ * only as folders (spec.md § FR-004) — has none, so the file panel has no
+ * subject and the strip has one tab, which is not a choice.
+ *
+ * Read from the definition rather than from the census being empty: a folder
+ * holding only its entry point also ships no companion, and the two are
+ * different things (`api-types.ts` § SkillDefinitionDto.rowUnit).
+ */
+const hasDirectory = computed(() => owner.value?.definition.rowUnit !== 'file');
+
+/**
  * The Source-relative Path of every file of that skill: the entry point
  * first, then its census in the order the census published.
  *
@@ -595,22 +607,34 @@ const listNeighbours = computed(() => {
 });
 
 /**
- * The skill's directory, escaped for presentation, which heads the page: the
- * directory is the skill (FR-007), and it is the one identity every product
- * reading it shares, where the names they invoke it by differ. Empty only
- * before an owner resolves, where the template titles the page by its kind.
+ * The path that names this skill: its directory where it has one, and its own
+ * file where it does not.
+ *
+ * A folder-shaped skill is its directory (FR-007), which is the one identity
+ * every product reading it shares where the names they invoke it by differ. A
+ * file-shaped skill has no directory of its own, and the one it sits in holds
+ * every other flat skill beside it (spec.md § FR-004) — heading the page with
+ * that would give two skills the same heading, so the file is what names it.
  */
-const skillDirectoryText = computed(() => escapeControlCharacters(treeDirectory.value));
+const skillSubjectPath = computed(() =>
+  hasDirectory.value ? treeDirectory.value : (treeFiles.value[0] ?? ''),
+);
+
+/**
+ * That path escaped for presentation, which heads the page. Empty only before
+ * an owner resolves, where the template titles the page by its kind.
+ */
+const skillSubjectText = computed(() => escapeControlCharacters(skillSubjectPath.value));
 
 /**
  * What a screen reader announces the heading as. The accessible-name
- * computation collapses whitespace, so two directories differing only in consecutive
+ * computation collapses whitespace, so two paths differing only in consecutive
  * or edge spaces would announce as one heading; the inline label spells such a
  * run out instead, while the visible heading keeps the authored spelling
  * (FR-025) — the same rule every other detail's heading follows.
  */
 const headingAccessibleText = computed(() =>
-  treeDirectory.value === '' ? 'Skill' : inlinePresentationLabel(treeDirectory.value),
+  skillSubjectPath.value === '' ? 'Skill' : inlinePresentationLabel(skillSubjectPath.value),
 );
 
 /**
@@ -955,18 +979,18 @@ const titleSubject = computed<string | null>(() => {
   if (detailFailure.value !== null && detailState.value !== 'companion-failed') {
     return 'Skill could not be loaded';
   }
-  // The skill's own directory, which is what heads the page. The raw value,
-  // not this page's escaped spelling: the shell escapes its subject exactly
-  // once at the rendering boundary (`App.vue`), so passing an escaped value
-  // would double-escape — a directory containing a newline would head the
+  // The path that names the skill, which is what heads the page. The raw
+  // value, not this page's escaped spelling: the shell escapes its subject
+  // exactly once at the rendering boundary (`App.vue`), so passing an escaped
+  // value would double-escape — a path containing a newline would head the
   // page as `\u000A` but title the tab `\u005Cu000A`. Null when the escaped
   // spelling still draws nothing, because a tab titled by it would read as
   // having no subject at all.
-  const directory = treeDirectory.value;
-  if (directory === '' || rendersNothingVisible(escapeControlCharacters(directory))) {
+  const subject = skillSubjectPath.value;
+  if (subject === '' || rendersNothingVisible(escapeControlCharacters(subject))) {
     return null;
   }
-  return `${directory} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
+  return `${subject} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 useReportedPageSubject(titleSubject);
 
@@ -1005,7 +1029,7 @@ watch(
     list-route="/?kind=skill"
     :neighbours="listNeighbours"
     :source-family-crumb-text="sourceFamilyCrumbText"
-    :path-text="skillDirectoryText"
+    :path-text="skillSubjectText"
     :path-is-spelled-out="false"
     :accessible-text="headingAccessibleText"
     :open-path="headingPath"
@@ -1158,7 +1182,7 @@ watch(
            for the strip to be usable at all (QR-004,
            contracts/accessibility-acceptance.md) — which obliges the roving
            tabindex and arrow keys the WAI-ARIA tabs pattern specifies. -->
-      <SubjectTabStrip :tabs="subjectTabs" label="Skill detail">
+      <SubjectTabStrip v-if="hasDirectory" :tabs="subjectTabs" label="Skill detail">
         <template #tab="{ tab }">
           {{ SKILL_DETAIL_TAB_TEXT[tab] }}
           <span v-if="tab === 'files'" class="aci-tab-count">{{ treeFiles.length }}</span>
@@ -1170,7 +1194,7 @@ watch(
            tab switch. Every tab therefore names its panel: both IDREFs resolve,
            and omitting one would drop a relationship assistive technology
            uses to move from a tab to what it controls. -->
-      <SubjectTabPanel :tabs="subjectTabs" tab="skill">
+      <SubjectTabPanel :tabs="subjectTabs" tab="skill" :standalone="!hasDirectory">
         <!-- The skill itself: what it declares and what it tells the product to
            do. The `SKILL.md` carries both, and showing only its bytes would
            leave the reader to find the seam — so the two are shown apart,
@@ -1220,7 +1244,7 @@ watch(
         </div>
       </SubjectTabPanel>
 
-      <SubjectTabPanel :tabs="subjectTabs" tab="files">
+      <SubjectTabPanel v-if="hasDirectory" :tabs="subjectTabs" tab="files">
         <SkipLink target-id="aci-skill-detail-file-contents" />
 
         <div class="aci-skill-detail__layout">

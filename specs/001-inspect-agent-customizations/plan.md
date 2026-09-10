@@ -136,7 +136,7 @@ outside the contract.
 (latest Nuxt-compatible release), `devframe` 0.7.5 (the pre-1.0 local-tool
 host framework), `gunshi` 0.37.0, `open` 11.0.1, `yaml` 2.9.0,
 `strip-json-comments` 5.0.3, `smol-toml` 1.7.0, `h3` 2.0.1-rc.22, `shiki` 4.4.3,
-`@shikijs/themes` 4.4.3, and `diff` 9.0.0.
+`@shikijs/themes` 4.4.3, and `vscode-diff` 3.0.1.
 Each is declared as a caret range in `package.json`,
 and the committed lockfile pins these exact resolved versions with integrity; `h3`'s
 resolution coincides with devframe's own h3, so the host's `/skills/**` shell fallback
@@ -973,7 +973,7 @@ gates. The Setup stage is not considered runnable until those paths exist.
 Production `dependencies` is the caret-declared direct set `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml`,
 asserted from `pnpm-lock.yaml` by `tests/package/production-graph.test.ts`;
 devframe's and `open`'s transitives are lockfile-owned.
-Nuxt/Vue/Vite/tsdown, shiki, `diff`, Playwright, and other build/test tooling remain
+Nuxt/Vue/Vite/tsdown, shiki, `vscode-diff`, Playwright, and other build/test tooling remain
 development-only.
 
 Cross-platform CI runs the same pure Node.js inspection-filesystem integration suite on

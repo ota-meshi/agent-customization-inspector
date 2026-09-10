@@ -171,15 +171,15 @@ describe('create-global-consent-preview', () => {
 
     // Every member is always evaluated: the request carries no parameter, so
     // there is nothing a client could send to narrow the set or to propose a
-    // root the environment does not name. The Gemini CLI home is the `.gemini`
-    // below its unset setting's default, the home (specs/002-gemini-cli-support
-    // FR-011), and the shared agent home is the always-derived fifth entry
-    // (FR-045).
+    // root the environment does not name. The Antigravity CLI home is the
+    // `.gemini` below the captured home directory, which no property
+    // relocates (specs/003-antigravity-cli-support FR-008), and the shared
+    // agent home is the always-derived fifth entry (FR-045).
     expect(preview.entries.map((entry) => entry.member)).toEqual([
       'copilot',
       'claude',
       'codex',
-      'gemini',
+      'antigravity',
       'agents',
     ]);
     expect(preview.entries.map((entry) => entry.displayRoot)).toEqual([
@@ -305,7 +305,7 @@ describe('the preview performs no I/O under a proposed root', () => {
         fixture.homes.claude,
         fixture.homes.codex,
         fixture.homes.copilot,
-        fixture.homes.gemini,
+        fixture.homes.antigravity,
       ].toSorted(),
     );
   });
@@ -318,7 +318,7 @@ describe('the preview performs no I/O under a proposed root', () => {
     // admitted root is fixed by the shipped plan the version pair identifies,
     // and the consent copy explains that scope in plain language. A candidate
     // filename appearing here would be a second, drifting allowlist.
-    for (const member of ['copilot', 'claude', 'codex', 'gemini', 'agents'] as const) {
+    for (const member of ['copilot', 'claude', 'codex', 'antigravity', 'agents'] as const) {
       for (const candidate of fixture.expectedCandidatePaths[member]) {
         expect(serialized, candidate).not.toContain(candidate);
       }
@@ -331,15 +331,17 @@ describe('the preview performs no I/O under a proposed root', () => {
     // the rules that could disagree with them — and only the Global-scoped
     // ones: a Repository exclusion says nothing about what consent to read a
     // home directory covers, so putting one here would describe the wrong
-    // boundary to a reader deciding. The five vendor exclusions — Gemini
-    // CLI's installed extensions among them — and the shared managed-remote
-    // one are all of them.
+    // boundary to a reader deciding. The five vendor exclusions — Antigravity
+    // CLI's installed plugin copies among them — and the shared managed-remote
+    // one are all of them. That vendor's workspace-plugin exclusion is
+    // deliberately absent: it is Repository-scoped, and this list is the
+    // Global one.
     expect(preview.excludedRuleIds).toEqual([
+      'antigravity.excluded.plugins',
+      'antigravity.excluded.user-runtime',
       'claude.excluded.user-runtime',
       'codex.excluded.user-runtime',
       'copilot.excluded.user-runtime',
-      'gemini.excluded.extensions',
-      'gemini.excluded.user-runtime',
       'shared.excluded.managed-remote-state',
     ]);
   });
@@ -452,7 +454,7 @@ describe('enable-global', () => {
         tools: ['claude'],
       }),
     );
-    expect(result.acceptedTools).toEqual(['copilot', 'claude', 'codex', 'gemini', 'agents']);
+    expect(result.acceptedTools).toEqual(['copilot', 'claude', 'codex', 'antigravity', 'agents']);
   });
 
   it('queues one batch with one shared request ID for the admitted subset', async () => {
@@ -472,7 +474,7 @@ describe('enable-global', () => {
     // never one job per member.
     expect(result.state).toBe('queued');
     expect(result.scanRequestId).not.toBeNull();
-    expect(result.acceptedTools).toEqual(['copilot', 'claude', 'codex', 'gemini', 'agents']);
+    expect(result.acceptedTools).toEqual(['copilot', 'claude', 'codex', 'antigravity', 'agents']);
     expect(result.rejectedTools).toEqual([]);
   });
 
@@ -485,7 +487,6 @@ describe('enable-global', () => {
     process.env[GLOBAL_HOME_VARIABLES.copilot] = '';
     process.env[GLOBAL_HOME_VARIABLES.claude] = '';
     process.env[GLOBAL_HOME_VARIABLES.codex] = '';
-    process.env[GLOBAL_HOME_VARIABLES.gemini] = '';
     process.env.HOME = join(fixture.base, 'no-agents-here');
     const { create, enable } = enableFunctions();
     const preview = payload(create());
@@ -504,7 +505,7 @@ describe('enable-global', () => {
       state: 'active-no-job',
       scanRequestId: null,
       acceptedTools: [],
-      rejectedTools: ['copilot', 'claude', 'codex', 'gemini', 'agents'],
+      rejectedTools: ['copilot', 'claude', 'codex', 'antigravity', 'agents'],
     });
   });
 
@@ -586,7 +587,7 @@ describe('enable-global', () => {
       };
       const first = accepted(await enableCall(body));
       expect(first.state).toBe('queued');
-      expect(first.acceptedTools).toEqual(['copilot', 'claude', 'gemini', 'agents']);
+      expect(first.acceptedTools).toEqual(['copilot', 'claude', 'antigravity', 'agents']);
       expect(first.rejectedTools).toEqual(['codex']);
       // The confirmation answered with its batch committed, so the published
       // Sources already exist before the retry runs beside them.

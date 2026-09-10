@@ -640,9 +640,9 @@ export const COPILOT_CLI_INSTRUCTIONS_CLAUDE_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
- * Copilot CLI `GEMINI.md`: the other Claude-and-Gemini-compatible
- * agent-instruction file, read from the same documented standard locations.
- * Only the root file becomes a Copilot candidate in this release.
+ * Copilot CLI `GEMINI.md`: the other agent-instruction file this vendor's own
+ * page names beside `CLAUDE.md`, read from the same documented standard
+ * locations. Only the root file becomes a Copilot candidate in this release.
  */
 export const COPILOT_CLI_INSTRUCTIONS_GEMINI_BEHAVIOR = {
   behaviorId: 'copilot.behavior.cli.instructions.gemini',

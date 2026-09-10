@@ -47,8 +47,8 @@ import {
   type RecognitionInput,
   type ToolRecognition,
 } from './recognizers/candidate';
+import { ANTIGRAVITY_REPOSITORY_RULES } from './rules/antigravity';
 import { CODEX_REPOSITORY_RULES, readCodexConfiguredFallbackPlans } from './rules/codex';
-import { GEMINI_REPOSITORY_RULES, readGeminiConfiguredContextPlans } from './rules/gemini';
 import { listCompanionFiles } from './companion-census';
 import { readdir } from './fs-io';
 import {
@@ -70,7 +70,7 @@ import {
  * the shipped rules match legitimately publishes an empty inventory rather
  * than an error.
  *
- * The Copilot, Codex, Gemini CLI, and Claude skill matchers overlap on purpose —
+ * The Copilot, Codex, Antigravity CLI, and Claude skill matchers overlap on purpose —
  * `.agents` and `.claude` are shared spellings — and the traversal walks every plan in
  * one pass, so a shared physical file is one candidate with one read whose
  * admissions name each vendor's plan (data-model.md § ToolRecognition).
@@ -79,7 +79,7 @@ export const REPOSITORY_INSPECTION_RULES: readonly CompiledStaticCandidateRule[]
   ...COPILOT_REPOSITORY_RULES,
   ...CLAUDE_REPOSITORY_RULES,
   ...CODEX_REPOSITORY_RULES,
-  ...GEMINI_REPOSITORY_RULES,
+  ...ANTIGRAVITY_REPOSITORY_RULES,
 ];
 
 /**
@@ -92,10 +92,7 @@ export const REPOSITORY_INSPECTION_RULES: readonly CompiledStaticCandidateRule[]
 export const REPOSITORY_CONFIGURATION_READERS: readonly ((
   root: string,
   continueScan?: () => boolean,
-) => Promise<ConfigurationReadResult>)[] = [
-  readCodexConfiguredFallbackPlans,
-  readGeminiConfiguredContextPlans,
-];
+) => Promise<ConfigurationReadResult>)[] = [readCodexConfiguredFallbackPlans];
 
 /**
  * The assembled publication of one completed traversal

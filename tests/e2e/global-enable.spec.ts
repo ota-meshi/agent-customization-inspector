@@ -29,7 +29,7 @@ import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 /** The repository the session is launched against. */
 let repository: string;
 
-/** The base holding the member homes and the HOME the shared agent home and the Gemini CLI home derive from. */
+/** The base holding the member homes and the HOME the shared agent home and the Antigravity CLI home derive from. */
 let base: string;
 
 /** The secret literal a consented home's file carries, shown exactly (FR-025). */
@@ -150,9 +150,9 @@ test('publishes every admitted member together, each its own labelled Source', a
   await page.getByRole('link', { name: 'Personal setup' }).click();
   // The one confirmation published every member simultaneously: the panel lists
   // each admitted one with its escaped boundary label — a presentation, never
-  // a path — and its own status (FR-013, FR-045). The Gemini CLI home derives
-  // from this fixture's `HOME` and does not exist there, so it is the member
-  // that states it could not be read rather than a Source.
+  // a path — and its own status (FR-013, FR-045). The Antigravity CLI home
+  // derives from this fixture's `HOME` and does not exist there, so it is the
+  // member that states it could not be read rather than a Source.
   for (const member of ['Copilot home', 'Claude home', 'Codex home']) {
     await expect(main).toContainText(member);
   }

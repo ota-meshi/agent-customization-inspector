@@ -42,10 +42,7 @@ import {
   COPILOT_AGENTS_HOME_RULES,
   COPILOT_GLOBAL_RULES,
 } from '../../src/server/inspection/rules/copilot';
-import {
-  GEMINI_AGENTS_HOME_RULES,
-  GEMINI_GLOBAL_RULES,
-} from '../../src/server/inspection/rules/gemini';
+import { ANTIGRAVITY_GLOBAL_RULES } from '../../src/server/inspection/rules/antigravity';
 import { runSourceScan } from '../../src/server/inspection/scan';
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
 import {
@@ -206,15 +203,17 @@ describe('the enable-reachable module graph has no activation capability (T996)'
 });
 
 /** The fixed member order the batch settles in (FR-045). */
-const MEMBERS = ['copilot', 'claude', 'codex', 'gemini', 'agents'] as const;
+const MEMBERS = ['copilot', 'claude', 'codex', 'antigravity', 'agents'] as const;
 
 /** The shipped per-member rule catalogs, exactly as the CLI composes them. */
 const CATALOGS = {
   copilot: COPILOT_GLOBAL_RULES,
   claude: CLAUDE_GLOBAL_RULES,
   codex: CODEX_GLOBAL_RULES,
-  gemini: GEMINI_GLOBAL_RULES,
-  agents: [...CODEX_AGENTS_HOME_RULES, ...COPILOT_AGENTS_HOME_RULES, ...GEMINI_AGENTS_HOME_RULES],
+  antigravity: ANTIGRAVITY_GLOBAL_RULES,
+  // Antigravity CLI contributes none: its global skills live below
+  // `~/.gemini`, and no cited page has it read `~/.agents` (FR-045).
+  agents: [...CODEX_AGENTS_HOME_RULES, ...COPILOT_AGENTS_HOME_RULES],
 } as const;
 
 /**
@@ -375,16 +374,22 @@ describe('the fixed-five enable issues no product request and mutates nothing (T
     cleanups.push(() => rmSync(fixture.base, { recursive: true, force: true }));
     const { session } = await runFixedFiveEnable(fixture.homes);
 
-    // The Gemini CLI home's settings carry a hook `command`, a stdio server
-    // and an HTTP `mcpServers` declaration, and its namespaced command embeds
-    // a `!{...}` shell block: each is text the detail serves byte-exact and
-    // nothing runs, connects to, or resolves (specs/002-gemini-cli-support
-    // T022).
+    // The Claude and Codex homes' settings carry a declared hook command and
+    // MCP servers, the Antigravity home's settings document declares hook
+    // commands and permission rules beside its own `mcpServers` profile, and
+    // its context file spells an environment reference: each is text the
+    // detail serves byte-exact, and nothing runs, connects to, or resolves
+    // any of it (T042).
     for (const [selector, home, path, kind] of [
       ['global-claude', fixture.homes.claude, 'settings.json', 'settings/config'],
       ['global-codex', fixture.homes.codex, 'config.toml', 'settings/config'],
-      ['global-gemini', fixture.homes.gemini, 'settings.json', 'settings/config'],
-      ['global-gemini', fixture.homes.gemini, 'commands/git/commit.toml', 'prompt/command'],
+      [
+        'global-antigravity',
+        fixture.homes.antigravity,
+        'antigravity-cli/settings.json',
+        'settings/config',
+      ],
+      ['global-antigravity', fixture.homes.antigravity, 'GEMINI.md', 'instructions'],
     ] as const) {
       const detail = session.fileDetail(path, selector, kind);
       if (detail === null || !('sourceText' in detail.file)) {

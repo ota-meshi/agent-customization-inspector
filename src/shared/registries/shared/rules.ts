@@ -14,9 +14,9 @@ import type { InspectionRule } from '../rule-types';
  * vendors, on record as excluded (contracts/runtime-composition.md
  * § Shared non-read exclusions). What it names, it names through the behaviors
  * it is based on (`shared/relations.ts`): Claude's separate `~/.claude.json`
- * state file and installed plugins, Codex's installed plugin copies, Gemini
- * CLI's installed extension copies, and the five hosted Copilot surfaces no
- * local boundary holds.
+ * state file and installed plugins, Codex's installed plugin copies,
+ * Antigravity CLI's installed plugin copies, and the five hosted Copilot
+ * surfaces no local boundary holds.
  *
  * `kind` is null because the exclusion spans kinds, and `matcher` is null
  * because a rule that admits nothing needs no selector.

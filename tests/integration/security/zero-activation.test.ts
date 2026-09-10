@@ -58,6 +58,9 @@ import {
   buildCopilotCliMcpFixture,
   buildCopilotVscodeMcpFixture,
   buildAllCustomizationKindFixture,
+  buildAntigravityHookFixture,
+  buildAntigravityMcpFixture,
+  buildAntigravitySkillFixture,
 } from '../../fixtures/repositories/build-fixtures';
 import {
   READ_ONLY_FS_SURFACE,
@@ -2838,5 +2841,97 @@ describe('the whole Repository inventory activates nothing (T925)', () => {
     expect(after.entries).toEqual(before.entries);
     expect(Object.keys(after.atimes).sort()).toEqual(Object.keys(before.atimes).sort());
     expect(collectFsMutationViolations(fsIo as unknown as Record<string, unknown>)).toEqual([]);
+  });
+});
+
+describe('Antigravity CLI inspection connects to and runs nothing (T024)', () => {
+  it('publishes its declarations and the scripts they name stay unread and unrun', async () => {
+    // One tree holding the three things this vendor's files can point at: an
+    // MCP profile declaring a launch command and two URLs, a hook carrier
+    // whose handlers name shell scripts, and a skill folder whose
+    // instructions name a script beside it. None of them is a read authority
+    // and none is a launch: what the reader sees is the characters their file
+    // wrote (FR-019, FR-020, FR-022, FR-026).
+    const root = mkdtempSync(join(tmpdir(), 'inspector-zero-activation-antigravity-'));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    const mcp = buildAntigravityMcpFixture('inspector-zero-activation-antigravity', root);
+    const hooks = buildAntigravityHookFixture('inspector-zero-activation-antigravity', root);
+    const skills = buildAntigravitySkillFixture('inspector-zero-activation-antigravity', root);
+
+    const before = snapshotTreeState(root);
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during Antigravity CLI inspection`);
+      };
+    }
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during Antigravity CLI inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root,
+        rootFailureOwner: 'repository',
+        scope: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+
+    // Nothing was written, and the access-time set is unchanged in shape:
+    // reading updates atime by design and is never counted as a mutation.
+    const after = snapshotTreeState(root);
+    expect(after.entries).toEqual(before.entries);
+    expect(Object.keys(after.atimes).sort()).toEqual(Object.keys(before.atimes).sort());
+    expect(collectFsMutationViolations(fsIo as unknown as Record<string, unknown>)).toEqual([]);
+
+    // And nothing a declaration merely names was opened: the handler scripts,
+    // the skill instructions' own script, the nested carriers, and the
+    // backup copy beside the profile. A skill folder's companion is the one
+    // path here that is read without a rule admitting it, and it is read
+    // because the census reports what accompanies the skill
+    // (contracts/inspection-path-allowlist.md § Bounded companion census) —
+    // which is why the near-miss lists are filtered rather than taken whole.
+    const censusRoot = '.agents/skills/changelog/';
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const forbidden of [
+      ...mcp.nearMissPaths,
+      ...hooks.nearMissPaths,
+      ...skills.nearMissPaths,
+    ].filter((path) => !path.startsWith(censusRoot))) {
+      expect(opened, forbidden).not.toContain(join(root, ...forbidden.split('/')));
+    }
   });
 });

@@ -32,8 +32,20 @@ is found by that reading, not by a lookup.
 
 **Mutation.** The command changes nothing. It reports, and a reviewer decides what follows.
 
-**Network runs.** 2026-09-10, over all 65 records, the thirteen `google.gemini-cli.*` records
-included (specs/002-gemini-cli-support T066). Every Google record resolved: each URL answered
+**Network runs.** 2026-09-10, over all 62 records, the ten `google.antigravity.*` records
+included (specs/003-antigravity-cli-support T073). Every Google record resolved: each URL
+answered `200` directly on `antigravity.google`, and every cited section resolved as a served
+heading. The run reported one record with drift a reviewer must resolve, outside this
+feature: `anthropic.claude-code.skills.locations-discovery`
+(`https://code.claude.com/docs/en/skills`), whose cited sections `Where skills live` and
+`Discovery from parent and nested directories` were not served as headings or
+table-of-contents fragments. That record was left as it is — what the vanished headings mean
+is a reading, not a lookup — and is recorded here for the review that owns it. Four headings
+were established through a served table of contents, all of them Claude Code changelog
+anchors.
+
+The same day, over all 65 records, the thirteen `google.gemini-cli.*` records
+included (the release before this one). Every Google record resolved: each URL answered
 `200` directly on `geminicli.com`, and every cited section resolved as a served heading. The
 run reported one record with drift a reviewer must resolve, outside this feature:
 `anthropic.claude-code.skills.locations-discovery` (`https://code.claude.com/docs/en/skills`),
@@ -124,8 +136,23 @@ proposed. The task set is not superseded by this review.
 
 ## Release gate execution
 
-**The Gemini CLI change ran the gates on 2026-09-10** (specs/002-gemini-cli-support T064,
-T065): `pnpm run test:docs` 42, `pnpm run test:unit` 1275, `pnpm run test:contract` 411,
+**The Antigravity CLI change ran the gates on 2026-09-10** (specs/003-antigravity-cli-support
+T071, T072): `pnpm run test:docs` 42, `pnpm run test:unit` 1291, `pnpm run test:contract` 411,
+`pnpm run test:integration` 275, `pnpm run test:security` 5, and `pnpm run test:package` 53
+tests, all passing on this host, with `pnpm run format:check`, `pnpm run lint`, and
+`pnpm run typecheck` clean. The browser half was the Chromium project over the specs the
+change reaches — this feature's eight new Antigravity CLI specs and the existing specs named
+under Outcome-manifest criteria, 194 cases in one run — rather than the whole suite, which is
+what the agent-run verification policy asks for
+(AGENTS.md § Agent-run Playwright verification policy); CI's run of the commit is where the
+three-browser suite is executed. Both readme screenshots were retaken against this tree at the
+committed pair's dimensions, 1280×800 CSS pixels at a device scale factor of 2: the Skill tab
+of the all-kind fixture, whose legend now carries this release's four products and whose
+`.agents/skills/` rows carry three marks and a flat-file row only the fourth reads, and the
+`changelog` comparison — the `.agents/skills/` and `.github/skills/` copies — whose
+recognition table has an Antigravity CLI row.
+
+**The release before this one ran the gates on 2026-09-10**: `pnpm run test:docs` 42, `pnpm run test:unit` 1275, `pnpm run test:contract` 411,
 `pnpm run test:integration` 282, `pnpm run test:security` 5, and `pnpm run test:package` 53
 tests, all passing on this host, with `pnpm run format`, `pnpm run lint`, and the type check
 clean. The browser half was the Chromium project over the specs the change reaches — the
@@ -648,31 +675,85 @@ kind's; a presentation primitive whose inputs and meaning are identical is share
 picker's own comment no longer counts six pages where there are seven.
 
 
+## The fourth vendor mark beside the three
+
+**Looked at on 2026-09-10, in both themes, at the size a row draws them**
+(specs/003-antigravity-cli-support T075). The fixture host was launched with `--no-open` and
+`--port 0` and stopped by its recorded process ID.
+
+The four marks sit together in the legend and beside each recognition: Copilot's silhouette,
+Claude's starburst, Codex's ring, and this vendor's `A`. Each is drawn in its own desaturated
+colour, so a reader scanning for one follows the colour rather than telling three 15px
+silhouettes apart (AGENTS.md § Icon policy), and all four read against the light ground and
+the dark one alike.
+
+One difference is worth recording rather than fixing: the new mark is two strokes where the
+other three are filled shapes, so at 15px it carries slightly less ink than they do. It stays
+legible in both themes, its colour separates it at a glance, and nothing rests on the mark
+alone — the legend names it and the text beside it states the surfaces — so the weight
+difference costs a reader nothing. A filled variant would trade that for a heavier mark than
+the vendor's own glyph.
+
+## Replaced-vendor sweep
+
+**Searched on 2026-09-10, after the fourth supported tool changed** (SC-006;
+specs/003-antigravity-cli-support T067). The search covered the shipped tree, its documents,
+and its gates for any identifier, label, mark, contract, or frozen count of the product this
+release does not support. What it found and what was done:
+
+- the replaced vendor's registry modules, compiled units, e2e specs, and repository fixture
+  builders — removed with the rules that produced them;
+- its member id in the parent data model, quickstart, and session API contract, and its
+  environment property in every artifact that named one — replaced by this release's member
+  and by the home-directory join that has no property;
+- its rows in the outcome manifest and in the manifest's own contract gate — replaced, the
+  version advanced, and every digest re-recorded;
+- its task and phase count freeze — replaced by this feature's, watched failing first;
+- its own specification directory — deleted, and the artifacts that cited it re-pointed.
+
+Three classes of occurrence remain, each deliberately: the file name `GEMINI.md` and the
+directory `~/.gemini`, which are what this tool itself reads; the Copilot behavior
+`copilot.behavior.cli.instructions.gemini` and the rule
+`copilot.repo.instructions.gemini-root`, which are Copilot's own recognition of that
+filename and name the file rather than a vendor; and the negative case in
+`tests/unit/shared/entities.test.ts`, which asserts that `gemini` is not a supported tool —
+a check whose whole content is the absence.
+
 ## Outcome-manifest criteria
 
-The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 4**, canonical
-SHA-256 `f8d5334f19c57ece76ebf09b025a01048ca18cd6e64ae64390801f3bdae9a7f7`, recorded in
-`tests/fixtures/outcomes/manifest.sha256`. Version 4 is the Gemini CLI denominator
-(specs/002-gemini-cli-support): eight `(Gemini CLI, kind)` rows each for SC-003 and SC-005 —
-instructions, settings/config, MCP, hook, prompt/command, skill, agent, and permissions — the
-`sc003.shared-file.repository-root-gemini-md` attribution of the root `GEMINI.md` to GitHub
-Copilot and Gemini CLI, `sc003.global-source-form.gemini`, and `sc004.tool.gemini`; the two
-`.agents/skills/` attribution cases name Gemini CLI as a third recognizing tool. A new
-`(tool, kind)` row is a denominator change, which is what advances the version rather than
-keeping it at 3 under a fixture-byte change. The transition was reviewed by this session, an
-agent-driven review (AGENTS.md § Evidence before conclusions): what it compared is the shipped
-registry's `(tool, kind)` rows against the case IDs, which
+The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 5**, canonical
+SHA-256 `631d6d61020ce16665f690c15e167626e307943a72775081b8a759d0aacd484b`, recorded in
+`tests/fixtures/outcomes/manifest.sha256`. Version 5 is the Antigravity CLI denominator
+(specs/003-antigravity-cli-support T063): eight `(Antigravity CLI, kind)` rows each for
+SC-003 and SC-005 — `sc00{3,5}.row.antigravity.{instructions,settings-config,mcp,hook,rule,skill,agent,permissions}`
+— plus `sc003.global-source-form.antigravity` and `sc004.tool.antigravity`. Three attribution
+cases moved with the reader: `sc003.shared-file.repository-root-gemini-md` now attributes the
+root `GEMINI.md` to GitHub Copilot and Antigravity CLI, `sc003.shared-file.repository-agents-md`
+gains Antigravity CLI as a third recognizing tool of the root `AGENTS.md`, and
+`sc003.shared-file.global-shared-agent-home-skill` loses one, because this vendor reads no
+`~/.agents` (FR-045). It replaces version 4, whose denominator was the replaced vendor's;
+that version's `(tool, kind)` rows, its `global-source-form` case, and its `sc004.tool` case
+left the manifest with the rules that produced them, and `prompt/command` left the
+`(tool, kind)` set for this vendor while `rule` entered it. A `(tool, kind)` row is a
+denominator change, which is what advances the version rather than keeping it under a
+fixture-byte change. The transition was reviewed by this session, an agent-driven review
+(AGENTS.md § Evidence before conclusions): what it compared is the shipped registry's
+`(tool, kind)` rows against the case IDs, which
 `tests/contract/outcome-fixture-manifest.test.ts` gates. Its 118 cases were executed on
-2026-09-10 on this host: the Gemini CLI cases through the Chromium project over the thirteen
-new specs they name — `gemini-*-inventory`, `gemini-*-detail`, `gemini-skills-list`,
-`gemini-context-filename`, `gemini-same-name-skill`, and `global-gemini-admission` — and over
-the existing specs whose fixtures the third recognition changed (`codex-skills-detail`,
-`copilot-instructions-inventory`, `copilot-skills-detail`, `copilot-skills-list`, `discovery`,
-`instructions-inventory`, `skills-comparison`, `skills-inventory`, `inventory-rows`, and the
+2026-09-10 on this host: the Antigravity CLI cases through the Chromium project over the
+seven new specs they name — `antigravity-skills-detail`, `antigravity-mcp-detail`,
+`antigravity-custom-agents-detail`, `antigravity-instructions-detail`,
+`antigravity-rules-detail`, `antigravity-hooks-detail`, and `antigravity-settings-detail` —
+together with `global-antigravity-admission`, and over the existing specs whose fixtures the
+fourth recognition changed (`codex-skills-detail`, `copilot-instructions-inventory`,
+`copilot-instructions-detail`, `copilot-skills-detail`, `copilot-skills-list`,
+`claude-skills-list`, `claude-skills-detail`, `comparison-layout`, `discovery`,
+`instructions-inventory`, `skills-comparison`, `skill-metadata-comparison`,
+`skills-inventory`, `inventory-rows`, `hooks-comparison`, `hooks-inventory`, and the
 `global-*` admission and consent specs); the vitest cases through the gate scripts recorded
-under Release gate execution. The browser specs not reached by the Gemini CLI change were not
-re-run for this set. The contract suite reproduced the canonical digest and all 79 fixture
-digests in the same run.
+under Release gate execution. The browser specs not reached by this change were not re-run
+for this set. The contract suite reproduced the canonical digest and all 73 fixture digests
+in the same run.
 
 The set before it was `tests/fixtures/outcomes/manifest.json` **version 3**, canonical
 SHA-256 `1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`. Its 99 cases were executed on 2026-09-09 by

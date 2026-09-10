@@ -297,16 +297,22 @@ describe('evidence citations', () => {
   // the built artifact (see `src/shared/registries/evidence-types.ts`).
   const cited = [...behaviors, ...strategies, ...Object.values(INSPECTION_RULES)];
 
-  it('cites exactly the 65 source records the registries maintain', () => {
+  it('cites exactly the 62 source records the registries maintain', () => {
     // T1042: the final count. A source record is one page this repository has
     // reviewed, and the number of them is a fact about the maintained registry
     // rather than a derivation, so the literal is written here and a citation
     // added to or dropped from a record fails until the count is decided again.
+    //
+    // T004: 65 while the fourth vendor was another product, whose contract
+    // cited thirteen Google pages; this release cites ten — seven of the
+    // terminal's own and three shared ones — so the count fell by three. The
+    // literal was changed only after this assertion was watched failing
+    // against the shipped registry.
     const sourceIds = new Set<string>();
     for (const record of cited) {
       for (const citation of record.evidence) sourceIds.add(citation.sourceId);
     }
-    expect(sourceIds.size).toBe(65);
+    expect(sourceIds.size).toBe(62);
   });
 
   it('gives every maintained record at least one citation', () => {
@@ -896,13 +902,19 @@ describe('the pure User-only facts the consent exclusions need (T931)', () => {
 });
 
 describe('final registry counts and maintenance-only reach', () => {
-  it('ships exactly 126 behaviors, 100 rules, and 47 strategies', () => {
+  it('ships exactly 120 behaviors, 101 rules, and 46 strategies', () => {
     // T1042: the frozen sizes of the three registries. They are spelled out
     // rather than derived so that a record added without deciding to add one
     // fails here (AGENTS.md § freeze).
-    expect(behaviors).toHaveLength(126);
-    expect(Object.values(INSPECTION_RULES)).toHaveLength(100);
-    expect(strategies).toHaveLength(47);
+    //
+    // T004: every literal here moved with the fourth vendor. The replaced
+    // product declared twenty-one behaviors, eight strategies, and twenty
+    // rules; Antigravity CLI declares fifteen, seven, and twenty-one. All
+    // three were changed only after this assertion was watched failing
+    // against the shipped registry.
+    expect(behaviors).toHaveLength(120);
+    expect(Object.values(INSPECTION_RULES)).toHaveLength(101);
+    expect(strategies).toHaveLength(46);
   });
 
   it('keeps the maintenance fields off every wire DTO', () => {

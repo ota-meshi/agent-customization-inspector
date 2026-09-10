@@ -58,21 +58,12 @@ import {
   buildCopilotPluginFixture,
   buildUnifiedHookFixture,
   buildUnifiedPluginFixture,
-  buildGeminiAgentFixture,
-  buildGeminiCommandFixture,
-  buildGeminiContextFilenameFixture,
-  buildGeminiInvalidContextFilenameFixture,
-  buildGeminiInstructionFixture,
-  buildGeminiSameNameSkillFixture,
-  buildGeminiSettingsFixture,
-  buildGeminiSkillFixture,
-  buildGeminiStringContextFilenameFixture,
 } from '../fixtures/repositories/build-fixtures';
 import { CLAUDE_REPOSITORY_RULES } from '../../src/server/inspection/rules/claude';
 import { CODEX_REPOSITORY_RULES } from '../../src/server/inspection/rules/codex';
 import { configuredFallbackBasenamesOf } from '../../src/server/inspection/rules/instructions/codex';
 import { COPILOT_REPOSITORY_RULES } from '../../src/server/inspection/rules/copilot';
-import { GEMINI_REPOSITORY_RULES } from '../../src/server/inspection/rules/gemini';
+import { ANTIGRAVITY_REPOSITORY_RULES } from '../../src/server/inspection/rules/antigravity';
 import { REPOSITORY_INSPECTION_RULES, runSourceScan } from '../../src/server/inspection/scan';
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
 import { RecordingFileOpener } from '../fixtures/file-opener';
@@ -270,7 +261,11 @@ describe('the scan reads the retained raw selected root', () => {
     // shares the root `.agents` spelling, so its rule admits this same set
     // and adds no path of its own.
     expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
-      [...fixture.expectedSkillPaths, ...fixture.expectedCompanionPaths].sort(),
+      [
+        ...fixture.expectedSkillPaths,
+        ...fixture.expectedAntigravityOnlySkillPaths,
+        ...fixture.expectedCompanionPaths,
+      ].sort(),
     );
   });
 
@@ -435,7 +430,7 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
     // admitted `SKILL.md`, a sibling `README.md`, and `nested/SKILL.md` (a
     // near miss that is never admitted but is still a file beside the skill),
     // so both accompany it. `.agents/skills/` is a Copilot, a Codex, and a
-    // Gemini CLI location, so the one physical file is one definition per
+    // Antigravity CLI location, so the one physical file is one definition per
     // recognizing product — the ToolRecognition unit — in the closed tool
     // order, each carrying its own invocation name and the file's one census.
     const companionFiles = [
@@ -456,6 +451,9 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
           surfaces: ['copilot-vscode', 'copilot-cli', 'copilot-cloud'],
           parseStatus: 'parsed',
           diagnosticIds: [],
+          // All three read this file as its folder's entry point, so all
+          // three publish the folder's census (spec.md § FR-004).
+          rowUnit: 'directory',
           companionFiles,
         },
         {
@@ -465,15 +463,17 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
           surfaces: ['codex-local-clients'],
           parseStatus: 'parsed',
           diagnosticIds: [],
+          rowUnit: 'directory',
           companionFiles,
         },
         {
           sourceId: context.session.repositorySourceId,
           sourceRelativePath: '.agents/skills/greet/SKILL.md',
-          tool: 'gemini',
-          surfaces: ['gemini-cli'],
+          tool: 'antigravity',
+          surfaces: ['antigravity-cli'],
           parseStatus: 'parsed',
           diagnosticIds: [],
+          rowUnit: 'directory',
           companionFiles,
         },
       ],
@@ -532,7 +532,7 @@ describe('physical identity and mid-scan change (T055)', () => {
     ]);
     // One declared name, one row: the row's unit is the name, both files
     // declare it, and each file is one definition per recognizing product —
-    // Copilot, Codex, and Gemini CLI all read `.agents/skills/`.
+    // Copilot, Codex, and Antigravity CLI all read `.agents/skills/`.
     expect(snapshot.skills).toHaveLength(1);
     expect(snapshot.skills[0]!.definitions).toHaveLength(6);
     // Distinct file identities, so neither is a projection of the other.
@@ -701,26 +701,25 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
     ).toEqual([
       ['.agents/skills/deploy/SKILL.md', 'copilot'],
       ['.agents/skills/deploy/SKILL.md', 'codex'],
-      ['.agents/skills/deploy/SKILL.md', 'gemini'],
+      ['.agents/skills/deploy/SKILL.md', 'antigravity'],
       ['.agents/skills/ship/SKILL.md', 'copilot'],
       ['.agents/skills/ship/SKILL.md', 'codex'],
-      ['.agents/skills/ship/SKILL.md', 'gemini'],
+      ['.agents/skills/ship/SKILL.md', 'antigravity'],
     ]);
     // Two definitions resolve differently per product, so the row states each
     // statement instead of ordering them (FR-007). All three products face
     // the collision — `.agents/skills/` is a shared spelling — and each states
     // its own documented rule: Copilot's depends on the surface, Codex keeps
-    // both, and Gemini CLI documents a first-found selection in its source
-    // order (`gemini.skills.selection`; specs/002-gemini-cli-support FR-007).
+    // both, and Antigravity CLI documents a first-found selection in its source
+    // order (`antigravity.skills.selection`; specs/003-antigravity-cli-support § FR-004).
     expect(row!.sameNameResolutions).toEqual([
       { tool: 'copilot', resolution: 'surface-dependent' },
       { tool: 'codex', resolution: 'all-remain' },
-      { tool: 'gemini', resolution: 'select-first' },
     ]);
   });
 
   it('states a resolution only for a tool that recognizes the name twice', async () => {
-    // One authored name, two files: Codex and Gemini CLI read only the
+    // One authored name, two files: Codex and Antigravity CLI read only the
     // `.agents` one, so each has nothing to resolve between and states no
     // rule. Copilot reads both
     // spellings, so it alone faces the collision — and its statement is the
@@ -755,7 +754,7 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
         [
           ['.agents/skills/ship/SKILL.md', 'copilot'],
           ['.agents/skills/ship/SKILL.md', 'codex'],
-          ['.agents/skills/ship/SKILL.md', 'gemini'],
+          ['.agents/skills/ship/SKILL.md', 'antigravity'],
           ['.claude/skills/deploy/SKILL.md', 'copilot'],
           ['.claude/skills/deploy/SKILL.md', 'claude'],
         ],
@@ -764,7 +763,7 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
     const [releaseRow] = snapshot.skills;
     // Claude's clash is between skill directories anywhere in the generation,
     // and this one is the only `deploy` directory Claude reads, so it states
-    // nothing; Codex and Gemini CLI read one file each and state nothing.
+    // nothing; Codex and Antigravity CLI read one file each and state nothing.
     expect(releaseRow!.sameNameResolutions).toEqual([
       { tool: 'copilot', resolution: 'surface-dependent' },
     ]);
@@ -802,11 +801,11 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
     expect(snapshot.skills.map((entry) => entry.name)).toEqual(['anonymous', 'release', 'unnamed']);
     for (const entry of snapshot.skills) {
       // One file per row, one definition per recognizing product — Copilot,
-      // Codex, and Gemini CLI all read `.agents/skills/`.
+      // Codex, and Antigravity CLI all read `.agents/skills/`.
       expect(entry.definitions.map((definition) => definition.tool)).toEqual([
         'copilot',
         'codex',
-        'gemini',
+        'antigravity',
       ]);
     }
   });
@@ -832,6 +831,13 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
       'companionFiles',
       'diagnosticIds',
       'parseStatus',
+      // Whether this definition's row unit is its directory or the file
+      // itself, carried from the admitting rule: one vendor admits a skill in
+      // both shapes at one location, and what follows from the shape — the
+      // companion census, and whether the detail has a file panel at all — is
+      // read from this rather than re-derived from the path
+      // (spec.md § FR-004).
+      'rowUnit',
       // The Source holding the file — the other half of its identity, now
       // that a consented member can hold this kind too (FR-030).
       'sourceId',
@@ -873,7 +879,7 @@ describe('a failed extraction is separated from a nameless parse (FR-028)', () =
     expect(row!.definitions.map((definition) => definition.tool)).toEqual([
       'copilot',
       'codex',
-      'gemini',
+      'antigravity',
     ]);
     for (const definition of row!.definitions) {
       expect(definition.parseStatus).toBe('failed');
@@ -915,7 +921,7 @@ describe('a failed extraction is separated from a nameless parse (FR-028)', () =
       [
         ['copilot', 'failed'],
         ['codex', 'failed'],
-        ['gemini', 'failed'],
+        ['antigravity', 'failed'],
         ['copilot', 'failed'],
       ],
     );
@@ -1122,7 +1128,7 @@ describe('Claude skills join the inventory without changing Codex results (T128)
         .filter((one) => one.sourceRelativePath === path)
         .map((one) => one.tool)
         .sort();
-      expect(tools, path).toEqual(['codex', 'copilot', 'gemini']);
+      expect(tools, path).toEqual(['antigravity', 'codex', 'copilot']);
     }
   });
 
@@ -1137,7 +1143,11 @@ describe('Claude skills join the inventory without changing Codex results (T128)
     await scanOnce(context);
     const snapshot = context.session.snapshot();
     expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
-      [...fixture.expectedSkillPaths, ...fixture.expectedCompanionPaths].sort(),
+      [
+        ...fixture.expectedSkillPaths,
+        ...fixture.expectedAntigravityOnlySkillPaths,
+        ...fixture.expectedCompanionPaths,
+      ].sort(),
     );
     // A broken-link candidate is admitted but unreadable, so it publishes as a
     // diagnostic-only file with no recognition and appears in no definition.
@@ -1227,7 +1237,7 @@ describe('the Copilot recognition matrix (T156)', () => {
         .map((definition) => definition.tool)
         .sort();
     expect(toolsOf('.github/skills/ship/SKILL.md')).toEqual(['copilot']);
-    expect(toolsOf('.agents/skills/orbit/SKILL.md')).toEqual(['codex', 'copilot', 'gemini']);
+    expect(toolsOf('.agents/skills/orbit/SKILL.md')).toEqual(['antigravity', 'codex', 'copilot']);
     expect(toolsOf('.claude/skills/lander/SKILL.md')).toEqual(['claude', 'copilot']);
     expect(toolsOf('packages/api/.claude/skills/lander-nested/SKILL.md')).toEqual(['claude']);
 
@@ -1266,7 +1276,7 @@ describe('the Copilot recognition matrix (T156)', () => {
     ).toEqual([
       { tool: 'copilot', ruleIds: ['copilot.repo.skill'] },
       { tool: 'codex', ruleIds: ['codex.repo.skill'] },
-      { tool: 'gemini', ruleIds: ['gemini.repo.skill'] },
+      { tool: 'antigravity', ruleIds: ['antigravity.repo.skill.directory'] },
     ]);
   });
 
@@ -1352,7 +1362,7 @@ describe('publication authority and relationship targets', () => {
       ...COPILOT_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
       ...CLAUDE_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
       ...CODEX_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
-      ...GEMINI_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
+      ...ANTIGRAVITY_REPOSITORY_RULES.map((compiled) => compiled.rule.ruleId),
     ]);
     // Every opened path is either a file a shipped plan admitted or a file an
     // admitted skill's census bound. A path merely mentioned inside an authored
@@ -1363,7 +1373,11 @@ describe('publication authority and relationship targets', () => {
         .split(sep)
         .join('/'),
     );
-    const bounded = new Set([...fixture.expectedSkillPaths, ...fixture.expectedCompanionPaths]);
+    const bounded = new Set([
+      ...fixture.expectedSkillPaths,
+      ...fixture.expectedAntigravityOnlySkillPaths,
+      ...fixture.expectedCompanionPaths,
+    ]);
     for (const path of opened) {
       expect(bounded.has(path), `opened outside the shipped plans and censuses: ${path}`).toBe(
         true,
@@ -1612,7 +1626,7 @@ describe('the unified skill inventory (T180)', () => {
         .filter((definition) => definition.sourceRelativePath === path)
         .map((definition) => definition.tool)
         .sort();
-      expect(tools, path).toEqual(['codex', 'copilot', 'gemini']);
+      expect(tools, path).toEqual(['antigravity', 'codex', 'copilot']);
     }
     for (const path of recognizable(fixture.expectedClaudeSkillPaths)) {
       const tools = definitions
@@ -1653,14 +1667,19 @@ describe('the unified skill inventory (T180)', () => {
     const snapshot = context.session.snapshot();
     const byName = new Map(snapshot.skills.map((entry) => [entry.name, entry]));
 
-    // Two `.agents` files declare `alpha`, so Codex, Copilot, and Gemini CLI
-    // each face the collision among their own two definitions of that name.
+    // Two `.agents` files declare `alpha`, so Codex, Copilot, and Antigravity
+    // CLI each face the collision among their own two definitions of that
+    // name — but only two of them state what happens next. Antigravity CLI's
+    // one skills strategy carries `unknown-order` alone, and a group
+    // establishing only unresolved selection states no rule, so its
+    // recognitions join the row and add no statement to it
+    // (`skill-resolution.ts`; contracts/vendors/antigravity-cli.md § Known
+    // uncertainties item 2).
     const alpha = byName.get('alpha')!;
     expect(alpha.definitions).toHaveLength(6);
     expect(alpha.sameNameResolutions.map((resolution) => resolution.tool).sort()).toEqual([
       'codex',
       'copilot',
-      'gemini',
     ]);
 
     // `voyage` is declared by a `.claude` file and a `.github` file, and it is
@@ -1730,7 +1749,7 @@ describe('the unified skill inventory (T180)', () => {
     // the other rows' statements survive on their own evidence.
     expect(after.skills.map((entry) => entry.name)).toContain('alpha');
     expect(after.skills.find((entry) => entry.name === 'alpha')!.sameNameResolutions).toHaveLength(
-      3,
+      2,
     );
   });
 
@@ -1818,7 +1837,7 @@ describe('the unified skill inventory (T180)', () => {
               fixture.expectedCodexSkillPaths.includes(path),
               fixture.expectedClaudeSkillPaths.includes(path),
               fixture.expectedCopilotSkillPaths.includes(path),
-              fixture.expectedGeminiSkillPaths.includes(path),
+              fixture.expectedAntigravitySkillPaths.includes(path),
             ].filter(Boolean).length;
       expect(definitionPaths.filter((definitionPath) => definitionPath === path).length, path).toBe(
         expectedCount,
@@ -2011,8 +2030,8 @@ const COPILOT_ALL_SURFACES = {
 const CODEX_ONLY = { tool: 'codex', surfaces: ['codex-local-clients'] } as const;
 /** Claude Code's one surface; see {@link COPILOT_ALL_SURFACES}. */
 const CLAUDE_ONLY = { tool: 'claude', surfaces: ['claude-cli-and-ide-clients'] } as const;
-/** Gemini CLI's one surface; see {@link COPILOT_ALL_SURFACES}. */
-const GEMINI_ONLY = { tool: 'gemini', surfaces: ['gemini-cli'] } as const;
+/** Antigravity CLI's one surface; see {@link COPILOT_ALL_SURFACES}. */
+const ANTIGRAVITY_ONLY = { tool: 'antigravity', surfaces: ['antigravity-cli'] } as const;
 /**
  * Copilot's CLI alone — what a file admitted by a CLI-context rule names, and
  * the whole point of splitting one documented filename into two rules.
@@ -2047,7 +2066,10 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       {
         applicabilityRange: '**',
         files: [
-          { sourceRelativePath: 'AGENTS.md', recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY] },
+          {
+            sourceRelativePath: 'AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+          },
           { sourceRelativePath: 'AGENTS.override.md', recognitions: [CODEX_ONLY] },
           { sourceRelativePath: 'GUIDE.codex.md', recognitions: [CODEX_ONLY] },
           { sourceRelativePath: 'TEAM_GUIDE.md', recognitions: [CODEX_ONLY] },
@@ -2240,7 +2262,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
         ],
       },
@@ -2391,7 +2413,10 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       {
         applicabilityRange: '**',
         files: [
-          { sourceRelativePath: 'AGENTS.md', recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY] },
+          {
+            sourceRelativePath: 'AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+          },
           { sourceRelativePath: 'TEAM_GUIDE.md', recognitions: [CODEX_ONLY] },
         ],
       },
@@ -2855,7 +2880,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     // configuration read resolves real paths and applies the same VCS
     // exclusion the walk applies, so a config carrier whose real location is
     // VCS-internal derives no plans and publishes no candidate
-    // (rules/codex.ts § readConfigurationSeed).
+    // (rules/instructions/codex.ts § readConfigurationSeed).
     const root = createRepositoryFixtureRoot('inspector-scan-vcs-seed');
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
     mkdirSync(join(root, '.git'), { recursive: true });
@@ -2908,7 +2933,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
         ],
       },
@@ -2950,7 +2975,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       'TEAM_GUIDE.md',
     ]);
     // The shared `.agents` spelling makes the skill a Codex, Copilot, and
-    // Gemini CLI recognition; none lands in the instructions inventory, and
+    // Antigravity CLI recognition; none lands in the instructions inventory, and
     // the instruction files land in no skill row.
     expect(snapshot.skills.map((entry) => entry.name)).toEqual(['greet']);
     expect(
@@ -3070,7 +3095,7 @@ describe('the committed Claude instructions inventory (T229)', () => {
           },
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
           {
             sourceRelativePath: 'CLAUDE.local.md',
@@ -3213,18 +3238,22 @@ describe('the committed Copilot instructions inventory (T248)', () => {
             sourceRelativePath: '.github/copilot-instructions.md',
             recognitions: [COPILOT_ALL_SURFACES],
           },
-          { sourceRelativePath: 'AGENTS.md', recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY] },
+          {
+            sourceRelativePath: 'AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+          },
           { sourceRelativePath: 'CLAUDE.local.md', recognitions: [CLAUDE_ONLY] },
           { sourceRelativePath: 'CLAUDE.md', recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY] },
           {
             // VS Code documents no `GEMINI.md`, so the editor is absent rather
             // than assumed from the root alternative beside it (T256). The
-            // file is Gemini CLI's own default context file too — one
-            // candidate, two products (specs/002-gemini-cli-support FR-013).
+            // file is one of the two context files Antigravity CLI reads at
+            // the repository root too — one candidate, two products
+            // (specs/003-antigravity-cli-support FR-002).
             sourceRelativePath: 'GEMINI.md',
             recognitions: [
               { tool: 'copilot', surfaces: ['copilot-cli', 'copilot-cloud'] },
-              GEMINI_ONLY,
+              ANTIGRAVITY_ONLY,
             ],
           },
         ],
@@ -3241,10 +3270,10 @@ describe('the committed Copilot instructions inventory (T248)', () => {
             recognitions: [COPILOT_ALL_SURFACES],
           },
           { sourceRelativePath: 'packages/api/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
-          // The nested `GEMINI.md` is a Copilot near miss and a Gemini CLI
-          // row at once: Copilot documents the root alternative only, while
-          // Gemini CLI reads its context file at every depth.
-          { sourceRelativePath: 'packages/api/GEMINI.md', recognitions: [GEMINI_ONLY] },
+          // The nested `GEMINI.md` is nobody's: Copilot documents the root
+          // alternative only, and Antigravity CLI's rule is anchored at the
+          // repository root because the migration page names the active
+          // directory's file and states no depth (spec.md § FR-007).
         ],
       },
       {
@@ -3301,7 +3330,7 @@ describe('the committed Copilot instructions inventory (T248)', () => {
           ...Object.values(fixture.expectedCopilotInstructionPaths).flat(),
           ...fixture.expectedClaudeInstructionPaths,
           ...fixture.expectedCodexInstructionPaths,
-          ...fixture.expectedGeminiInstructionPaths,
+          ...fixture.expectedAntigravityInstructionPaths,
           // A Claude rule file is read too: no Copilot rule reaches
           // `.claude/rules/`, and `claude.repo.rules` admits it.
           ...fixture.expectedClaudeRulePaths,
@@ -3312,7 +3341,7 @@ describe('the committed Copilot instructions inventory (T248)', () => {
       if (
         fixture.expectedClaudeInstructionPaths.includes(nearMiss) ||
         fixture.expectedCodexInstructionPaths.includes(nearMiss) ||
-        fixture.expectedGeminiInstructionPaths.includes(nearMiss) ||
+        fixture.expectedAntigravityInstructionPaths.includes(nearMiss) ||
         fixture.expectedClaudeRulePaths.includes(nearMiss)
       ) {
         // Another product admits it; what the Copilot near-miss list states is
@@ -3941,18 +3970,24 @@ describe('the unified instructions inventory (T270)', () => {
       },
       ...(fixture.injectionUnreadable === true
         ? []
-        : [{ sourceRelativePath: 'AGENTS.md', recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY] }]),
+        : [
+            {
+              sourceRelativePath: 'AGENTS.md',
+              recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            },
+          ]),
       { sourceRelativePath: 'AGENTS.override.md', recognitions: [CODEX_ONLY] },
       { sourceRelativePath: 'CLAUDE.local.md', recognitions: [CLAUDE_ONLY] },
       { sourceRelativePath: 'CLAUDE.md', recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY] },
       {
         // VS Code documents no `GEMINI.md`, so the editor is absent rather
-        // than assumed from the root alternative beside it (T256); Gemini
-        // CLI's default context file is this same root file (FR-013).
+        // than assumed from the root alternative beside it (T256); Antigravity
+        // CLI reads this same root file
+        // (specs/003-antigravity-cli-support FR-002).
         sourceRelativePath: 'GEMINI.md',
         recognitions: [
           { tool: 'copilot', surfaces: ['copilot-cli', 'copilot-cloud'] },
-          GEMINI_ONLY,
+          ANTIGRAVITY_ONLY,
         ],
       },
       { sourceRelativePath: 'GUIDE.codex.md', recognitions: [CODEX_ONLY] },
@@ -3984,9 +4019,7 @@ describe('the unified instructions inventory (T270)', () => {
           // entry name matched at the Repository root, and no filename
           // inference promotes a nested file (Phase 21).
           { sourceRelativePath: 'packages/api/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
-          // Gemini CLI's alone: its context file is read at every depth, and
-          // Copilot documents the root alternative only (FR-013).
-          { sourceRelativePath: 'packages/api/GEMINI.md', recognitions: [GEMINI_ONLY] },
+          // The nested `GEMINI.md` is nobody's, for the reason above.
         ],
       },
       {
@@ -5070,17 +5103,20 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
     // The rule tree's readable files: the dangling link the fixture also
     // writes is admitted but never read, so it gains no recognition and
     // belongs to no kind (FR-028).
-    // Two kinds, because the two vendors' same-named files are different
-    // things: Claude's `.claude/rules/**` are modular instructions, and
-    // Codex's `.codex/rules/*.rules` decide which commands may run outside
-    // the sandbox. A dangling link is admitted but never read, so it gains no
-    // recognition and belongs to no kind (FR-028).
+    // Three vendors' rule files in one list, because the same-named files are
+    // different things: Claude's `.claude/rules/**` are modular instructions,
+    // Codex's `.codex/rules/*.rules` decide which commands may run outside the
+    // sandbox — those are the permissions kind below — and Antigravity CLI's
+    // `.agents/rules/` carry an activation the row shows and never evaluates
+    // (spec.md § FR-016). A dangling link is admitted but never read, so it
+    // gains no recognition and belongs to no kind (FR-028).
     expect(snapshot.rules.map((entry) => entry.sourceRelativePath)).toEqual(
       [
         ...fixture.claudeRuleFixture.expectedRulePaths.filter(
           (path) => !path.endsWith('broken-link.md'),
         ),
         ...fixture.instructionFixture.expectedClaudeRulePaths,
+        ...fixture.antigravityRuleFixture.candidatePaths,
       ].sort(),
     );
     // Both vendors' policies in one list: Codex's whole-document `.rules`
@@ -5168,55 +5204,129 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
     ]);
   });
 
-  it('publishes every Gemini CLI kind from the same tree beside the other products', async () => {
-    const fixture = buildAllCustomizationKindFixture('inspector-scan-all-kinds-gemini');
+  it('publishes every Antigravity CLI kind from the same tree beside the other products', async () => {
+    const fixture = buildAllCustomizationKindFixture('inspector-scan-all-kinds-antigravity');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
     await scanOnce(context);
     const snapshot = context.session.snapshot();
 
-    // The composition, not the matrices: each Gemini CLI kind reaches its
-    // inventory from the one merged tree (specs/002-gemini-cli-support T021).
+    // The composition, not the matrices: each Antigravity CLI kind reaches its
+    // inventory from the one merged tree (T023).
+    //
+    // The root context pair first, each carrying this vendor's recognition
+    // beside the ones it already had — `GEMINI.md` Copilot's, `AGENTS.md`
+    // Copilot's and Codex's — in the order the vendor catalogs are composed
+    // (spec.md § FR-007).
     const rootRow = snapshot.instructions.find((entry) => entry.applicabilityRange === '**')!;
-    expect(
-      rootRow.files
-        .find((file) => file.sourceRelativePath === 'GEMINI.md')!
-        .recognitions.map((recognition) => recognition.tool),
-    ).toEqual(['copilot', 'gemini']);
-    expect(snapshot.settings.map((entry) => entry.sourceRelativePath)).toContain(
-      fixture.geminiSettingsFixture.carrierPath,
-    );
-    for (const name of fixture.geminiSettingsFixture.expectedServerNames) {
-      expect(snapshot.mcp.map((entry) => entry.name)).toContain(name);
+    for (const [path, tools] of [
+      ['GEMINI.md', ['copilot', 'antigravity']],
+      ['AGENTS.md', ['copilot', 'codex', 'antigravity']],
+    ] as const) {
+      expect(
+        rootRow.files
+          .find((file) => file.sourceRelativePath === path)!
+          .recognitions.map((recognition) => recognition.tool),
+        path,
+      ).toEqual(tools);
     }
-    for (const event of fixture.geminiSettingsFixture.expectedHookEvents) {
+
+    // The MCP profile's declarations, each named by its authored key.
+    for (const name of ['tickets', 'internal-docs', 'legacy-indexer']) {
+      expect(
+        snapshot.mcp.map((entry) => entry.name),
+        name,
+      ).toContain(name);
+    }
+
+    // The standalone hook carrier: two named hooks declare `PostToolUse`, and
+    // the row lists the carrier once however many of its blocks reach that
+    // event — the row unit is the event and its lines are one per carrier
+    // (contracts/vendors/antigravity-cli.md § Known uncertainties item 9).
+    for (const event of ['PostToolUse', 'PreToolUse']) {
       expect(
         snapshot.hooks
           .find((entry) => entry.event === event)
           ?.declarations.map((declaration) => declaration.sourceRelativePath),
         event,
-      ).toContain(fixture.geminiSettingsFixture.carrierPath);
+      ).toContain('.agents/hooks.json');
     }
-    for (const name of fixture.geminiCommandFixture.expectedCommandNames) {
-      expect(snapshot.prompts.map((entry) => entry.name)).toContain(name);
+    expect(
+      snapshot.hooks
+        .find((entry) => entry.event === 'PostToolUse')!
+        .declarations.filter(
+          (declaration) => declaration.sourceRelativePath === '.agents/hooks.json',
+        ),
+    ).toHaveLength(1);
+
+    // The workspace rules, one row per file, and the superseded spelling among
+    // them (spec.md § FR-016).
+    const rulePaths = snapshot.rules.map((entry) => entry.sourceRelativePath);
+    for (const path of ['.agents/rules/house-style.md', '.agent/rules/legacy-imports.md']) {
+      expect(rulePaths, path).toContain(path);
     }
-    // The alias file's own three definitions; the merged tree also holds the
-    // Claude hook tree's `.claude/skills/release-notes`, which is the same
-    // name's other file on the same row.
+
+    // A skill folder in the shared `.agents/skills/` carries all three
+    // products that read the shape, and the flat file beside it carries this
+    // vendor alone (spec.md § FR-004).
     expect(
       snapshot.skills
-        .find((entry) => entry.name === 'release-notes')!
+        .find((entry) => entry.name === 'changelog')!
         .definitions.filter(
-          (definition) =>
-            definition.sourceRelativePath === fixture.geminiSkillFixture.sharedSkillPath,
+          (definition) => definition.sourceRelativePath === '.agents/skills/changelog/SKILL.md',
         )
         .map((definition) => definition.tool),
-    ).toEqual(['copilot', 'codex', 'gemini']);
+    ).toEqual(['copilot', 'codex', 'antigravity']);
     expect(
-      snapshot.agents
-        .find((entry) => entry.name === 'reviewer')!
+      snapshot.skills
+        .find((entry) => entry.name === 'x')!
         .definitions.map((definition) => definition.tool),
-    ).toContain('gemini');
+    ).toEqual(['antigravity']);
+
+    // A name spelled in both shapes is one row carrying both definitions —
+    // one per file per recognizing product — and states no precedence between
+    // them, because no cited page says which the terminal prefers
+    // (spec.md § FR-004; contracts/vendors/antigravity-cli.md § Known
+    // uncertainties item 6). The row unit travels with each definition, so the
+    // two shapes stay distinguishable inside the one row (T053, T055).
+    const deploy = snapshot.skills.find((entry) => entry.name === 'deploy')!;
+    expect(
+      deploy.definitions.map((definition) => [
+        definition.sourceRelativePath,
+        definition.tool,
+        definition.rowUnit,
+      ]),
+    ).toEqual([
+      ['.agents/skills/deploy.md', 'antigravity', 'file'],
+      ['.agents/skills/deploy/SKILL.md', 'copilot', 'directory'],
+      ['.agents/skills/deploy/SKILL.md', 'codex', 'directory'],
+      ['.agents/skills/deploy/SKILL.md', 'antigravity', 'directory'],
+    ]);
+    expect(deploy.sameNameResolutions.map((resolution) => resolution.tool)).not.toContain(
+      'antigravity',
+    );
+
+    // And both custom-agent shapes.
+    for (const name of ['reviewer', 'release-captain']) {
+      expect(
+        snapshot.agents.find((entry) => entry.name === name)!.definitions.map((one) => one.tool),
+        name,
+      ).toContain('antigravity');
+    }
+
+    // A context file below the root is not this vendor's: the migration page
+    // states the workspace pair at the active directory and no depth under it,
+    // so `packages/api/AGENTS.md` reaches the inventory as Copilot's alone and
+    // `packages/api/GEMINI.md`, which no other product documents there,
+    // reaches it not at all (contracts/vendors/antigravity-cli.md § Known
+    // uncertainties item 1).
+    const nestedAgents = snapshot.instructions
+      .flatMap((entry) => entry.files)
+      .find((file) => file.sourceRelativePath === 'packages/api/AGENTS.md');
+    expect(nestedAgents?.recognitions.map((recognition) => recognition.tool)).toEqual(['copilot']);
+    expect(
+      snapshot.files.some((file) => file.sourceRelativePath === 'packages/api/GEMINI.md'),
+    ).toBe(false);
   });
 });
 
@@ -5394,7 +5504,7 @@ describe('the unified custom-agent inventory across all four products (T568)', (
     const tools = new Set(
       snapshot.agents.flatMap((entry) => entry.definitions.map((definition) => definition.tool)),
     );
-    expect([...tools].toSorted()).toEqual(['claude', 'codex', 'copilot', 'gemini']);
+    expect([...tools].toSorted()).toEqual(['antigravity', 'claude', 'codex', 'copilot']);
     // A definition is one recognition — one per `(file, tool)` — so no pair
     // appears twice however many rules admitted the file.
     const pairs = snapshot.agents.flatMap((entry) =>
@@ -5764,687 +5874,5 @@ describe('one MCP carrier two products read differently (T280)', () => {
         sourceRelativePath: '.mcp.json',
       }),
     ]);
-  });
-});
-
-describe('the committed Gemini CLI context-file inventory (specs/002 T021)', () => {
-  it('lists the default GEMINI.md at every depth, the root one under two products', async () => {
-    const fixture = buildGeminiInstructionFixture('inspector-scan-gemini-instructions');
-    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
-    const context = bootstrap(fixture.root);
-    vi.clearAllMocks();
-    await scanOnce(context);
-    const snapshot = context.session.snapshot();
-
-    // One row per applicability range, derived from each file's own path: the
-    // root file governs everything and is Copilot's root alternative as well
-    // as Gemini CLI's default context file — one candidate, two recognitions
-    // (FR-013) — while a nested one governs its subtree and is Gemini CLI's
-    // alone, because Copilot documents the root alternative only.
-    expectRepositoryInstructionSources(snapshot);
-    expect(normalizedInstructions(snapshot)).toEqual([
-      {
-        applicabilityRange: '**',
-        files: [
-          {
-            sourceRelativePath: 'GEMINI.md',
-            recognitions: [
-              { tool: 'copilot', surfaces: ['copilot-cli', 'copilot-cloud'] },
-              GEMINI_ONLY,
-            ],
-          },
-        ],
-      },
-      {
-        applicabilityRange: 'docs/**',
-        files: [{ sourceRelativePath: 'docs/GEMINI.md', recognitions: [GEMINI_ONLY] }],
-      },
-      {
-        applicabilityRange: 'packages/api/**',
-        files: [{ sourceRelativePath: 'packages/api/GEMINI.md', recognitions: [GEMINI_ONLY] }],
-      },
-    ]);
-    // Nothing else is admitted: the ignore file, the extension manifest, the
-    // spelling variants, the installed copy, and the nested settings carrier
-    // whose declared `context.fileName` names a root file — which stays
-    // unlisted, because only the root carrier is configuration (FR-004,
-    // FR-016).
-    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
-      fixture.expectedInstructionPaths,
-    );
-    const opened = vi
-      .mocked(fsIo.readFile)
-      .mock.calls.map((call) =>
-        String(call[0])
-          .slice(fixture.root.length + 1)
-          .split(sep)
-          .join('/'),
-      )
-      .sort();
-    expect(opened).toEqual(fixture.expectedInstructionPaths);
-    expect(snapshot.diagnostics).toEqual([]);
-    // The authored credential, the environment reference, and the import line
-    // stay out of every inventory summary (FR-027) and reach the file's own
-    // detail exactly as written, resolved against nothing (FR-025, FR-026).
-    const serialized = JSON.stringify(snapshot);
-    expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
-    expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
-    const detail = context.session.fileDetail(
-      fixture.secretInstructionPath,
-      'repository',
-      'instructions',
-    );
-    if (detail?.kind !== 'instructions' || detail.file.encoding !== 'utf-8') {
-      throw new Error('expected the readable root context-file detail');
-    }
-    expect(detail.file.sourceText).toContain(FIXTURE_SECRET_LITERAL);
-    expect(detail.file.sourceText).toContain('@./docs/style.md');
-    expect(detail.presentation?.bodyText).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
-  });
-});
-
-describe('the committed Gemini CLI settings carrier (specs/002 T021)', () => {
-  it('publishes the one JSONC document under its settings, MCP, and hook rows from one read', async () => {
-    const fixture = buildGeminiSettingsFixture('inspector-scan-gemini-settings');
-    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
-    const context = bootstrap(fixture.root);
-    vi.clearAllMocks();
-    const { publication } = await scanOnce(context);
-    if (publication.kind !== 'publishable') {
-      throw new Error('expected a publishable outcome');
-    }
-    const snapshot = context.session.snapshot();
-
-    // The document is the settings row — the kind's unit is the file — and
-    // its comments and trailing comma parse as the vendor's own loader parses
-    // them, so the generation is complete (FR-009; research.md § 6).
-    expect(publication.outcome).toBe('complete');
-    expect(snapshot.diagnostics).toEqual([]);
-    expect(snapshot.settings).toEqual([
-      {
-        sourceId: context.session.repositorySourceId,
-        sourceRelativePath: fixture.carrierPath,
-        recognitions: [{ tool: 'gemini', surfaces: ['gemini-cli'] }],
-      },
-    ]);
-    // One MCP row per declared server name, each declaration the carrier's.
-    expect(snapshot.mcp.map((entry) => entry.name)).toEqual(fixture.expectedServerNames);
-    for (const entry of snapshot.mcp) {
-      expect(entry.declarations, `${entry.name}`).toEqual([
-        {
-          sourceId: context.session.repositorySourceId,
-          sourceRelativePath: fixture.carrierPath,
-          tool: 'gemini',
-          surfaces: ['gemini-cli'],
-          parseStatus: 'parsed',
-          diagnosticIds: [],
-        },
-      ]);
-    }
-    // One hook row per declared event, each a contained declaration of the
-    // same document: this vendor declares hooks nowhere but in its settings.
-    expect(snapshot.hooks.map((entry) => entry.event)).toEqual(fixture.expectedHookEvents);
-    for (const entry of snapshot.hooks) {
-      expect(entry.declarations, `${entry.event}`).toEqual([
-        {
-          sourceId: context.session.repositorySourceId,
-          sourceRelativePath: fixture.carrierPath,
-          tool: 'gemini',
-          carrier: 'contained',
-          surfaces: ['gemini-cli'],
-          parseStatus: 'parsed',
-          diagnosticIds: [],
-        },
-      ]);
-    }
-    // Three recognitions, one physical file, one read; nothing beside it is
-    // admitted or opened — the nested layer, the named hook script, the
-    // environment file, and the workspace policy tier included (FR-002,
-    // FR-019).
-    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual([fixture.carrierPath]);
-    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
-      String(call[0])
-        .slice(fixture.root.length + 1)
-        .split(sep)
-        .join('/'),
-    );
-    expect(opened).toEqual([fixture.carrierPath]);
-    // The credential in a server's environment and the reference in a header
-    // reach no row and resolve nowhere; the detail serves the document whole,
-    // comment included (FR-025 through FR-027).
-    const serialized = JSON.stringify({
-      settings: snapshot.settings,
-      mcp: snapshot.mcp,
-      hooks: snapshot.hooks,
-    });
-    expect(serialized).not.toContain(FIXTURE_SECRET_LITERAL);
-    expect(serialized).not.toContain(FIXTURE_ENVIRONMENT_REFERENCE);
-    const detail = context.session.fileDetail(fixture.carrierPath, 'repository', 'settings/config');
-    if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
-      throw new Error('expected the readable settings detail');
-    }
-    expect(detail.file.sourceText).toContain('// Project settings;');
-    expect(detail.file.sourceText).toContain(FIXTURE_SECRET_LITERAL);
-  });
-
-  it('keeps a document declaring no servers and no hooks as a settings row and the serverless MCP row', async () => {
-    // A settings file that merely may carry hooks is not a hook finding when
-    // it carries none (the Claude precedent), while a carrier that may
-    // declare servers and declares none is the no-name MCP row that says so
-    // (the Codex precedent): the two kinds answer the same absence
-    // differently, and this vendor's carrier follows both (FR-009).
-    const root = createRepositoryFixtureRoot('inspector-scan-gemini-settings-bare');
-    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
-    mkdirSync(join(root, '.gemini'), { recursive: true });
-    writeFileSync(join(root, '.gemini/settings.json'), '{ "ui": { "theme": "GitHub" } }\n', 'utf8');
-    const context = bootstrap(root);
-    await scanOnce(context);
-    const snapshot = context.session.snapshot();
-    expect(snapshot.settings.map((entry) => entry.sourceRelativePath)).toEqual([
-      '.gemini/settings.json',
-    ]);
-    expect(snapshot.mcp).toEqual([
-      {
-        name: null,
-        declarations: [
-          {
-            sourceId: context.session.repositorySourceId,
-            sourceRelativePath: '.gemini/settings.json',
-            tool: 'gemini',
-            surfaces: ['gemini-cli'],
-            parseStatus: 'parsed',
-            diagnosticIds: [],
-          },
-        ],
-      },
-    ]);
-    expect(snapshot.hooks).toEqual([]);
-  });
-
-  it('fails the MCP and hook readings of an unparseable document while the settings row stands', async () => {
-    const root = createRepositoryFixtureRoot('inspector-scan-gemini-settings-broken');
-    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
-    mkdirSync(join(root, '.gemini'), { recursive: true });
-    writeFileSync(join(root, '.gemini/settings.json'), '{ "mcpServers": { \n', 'utf8');
-    const context = bootstrap(root);
-    const { publication } = await scanOnce(context);
-    if (publication.kind !== 'publishable') {
-      throw new Error('expected a publishable outcome');
-    }
-    const snapshot = context.session.snapshot();
-    // One record per (file, kind) that reads something out: the servers and
-    // the hooks, each failed whole; the settings row reads nothing out and
-    // stands (FR-028).
-    expect(publication.outcome).toBe('partial');
-    expect(snapshot.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
-      'recognition-parse-failed',
-      'recognition-parse-failed',
-    ]);
-    expect(snapshot.settings.map((entry) => entry.sourceRelativePath)).toEqual([
-      '.gemini/settings.json',
-    ]);
-    expect(snapshot.mcp.map((entry) => [entry.name, entry.declarations[0]!.parseStatus])).toEqual([
-      [null, 'failed'],
-    ]);
-    expect(
-      snapshot.hooks.map((entry) => [entry.event, entry.declarations[0]!.parseStatus]),
-    ).toEqual([[null, 'failed']]);
-    // The document still reaches its own detail whole.
-    const detail = context.session.fileDetail(
-      '.gemini/settings.json',
-      'repository',
-      'settings/config',
-    );
-    if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
-      throw new Error('expected the readable settings detail');
-    }
-    expect(detail.file.sourceText).toBe('{ "mcpServers": { \n');
-  });
-});
-
-describe('the committed Gemini CLI command inventory (specs/002 T021)', () => {
-  it('names each row by its colon-joined path and keeps a malformed file on its own row', async () => {
-    const fixture = buildGeminiCommandFixture('inspector-scan-gemini-commands');
-    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
-    const context = bootstrap(fixture.root);
-    const { publication } = await scanOnce(context);
-    if (publication.kind !== 'publishable') {
-      throw new Error('expected a publishable outcome');
-    }
-    const snapshot = context.session.snapshot();
-
-    // One row per invocation name, in name order: a direct child is its file
-    // name, and a nested file carries its directories as the namespace
-    // (FR-006).
-    expect(snapshot.prompts.map((entry) => entry.name)).toEqual(fixture.expectedCommandNames);
-    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
-      fixture.expectedCommandPaths,
-    );
-    const definitionOf = (name: string) =>
-      snapshot.prompts.find((entry) => entry.name === name)!.definitions[0]!;
-    expect(definitionOf('git:commit')).toEqual({
-      sourceId: context.session.repositorySourceId,
-      sourceRelativePath: fixture.shellBlockCommandPath,
-      tool: 'gemini',
-      surfaces: ['gemini-cli'],
-      diagnosticIds: [],
-    });
-    // The malformed file keeps the row its path names and carries the one
-    // file-confined diagnostic, which makes the generation partial (FR-006,
-    // FR-028).
-    expect(publication.outcome).toBe('partial');
-    expect(definitionOf('broken').diagnosticIds).toHaveLength(1);
-    expect(snapshot.diagnostics).toEqual([
-      expect.objectContaining({
-        code: 'recognition-parse-failed',
-        sourceRelativePath: fixture.malformedCommandPath,
-      }),
-    ]);
-    // The detail splits the prompt from the other declarations, with the
-    // shell block as the characters that were written, run by nothing
-    // (FR-006, FR-019); the file tab serves the TOML as written.
-    const detail = context.session.fileDetail(
-      fixture.shellBlockCommandPath,
-      'repository',
-      'prompt/command',
-    );
-    if (detail?.kind !== 'prompt/command' || detail.file.encoding !== 'utf-8') {
-      throw new Error('expected the readable command detail');
-    }
-    expect(detail.presentation?.metadata.map((entry) => entry.key)).toEqual(['description']);
-    expect(detail.presentation?.promptText).toContain('!{git diff --cached}');
-    expect(detail.file.sourceText).toContain('prompt = """');
-    const broken = context.session.fileDetail(
-      fixture.malformedCommandPath,
-      'repository',
-      'prompt/command',
-    );
-    expect(broken).toMatchObject({ kind: 'prompt/command', presentation: null });
-  });
-});
-
-describe('the committed Gemini CLI skill inventory (specs/002 T021)', () => {
-  it('lists .gemini/skills/ and the .agents/skills/ alias, the alias carrying three products', async () => {
-    const fixture = buildGeminiSkillFixture('inspector-scan-gemini-skills');
-    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
-    const context = bootstrap(fixture.root);
-    await scanOnce(context);
-    const snapshot = context.session.snapshot();
-
-    // One row per resolved name: the declared `name` where one is declared —
-    // `design-api` cannot have come from its `api-design/` directory — and the
-    // directory otherwise, the malformed file included (FR-007, FR-028).
-    expect(snapshot.skills.map((entry) => entry.name)).toEqual(fixture.expectedSkillNames);
-    const definitionsOf = (name: string) =>
-      snapshot.skills.find((entry) => entry.name === name)!.definitions;
-    // The alias location is Codex's and Copilot's too: one file, one read,
-    // three products' definitions in the closed tool order (FR-013).
-    expect(
-      definitionsOf('release-notes').map((definition) => [
-        definition.sourceRelativePath,
-        definition.tool,
-      ]),
-    ).toEqual([
-      [fixture.sharedSkillPath, 'copilot'],
-      [fixture.sharedSkillPath, 'codex'],
-      [fixture.sharedSkillPath, 'gemini'],
-    ]);
-    // A `.gemini/skills/` file is this vendor's alone, and its census lists
-    // the script and the reference beside it.
-    expect(definitionsOf('changelog')).toEqual([
-      {
-        sourceId: context.session.repositorySourceId,
-        sourceRelativePath: '.gemini/skills/changelog/SKILL.md',
-        tool: 'gemini',
-        surfaces: ['gemini-cli'],
-        parseStatus: 'parsed',
-        diagnosticIds: [],
-        companionFiles: fixture.expectedCompanionPaths,
-      },
-    ]);
-    expect(definitionsOf('broken')[0]).toMatchObject({ tool: 'gemini', parseStatus: 'failed' });
-    // The published set is the admitted skills plus their companions; every
-    // near miss — the nested `.gemini/skills/`, the missing name segment, the
-    // skill directory two levels deep, the singular directory, the wrong-case
-    // leaf — is absent (SC-002, QR-002).
-    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
-      [...fixture.expectedSkillPaths, ...fixture.expectedCompanionPaths].sort(),
-    );
-  });
-});
-
-describe('the committed Gemini CLI sub-agent inventory (specs/002 T021)', () => {
-  it('groups the rows by declared name and closes the list with the unnamed files', async () => {
-    const fixture = buildGeminiAgentFixture('inspector-scan-gemini-agents');
-    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
-    const context = bootstrap(fixture.root);
-    const { publication } = await scanOnce(context);
-    if (publication.kind !== 'publishable') {
-      throw new Error('expected a publishable outcome');
-    }
-    const snapshot = context.session.snapshot();
-
-    // One row per declared name, in name order, then the one null-named row
-    // (FR-008; data-model.md § Inventory unit). The two files declaring
-    // `docs_researcher` are two definitions of one row.
-    expect(snapshot.agents.map((entry) => entry.name)).toEqual([
-      ...fixture.expectedAgentNames,
-      null,
-    ]);
-    const shared = snapshot.agents.find((entry) => entry.name === 'docs_researcher')!;
-    expect(shared.definitions.map((definition) => definition.sourceRelativePath)).toEqual([
-      '.gemini/agents/docs-researcher-2.md',
-      '.gemini/agents/docs-researcher.md',
-    ]);
-    expect(shared.definitions[0]).toEqual({
-      sourceId: context.session.repositorySourceId,
-      sourceRelativePath: '.gemini/agents/docs-researcher-2.md',
-      tool: 'gemini',
-      surfaces: ['gemini-cli'],
-      parseStatus: 'parsed',
-      diagnosticIds: [],
-    });
-    // The null-named row: a file declaring no name, one declaring a list, and
-    // the malformed one whose name is unknown rather than absent (FR-028).
-    const unnamed = snapshot.agents.at(-1)!;
-    expect(unnamed.definitions.map((definition) => definition.sourceRelativePath)).toEqual([
-      ...fixture.unnamedAgentPaths,
-    ]);
-    expect(publication.outcome).toBe('partial');
-    expect(snapshot.diagnostics).toEqual([
-      expect.objectContaining({
-        code: 'recognition-parse-failed',
-        sourceRelativePath: fixture.malformedAgentPath,
-      }),
-    ]);
-    // Exactly the direct children are admitted: the nested file, the
-    // non-Markdown siblings, the singular directory, and the nested agents
-    // directory are near misses.
-    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
-      fixture.expectedAgentPaths,
-    );
-    // A declared `mcpServers` block is the agent's metadata and no MCP row
-    // (data-model.md § Inventory unit); the credential and the reference in
-    // it reach the detail exactly as written (FR-025, FR-026).
-    expect(snapshot.mcp).toEqual([]);
-    const detail = context.session.fileDetail(fixture.mcpSpellingAgentPath, 'repository', 'agent');
-    if (detail?.kind !== 'agent' || detail.presentation === null) {
-      throw new Error('expected a parsed sub-agent detail');
-    }
-    expect(detail.presentation.metadata.map((entry) => entry.key)).toEqual([
-      'name',
-      'description',
-      'mcpServers',
-    ]);
-    expect(detail.presentation.instructionsText).toBe('\nUse the docs server.\n');
-    const serialized = JSON.stringify(detail.presentation);
-    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
-    expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
-  });
-});
-
-describe('the Gemini CLI configured context filenames (specs/002 T052)', () => {
-  it('reads one configured name given as a string, at every depth, in place of the default', async () => {
-    const fixture = buildGeminiStringContextFilenameFixture(
-      'inspector-scan-gemini-context-filename-string',
-    );
-    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
-    const context = bootstrap(fixture.root);
-    await scanOnce(context);
-    const snapshot = context.session.snapshot();
-
-    // A string is the one-name form of the setting: `AGENTS.md` is Gemini
-    // CLI's context file at the root and below, and the default `GEMINI.md`
-    // keeps Copilot's root recognition alone (FR-004, FR-013).
-    expectRepositoryInstructionSources(snapshot);
-    expect(normalizedInstructions(snapshot)).toEqual([
-      {
-        applicabilityRange: '**',
-        files: [
-          {
-            sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, GEMINI_ONLY],
-          },
-          {
-            sourceRelativePath: 'GEMINI.md',
-            recognitions: [{ tool: 'copilot', surfaces: ['copilot-cli', 'copilot-cloud'] }],
-          },
-        ],
-      },
-      {
-        applicabilityRange: 'packages/api/**',
-        files: [
-          {
-            sourceRelativePath: 'packages/api/AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, GEMINI_ONLY],
-          },
-        ],
-      },
-    ]);
-  });
-
-  it('keeps the default name when the configured value is not one the setting accepts', async () => {
-    const fixture = buildGeminiInvalidContextFilenameFixture(
-      'inspector-scan-gemini-context-filename-invalid',
-    );
-    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
-    const context = bootstrap(fixture.root);
-    await scanOnce(context);
-    const snapshot = context.session.snapshot();
-
-    // A number configures nothing: the grammar accepts a non-empty string or
-    // an array of them, so the default stands — `GEMINI.md` at the root and
-    // below is Gemini CLI's — and nothing is a parse failure, so the
-    // settings carrier carries no diagnostic (FR-004; research.md § 2).
-    expectRepositoryInstructionSources(snapshot);
-    expect(normalizedInstructions(snapshot)).toEqual([
-      {
-        applicabilityRange: '**',
-        files: [
-          {
-            sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY],
-          },
-          {
-            sourceRelativePath: 'GEMINI.md',
-            recognitions: [
-              { tool: 'copilot', surfaces: ['copilot-cli', 'copilot-cloud'] },
-              GEMINI_ONLY,
-            ],
-          },
-        ],
-      },
-      {
-        applicabilityRange: 'packages/api/**',
-        files: [{ sourceRelativePath: 'packages/api/GEMINI.md', recognitions: [GEMINI_ONLY] }],
-      },
-    ]);
-    expect(snapshot.diagnostics).toEqual([]);
-    expect(snapshot.settings.map((entry) => entry.sourceRelativePath)).toEqual([
-      fixture.carrierPath,
-    ]);
-  });
-
-  it('serves a command file that a configured name also makes a context file under each kind', async () => {
-    // `context.fileName` admits a file by its name at any depth, so naming
-    // `build.toml` makes `.gemini/commands/build.toml` a Gemini CLI context
-    // file as well as a Gemini CLI command: two rows, one path. Each route asks
-    // for its own kind: the command route receives the TOML parse, and the
-    // instruction route the instruction reading, which is the whole text as a
-    // body with no frontmatter (session.ts § fileDetail; FR-006).
-    const root = createRepositoryFixtureRoot('inspector-scan-gemini-command-context-file');
-    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
-    mkdirSync(join(root, '.gemini/commands'), { recursive: true });
-    writeFileSync(
-      join(root, '.gemini/settings.json'),
-      '{ "context": { "fileName": "build.toml" } }\n',
-      'utf8',
-    );
-    writeFileSync(
-      join(root, '.gemini/commands/build.toml'),
-      'description = "Build the project"\nprompt = "Run the build and report failures."\n',
-      'utf8',
-    );
-    const context = bootstrap(root);
-    await scanOnce(context);
-    const snapshot = context.session.snapshot();
-
-    expect(snapshot.prompts.map((entry) => entry.name)).toEqual(['build']);
-    expect(
-      snapshot.instructions.flatMap((entry) => entry.files.map((file) => file.sourceRelativePath)),
-    ).toEqual(['.gemini/commands/build.toml']);
-    const asCommand = context.session.fileDetail(
-      '.gemini/commands/build.toml',
-      'repository',
-      'prompt/command',
-    );
-    if (asCommand?.kind !== 'prompt/command' || asCommand.presentation === null) {
-      throw new Error('expected a parsed command detail');
-    }
-    expect(asCommand.presentation.metadata.map((entry) => entry.key)).toEqual(['description']);
-    expect(asCommand.presentation.promptText).toBe('Run the build and report failures.');
-    const asInstructions = context.session.fileDetail(
-      '.gemini/commands/build.toml',
-      'repository',
-      'instructions',
-    );
-    if (asInstructions?.kind !== 'instructions' || asInstructions.presentation === null) {
-      throw new Error('expected a parsed instructions detail');
-    }
-    expect(asInstructions.presentation.frontmatter).toEqual([]);
-    expect(asInstructions.presentation.bodyText).toBe(
-      'description = "Build the project"\nprompt = "Run the build and report failures."\n',
-    );
-  });
-
-  it('reads the configured names in place of the default, at every depth', async () => {
-    const fixture = buildGeminiContextFilenameFixture('inspector-scan-gemini-context-filename');
-    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
-    const context = bootstrap(fixture.root);
-    vi.clearAllMocks();
-    await scanOnce(context);
-    const snapshot = context.session.snapshot();
-
-    // The configured names are the context files, each at the root and below
-    // it, and the default `GEMINI.md` is no longer among Gemini CLI's rows:
-    // the root one keeps Copilot's recognition alone, the nested one is
-    // admitted by nothing (FR-004, FR-013). `AGENTS.md` at the root is three
-    // products' file, and the nested one Copilot's and Gemini CLI's.
-    expectRepositoryInstructionSources(snapshot);
-    expect(normalizedInstructions(snapshot)).toEqual([
-      {
-        applicabilityRange: '**',
-        files: [
-          {
-            sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, GEMINI_ONLY],
-          },
-          { sourceRelativePath: 'CONTEXT.md', recognitions: [GEMINI_ONLY] },
-          {
-            sourceRelativePath: fixture.copilotOnlyPath,
-            recognitions: [{ tool: 'copilot', surfaces: ['copilot-cli', 'copilot-cloud'] }],
-          },
-        ],
-      },
-      {
-        applicabilityRange: 'docs/**',
-        files: [{ sourceRelativePath: 'docs/CONTEXT.md', recognitions: [GEMINI_ONLY] }],
-      },
-      {
-        applicabilityRange: 'packages/api/**',
-        files: [
-          {
-            sourceRelativePath: 'packages/api/AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, GEMINI_ONLY],
-          },
-        ],
-      },
-    ]);
-    // The carrier is read once — as configuration before the walk, and that
-    // same read seeds its own candidacy as the settings row — and nothing the
-    // configuration replaced or a nested carrier named is opened.
-    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
-      String(call[0])
-        .slice(fixture.root.length + 1)
-        .split(sep)
-        .join('/'),
-    );
-    expect(opened.filter((path) => path === fixture.carrierPath)).toHaveLength(1);
-    expect(snapshot.settings.map((entry) => entry.sourceRelativePath)).toEqual([
-      fixture.carrierPath,
-    ]);
-    for (const nearMiss of fixture.nearMissPaths) {
-      expect(opened, nearMiss).not.toContain(nearMiss);
-    }
-    expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
-      [fixture.carrierPath, fixture.copilotOnlyPath, ...fixture.expectedInstructionPaths].sort(),
-    );
-    expect(snapshot.diagnostics).toEqual([]);
-  });
-
-  it('keeps the default for an unusable value, and diagnoses only an unparseable carrier', async () => {
-    // Every unusable declaration configures nothing, so the default stands and
-    // no diagnostic is raised; a carrier the format cannot read also configures
-    // nothing, and the parse failure is the settings carrier's own MCP and hook
-    // recognitions' to report, not the derivation's (FR-004, FR-028).
-    for (const [source, expectedDiagnostics] of [
-      ['{ "context": { "fileName": 42 } }\n', 0],
-      ['{ "context": { "fileName": [] } }\n', 0],
-      ['{ "context": "GEMINI.md" }\n', 0],
-      ['{ "context": { "fileName": \n', 2],
-    ] as const) {
-      const root = createRepositoryFixtureRoot('inspector-scan-gemini-context-unusable');
-      cleanups.push(() => rmSync(root, { recursive: true, force: true }));
-      mkdirSync(join(root, '.gemini'), { recursive: true });
-      writeFileSync(join(root, '.gemini/settings.json'), source, 'utf8');
-      writeFileSync(join(root, 'GEMINI.md'), '# default context\n', 'utf8');
-      writeFileSync(join(root, 'AGENTS.md'), '# not configured\n', 'utf8');
-      const context = bootstrap(root);
-      await scanOnce(context);
-      const snapshot = context.session.snapshot();
-      const rootRow = snapshot.instructions.find((entry) => entry.applicabilityRange === '**')!;
-      expect(
-        rootRow.files
-          .find((file) => file.sourceRelativePath === 'GEMINI.md')!
-          .recognitions.map((recognition) => recognition.tool),
-        source,
-      ).toEqual(['copilot', 'gemini']);
-      expect(
-        rootRow.files
-          .find((file) => file.sourceRelativePath === 'AGENTS.md')!
-          .recognitions.map((recognition) => recognition.tool),
-        source,
-      ).toEqual(['copilot', 'codex']);
-      expect(snapshot.diagnostics, source).toHaveLength(expectedDiagnostics);
-    }
-  });
-});
-
-describe('the Gemini CLI same-name skill row (specs/002 T052)', () => {
-  it('lists the .gemini/skills/ file beside its .agents/skills/ alias with the first-found statement', async () => {
-    const fixture = buildGeminiSameNameSkillFixture('inspector-scan-gemini-same-name');
-    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
-    const context = bootstrap(fixture.root);
-    await scanOnce(context);
-    const snapshot = context.session.snapshot();
-
-    // One row, one name: the alias file is three products' definition and the
-    // `.gemini/skills/` file is Gemini CLI's alone, in path order and the
-    // closed tool order within one file.
-    expect(snapshot.skills.map((entry) => entry.name)).toEqual([fixture.skillName]);
-    const [row] = snapshot.skills;
-    expect(
-      row!.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
-    ).toEqual([
-      [fixture.aliasPath, 'copilot'],
-      [fixture.aliasPath, 'codex'],
-      [fixture.aliasPath, 'gemini'],
-      [fixture.ownPath, 'gemini'],
-    ]);
-    // Gemini CLI alone faces the collision — Codex and Copilot read one of the
-    // two files — and its statement is the first-found rule its documented
-    // precedence derives to: the alias over the directory within one tier, the
-    // workspace tier over the user tier (`gemini.skills.selection`; FR-007).
-    expect(row!.sameNameResolutions).toEqual([{ tool: 'gemini', resolution: 'select-first' }]);
   });
 });

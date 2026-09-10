@@ -31,6 +31,22 @@ export interface CompiledStaticSkillRule extends CompiledInspectionRule {
   /** The recognized kind; this unit compiles `skill` records alone. */
   readonly kind: 'skill';
   /**
+   * What one admitted skill's row unit is: the directory whose entry point the
+   * rule matched, or the matched file itself.
+   *
+   * A discriminant on the record rather than a predicate over the path,
+   * because it is the rule's own fact and the recognizer must not re-derive it
+   * by matching path text again (`../registry.ts`). Three of the four vendors
+   * document one shape and declare `directory`; Antigravity CLI admits both at
+   * one location, and only its flat rule declares `file`
+   * (spec.md § FR-004, research.md § 2).
+   *
+   * The census follows it: a `file` skill has no directory, so it occupies
+   * none and publishes no companions — where a `directory` skill's siblings
+   * are its companions, a flat file's siblings are other skills.
+   */
+  readonly skillRowUnit: 'directory' | 'file';
+  /**
    * The name one admitted `SKILL.md` is invoked by, as the admitting product
    * builds it. Never empty: a product invoking a file that declares no usable
    * name falls back to the skill directory, and being a named directory is

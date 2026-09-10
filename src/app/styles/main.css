@@ -158,11 +158,11 @@
   --aci-brand-codex: light-dark(#0b8f74, #2fd0ad);
   /* Purple rather than Google's blue: the accent colour links are drawn in is
      hue 223, and a blue mark 3° from it on a list that is mostly links reads
-     as "this is a link" rather than as a product (AGENTS.md § Icon policy).
-     Hue 274/266 sits 43–51° from the accent and far from the other marks,
-     and the two values clear every ground the palette paints (light 6.03
-     minimum, dark 7.18). */
-  --aci-brand-gemini: light-dark(#7a3fa8, #bfa0e8);
+     as a link. The purple sits 51° and 43° away in light and dark, clear of
+     the accent and of the black, orange, and teal marks beside it, and the two
+     values clear every ground the palette paints (light 6.03 minimum, dark
+     7.18). */
+  --aci-brand-antigravity: light-dark(#7a3fa8, #bfa0e8);
 
   /* How far below the viewport's top a sticky element clears the bar: the
      bar's own height, which comes from the controls in it and which CSS cannot
@@ -240,7 +240,7 @@
     --aci-brand-copilot: CanvasText;
     --aci-brand-claude: CanvasText;
     --aci-brand-codex: CanvasText;
-    --aci-brand-gemini: CanvasText;
+    --aci-brand-antigravity: CanvasText;
   }
 }
 

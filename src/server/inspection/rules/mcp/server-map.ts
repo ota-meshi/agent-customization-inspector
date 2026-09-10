@@ -4,7 +4,8 @@
 // Where that map is, and which key holds it, is each vendor's own contract —
 // Codex's TOML `[mcp_servers.*]` tables, Claude's strict-JSON `mcpServers`, the
 // Copilot CLI's optional wrapper of the same name, the VS Code guide's
-// top-level `servers`, and Gemini CLI's `mcpServers` in its JSON with comments
+// top-level `servers`, and Antigravity CLI's `mcpServers` in its standalone
+// JSON profile
 // — so each reading finds its own container and hands the entries here. What a
 // found map means is not a vendor difference: all five
 // documents describe a name-to-configuration map, and one shared projection is
