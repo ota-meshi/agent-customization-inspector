@@ -170,6 +170,10 @@ pnpm run start:fixture   # サンプルリポジトリを作り、ビルド済�
 含んだツリー — を配信します。`--inspect-personal-setup` を足せば、同意済みのホームディレクトリも
 並べて見られます。
 
+上の2枚のスクリーンショットは、テスト用ツリーではなくチームのリポジトリに見えるよう書かれた
+`showcase` を `pnpm run docs:images` で撮ったものです。このコマンドはビルドし、そのツリーを配信し、
+`docs/images/` を書き直します。インターフェースを変えたら、続けてこれを実行し直します。
+
 ```bash
 pnpm run lint && pnpm run typecheck && pnpm exec vitest run
 pnpm exec playwright test --project=chromium

@@ -182,6 +182,10 @@ pnpm run start:fixture   # build a sample repository and serve it with the packa
 no name it serves `all`, which contains every kind at once; add `--inspect-personal-setup`
 to see consented home directories beside it.
 
+The two screenshots above are taken of `showcase`, a repository written to look like a
+team's rather than like a test tree, by `pnpm run docs:images`; it builds, serves that tree,
+and rewrites `docs/images/`. A change to the interface is followed by rerunning it.
+
 ```bash
 pnpm run lint && pnpm run typecheck && pnpm exec vitest run
 pnpm exec playwright test --project=chromium

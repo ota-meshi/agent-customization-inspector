@@ -137,6 +137,13 @@ prose is how the readme stops being read.
 - Accuracy is not completeness. The readme never says something false and owes no reader
   everything true: a sentence is wrong when acting on it would be wrong, not when a case it
   does not cover can be named.
+- The readme's screenshots are of a repository a reader could mistake for their own, never
+  of a suite's fixture tree. A test tree is built from near misses, credential-shaped
+  literals, and names like `alpha-a`, and each of those on the page is a thing the reader
+  has to be told to ignore. `scripts/readme-images/showcase-repository.ts` writes the
+  repository and `pnpm run docs:images` retakes both images from it; a change to the
+  interface, or to that tree, is followed by rerunning it, and both readmes' alt text is
+  checked against what the new images show.
 
 ## Vendored agent customizations
 

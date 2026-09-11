@@ -34,6 +34,7 @@
     "start:fixture": "node scripts/serve-fixture.ts",
     "build-and-start": "pnpm run build && pnpm run start",
     "check:official-sources": "node scripts/check-official-sources.ts",
+    "docs:images": "pnpm run build && node scripts/readme-images/capture.ts",
     "verify:package": "node scripts/verify-package-files.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

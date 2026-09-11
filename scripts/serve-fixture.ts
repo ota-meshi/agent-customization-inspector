@@ -51,6 +51,7 @@ import {
   buildUnifiedPluginFixture,
 } from '../tests/fixtures/repositories/build-fixtures.ts';
 import { buildGlobalHomeFixture } from '../tests/fixtures/global-homes/build-fixtures.ts';
+import { buildShowcaseRepository } from './readme-images/showcase-repository.ts';
 
 /** The repository root, one directory above this script. */
 const repositoryRoot = join(import.meta.dirname, '..');
@@ -66,7 +67,9 @@ const fixtureBase = join(repositoryRoot, '.tmp', 'fixtures');
  * its tree. Only the written tree matters here, so the value type keeps none
  * of the builders' individual result shapes.
  */
-const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) => unknown>> = {
+const fixtureBuilders: Readonly<
+  Record<string, (prefix: string | undefined, root: string) => unknown>
+> = {
   'codex-skills': buildCodexSkillFixture,
   'claude-skills': buildClaudeSkillFixture,
   'copilot-skills': buildCopilotSkillFixture,
@@ -129,6 +132,11 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   // Every `all-*` tree plus the rule tree in one root, so one launch shows
   // every inventory this release publishes.
   all: buildAllCustomizationKindFixture,
+  // The repository the readme's screenshots are taken of (`pnpm run
+  // docs:images`): a plausible product monorepo rather than a suite's tree
+  // of near misses, served here so a change to it can be looked at before
+  // the images are retaken.
+  showcase: (_prefix, root) => buildShowcaseRepository(root),
 };
 
 const givenArguments = process.argv.slice(2);

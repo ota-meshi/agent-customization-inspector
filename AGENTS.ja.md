@@ -119,6 +119,12 @@ readmeの本文は1人のために書く。`npx agent-customization-inspector` �
   側と個人設定側にまたがらないが、その組を持つ読者は差分リンクが出ないだけなので、一節も使わない。
 - 正確さは網羅ではない。readmeは偽を書かないが、真をすべて書く義務は負わない。文が誤りなのは、
   それに従って動くと外れるときであって、触れていない場合を挙げられるときではない。
+- readmeのスクリーンショットは、読者が自分のものと見まがうようなリポジトリを写す。テストスイートの
+  fixtureツリーは写さない。テスト用ツリーはnear miss、credential形のliteral、`alpha-a`のような名前で
+  組まれており、そのどれもが画面上では「無視してよい」と読者に教えなければならないものになる。
+  `scripts/readme-images/showcase-repository.ts`がそのリポジトリを書き、`pnpm run docs:images`が
+  そこから2枚を撮り直す。インターフェースかそのツリーを変えたら続けて実行し直し、両言語のreadmeの
+  alt textを新しい画像が見せるものと照合する。
 
 ## Vendorしたagent customization
 
