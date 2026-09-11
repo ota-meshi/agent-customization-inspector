@@ -82,7 +82,12 @@ carries no companion files, which the row already draws only where a skill has t
 The detail of a file-shaped skill shows the skill panel alone: no file panel, because that
 panel's subject is the directory the skill does not have, and no tab strip, because a strip
 offering one tab is not a choice. The heading stays the skill's own path, which is the one
-identity every product reading it shares while the names they invoke it by differ.
+identity every product reading it shares while the names they invoke it by differ. Dropping that panel
+must not drop what it stated, so both of its facts move to the panel that remains: the file's
+own text, under the `Source` viewer every single-file detail carries and on the condition they
+use — readable, never parsed successfully — and the read outcome in full, the removed
+byte-order mark included, which the attributes line above the panel then carries rather than
+the short summary a page with a file panel shows there.
 
 ## Customization File and Tool Recognition
 

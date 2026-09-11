@@ -72,7 +72,7 @@ lifecycle の主張をせず、`stable` を意味しない。
 | `antigravity.behavior.repo.skills` | CLI | プロジェクトルート | `.agents/skills/<name>/SKILL.md`、`.agent/skills/<name>/SKILL.md`、`.agents/skills/<name>.md` | `name` と `description` の frontmatter を持つ Markdown。そのディレクトリで CLI を動かすと slash command に compile される。共有の Agent Skills ページは `SKILL.md` を持つフォルダを与え、`.agent/skills` をそのディレクトリの旧綴りとしてなお支えると記録する。端末自身のページはその代わりにフラットなファイルを与える (§ 既知の不確実性 項目 6) | `antigravity.skills.selection` | Conflict | `google.antigravity.cli-plugins-skills`、`google.antigravity.cli-migration`、`google.antigravity.skills` |
 | `antigravity.behavior.repo.rules` | CLI | プロジェクトルート | `.agents/rules/<name>.md`、`.agent/rules/<name>.md` | workspace または git root の rules フォルダ配下の Markdown ファイル。manual、always on、model decision、自身が宣言する glob のいずれかで activate され、12,000 文字が上限である | `antigravity.rules.activation` | Partially documented | `google.antigravity.rules`、`google.antigravity.cli-migration` |
 | `antigravity.behavior.repo.hooks` | CLI | プロジェクトルート | `.agents/hooks.json` | hook 名から event 設定への map。各 event は command handler の matcher group を持ち、hook ごとに optional な `enabled` フラグを持つ | `antigravity.hooks.merge` | Partially documented | `google.antigravity.hooks` |
-| `antigravity.behavior.repo.agents` | CLI | プロジェクトルート | `.agents/agents/<name>.md`、`.agents/agents/<name>/agent.md` | YAML frontmatter を持つ Markdown。自動的に discover される。`subagent: true` を持つものは primary agent から呼べる | `antigravity.agents.selection` | Documented | `google.antigravity.cli-subagents` |
+| `antigravity.behavior.repo.agents` | CLI | プロジェクトルート | `.agents/agents/<name>.md`、`.agents/agents/<name>/agent.md` | YAML frontmatter を持つ Markdown。自動的に discover される。frontmatter の表は `name` を必須と記し、`subagent: true` を持つものは primary agent から呼べる | `antigravity.agents.selection` | Documented | `google.antigravity.cli-subagents`、`google.antigravity.subagents` |
 | `antigravity.behavior.repo.mcp` | CLI | プロジェクトルート | `.agents/mcp_config.json` | standalone な JSON profile。その `mcpServers` object が名前を configuration へ対応づける。リモート server は `serverUrl` を使う | `antigravity.mcp.configuration` | Partially documented | `google.antigravity.cli-mcp`、`google.antigravity.cli-migration` |
 
 ## Inspector Repository rule
@@ -225,15 +225,20 @@ relationship-only な `ruleId` の定義は
    `.agent/skills/<name>.md` は admit しない。その綴りでフラットな形を文書化するページが現れた
    時点で admit する。
 7. 共有の Agent Skills ページは skill の `name` を任意とし、省略時はフォルダ名が既定だと述べる。
-   上記のバイナリはそうしない。`name` が無いか空の場合、ファイル自身の名前から末尾の `.md` を
-   除いたもので補う。skill フォルダの `SKILL.md` では `SKILL` になる。Inspector はその行を
-   `SKILL` と名付ける。行の名前は認識する製品が解決する名前であり、それが解決される名前だから
-   である。よってこの vendor の名前無し skill はすべて1つの `SKILL` 行に乗る。これは表示上の
-   作為ではなく vendor 側に実在する同名衝突であり、同名の仕組みはまさにそれを表面化させるために
-   ある。同じファイルを OpenAI Codex と GitHub Copilot はフォルダ名で名付けるので、それらに
-   ついてはその名前の行に定義が乗る。detail の経路はどちらもそのファイル自身のものである。これは
-   文書ではなく観測なのでここに記録する。後のビルドがページに従うようになれば、名付けもページに
-   従わせる。
+   上記のバイナリはそうしない。静的に読むと、`name` が無いか空の場合はファイル自身の名前から
+   末尾の `.md` を除いたもので補われ、skill フォルダの `SKILL.md` では `SKILL` になる。
+   Inspector はその行をフォルダ名で名付け、フォルダを持たないフラットな形はそのファイル名で
+   名付ける。
+
+   この観測には従わない。理由は同じバイナリの中にある。`GetSkillsCreatePath` は
+   `{workspace}/.agents/skills/{skill_name}/SKILL.md` を組み立てる。つまり端末自身が
+   フォルダを skill の名前の持ち手として扱っている。`SKILL` の fallback は、端末が作った
+   名前無し skill をすべて互いに衝突させることになる。ページと、同じファイルを読む2製品と、
+   その path builder はフォルダで一致しており、静的に読んだ fallback 1つだけが食い違う。
+   これは文書化された規則ではなく1つのビルドの1つの関数の読み取りであり、著者が書いておらず
+   そのファイルの他のどの読み手も使わない名前を publish する根拠としては足りない。publish
+   すれば1つのファイルが2つの名前で2行に乗ることにもなり、vendor 側の事実ではなくこの製品の
+   欠陥として読まれる。
 8. 共有の Hooks ページは `hooks.json` の schema を正確に与えるが、その location は端末が述べる
    lookup ではなく例として —「あなたのカスタマイズディレクトリ（例: workspace の `.agents/` または
    `~/.gemini/config/`）」— 与える。このページはアプリだけでなく端末についてのページでもある。

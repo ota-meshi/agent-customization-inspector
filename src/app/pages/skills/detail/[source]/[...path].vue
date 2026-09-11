@@ -861,6 +861,14 @@ const openFileDiagnostics = computed(() => {
  * tab shows in place of the presentation it has none of, so the reason stays
  * visible while a companion owns the files pane (FR-028). Empty whenever a
  * presentation exists: the parsed panel needs no failure story.
+ *
+ * That emptiness loses nothing for a skill with no directory, which has no
+ * files pane to state the rest on. A readable candidate carries exactly one
+ * diagnostic — the failed recognition parse (`scan.ts`) — and a decode that
+ * replaced invalid UTF-8 carries none at all, being readable and complete
+ * (spec.md § SC-007); the binary and unreadable outcomes produce no skill
+ * recognition, so they never reach this page. The failure this shows is
+ * therefore the whole of what the entry point can hold.
  */
 const entryDiagnostics = computed(() => {
   const detail = entryDetail.value;
@@ -1094,10 +1102,19 @@ watch(
            `subjectTabs` above, which keeps a panel nothing renders from being
            selected; without it a flat skill whose extraction failed selected
            the absent files tab and took this line with it. -->
+      <!-- The removed byte-order mark belongs to whichever line states the read
+           outcome in full (`DetailAttributes.vue` § statesByteOrderMark). For
+           a skill with a directory that is the files tab's own line, beside
+           the text the mark was removed from, so this one carries the short
+           summary and the page never states the mark twice. A skill without a
+           directory has no such line, so this is the one it has: without it a
+           file that is nothing but a mark read as three bytes of empty source
+           with nothing saying where they went. -->
       <DetailAttributes
         v-if="subjectTabs.activeTab === 'skill'"
         :file="entryDetail.file"
         :source="openSource"
+        :states-byte-order-mark="!hasDirectory"
       >
         <span class="aci-path aci-authored-text">{{ entryFileNameText }}</span>
         <!-- No count here. The files tab states how many the directory holds,

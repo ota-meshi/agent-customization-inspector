@@ -64,7 +64,7 @@
     "tests/e2e/antigravity-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/antigravity-skills-detail.spec.ts",
-      "sha256": "8325f189f632e004616432c911ab095fc6d39c73512b5794963961ce6bf13d14"
+      "sha256": "928d3f46b787747f561ffad086ae765bcec97f04914d1de513f346d45e7be2f4"
     },
     "tests/e2e/claude-commands-detail.spec.ts": {
       "kind": "inline-fixture-suite",

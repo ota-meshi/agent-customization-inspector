@@ -31,7 +31,7 @@ home がどこか、そして親仕様の「3つのツール」「4つの member
 - Q: vendor は `.agents/plugins/` に workspace の plugin ディレクトリを文書化している。admit するのか？ → A: しない。どの端末のページもそれを名指していない。端末自身のページは plugin を `agy` が home へインストールする bundle としてのみ文書化しており、それがインストール済みコピーを除外している理由である。その除外の理由 —インストール済みコピーは原本の複製である— はリポジトリで著述された plugin には当てはまらないので、vendor contract は workspace ディレクトリ自身の理由を別に述べる。すなわち、端末がそれを読み込むという端末側の evidence がこのリリースにはない。
 - Q: Antigravity CLI の recognition はリポジトリルート配下の `GEMINI.md` と `AGENTS.md` に届くのか？ → A: 届かない。リポジトリルートの2つだけである。移行ガイドは workspace の context file を作業ディレクトリのものとして述べ、深さには何も述べないので、それより深くへ届かせるのは推論に立つ。これは前の vendor の home instruction rule を広げなかった理由と同じである。深さは vendor contract の既知の不確実性として記録し、vendor が階層を文書化した時点で rule を広げる。
 - Q: 5つ目の member のディレクトリは `~/.gemini` のままだが、それが名を取った製品はサポート対象でなくなる。ラベルは何と述べるのか？ → A: `Antigravity home` である。member の表は、ディレクトリ自身の名前ではなく「誰のディレクトリか」で member を名付けており、ラベルがパスと異なる例はその表に既にある。`~/.config/github-copilot` は `Copilot home` と呼ばれている。短い語の取り方も同じ family に従う。`OpenAI Codex` が `Codex` になるように `Antigravity CLI` は `Antigravity` になる。member の root パスはラベルの隣に表示されるので、ラベルは誰のディレクトリかを、パスはどこかを述べる。
-- Q: 1つのファイルである skill — 端末自身のページがリポジトリと home の双方について文書化している形 — にはディレクトリがなく、detail の file panel は「skill のディレクトリと開いているファイル」を持つ panel である。そのページは何を示すのか？ → A: skill の panel だけを示し、file panel も tab strip も出さない。panel の主題はその skill が持たないディレクトリであり、tab が1つの tab strip は選択肢ではない。見出しは skill 自身のパスのままとする。そこに書かれた理由 — それを読むすべての製品が共有する唯一の identity であり、各製品が呼び出す名前はそれぞれ異なる — はディレクトリと同じくファイルにも当てはまるからである。行の companion の数は新しい判断を要さない。companion を持つ skill にだけ描かれる仕組みが既にある。
+- Q: 1つのファイルである skill — 端末自身のページがリポジトリと home の双方について文書化している形 — にはディレクトリがなく、detail の file panel は「skill のディレクトリと開いているファイル」を持つ panel である。そのページは何を示すのか？ → A: skill の panel だけを示し、file panel も tab strip も出さない。panel の主題はその skill が持たないディレクトリであり、tab が1つの tab strip は選択肢ではない。見出しは skill 自身のパスのままとする。そこに書かれた理由 — それを読むすべての製品が共有する唯一の identity であり、各製品が呼び出す名前はそれぞれ異なる — はディレクトリと同じくファイルにも当てはまるからである。行の companion の数は新しい判断を要さない。companion を持つ skill にだけ描かれる仕組みが既にある。skill の panel は、単一ファイルの detail がどれも持つ `Source` viewer で、そのファイル自身の本文を運ぶ。条件もそれらと同じで、読めるときであり、解析に成功したときではない。ここでは panel がページのすべてであり、フォルダ形がその本文を読む場所は files tab だからである。（2026-09-11 修正: この答えはこのページが落とす panel を名指す一方、残る panel が何を持つのかを推論に委ねていた。その結果、抽出に失敗したフラット skill のページには診断だけが残り、読むものが無かった。）
 - Q: 親仕様は、指定ファイルの ground truth が動いたときにだけ初回利用評価をやり直す。そのファイルはリポジトリルートの `AGENTS.md` であり、このツールはそれを読むので、読み手が2つから3つに変わる。実施は必要か？ → A: 必要である。親が定めた条件を満たすので、study input を更新し、リリース前に20セッションのエージェント駆動実行を行い、結果を記録する。指定ファイルの読み手が増えたことで読み手が述べるべき答えは難しくなっており、一致しなくなったページに対して測る criterion は何も測っていないことになる。
 - Q: このリリースはこのツールに prompt/command kind の行を publish するのか？ → A: しない。Antigravity CLI の移行ガイドは legacy command を skill へ変換し、リポジトリの command ディレクトリを文書化するページもない。よってこのツールはこの kind の行を持たない。kind 自体は、それを publish する3つのツールのために閉じた集合に残る。
 
@@ -180,7 +180,8 @@ read もされないことを確認する。
   ファイルを解決する他のすべての製品が使うものなので、1つの `SKILL.md` は2つの名前で2行に分かれる
   ことなく、3つの読み手を持つ1行であり続ける。ファイル形の skill は companion ディレクトリを
   持たないので、行はそれを述べず、detail は skill だけを示し、持たないディレクトリを主題とする
-  file panel を出さない (§ Clarifications)。
+  file panel を出さない。ただしファイル自身の本文は、単一ファイルの detail がどれも持つ `Source`
+  viewer で、それらと同じ条件で示す (§ Clarifications)。
   1つの `.agents/skills/` にある skill ファイルと同名の skill ディレクトリは1つの inventory 行で
   なければならず (MUST)、両方の定義を抱え、どの製品がその名前をどちらのファイルに解決するかを
   述べる。今日2つのディレクトリで綴られた名前が1行になるのとまったく同じである。2つの形の間の

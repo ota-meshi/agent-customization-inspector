@@ -565,7 +565,7 @@ silhouetteを3つ見分けるのではなく色をたどって目的のものを
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 5**、canonical SHA-256
-`2124b4a0624efc047f4bfc6018f2f9691698fb35bc7f712712c9d8e3b4ee8ba9`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 5は
+`ee17cf94b381bdca0a4cdb93f1a1d727bf0e73824eaee029ff699878e48a7181`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 5は
 Antigravity CLIのdenominatorである（specs/003-antigravity-cli-support T063）。SC-003とSC-005それぞれに8つの
 `(Antigravity CLI, kind)` row — `sc00{3,5}.row.antigravity.{instructions,settings-config,mcp,hook,rule,skill,agent,permissions}`
 — に加えて`sc003.global-source-form.antigravity`と`sc004.tool.antigravity`を持つ。この読み手を運ぶ帰属caseは3つある。
@@ -583,8 +583,10 @@ Antigravity CLIのdenominatorである（specs/003-antigravity-cli-support T063�
 `inventory-return`、`repository-complete-inventory`、`repository-complete-comparison`、
 `skills-inventory`、`skills-comparison`、`skill-metadata-comparison`、`comparison-layout`、
 `discovery`、`source-type`、`accessibility`、`hooks-comparison`、`hooks-inventory` —
-をChromium projectで158 case実行し、全件が通った。それらのfixtureが届かないbrowser specはこの
-setのために再実行していない。contract suiteは同じrunで
+をChromium projectで158 case実行し、全件が通った。`antigravity-skills-detail`は、自前のtreeが
+さらに1ファイルを得た後にもう一度実行した。そのtreeはこのspec自身が組み立て、他のどこからも
+届かないので、問われるのはこのspecのcaseだけだからである。それらのfixtureが届かないbrowser spec
+はこのsetのために再実行していない。contract suiteは同じrunで
 canonical digestと73件のfixture digestすべてを再現した。
 
 **これを新しいsetにしたのはfixture byteの変更である**。versionは同じままである。denominatorは
@@ -595,7 +597,8 @@ canonical digestと73件のfixture digestすべてを再現した。
 `tests/fixtures/repositories/build-fixtures.ts`は`.agents/skills/summarize.md`を得た。
 frontmatterブロックがYAMLでないフラットskillであり、起動できるfixtureで、ファイル形skillの
 ページが抽出に失敗したときに何を持つのかを示す。自前のtreeを組み立てる
-`tests/e2e/antigravity-skills-detail.spec.ts`も、そこで検証するcaseのために同じファイルを得た。
+`tests/e2e/antigravity-skills-detail.spec.ts`は、そこで検証する2つのcase
+のために、同じファイルと、byte-order markで始まるフラットskillを得た。
 3つのdigestと上のcanonical digestは一緒に再記録した。それがfixture byteの変更に求められること
 であり、それが認めることのすべてである。
 

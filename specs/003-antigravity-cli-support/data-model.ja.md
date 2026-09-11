@@ -80,7 +80,12 @@ skill の行は1つの invocation 名のままで、ファイルごと・認識�
 ファイルの形の skill の detail は skill の panel だけを示す。file panel は出さない。その panel の
 主題はその skill が持たないディレクトリだからである。tab strip も出さない。tab が1つの strip は
 選択肢ではないからである。見出しは skill 自身のパスのままとする。それを読むすべての製品が共有する
-唯一の identity であり、各製品が呼び出す名前はそれぞれ異なるからである。
+唯一の identity であり、各製品が呼び出す名前はそれぞれ異なるからである。その panel を落とすことが、そこで
+述べていたことを落とすことになってはならない。したがってその2つの事実は、残る panel の側へ移る。
+1つはファイル自身の本文で、単一ファイルの detail がどれも持つ `Source` viewer により、それらと
+同じ条件 — 読めるときであり、解析に成功したときではない — で示す。もう1つは読み取り結果の全体で、
+除去された byte-order mark を含み、panel の上の属性行がそれを運ぶ。file panel を持つページが
+そこに置く短い要約ではない。
 
 ## Customization File と Tool Recognition
 

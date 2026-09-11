@@ -75,6 +75,13 @@ test.beforeAll(async () => {
     '---\nname: [\ndescription: Summarize the selected text.\n---\n\nSummarize the selection in three sentences.\n',
     'utf8',
   );
+  // A flat skill whose file begins with a byte-order mark: the mark is removed
+  // before decoding, and the flat shape has no files tab to state that on.
+  await writeFile(
+    join(fixture, '.agents/skills/marked.md'),
+    '\ufeff---\nname: marked\ndescription: Mark the selection.\n---\n\nMark it.\n',
+    'utf8',
+  );
   host = await launchHost(fixture);
 });
 
@@ -156,6 +163,28 @@ test('renders a flat skill as the skill alone, with no strip and no file panel',
   ]);
 });
 
+test('states the removed byte-order mark on the one line a flat skill has', async ({ page }) => {
+  await page.goto(
+    new URL('/skills/detail/repository/.agents%2Fskills%2Fmarked.md', host.origin).toString(),
+  );
+  // The read outcome in full, because this page has no files tab to state it
+  // on (`DetailAttributes.vue` § statesByteOrderMark). Without it a reader
+  // sees a size that counts bytes their source does not show and nothing
+  // saying which bytes those were.
+  await expect(page.locator('.aci-detail-attributes')).toContainText(
+    'byte-order mark removed before decoding',
+  );
+  // The folder shape states it on the files tab instead, so its own line
+  // stays the short summary and the page never says it twice.
+  await page.goto(
+    new URL(
+      '/skills/detail/repository/.agents%2Fskills%2Fchangelog%2FSKILL.md',
+      host.origin,
+    ).toString(),
+  );
+  await expect(page.locator('.aci-detail-attributes')).not.toContainText('byte-order mark');
+});
+
 test('keeps the file readable and openable when a flat skill declares no parsable block', async ({
   page,
 }) => {
@@ -170,7 +199,14 @@ test('keeps the file readable and openable when a flat skill declares no parsabl
   // that opens the file, and the file's own text below the diagnostic.
   // Selecting a files tab this shape does not render took all three away.
   await expect(page.locator('.aci-detail-attributes')).toContainText('Readable text');
-  await expect(page.locator('.aci-detail-attributes')).toContainText('Open in VS Code');
+  // The command every machine offers, not an editor's. Which editors are named
+  // is the probe's answer about the machine the suite is running on, and a
+  // certification runner has no VS Code to find — so naming one asserts the
+  // runner rather than the page. `open-file-control.spec.ts` asks for these
+  // same always-offered two.
+  await expect(page.locator('.aci-detail-attributes')).toContainText(
+    'Open with the default application',
+  );
   await expect(page.locator('.aci-skill-detail h3')).toHaveText(['Source']);
   await expect(page.locator('.aci-skill-detail')).toContainText(
     'Summarize the selection in three sentences.',

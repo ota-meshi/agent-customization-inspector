@@ -36,7 +36,9 @@ pnpm run start:fixture antigravity-skills --no-open --port 0
    ディレクトリを読む3製品すべて（Antigravity CLI を含む）を名指して挙げる。
 3. 両方の形で綴られた名前は1行になり、その定義が各ファイルとそれを読む製品を名指し、両者の間に
    優先順位を述べない。
-4. ファイルの形の skill を開くと skill の panel だけが出る。Files タブも tab strip も出ない。
+4. ファイルの形の skill を開くと skill の panel だけが出る。Files タブも tab strip も出ず、その
+   panel の末尾にファイル自身の本文が `Source` として出る。frontmatter ブロックが YAML でない
+   `.agents/skills/summarize.md` は、同じ panel に診断とその viewer だけを示す。
 
 続いて他の tree を見る。
 

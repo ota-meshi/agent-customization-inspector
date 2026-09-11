@@ -92,8 +92,8 @@ export class CodexCompiledAgentRule extends CodexCompiledRule implements Compile
    * a lookup — so a file declaring none has no name at all and joins the row
    * that says so rather than being named after its path.
    *
-   * The path is unused for that reason, and the shared reading is the one both
-   * declared-name products use (`registry.ts` § declaredAgentNameOf).
+   * The path is unused for that reason, and the shared reading is the one all
+   * three declared-name products use (`declared-name.ts` § declaredAgentNameOf).
    */
   public agentNameOf(
     _sourceRelativePath: string,

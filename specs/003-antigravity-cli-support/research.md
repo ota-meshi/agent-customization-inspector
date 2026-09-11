@@ -111,10 +111,11 @@ So the folder is the fallback for a folder, the file name for a flat file, and t
 recorded on the contract instead (§ Known uncertainties item 7).
 
 **Alternatives considered**: Dropping the flat rule was rejected for the asymmetry above.
-Naming an unnamed skill by its folder, to match the page and the products beside it, was
-rejected because it would publish a name this vendor does not resolve — and the `SKILL` row
-every unnamed skill lands on is a real same-name clash the reader benefits from seeing, not a
-display artifact. Recording the observation as an `EvidenceCitation` was rejected: the evidence
+Naming an unnamed skill `SKILL`, the fallback the binary itself reads, was rejected for the
+collision above: every unnamed skill the terminal creates would land on one row named after a
+file rather than after anything an author wrote, and the same `SKILL.md` would sit on two rows
+under two names for the two products that resolve it by its folder. Recording the observation
+as an `EvidenceCitation` was rejected: the evidence
 records are documentation's, and the Codex contract's `plugin@marketplace` spelling is the
 precedent for putting an observed behavior in the contract's prose with its version instead.
 

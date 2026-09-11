@@ -249,6 +249,15 @@ export const ANTIGRAVITY_REPO_AGENTS_BEHAVIOR = {
           establishes:
             'The CLI automatically discovers custom agents defined in Markdown format with YAML frontmatter: workspace agents at .agents/agents/<name>.md or .agents/agents/<name>/agent.md, and global agents in ~/.gemini/config/agents/; an agent with subagent: true set in its frontmatter can be invoked by the primary agent.',
         },
+        {
+          sourceId: 'google.antigravity.subagents',
+          url: 'https://antigravity.google/docs/subagents/',
+          officialHost: 'antigravity.google',
+          sections: ['Agent Location and Discovery', 'Frontmatter Configuration (YAML)'],
+          reviewedOn: '2026-09-11',
+          establishes:
+            'Custom subagents are discovered at .agents/agents/<name>.md or <name>/agent.md in the workspace and at the same two spellings below ~/.gemini/config/agents/, and the frontmatter table marks name — the unique identifier for the custom agent — as required, which is why a file declaring none has no name this vendor resolves rather than one taken from its path.',
+        },
       ]
     : [],
 } as const satisfies VendorBehaviorStatement;
@@ -444,6 +453,15 @@ export const ANTIGRAVITY_USER_AGENTS_BEHAVIOR = {
           sections: ['Custom Agents (Markdown Format)'],
           reviewedOn: '2026-09-10',
           establishes: 'Global custom agents are discovered in ~/.gemini/config/agents/.',
+        },
+        {
+          sourceId: 'google.antigravity.subagents',
+          url: 'https://antigravity.google/docs/subagents/',
+          officialHost: 'antigravity.google',
+          sections: ['Agent Location and Discovery', 'Frontmatter Configuration (YAML)'],
+          reviewedOn: '2026-09-11',
+          establishes:
+            'Custom subagents are discovered at .agents/agents/<name>.md or <name>/agent.md in the workspace and at the same two spellings below ~/.gemini/config/agents/, and the frontmatter table marks name — the unique identifier for the custom agent — as required, which is why a file declaring none has no name this vendor resolves rather than one taken from its path.',
         },
       ]
     : [],

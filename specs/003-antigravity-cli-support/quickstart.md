@@ -37,7 +37,10 @@ Open the URL the launch line prints and check, in order:
    products that read a skill directory, Antigravity CLI among them.
 3. A name spelled in both shapes is one row whose definitions name each file and the product
    that reads it, with no precedence stated between them.
-4. Opening the file-shaped skill shows the skill panel alone: no Files tab and no tab strip.
+4. Opening the file-shaped skill shows the skill panel alone: no Files tab and no tab strip, and
+   the file's own text under `Source` at the end of that panel. `.agents/skills/summarize.md`,
+   whose frontmatter block is not YAML, shows the same panel with its diagnostic and that
+   viewer and nothing else.
 
 Then the other trees:
 

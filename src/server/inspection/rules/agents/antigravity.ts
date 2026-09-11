@@ -44,9 +44,14 @@ export class AntigravityCompiledAgentRule
   }
 
   /**
-   * The `name` the file declares, which the subagents page documents as the
-   * agent's identity, with the shared fallback where nothing usable was
-   * declared ({@link declaredAgentNameOf}).
+   * The agent's declared `name`, which is what the subagents page documents as
+   * the agent's identity — its frontmatter table makes the field required — so
+   * a file declaring none has no name at all and joins the row that says so
+   * rather than being named after its file or the directory holding it. A path
+   * fallback would publish an agent name this vendor does not resolve.
+   *
+   * The path is unused for that reason, and the shared reading is the one all
+   * three declared-name products use (`declared-name.ts` § declaredAgentNameOf).
    */
   public agentNameOf(
     _sourceRelativePath: string,
