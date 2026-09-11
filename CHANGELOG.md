@@ -1,5 +1,17 @@
 # agent-customization-inspector
 
+## 0.6.0
+
+### Minor Changes
+
+- [#19](https://github.com/ota-meshi/agent-customization-inspector/pull/19) [`25ee324`](https://github.com/ota-meshi/agent-customization-inspector/commit/25ee324e0bfec46dc80a50be6bc24a2977cdff0b) Thanks [@ota-meshi](https://github.com/ota-meshi)! - Add Antigravity CLI as a fourth supported tool. The inventory now lists the files Antigravity CLI reads — the root `GEMINI.md` and `AGENTS.md`, the skills, custom agents, and MCP servers under `.agents/`, and, after consent, the context file, MCP servers, custom agents in both documented shapes, skills in both documented shapes, settings, permissions, and hooks of the `~/.gemini` home — and names Antigravity CLI as a reader of the files it shares with the other tools.
+
+### Patch Changes
+
+- [#19](https://github.com/ota-meshi/agent-customization-inspector/pull/19) [`25ee324`](https://github.com/ota-meshi/agent-customization-inspector/commit/25ee324e0bfec46dc80a50be6bc24a2977cdff0b) Thanks [@ota-meshi](https://github.com/ota-meshi)! - Compute every source comparison with VS Code's own line diff (`vscode-diff`) in place of a hand-assembled Myers pass. A line the other copy kept at another indentation now stands opposite that line instead of opposite whatever took its position, and the mark on it is the two spaces it gained rather than both sides' whole indentation. Within a line, a mark no longer breaks into islands around a `.` or a `/` that two otherwise unrelated values happen to share.
+
+- [#19](https://github.com/ota-meshi/agent-customization-inspector/pull/19) [`25ee324`](https://github.com/ota-meshi/agent-customization-inspector/commit/25ee324e0bfec46dc80a50be6bc24a2977cdff0b) Thanks [@ota-meshi](https://github.com/ota-meshi)! - Keep every hook declaration a carrier makes. A declaration whose hook or event a file named `__proto__` reached the comparison as an empty document, and two declarations whose hook names differ only by where a NUL sits collapsed into one on the detail page. Both are now published as written.
+
 ## 0.5.1
 
 ### Patch Changes
