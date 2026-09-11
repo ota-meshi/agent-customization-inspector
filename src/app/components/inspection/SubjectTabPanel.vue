@@ -14,6 +14,14 @@
 // It takes focus of its own (`tabindex="0"`), because a panel a reader
 // arrives at by Tab has to be reachable when nothing inside it is
 // (WAI-ARIA tabs pattern, QR-004).
+//
+// `standalone` is for the subject that turns out to have no sibling: a skill
+// that is one file has no directory, so its detail shows the skill alone and
+// draws no strip (spec.md § FR-004). The tab semantics have to go with the
+// strip rather than merely be hidden — a `tabpanel` whose `aria-labelledby`
+// names a tab that was never rendered is a dangling IDREF, and a panel is a
+// `tabpanel` only while a `tablist` controls it. What is left is an ordinary
+// region holding the same content.
 import type { SubjectTabs } from '../../composables/subject-tabs';
 
 defineProps<{
@@ -21,11 +29,20 @@ defineProps<{
   tabs: SubjectTabs<Tab>;
   /** Which tab shows this panel. */
   tab: Tab;
+  /**
+   * Render a plain region instead of a `tabpanel`, for a subject whose strip
+   * was not drawn because it has no sibling; see the module comment.
+   */
+  standalone?: boolean;
 }>();
 </script>
 
 <template>
+  <div v-if="standalone">
+    <slot />
+  </div>
   <div
+    v-else
     v-show="tabs.activeTab === tab"
     :id="tabs.panelId(tab)"
     role="tabpanel"

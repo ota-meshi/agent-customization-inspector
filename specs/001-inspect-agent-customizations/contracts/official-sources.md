@@ -5,7 +5,7 @@
 **Registry version**: 2026-07-20
 **Official-source review**: 2026-07-20
 
-This registry is the single normative owner of every `sourceId` used by the three
+This registry is the single normative owner of every `sourceId` used by the four
 vendor contracts and by [Runtime Composition](runtime-composition.md). Vendor and
 composition contracts author every normative owner-to-source edge only as a `sourceId`
 in an Evidence cell. They may repeat a defined ID as a non-edge prose cross-reference,
@@ -86,7 +86,7 @@ Only these exact official hosts are valid in this release:
 | Microsoft | `code.visualstudio.com` |
 | Anthropic | `code.claude.com` |
 | OpenAI | `learn.chatgpt.com`; `developers.openai.com` |
-| Google | `geminicli.com` |
+| Google | `antigravity.google` |
 
 Accepted first-party evidence classes form one hierarchy across all vendors. General
 guides, reference pages, and versioned release notes or changelogs on the exact hosts
@@ -107,7 +107,8 @@ exact inverse index from the Evidence cells:
 
 1. Parse only the canonical English contracts
    `vendors/github-copilot.md`, `vendors/claude-code.md`,
-   `vendors/openai-codex.md`, and `runtime-composition.md`.
+   `vendors/openai-codex.md`, `vendors/antigravity-cli.md`, and
+   `runtime-composition.md`.
 2. “Evidence cell” means a final column whose exact English header is `Evidence`,
    `Evidence / basis`, or `Official source refs`. Require the row owner in the first
    column: `Behavior ID` maps to `behaviorId`; `Rule ID` and `Excluded Rule ID` map to
@@ -122,7 +123,7 @@ exact inverse index from the Evidence cells:
    evidence  = token *( separator token )
    token     = "`" sourceId "`"
    separator = optional-ASCII-horizontal-space ( "," / ";" / "、" ) optional-ASCII-horizontal-space
-   sourceId  = ( "github" / "vscode" / "anthropic" / "openai" )
+   sourceId  = ( "github" / "vscode" / "anthropic" / "openai" / "google" )
                1*( "." segment )
    segment   = lowercase-alphanumeric *( lowercase-alphanumeric / "-" )
    ```
@@ -173,7 +174,7 @@ No heading, prose, blank line, or line after that contiguous table is hashed.
 | GitHub Copilot | `a6f35ab28711f719500e2a4121a9aeb9d56f74f5b4accecdcd3e9c4643416525` | `b1ec5038a7c581fea4d4ed9e0f83eb7ca730c18312c65a6689bfcc3a93a3a926` |
 | Claude Code | `2aad69c35c2ff0e348b62bd1f8f6007a538337f14d5ddaa08f6f159b3c46f858` | `15862bf76910e507d65ebabe865f61c5652167dcfbaad07600d29a244ac3c73a` |
 | OpenAI Codex | `2a598e1bd30690cfe07d64cd6e1a8c5d80512249eacb5e1e59741bd3d9194226` | `e985ad14696d2ef2a47e7fcacbdbb39a83864fdd4d5c62546112f25e62e98301` |
-| Gemini CLI | `fedf1e2053d3e0f1365d71e0aaea2c6d0323fb8215671ffb4b4d0a78773c9b7a` | `1370b7fa54d61539ceda6f646e657fb5db9a4408ac9e6ed932aa0218584e483f` |
+| Antigravity CLI | `f311fd1d0bee9f81d03e4493e8fd4526cee5c3e19fda0ac07d2eaa5e92a5ca4c` | `52a1d8db154676ec4e428b0943e3bbc66e8cfd4f63037506c3f4a6b9d852f715` |
 
 The implementation freeze test must recompute all eight inputs exactly, require one and only
 one matching heading and contiguous table per file, compare every digest in constant time,
@@ -290,30 +291,35 @@ moves then whether or not the reading changed an assertion.
 
 ## Google official sources
 
-The Google rows cite the Gemini CLI documentation site, whose pages are served with a trailing
-slash and answer directly without redirecting. Two paths on that site are deliberately not cited,
-because they redirect or do not answer: `/docs/core/policy-engine/` and
-`/docs/cli/configuration/`; the cited forms are `/docs/reference/policy-engine/` and
-`/docs/reference/configuration/`. One assertion the Gemini CLI records maintain rests on a source
-reading rather than on these pages — that the settings loader strips comments before parsing —
-and the record carrying it says so (contracts/vendors/gemini-cli.md § Known uncertainties and
-required condition facts); nothing in this table establishes it.
+The Google rows cite the Antigravity documentation site, whose pages are served with a trailing
+slash and answer directly without redirecting. That site is three product trees — the terminal
+under `/docs/cli/`, the editor extensions under `/docs/ide/`, and the desktop application at the
+top level — over two shared customization roots, the workspace's `.agents/` and the home's
+`~/.gemini/config/`. The rows split along that line rather than along the URL prefix: the
+`cli-` rows are the terminal's own pages, and the three rows without that prefix are the shared
+pages that establish what lives at a shared root, which the terminal reads together with the
+other two products. No row cites a page for another product's private directory
+(contracts/vendors/antigravity-cli.md § Surface boundary), which is why the desktop
+application's and the extensions' own global skill directories appear nowhere here. Several
+assertions the records maintain rest on what a cited page does not say rather than on what it
+does — the depth a context file may sit at, the schema of a hook declared in the settings file,
+which workspace skill shape the terminal prefers, and the order two workspace rules compose in —
+and each is recorded as a known uncertainty on the subject that carries it, not as something
+this table establishes.
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
-| `google.gemini-cli.configuration` | <https://geminicli.com/docs/reference/configuration/> | `geminicli.com` | `Configuration layers`; `Settings files`; `The .gemini directory in your project`; `Available settings in settings.json`; `Environment variables and .env files`; `Context files (hierarchical instructional context)` | `2026-09-09` |
-| `google.gemini-cli.creating-skills` | <https://geminicli.com/docs/cli/creating-skills/> | `geminicli.com` | `Skill structure`; `Metadata and triggers`; `Discovery aliases` | `2026-09-09` |
-| `google.gemini-cli.custom-commands` | <https://geminicli.com/docs/cli/custom-commands/> | `geminicli.com` | `File locations and precedence`; `Naming and namespacing`; `TOML file format (v1)`; `Required fields`; `Handling arguments` | `2026-09-09` |
-| `google.gemini-cli.extensions-reference` | <https://geminicli.com/docs/extensions/reference/> | `geminicli.com` | `Extension format`; `gemini-extension.json`; `Link a local extension` | `2026-09-09` |
-| `google.gemini-cli.gemini-ignore` | <https://geminicli.com/docs/cli/gemini-ignore/> | `geminicli.com` | `How it works`; `How to use .geminiignore` | `2026-09-09` |
-| `google.gemini-cli.gemini-md` | <https://geminicli.com/docs/cli/gemini-md/> | `geminicli.com` | `Understand the context hierarchy`; `Modularize context with imports`; `Customize the context file name` | `2026-09-09` |
-| `google.gemini-cli.hooks` | <https://geminicli.com/docs/hooks/> | `geminicli.com` | `Configuration`; `Configuration schema`; `Hook configuration fields`; `Security and risks` | `2026-09-09` |
-| `google.gemini-cli.hooks-reference` | <https://geminicli.com/docs/hooks/reference/> | `geminicli.com` | `Configuration schema`; `Hook definition`; `Hook configuration` | `2026-09-09` |
-| `google.gemini-cli.mcp-server` | <https://geminicli.com/docs/tools/mcp-server/> | `geminicli.com` | `Configure the MCP server in settings.json`; `Configuration structure`; `Configuration properties`; `Environment variable expansion`; `Server-specific configuration (mcpServers)` | `2026-09-09` |
-| `google.gemini-cli.policy-engine` | <https://geminicli.com/docs/reference/policy-engine/> | `geminicli.com` | `Priority system and tiers`; `Policy locations`; `TOML rule schema` | `2026-09-09` |
-| `google.gemini-cli.skills` | <https://geminicli.com/docs/cli/skills/> | `geminicli.com` | `Discovery tiers`; `Precedence and aliases`; `Managing skills` | `2026-09-09` |
-| `google.gemini-cli.subagents` | <https://geminicli.com/docs/core/subagents/> | `geminicli.com` | `Agent definition files`; `File format`; `Configuration schema`; `Disabling subagents` | `2026-09-09` |
-| `google.gemini-cli.trusted-folders` | <https://geminicli.com/docs/cli/trusted-folders/> | `geminicli.com` | `Why trust matters: The impact of an untrusted workspace`; `Overriding the trust file location` | `2026-09-09` |
+| `google.antigravity.cli-migration` | <https://antigravity.google/docs/cli/gcli-migration/> | `antigravity.google` | `First-launch onboarding`; `Context files and workspace rules`; `Updated skills paths`; `MCP config formatting changes`; `Directory mapping`; `Required schema updates` | `2026-09-10` |
+| `google.antigravity.cli-mcp` | <https://antigravity.google/docs/cli/mcp/> | `antigravity.google` | `Antigravity CLI`; `Global and Workspace Server Configs`; `MCP Configuration Structure`; `MCP Configuration Properties` | `2026-09-10` |
+| `google.antigravity.cli-plugins-skills` | <https://antigravity.google/docs/cli/plugins/> | `antigravity.google` | `Antigravity plugins`; `Plugin filesystem structure`; `Agent skills`; `Creating local workspace skills`; `Sharing global skills`; `Managing hooks` | `2026-09-10` |
+| `google.antigravity.cli-settings` | <https://antigravity.google/docs/cli/settings/> | `antigravity.google` | `Setting up preferences`; `Configuration file location` | `2026-09-10` |
+| `google.antigravity.cli-subagents` | <https://antigravity.google/docs/cli/subagents/> | `antigravity.google` | `Custom Agents (Markdown Format)` | `2026-09-10` |
+| `google.antigravity.cli-permissions` | <https://antigravity.google/docs/cli/permissions/> | `antigravity.google` | `Fine-grained permissions`; `Supported actions & matching rules` | `2026-09-10` |
+| `google.antigravity.cli-features` | <https://antigravity.google/docs/cli/features/> | `antigravity.google` | `Plugins`; `Advanced Customization via settings.json` | `2026-09-10` |
+| `google.antigravity.skills` | <https://antigravity.google/docs/skills/> | `antigravity.google` | `Agent Skills`; `Where skills live`; `Creating a skill`; `Frontmatter fields`; `Skill folder structure`; `How the agent uses skills` | `2026-09-10` |
+| `google.antigravity.rules` | <https://antigravity.google/docs/rules-workflows/> | `antigravity.google` | `Rules`; `Global Rules`; `Workspace Rules` | `2026-09-10` |
+| `google.antigravity.hooks` | <https://antigravity.google/docs/hooks/> | `antigravity.google` | `Hooks`; `Configuration`; `Schema and File Format`; `Hook Handler Configuration`; `Common Input Fields` | `2026-09-10` |
+| `google.antigravity.subagents` | <https://antigravity.google/docs/subagents/> | `antigravity.google` | `Agent Location and Discovery`; `Frontmatter Configuration (YAML)` | `2026-09-11` |
 
 ## Offline validation and explicit drift review
 

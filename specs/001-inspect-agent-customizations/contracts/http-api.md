@@ -591,7 +591,7 @@ inspection-state checks; the fence conflict therefore wins without leaking retai
 state.
 
 Every Source has exactly one root. The Repository Source has no member; the session has
-zero to five Global Sources, at most one each with `member: codex`, `member: claude`, `member: gemini`,
+zero to five Global Sources, at most one each with `member: codex`, `member: claude`, `member: antigravity`,
 `member: copilot`, or `member: agents` — the shared agent home (FR-045). A Global root is never represented as a boundary inside another Source.
 `repositoryGeneration` and `globalGeneration` are the two sequences' independently
 committed generations; `globalGeneration` is null exactly while Global inspection is
@@ -713,7 +713,7 @@ filesystem authority or alters the returned content.
 
 `globalControl` is null only when Global consent/control state is inactive. Otherwise
 `state` is `active` or `disabling`, and `previewId` identifies the frozen active preview.
-`confirmedTools` is always the fixed closed `[copilot, claude, codex, gemini, agents]` all-members consent set.
+`confirmedTools` is always the fixed closed `[copilot, claude, codex, antigravity, agents]` all-members consent set.
 Initial enable and retry validation/admission remain operation-local: only the authority-free
 `globalEnableInProgress { kind, operationId, previewId }` is visible. Initial enable keeps
 `globalControl: null`; retry preserves its exact pre-operation control projection until one
@@ -778,8 +778,8 @@ same `stale-resource` rejection an unknown path does. The kind is one of the sev
 file-subject kinds — `instructions`, `skill`, `agent`, `prompt/command`, `rule`,
 `output style`, `settings/config` — and is the asking route's own: one file can hold two
 kinds — a `.claude/agents/CLAUDE.md` is a Claude subagent by its directory and an
-instruction file by its name; a `.gemini/commands/build.toml` is a Gemini CLI command and,
-once `context.fileName` names `build.toml`, a context file — and each kind reads the file
+instruction file by its name; an `antigravity-cli/settings.json` is a settings document, a
+permission policy, and a hook carrier at once — and each kind reads the file
 in its own syntax, so the page that shows the file as one kind asks for that kind's
 parse rather than receiving whichever kind's the host would otherwise have to choose. The
 kind validates by resolution too: a value no recognition's kind equals matches no
@@ -869,9 +869,9 @@ it could open.
 This tree is the response shape: a client can rely on exactly these fields and no
 others. The `prompt/command` variant carries a `presentation` of its own shape, for the
 reason the `agent` variant does: the split is not always a frontmatter block. A Claude Code,
-Copilot, or Codex command is Markdown split at the frontmatter fence, while a Gemini CLI
-command is TOML whose `prompt` string is the prompt and whose remaining keys are the
-metadata, so the halves are named after what they are — `metadata[]` and `promptText` — and
+Copilot, or Codex command is Markdown split at the frontmatter fence, while a format that
+declares its prompt as one key holds the prompt in that key and the metadata in the keys
+beside it, so the halves are named after what they are — `metadata[]` and `promptText` — and
 every vendor's reading spells the same two fields. What it does not carry is the name a
 reader would type: that is the rule's answer rather than a field of the detail, so it is the
 inventory's fact — the name each `prompts[]` row is grouped under — exactly as a skill's
@@ -1174,6 +1174,18 @@ inline Codex `[hooks]` in a `.codex/config.toml`, the `hooks` object of a Claude
 settings document — leaves its neighbouring keys to the recognitions of the same file that
 own them.
 
+One documented format has a level the other three do not: a carrier that maps a hook *name*
+to that hook's own events and keys — Antigravity CLI's `hooks.json` and the `hooks` object of
+its settings document. Such a carrier can declare one event twice, under two names, so each
+declaration carries the name its carrier wrote and that name's own keys beside it — the
+documented `enabled` flag among them — as `namedHook`. One nested value rather than a name
+and a field list side by side, because the two are one fact: a format either has this level
+or it does not. Nothing about the name is interpreted and nothing about `enabled` is, so no
+surface renders `enabled: false` as "disabled" or "inactive" — whether a hook runs is runtime
+this product does not observe (FR-009, FR-020, FR-026). The inventory row is unaffected: its
+unit is the declared event and its lines are one per carrier, which a carrier declaring an
+event twice already collapses to one.
+
 Which files those are is each vendor's contract, and a documented hook location is not
 automatically one of them: a declaration that is part of what another customization *is* —
 a Claude skill's or subagent's frontmatter `hooks`, a plugin manifest's or a catalog
@@ -1191,9 +1203,11 @@ HookCarrierDetail
 ├── events[] — the declarations, one per declared event in the parser's
 │   resolved order, empty when the carrier declares none — or null exactly
 │   when extraction failed all-or-nothing (FR-028), whose Diagnostic is below:
-│   └── event, groups[] — the declared event name and the matcher groups it
-│       declares, each as the value its item wrote, in the shared declared-value
-│       shape the detail surfaces render
+│   └── event, namedHook, groups[] — the declared event name, the named hook it
+│       was declared inside — null in a format whose carrier maps an event
+│       directly to its groups — and the matcher groups it declares, each as
+│       the value its item wrote, in the shared declared-value shape the detail
+│       surfaces render
 ├── carrierFields[] — 'standalone' only: every top-level entry beside the hook
 │   map, in the entry shape `presentation.frontmatter` uses
 └── diagnostics[]
@@ -1624,15 +1638,15 @@ GlobalConsentPreview
 ```
 
 Before editor-launcher discovery, session startup reads `COPILOT_HOME`,
-`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `GEMINI_CLI_HOME` exactly once each in that order. Only
+`CLAUDE_CONFIG_DIR`, and `CODEX_HOME` exactly once each in that order. Only
 `undefined` is absent; an empty string is present. It calls imported `node:os.homedir()` exactly
 once for the session — the shared agent home member always derives from it — and uses
 active-platform `node:path.join` with fixed `.copilot`, `.claude`, `.codex`, or `.gemini` suffixes
 for the corresponding absent entries and the fixed `.agents` suffix for the shared agent home.
-The `.gemini` suffix is joined onto a present eligible `GEMINI_CLI_HOME` as well, because the
-vendor documents that setting as naming the parent of its `.gemini` directory
-(specs/002-gemini-cli-support/spec.md FR-011). A `member` is one of the closed
-`copilot | claude | codex | gemini | agents` set — the four tool homes and the shared agent home
+The `.gemini` member has no setting of its own: no cited page documents a property that
+relocates it, so its root is the home-directory join in every case and its origin is always
+the default home (specs/003-antigravity-cli-support/spec.md FR-008). A `member` is one of the
+closed `copilot | claude | codex | antigravity | agents` set — the four tool homes and the shared agent home
 (FR-045) — and every `…Tools`-spelled control or batch field carries these member ids.
 It does not independently select `HOME`, `USERPROFILE`, or another home source, and the
 lexical capture/join performs no existence check. Those variables are used only to locate proposed
@@ -1730,7 +1744,7 @@ retry when the server-derived `retryableTools` is nonempty, and takes the
 the stored internal raw `lexicalRoot` and stored typed traversal program; it never rereads
 environment input or reverse-converts `displayRoot`.
 The parameters intentionally have no member selector. Initial enable derives the exact fixed
-`[copilot, claude, codex, gemini, agents]` set from all five frozen preview entries, including entries that
+`[copilot, claude, codex, antigravity, agents]` set from all five frozen preview entries, including entries that
 are already lexically invalid. A retry derives the exact current server-side
 `retryableTools` subset: unpublished non-pending admitted controls and same-preview rejected
 controls only. Lexical `new-preview-required` controls require disable and a new preview.

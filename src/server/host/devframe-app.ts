@@ -50,9 +50,9 @@ import { createOpaqueId } from '../../shared/entities';
 import type { LifecycleOwnerKey, SerializedDiagnostic } from '../../shared/diagnostics';
 import { runSourceScan } from '../inspection/scan';
 import { CLAUDE_GLOBAL_RULES } from '../inspection/rules/claude';
+import { ANTIGRAVITY_GLOBAL_RULES } from '../inspection/rules/antigravity';
 import { CODEX_AGENTS_HOME_RULES, CODEX_GLOBAL_RULES } from '../inspection/rules/codex';
 import { COPILOT_AGENTS_HOME_RULES, COPILOT_GLOBAL_RULES } from '../inspection/rules/copilot';
-import { GEMINI_AGENTS_HOME_RULES, GEMINI_GLOBAL_RULES } from '../inspection/rules/gemini';
 import type { CompiledStaticCandidateRule } from '../inspection/rules/registry';
 import type { ToolRecognition } from '../inspection/recognizers/candidate';
 
@@ -99,8 +99,11 @@ const GLOBAL_RULES_BY_MEMBER: Readonly<
   copilot: COPILOT_GLOBAL_RULES,
   claude: CLAUDE_GLOBAL_RULES,
   codex: CODEX_GLOBAL_RULES,
-  gemini: GEMINI_GLOBAL_RULES,
-  agents: [...CODEX_AGENTS_HOME_RULES, ...COPILOT_AGENTS_HOME_RULES, ...GEMINI_AGENTS_HOME_RULES],
+  antigravity: ANTIGRAVITY_GLOBAL_RULES,
+  // Antigravity CLI contributes nothing to the shared agent home: its global
+  // skills live below `~/.gemini`, and no cited page has it read `~/.agents`
+  // (FR-045).
+  agents: [...CODEX_AGENTS_HOME_RULES, ...COPILOT_AGENTS_HOME_RULES],
 };
 
 /** The one session and its coordinator the RPC functions operate on. */

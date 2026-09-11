@@ -112,7 +112,7 @@ Vue 3.5.39とする。6つのNode/OS floor jobはcompatibleな全minor/patch rel
 （Nuxtと互換性のある最新release）、`devframe` 0.7.5（pre-1.0 local-tool host framework）、
 `gunshi` 0.37.0、`open` 11.0.1、`yaml` 2.9.0、
 `strip-json-comments` 5.0.3、`smol-toml` 1.7.0、`h3` 2.0.1-rc.22、`shiki` 4.4.3、
-`@shikijs/themes` 4.4.3、`diff` 9.0.0。いずれも`package.json`には
+`@shikijs/themes` 4.4.3、`vscode-diff` 3.0.1。いずれも`package.json`には
 caret rangeで宣言し、commit済みlockfileがこれらのexactなresolved versionとintegrityをpinする。
 `h3`のresolved versionはdevframe自身のh3と一致するため、hostの`/skills/**` shell fallbackと
 devframeは1つのH3 module instanceに解決される（research.md § 3）。devframeの残りのtransitive tree
@@ -769,7 +769,7 @@ buildまたはpackage quality gateを配置しない。
 runnableとみなさない。
 Production `dependencies`はcaret宣言のdirect set `devframe`、`env-editor`、`gunshi`、`h3`、`open`、
 `smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
-devframe、`open`、`which`のtransitiveはlockfileが所有する。Nuxt/Vue/Vite/tsdown、shiki、`diff`、Playwright、その他
+devframe、`open`、`which`のtransitiveはlockfileが所有する。Nuxt/Vue/Vite/tsdown、shiki、`vscode-diff`、Playwright、その他
 build/test toolingはdevelopment-onlyとする。
 
 Cross-platform CIはmacOS、Linux、Windowsで同じpure Node.js inspection-filesystem integration suiteを

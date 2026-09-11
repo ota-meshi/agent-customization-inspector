@@ -739,16 +739,16 @@ real home directory. Verify:
    own `PATH` and configured editor and whose resolution the operating system may route
    through a proposed root; it enumerates, reads, and publishes nothing from one, and offers
    no launcher inside one. Instrumented startup capture proves each
-   of `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `GEMINI_CLI_HOME` is captured exactly once in that
+   of `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` is captured exactly once in that
    order; only `undefined` is absent; and `node:os.homedir()` is called exactly once
-   unconditionally — the shared agent home always derives from it. Active-platform
-   `node:path.join` applies only the fixed corresponding suffix — onto a present eligible
-   `GEMINI_CLI_HOME` as well, which names the parent of the `.gemini` directory. The same retained capture
+   unconditionally — the shared agent home and the Antigravity CLI home both always derive
+   from it. Active-platform `node:path.join` applies only the fixed corresponding suffix.
+   The same retained capture
    supplies launcher exclusions and every preview, while neither a preview request nor
    `--inspect-personal-setup` rereads process inputs. No direct `HOME`/`USERPROFILE`
    selection or existence check occurs. A capture, classification, or display-escape throw
    fails startup before launcher discovery, session creation, or a browser attempt.
-2. The consent view shows the exact Copilot, Claude, Codex, Gemini CLI, and shared agent lexical roots,
+2. The consent view shows the exact Copilot, Claude, Codex, Antigravity CLI, and shared agent lexical roots,
    input states, and exclusions, with the read scope explained in plain language rather than
    per-pattern path displays. It shows neither version the preview binds: a reader can act
    on neither, cannot look either up, and the version mismatch they guard against cannot
@@ -764,10 +764,12 @@ real home directory. Verify:
    job, or issues a `scanRequestId`.
 3. After opt-in, only the documented member candidates appear under zero to five
    separately identified member Global Sources—at most one each for Copilot, Claude,
-   Codex, Gemini CLI, and the shared agent home—and every Source has exactly one root. The
-   Gemini CLI home publishes its `GEMINI.md`, its `settings.json` under the settings, MCP,
-   and hook rows, its `commands/**/*.toml`, `skills/*/SKILL.md`, `agents/*.md`, and
-   `policies/*.toml`, and nothing beside them (specs/002-gemini-cli-support/spec.md FR-010). Every admitted Source from the
+   Codex, Antigravity CLI, and the shared agent home—and every Source has exactly one root.
+   The Antigravity CLI home publishes its `GEMINI.md`, its `config/mcp_config.json`,
+   `config/hooks.json`, `config/agents/*.md`, and `config/skills/*/SKILL.md`, the terminal's
+   own `antigravity-cli/skills/` in both admitted shapes, and its
+   `antigravity-cli/settings.json` under the settings, permissions, and hook rows, and
+   nothing beside them (specs/003-antigravity-cli-support/spec.md FR-009). Every admitted Source from the
    initial/retry transaction appears together in one atomic Global generation — the enable
    commit creates the Global sequence at generation 1 without touching Repository views or
    state — with no observable
@@ -799,7 +801,7 @@ real home directory. Verify:
    never rereads the environment or reverse-converts `displayRoot`. Escape-collision, control-character, and backslash fixtures
    prove that the record preserves the separate fields and admission uses the stored raw value.
    A preview mixing eligible and invalid entries has no request-side tool
-   selector: initial enable derives fixed `confirmedTools: [copilot, claude, codex, gemini, agents]`,
+   selector: initial enable derives fixed `confirmedTools: [copilot, claude, codex, antigravity, agents]`,
    evaluates all five, and returns disjoint `acceptedTools`/`rejectedTools` whose union is
    all five. A `tools` key or other selector-shaped input is rejected. Retry derives the
    complete fixed-order `retryableTools` projection—non-pending unpublished `admitted`

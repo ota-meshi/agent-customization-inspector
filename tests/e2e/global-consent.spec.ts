@@ -14,7 +14,7 @@ import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 /** The repository the session is launched against. */
 let repository: string;
 
-/** The base holding the member homes and the HOME the shared agent home and the Gemini CLI home derive from. */
+/** The base holding the member homes and the HOME the shared agent home and the Antigravity CLI home derive from. */
 let base: string;
 
 let host: LaunchedHost;

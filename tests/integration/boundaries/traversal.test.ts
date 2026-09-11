@@ -75,6 +75,9 @@ function codexSkillRule(plan: TraversalPlan): CompiledStaticSkillRule {
     relations: CODEX_RULE_RELATIONS['codex.repo.skill'],
     tool: 'codex',
     kind: 'skill',
+    // The shape this stand-in speaks for: Codex documents the folder holding
+    // an entry point, which is what the census enumerates from.
+    skillRowUnit: 'directory',
     plan,
     // Stated rather than derived from the relations beside it: a stand-in
     // supplies the identity a candidate carries, and Codex's one surface is

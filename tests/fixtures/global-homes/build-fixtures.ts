@@ -43,16 +43,27 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 /** The four tools a Global preview always names, in the contracted order. */
-export const GLOBAL_TOOL_ORDER = ['copilot', 'claude', 'codex', 'gemini'] as const;
+export const GLOBAL_TOOL_ORDER = ['copilot', 'claude', 'codex', 'antigravity'] as const;
+
+/**
+ * The tools whose home an environment property locates, in the exact order the
+ * capture reads them. Antigravity CLI is deliberately absent: every cited page
+ * writes its home literally as `~/.gemini`, so no property relocates it and
+ * the capture derives it from the home directory instead
+ * (specs/003-antigravity-cli-support/spec.md § FR-008).
+ */
+export const ENVIRONMENT_LOCATED_TOOL_ORDER = ['copilot', 'claude', 'codex'] as const;
+
+/** One member of {@link ENVIRONMENT_LOCATED_TOOL_ORDER}. */
+export type EnvironmentLocatedTool = (typeof ENVIRONMENT_LOCATED_TOOL_ORDER)[number];
 
 /**
  * The five consented members, in the contracted preview order: the four tool
- * homes, then the shared agent home `~/.agents` that Codex, Copilot, and
- * Gemini CLI all read skills from (FR-045). The shared home has no environment
- * property — a launch points `homedir()` at {@link GlobalHomeFixture.home}
- * instead.
+ * homes, then the shared agent home `~/.agents` that Codex and Copilot read
+ * skills from (FR-045). The last two have no environment property — a launch
+ * points `homedir()` at {@link GlobalHomeFixture.home} instead.
  */
-export const GLOBAL_MEMBER_ORDER = ['copilot', 'claude', 'codex', 'gemini', 'agents'] as const;
+export const GLOBAL_MEMBER_ORDER = ['copilot', 'claude', 'codex', 'antigravity', 'agents'] as const;
 
 /** One consented member; see {@link GLOBAL_MEMBER_ORDER}. */
 export type GlobalMember = (typeof GLOBAL_MEMBER_ORDER)[number];
@@ -64,19 +75,13 @@ export type GlobalTool = (typeof GLOBAL_TOOL_ORDER)[number];
  * The environment property that overrides each tool's home, in the exact order
  * the capture reads them (data-model.md § GlobalRootInputCapture).
  */
-export const GLOBAL_HOME_VARIABLES: Readonly<Record<GlobalTool, string>> = {
+export const GLOBAL_HOME_VARIABLES: Readonly<Record<EnvironmentLocatedTool, string>> = {
   /** Copilot's home override. */
   copilot: 'COPILOT_HOME',
   /** Claude's configuration-directory override. */
   claude: 'CLAUDE_CONFIG_DIR',
   /** Codex's home override. */
   codex: 'CODEX_HOME',
-  /**
-   * Gemini CLI's override — of the directory its `.gemini` is created in, not
-   * of `.gemini` itself, so the fixture exports the base for it and the capture
-   * joins the suffix (specs/002-gemini-cli-support/spec.md FR-011).
-   */
-  gemini: 'GEMINI_CLI_HOME',
 };
 
 /** The directory each tool's documented default home is named by. */
@@ -87,8 +92,8 @@ export const GLOBAL_HOME_DEFAULT_SUFFIX: Readonly<Record<GlobalTool, string>> = 
   claude: '.claude',
   /** `~/.codex`. */
   codex: '.codex',
-  /** `~/.gemini`. */
-  gemini: '.gemini',
+  /** `~/.gemini` — the directory Antigravity CLI reads, named for the vendor rather than for the product. */
+  antigravity: '.gemini',
 };
 
 /**
@@ -155,8 +160,8 @@ export const GLOBAL_HOME_SECRETS: Readonly<Record<GlobalTool, string>> = {
   claude: 'sk-ant-globalclaude000000000000000000000000',
   /** Codex's home credential literal. */
   codex: 'sk-proj-globalcodex00000000000000000000000000',
-  /** Gemini CLI's home credential literal. */
-  gemini: 'AIzaGLOBALGEMINI000000000000000000000000',
+  /** The Antigravity home's credential literal. */
+  antigravity: 'AIzaGLOBALANTIGRAV0000000000000000000000',
 };
 
 /**
@@ -171,8 +176,8 @@ export const GLOBAL_HOME_ENVIRONMENT_REFERENCES: Readonly<Record<GlobalTool, str
   claude: '${GLOBAL_CLAUDE_ENDPOINT}',
   /** Referenced in Codex's instruction text. */
   codex: '${GLOBAL_CODEX_ENDPOINT}',
-  /** Referenced in Gemini CLI's context text. */
-  gemini: '${GLOBAL_GEMINI_ENDPOINT}',
+  /** Referenced in the Antigravity home's context text. */
+  antigravity: '${GLOBAL_ANTIGRAVITY_ENDPOINT}',
 };
 
 /**
@@ -186,8 +191,8 @@ export const GLOBAL_HOME_SENTINELS: Readonly<Record<GlobalTool, string>> = {
   claude: 'resolved-global-claude-sentinel',
   /** Sentinel for `GLOBAL_CODEX_ENDPOINT`. */
   codex: 'resolved-global-codex-sentinel',
-  /** Sentinel for `GLOBAL_GEMINI_ENDPOINT`. */
-  gemini: 'resolved-global-gemini-sentinel',
+  /** Sentinel for `GLOBAL_ANTIGRAVITY_ENDPOINT`. */
+  antigravity: 'resolved-global-antigravity-sentinel',
 };
 
 /**
@@ -269,7 +274,7 @@ export function buildGlobalHomeFixture(
     copilot: join(root, GLOBAL_HOME_DEFAULT_SUFFIX.copilot),
     claude: join(root, GLOBAL_HOME_DEFAULT_SUFFIX.claude),
     codex: join(root, GLOBAL_HOME_DEFAULT_SUFFIX.codex),
-    gemini: join(root, GLOBAL_HOME_DEFAULT_SUFFIX.gemini),
+    antigravity: join(root, GLOBAL_HOME_DEFAULT_SUFFIX.antigravity),
     // Always the derived `.agents` below the home a launch exports (FR-045).
     agents: join(root, '.agents'),
   } as const;
@@ -684,47 +689,65 @@ export function buildGlobalHomeFixture(
   write(homes.codex, 'sessions/rollout.jsonl', '{"kind":"session"}\n');
   write(homes.codex, 'docs/AGENTS.md', '# a nested copy the rule is anchored above\n');
 
-  // ---- Gemini CLI (specs/002-gemini-cli-support FR-010): the global context
-  // file, the JSONC settings document carrying MCP servers and hooks, a
-  // namespaced command, a personal skill, a sub-agent, and a policy file —
-  // beside the extension copies, trust record, environment file, credentials,
-  // and temporary state the exclusions decline.
+  // ---- Antigravity CLI (specs/003-antigravity-cli-support FR-009): the
+  // global context file, the shared `config/` directory's MCP carrier, hook
+  // carrier, custom agent and skill, the terminal's own `antigravity-cli/`
+  // skills in both admitted shapes, and its settings document — beside the
+  // installed plugin copies, credentials, conversation state, and the other
+  // two products' private directories the exclusions decline.
   write(
-    homes.gemini,
+    homes.antigravity,
     'GEMINI.md',
     [
-      '# Personal Gemini context',
+      '# Personal Antigravity context',
       '',
       'Answer in the language the question was asked in.',
-      `Staging deploys report to ${GLOBAL_HOME_ENVIRONMENT_REFERENCES.gemini}.`,
+      `Staging deploys report to ${GLOBAL_HOME_ENVIRONMENT_REFERENCES.antigravity}.`,
       '',
     ].join('\n'),
   );
-  // JSONC on purpose: the vendor's own loader strips comments before parsing,
-  // and a detail shows the document its author wrote (FR-007). The
-  // `context.fileName` here changes nothing about which home file is admitted
-  // (specs/002-gemini-cli-support/spec.md § Clarifications).
+  // Strict JSON on purpose: no cited page documents comments in this vendor's
+  // carriers, and the parser entry records that (research.md § 6).
   write(
-    homes.gemini,
-    'settings.json',
+    homes.antigravity,
+    'config/mcp_config.json',
     [
       '{',
-      '  // Personal defaults for every project.',
-      '  "general": { "vimMode": true },',
-      '  "context": { "fileName": ["GEMINI.md", "AGENTS.md"] },',
       '  "mcpServers": {',
       '    "github": {',
       '      "command": "npx",',
       '      "args": ["-y", "@modelcontextprotocol/server-github"],',
       '      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_TOKEN" }',
       '    },',
-      '    "docs": { "httpUrl": "http://localhost:8080/mcp", "timeout": 30000 }',
-      '  },',
-      '  "hooks": {',
-      '    "BeforeTool": [',
+      '    "internal-docs": { "serverUrl": "https://mcp.internal.example.com/sse" },',
+      '    "legacy-indexer": { "httpUrl": "http://localhost:8080/mcp" }',
+      '  }',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  // The shared configuration directory's standalone hook carrier: a map of
+  // named hooks, each holding its own events, one of them carrying the
+  // documented `enabled` flag the page shows.
+  write(
+    homes.antigravity,
+    'config/hooks.json',
+    [
+      '{',
+      '  "personal-linter": {',
+      '    "PostToolUse": [',
       '      {',
-      '        "matcher": "run_shell_command",',
-      '        "hooks": [{ "type": "command", "command": "$HOME/.gemini/hooks/audit.sh" }]',
+      '        "matcher": "run_command",',
+      '        "hooks": [{ "type": "command", "command": "$HOME/.gemini/hooks/lint.sh" }]',
+      '      }',
+      '    ]',
+      '  },',
+      '  "safety-gate": {',
+      '    "enabled": false,',
+      '    "PreToolUse": [',
+      '      {',
+      '        "matcher": "run_command",',
+      '        "hooks": [{ "command": "$HOME/.gemini/hooks/safety-check.sh", "timeout": 10 }]',
       '      }',
       '    ]',
       '  }',
@@ -733,35 +756,41 @@ export function buildGlobalHomeFixture(
     ].join('\n'),
   );
   write(
-    homes.gemini,
-    'commands/refactor.toml',
+    homes.antigravity,
+    'config/agents/reviewer.md',
     [
-      'description = "Refactor the selected code without changing behavior."',
-      'prompt = """',
-      'Refactor the following for clarity. Keep every test green.',
+      '---',
+      'name: reviewer',
+      'description: Reviews a diff for defects before it is committed.',
+      'subagent: true',
+      '---',
       '',
-      '{{args}}',
-      '"""',
+      'Review the change for defects and report each with its file and line.',
       '',
     ].join('\n'),
   );
+  // The folder-shaped custom agent, the second spelling the subagents page
+  // gives for this same directory: the agent is the directory and `agent.md`
+  // is its entry point.
   write(
-    homes.gemini,
-    'commands/git/commit.toml',
+    homes.antigravity,
+    'config/agents/triage/agent.md',
     [
-      'description = "Write a commit message for the staged changes."',
-      'prompt = """',
-      'Staged diff:',
-      '!{git diff --cached}',
+      '---',
+      'name: triage',
+      'description: Sorts new issues into the areas that own them.',
+      '---',
       '',
-      'Write a conventional commit message for it.',
-      '"""',
+      'Read the issue and name the area that owns it, with the reason.',
       '',
     ].join('\n'),
   );
+  // A skill in the shared configuration directory, which this vendor walks
+  // beside its own (contracts/vendors/antigravity-cli.md § Known uncertainties
+  // item 6).
   write(
-    homes.gemini,
-    'skills/changelog/SKILL.md',
+    homes.antigravity,
+    'config/skills/changelog/SKILL.md',
     [
       '---',
       'name: changelog',
@@ -772,52 +801,110 @@ export function buildGlobalHomeFixture(
       '',
     ].join('\n'),
   );
-  write(homes.gemini, 'skills/README.md', '# personal skills live here\n');
+  // The terminal's own skills, in both admitted shapes. The folder declares no
+  // `name`, so the row takes the folder — the fallback every product resolving
+  // a `SKILL.md` uses, and the one this vendor's contract settles on
+  // (contracts/vendors/antigravity-cli.md § Known uncertainties item 7).
   write(
-    homes.gemini,
-    'agents/reviewer.md',
+    homes.antigravity,
+    'antigravity-cli/skills/release-notes/SKILL.md',
     [
       '---',
-      'name: reviewer',
-      'description: Reviews a diff for defects before it is committed.',
-      'tools: ["read_file", "grep_search"]',
+      'description: Assemble release notes from merged pull requests.',
       '---',
       '',
-      'Review the change for defects and report each with its line.',
+      'Group the merged pull requests by area and write one line for each.',
       '',
     ].join('\n'),
   );
-  // A nested agent file: the page names `agents/*.md` and no subtree.
-  write(homes.gemini, 'agents/archive/old.md', '---\nname: old\n---\n');
   write(
-    homes.gemini,
-    'policies/safety.toml',
+    homes.antigravity,
+    'antigravity-cli/skills/refactor.md',
     [
-      '[[rule]]',
-      'toolName = "run_shell_command"',
-      'commandPrefix = "rm -rf"',
-      'decision = "deny"',
-      'priority = 900',
+      '---',
+      'name: refactor',
+      'description: Refactor the selected code without changing behavior.',
+      '---',
+      '',
+      'Refactor the following for clarity. Keep every test green.',
       '',
     ].join('\n'),
   );
-  write(homes.gemini, 'policies/archive/old.toml', '[[rule]]\ndecision = "deny"\n');
-  // The installed extension copy the exclusion declines, whole: its manifest
-  // and the command it bundles (specs/002-gemini-cli-support FR-016).
   write(
-    homes.gemini,
-    'extensions/security-tools/gemini-extension.json',
-    `${JSON.stringify({ name: 'security-tools', version: '1.0.0' }, null, 2)}\n`,
+    homes.antigravity,
+    'antigravity-cli/settings.json',
+    [
+      '{',
+      '  "colorScheme": "dark",',
+      '  "altScreenMode": "default",',
+      '  "permissions": {',
+      '    "allow": ["command(git)", "read_file(/var/log/app)"],',
+      '    "ask": ["command(*)", "execute_url(aws.amazon.com)"],',
+      '    "deny": ["command(rm -rf)", "write_file(.git/)"]',
+      '  },',
+      '  "hooks": {',
+      '    "audit-writes": {',
+      '      "PostToolUse": [',
+      '        {',
+      '          "matcher": "write_file",',
+      '          "hooks": [{ "type": "command", "command": "$HOME/.gemini/hooks/audit.sh" }]',
+      '        }',
+      '      ]',
+      '    }',
+      '  }',
+      '}',
+      '',
+    ].join('\n'),
   );
-  write(homes.gemini, 'extensions/security-tools/commands/scan.toml', 'prompt = "Scan."\n');
-  // Runtime state and credentials beside the customizations (FR-018).
-  write(homes.gemini, 'trustedFolders.json', '{"/home/reader/app":"TRUST_FOLDER"}\n');
-  write(homes.gemini, '.env', `GEMINI_API_KEY=${GLOBAL_HOME_SECRETS.gemini}\n`);
-  write(homes.gemini, 'oauth_creds.json', `{"access_token":"${GLOBAL_HOME_SECRETS.gemini}"}\n`);
-  write(homes.gemini, 'google_accounts.json', '{"active":"reader@example.com"}\n');
-  write(homes.gemini, 'tmp/session.json', '{"kind":"session"}\n');
-  write(homes.gemini, 'hooks/audit.sh', INERT_EXECUTABLE_PAYLOAD);
-  chmodSync(join(homes.gemini, 'hooks/audit.sh'), 0o755);
+  // Near misses inside admitted directories: a skill folder with no
+  // `SKILL.md`, a custom-agent directory whose file is not the `agent.md` the
+  // page names as the entry point, and a second level below the terminal's own
+  // skills directory.
+  write(homes.antigravity, 'config/skills/README.md', '# personal skills live here\n');
+  write(homes.antigravity, 'config/agents/archive/old.md', '---\nname: old\n---\n');
+  write(
+    homes.antigravity,
+    'antigravity-cli/skills/release-notes/examples/sample.md',
+    '# a companion the census lists and no rule admits\n',
+  );
+  // The installed plugin copies the exclusion declines, whole, with the
+  // manifest that tracks them (FR-010).
+  write(
+    homes.antigravity,
+    'antigravity-cli/plugins/security-tools/plugin.json',
+    `${JSON.stringify({ name: 'security-tools', description: 'Audit helpers.' }, null, 2)}\n`,
+  );
+  write(
+    homes.antigravity,
+    'antigravity-cli/plugins/security-tools/skills/scan/SKILL.md',
+    '---\nname: scan\n---\n\nScan the tree.\n',
+  );
+  write(
+    homes.antigravity,
+    'antigravity-cli/import_manifest.json',
+    '{"imported":["security-tools"]}\n',
+  );
+  // The other two products' private directories: this release recognizes the
+  // terminal alone (§ Surface boundary).
+  write(homes.antigravity, 'antigravity/skills/desktop-only/SKILL.md', '---\nname: desktop\n---\n');
+  write(homes.antigravity, 'antigravity-ide/skills/ide-only/SKILL.md', '---\nname: ide\n---\n');
+  // Credentials, conversation state, and logs beside the customizations
+  // (FR-018).
+  write(homes.antigravity, '.env', `ANTIGRAVITY_API_KEY=${GLOBAL_HOME_SECRETS.antigravity}\n`);
+  write(
+    homes.antigravity,
+    'oauth_creds.json',
+    `{"access_token":"${GLOBAL_HOME_SECRETS.antigravity}"}\n`,
+  );
+  write(homes.antigravity, 'google_accounts.json', '{"active":"reader@example.com"}\n');
+  write(
+    homes.antigravity,
+    'antigravity-cli/brain/ec33ebf9/.system_generated/logs/transcript.jsonl',
+    '{"kind":"turn"}\n',
+  );
+  write(homes.antigravity, 'tmp/session.json', '{"kind":"session"}\n');
+  write(homes.antigravity, 'hooks/audit.sh', INERT_EXECUTABLE_PAYLOAD);
+  chmodSync(join(homes.antigravity, 'hooks/audit.sh'), 0o755);
 
   const expectedCandidatePaths: Record<GlobalMember, string[]> = {
     copilot: [
@@ -855,14 +942,19 @@ export function buildGlobalHomeFixture(
       'prompts/draftpr.md',
       'rules/safety.rules',
     ],
-    gemini: [
+    antigravity: [
       'GEMINI.md',
-      'agents/reviewer.md',
-      'commands/git/commit.toml',
-      'commands/refactor.toml',
-      'policies/safety.toml',
-      'settings.json',
-      'skills/changelog/SKILL.md',
+      'antigravity-cli/settings.json',
+      'antigravity-cli/skills/refactor.md',
+      'antigravity-cli/skills/release-notes/SKILL.md',
+      // The census enumerates a skill folder's own files, so the companion
+      // beside that entry point is published beside it (FR-024).
+      'antigravity-cli/skills/release-notes/examples/sample.md',
+      'config/agents/reviewer.md',
+      'config/agents/triage/agent.md',
+      'config/hooks.json',
+      'config/mcp_config.json',
+      'config/skills/changelog/SKILL.md',
     ],
     agents: ['plugins/marketplace.json', 'skills/pathfinder/SKILL.md'],
   };
@@ -905,18 +997,20 @@ export function buildGlobalHomeFixture(
       'rules/archive/old.rules',
       'sessions/rollout.jsonl',
     ],
-    gemini: [
+    antigravity: [
       '.env',
-      'agents/archive/old.md',
-      'extensions/security-tools/commands/scan.toml',
-      'extensions/security-tools/gemini-extension.json',
+      'antigravity-cli/brain/ec33ebf9/.system_generated/logs/transcript.jsonl',
+      'antigravity-cli/import_manifest.json',
+      'antigravity-cli/plugins/security-tools/plugin.json',
+      'antigravity-cli/plugins/security-tools/skills/scan/SKILL.md',
+      'antigravity-ide/skills/ide-only/SKILL.md',
+      'antigravity/skills/desktop-only/SKILL.md',
+      'config/agents/archive/old.md',
+      'config/skills/README.md',
       'google_accounts.json',
       'hooks/audit.sh',
       'oauth_creds.json',
-      'policies/archive/old.toml',
-      'skills/README.md',
       'tmp/session.json',
-      'trustedFolders.json',
     ],
     agents: ['plugins/team-tools/plugin.json', 'skills/README.md'],
   };
@@ -967,9 +1061,10 @@ export function buildGlobalHomeFixture(
       [GLOBAL_HOME_VARIABLES.copilot]: homes.copilot,
       [GLOBAL_HOME_VARIABLES.claude]: homes.claude,
       [GLOBAL_HOME_VARIABLES.codex]: homes.codex,
-      // The parent of `.gemini`, not `.gemini`: that is what the vendor
-      // documents the setting as, and the capture joins the suffix.
-      [GLOBAL_HOME_VARIABLES.gemini]: root,
+      // No fourth property: the Antigravity home is `.gemini` below the home
+      // directory in every case, so `HOME` below is what locates it and a
+      // property here would be one the capture never reads
+      // (specs/003-antigravity-cli-support/spec.md § FR-008).
       HOME: root,
       USERPROFILE: root,
     },

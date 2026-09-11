@@ -180,7 +180,7 @@ majorの越境、pre-1.0のcaret rangeの移動は今もこのgateに届く（AG
 | Frontmatter           |                                                          `vfile-matter` 5.0.1、`vfile` 6.0.3 | Frontmatterのdelimiter処理。Frontmatter blockの開始と終了を決めることはBOM処理、改行、閉じfenceの形を決め直すことであり、正規表現ではなくparserの仕事である。これは同表の`yaml` engineでblockをparseする。独自の`js-yaml`を持つpackageは1つのdocumentに2つの意味を与えてしまう。js-yaml 3はYAML 1.1、`yaml`はYAML 1.2だからである                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | File opening          |                                                            `which` 6.0.1、`env-editor` 1.3.0 | Detail surfaceのopen control（FR-022）。`which`はlaunchが実行するeditor commandを解決するため、hostが提示するものと起動できるものが2つの食い違い得る事実ではなく1つの事実になる。`env-editor`は、そのcommandが`PATH`に無いときにinstallが置く場所を供給し、それらの場所を各editorのpackagingへ追随させる自前の表ではなく、維持された第三者の事実のままに保つ。`which`は6.xに留める: 7.0.0は`^24.15.0`を宣言し、本projectが支援するNode rangeの一部を除外するためである。Launch自体は上に挙げた`open`を再利用する。installされたapplicationを汎用に探すpackage（`locate-app`）は採らない: CommonJS専用であり、本projectがauditするproduction closureへprompt engineering用packageと`crypto-js`を持ち込むためである                                                         |
 | Icon                  | `unplugin-icons` 23.0.1、`@iconify-json/lucide` 1.2.124、`@iconify-json/simple-icons` 1.2.93 | Build時のicon compile: `~icons/<collection>/<name>` importはそのicon自身のSVGを持つcomponentになるため、pageは何もfetchせず、icon runtimeも同梱されない — FR-022が要求する形であり、IconifyのAPI前提のruntime（`@nuxt/icon`、`@iconify/vue`）を採らない理由でもある。両collectionともicon dataを配布する一方で自身のlicense fileを持たないため、notice document（FR-043）が読めるよう、各setのupstream textを`licenses/`配下に本repositoryが保持する                                                                                                                                                                                                                                                                                                                      |
-| Source view/diff      |                                                `shiki` 4.4.3、`@shikijs/themes` 4.4.3、`diff` 9.0.0 | shikiのJavaScript正規表現engine上のtokenizer専用の着色 — editor runtimeもworkerもWebAssemblyも無い —。同梱grammarは言語ごとに1 chunkでfetchし、2つのthemeは静的にimportする。`diff`はcomparisonのためのMyersの行/語の対応付けで、product独自の上限なしにpage上で計算する。いずれも自身のlicense fileを同梱するため、notice documentはそれを読む（FR-043）                                                                                                                                                                                                                                                                                        |
+| Source view/diff      |                                       `shiki` 4.4.3、`@shikijs/themes` 4.4.3、`vscode-diff` 3.0.1 | shikiのJavaScript正規表現engine上のtokenizer専用の着色 — editor runtimeもworkerもWebAssemblyも無い —。同梱grammarは言語ごとに1 chunkでfetchし、2つのthemeは静的にimportする。`vscode-diff`はVS Code自身の行diffをeditorから切り離して公開したもので、product独自の上限なしにpage上で計算する。いずれも自身のlicense fileを同梱するため、notice documentはそれを読む（FR-043）                                                                                                                                                                                                                                                                                        |
 | Colour-scheme control |                                                                     `shine-and-bright` 0.3.0 | 読み手がpageのcolour schemeを選ぶswitch。描画はこのpackageが同梱するstylesheetのものである: componentはそのclass名が選択するmarkupを描き、packageのcustom propertyを設定するだけなので、knobのスライドとsunからmoonへの変化はこのrepositoryのものではなくpackageのものである。上のiconやgrammar packageと同じく、CSSをclient bundleが運ぶdevDependencyであり、自身のlicense fileを同梱するため、notice documentはそのtextを読む（それらは`licenses/`配下に同梱テキストを置く）(FR-043)。forced colours有効時は`box-shadow`がすべて落ちるためsunとmoonも消えるが、buttonとknobのborderは読み手のpaletteで塗り直され、knobは依然として両端の間を移動する — 2026-08-25に計測。その状況で用途を述べるのはcontrolのaccessible nameである（WCAG 1.4.11）                        |
 | Lint                  | ESLint 10.7.0、`@nuxt/eslint` 1.16.0、`@stylistic/eslint-plugin` 5.10.0、`@typescript-eslint/parser` 8.64.0 | 現行互換stable release。`@stylistic`はESLint 10がcoreから外したstylistic rule（例: `quotes`）を提供する。Parserを直接宣言するのは、このrepository自身の`eslint-rules/`配下のruleをESLintの`RuleTester`で試験しており、そこではconfigではなくtestがparserを渡すためである。`@nuxt/eslint`経由の推移的解決はここが管理しないversionであり、宣言していないpackageをimportするtestは、持っていないものを求めていることになる。Releaseに関して変わるものは無い — 公開payloadがimportしないdevDependencyであり、runtime挙動も公開契約も移行も伴わない。この表の他のtoolと同じ扱いである                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Unit/integration      |                                            Vitestとcoverage-v8 4.1.10、Nuxt Test Utils 4.0.3 | Vitest/coverageを同じversionにし、Nuxt supportのtest harnessを使う                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -298,7 +298,7 @@ platform toolchainやruntime package dependencyを追加しない。
 Directなproduction `dependencies` setは`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`の
 正確に11個とする（caret rangeで宣言し、lockfileがexactなresolved versionへpinする。`h3`のresolved versionはdevframe自身のh3と一致し、両者は1つのmodule instanceへ解決される）: CLIとparserのpackageはnpm graph上のleafであり、h3は下記のtransitive host treeに既に含まれ、devframeがそのtreeを
 持ち込み、`open`はhelper検出の小さなtree（`default-browser`、`is-wsl`とそのleaf）をlockfileのpin付きで持ち込む。
-Nuxt/Vue/Vite/tsdown、shiki、`diff`、test toolingは必要outputをclosed product assetへassembleするためbuild/development-onlyとする。
+Nuxt/Vue/Vite/tsdown、shiki、`vscode-diff`、test toolingは必要outputをclosed product assetへassembleするためbuild/development-onlyとする。
 Lockfileとisolated install済みproduction closureの両方をauditする。
 
 **検討した代案**:
@@ -701,12 +701,21 @@ rowをdocumentから取り除く（FR-027）。表示のinert性はtext node、V
 実行されず、clientはexternal worker、blob worker、evaluated stringをloadしない。devframe hostが
 Nuxt outputを直接配信するため（§ 8）、product-assembledなCSP-hash manifestは存在しない。
 comparisonは並んだ2つの`pre`であり、比較するtextごとに1つ、それぞれがcomparisonのrowごとに1つの
-blockを持つ（`source-diff-rows.ts`）: 行は行に対するMyersのdiff（`diff` § diffArrays）で対応付け、
-whitespaceを含めて書かれたとおり丸ごと比較し、product独自の行数やcomputation-timeのcutoffは
-設けない。置き換えられた行の並びはその置き換えと行ごとに向かい合い、片側にしかない行は空白と
-向かい合い、変更行のうち相手側が持たない文字は語単位（`diff` § diffWordsWithSpace）で、行の色を一段強めた
-帯の上に、run自身の色ではなくthemeの既定text colourで描いて印付ける（帯が保つcontrast比を
-1つにするため）。行番号の桁の`+`または`-`が、色では担えない場面 —
+blockを持つ（`source-diff-rows.ts`）: diffはVS Code自身のもの、editorから切り離して`vscode-diff`
+として公開されているもの — そのdiff editorが動かす`defaultLinesDiffComputer`だけで、editorの他は
+何も入らない — であり、product独自の行数やcomputation-timeのcutoffなしにpage上で計算する。これが
+もたらすのは、comparisonが下さねばならない判断のすべて、そしてそうでなければこのrepositoryが発明し
+調整することになる判断である: 置き換えられた並びのどの行と読み合わせるか、印がどこで始まりどこで
+終わるか、2つの値がたまたま同じに綴る連なりが共通のtextなのか2つの変更の間の偶然なのか。呼び出しは
+2回で、このsurfaceが描く2つのもののためである。`ignoreTrimWhitespace: true`はwhitespaceの先で
+異なる行だけを報告し、これがrowの位置を決める: 相手側が2スペース深いまま保っている行は、その位置を
+取った行ではなくその行と向かい合い、置き換えられた並びは両者が届く限り行ごとにその置き換えと
+向かい合い、片側にしかない行は空白と向かい合う。`ignoreTrimWhitespace: false`は異なる文字を
+すべて報告し、これが印の範囲になる: 両側のindent全体ではなく、その2スペースである。2つの答えの
+背後にある行の対応付けは1つである — computerはこの設定がどちらでもtrimした行をhashする — ため、
+前者のrowと後者の印は1つのcomparisonを述べる。両sideはwhitespaceを含め書かれたとおりに示し、
+印は行の色を一段強めた帯の上に、run自身の色ではなくthemeの既定text colourで描く
+（帯が保つcontrast比を1つにするため）。行番号の桁の`+`または`-`が、色では担えない場面 —
 forced colours下、そして2つのrow colourを見分けない読み手 — で行の差を担い（WCAG 1.4.1）、
 rowと語の色は4つの`light-dark()` token（`main.css` § --aci-diff-added）である。両sideは決して1列に畳まれない: 1列で示されたcomparisonは
 比較することをやめているので、2列に要る幅を下回ればframeが対をその内側で横にscrollさせる
@@ -761,8 +770,10 @@ inspectionを明確に改善する。そしてここのfileはすべて編集で
 既にそれを読む。一方editorはclientの残り全部より桁で大きいruntime — editor coreだけでgzip 672 KB、
 しかもskill detailはそれを2つmountしていた — と、inertに保たねばならない独自のkey handling、focus
 model、announce機構を持ち込んでいた。tokenizingはeditorがしてtextがしない唯一のことであり、
-shikiはそれだけをする。行の対応付けはcomparisonの性質であり、`diff`はMyersのalgorithmの小さく
-維持された実装として、product独自の上限なしにそれを計算する。Recognition factにはdomain semanticsがある —
+shikiはそれだけをする。行の対応付けはeditorの性質ではなくcomparisonの性質であり、だからこそ
+algorithmだけをeditor抜きで採る: `vscode-diff`はVS Code自身の行diffを依存なしで単独に公開しており、
+手書きのMyers passが読み手に目を凝らさせる部分をeditorのheuristicsで決める — 1段indentし直された
+行の並びは同じ行であり、無関係な2つのpathが共有する`.`は共通のtextではない。Recognition factにはdomain semanticsがある —
 set-like recognitionとそのsurfaceはtypedなrowでstructureとして比較し、literal spellingの差は
 source diffで観測可能に保つ。declaration blockには失われるstructureがない:
 sideごとに1つのauthored mappingであり、canonical serializationがfieldを両sideで同一に並べるため、
@@ -788,8 +799,17 @@ inert renderingによってcontent自体の実行、load、navigateを防ぐ。
   declarationのserialization — MCPのJSON、frontmatterのYAML — はこのcaseではない:
   各sideは1つのauthored mappingで、そのcanonical documentはfieldを両sideで同一に並べる。
 - diff component（`@git-diff-view/vue`）はshikiと並んで独自のhighlighter（`lowlight`）を運び、
-  `diff`の3 KBに対して圧縮333 KBであるため不採用。CodeMirrorのmerge view（`@codemirror/merge`、
+  圧縮333 KBであるため不採用。CodeMirrorのmerge view（`@codemirror/merge`、
   107 KB）は、editorが要らない唯一のことのために第2のeditorを持ち込むことになる。
+- `diff` package（Myersのalgorithm、圧縮3 KB）はこのsurfaceが最初にrowと印を計算していたもので、
+  圧縮19 KBの`vscode-diff`に置き換えた。Myersの答えだけでは読み手が見られるdiffにならない:
+  algorithmから画面までの間にあるもの — 相手側がindentし直した行を対応付けること、2つの異なる値が
+  たまたま共有する文字の周りで印が島に割れないようにすること、印を着地した語まで広げること —
+  はすべてheuristicsであり、ここに書くことは、VS Codeのdiff editorが人々が日常的に読むdiffに対して
+  既に決着させた判断を、発明し調整し直すことを意味した。
+- `@vscode/diff`は同じalgorithmのWebAssembly backend版であり、WebAssemblyを出荷しないという上記の
+  決定によって除外される。`monaco-diff`は`monaco-editor-core`からの再exportで、それはこの節が
+  却下したeditorそのものである。
 
 ## 8. Local session transport
 

@@ -1,5 +1,442 @@
 [
   {
+    "behaviorId": "antigravity.behavior.repo.agents",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".agents/agents/<name>.md; .agents/agents/<name>/agent.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-subagents",
+        "url": "https://antigravity.google/docs/cli/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Custom Agents (Markdown Format)"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The CLI automatically discovers custom agents defined in Markdown format with YAML frontmatter: workspace agents at .agents/agents/<name>.md or .agents/agents/<name>/agent.md, and global agents in ~/.gemini/config/agents/; an agent with subagent: true set in its frontmatter can be invoked by the primary agent."
+      },
+      {
+        "sourceId": "google.antigravity.subagents",
+        "url": "https://antigravity.google/docs/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Agent Location and Discovery", "Frontmatter Configuration (YAML)"],
+        "reviewedOn": "2026-09-11",
+        "establishes": "Custom subagents are discovered at .agents/agents/<name>.md or <name>/agent.md in the workspace and at the same two spellings below ~/.gemini/config/agents/, and the frontmatter table marks name — the unique identifier for the custom agent — as required, which is why a file declaring none has no name this vendor resolves rather than one taken from its path."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.repo.context",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": "GEMINI.md; AGENTS.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-migration",
+        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "officialHost": "antigravity.google",
+        "sections": ["Context files and workspace rules"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Both CLI platforms use identical workspace context rules: the agent parses and enforces the rule constraints defined inside the active directory GEMINI.md and AGENTS.md files, and automatically consults the global constraints at ~/.gemini/GEMINI.md."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.repo.hooks",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".agents/hooks.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.hooks",
+        "url": "https://antigravity.google/docs/hooks/",
+        "officialHost": "antigravity.google",
+        "sections": ["Configuration", "Schema and File Format", "Hook Handler Configuration"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Hooks are configured in a hooks.json file located in the customization directory — .agents/ in the workspace or ~/.gemini/config/ — and that file maps a hook name to its event configurations, each event holding matcher groups whose handlers carry a command and an optional timeout, with an optional per-hook enabled flag."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.repo.mcp",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".agents/mcp_config.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-mcp",
+        "url": "https://antigravity.google/docs/cli/mcp/",
+        "officialHost": "antigravity.google",
+        "sections": [
+          "Global and Workspace Server Configs",
+          "MCP Configuration Structure",
+          "MCP Configuration Properties"
+        ],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Antigravity CLI separates MCP definitions into dedicated configurations — global setups in ~/.gemini/config/mcp_config.json and workspace local setups in .agents/mcp_config.json — each a single mcpServers object whose entries declare command or serverUrl with optional args, env, cwd, and headers."
+      },
+      {
+        "sourceId": "google.antigravity.cli-migration",
+        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "officialHost": "antigravity.google",
+        "sections": ["Directory mapping", "Required schema updates"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Servers were declared inline within ~/.gemini/settings.json and are now defined in a standalone mcp_config.json profile; when migrating remote definitions the URI key must be updated from the legacy url or httpUrl to serverUrl."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.repo.rules",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".agents/rules/<name>.md, .agent/rules/<name>.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules-workflows/",
+        "officialHost": "antigravity.google",
+        "sections": ["Rules", "Workspace Rules", "Global Rules"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "A rule is a Markdown file limited to 12,000 characters; workspace rules live in the .agents/rules folder of the workspace or git root with backward support for .agent/rules, global rules live in ~/.gemini/GEMINI.md, and each rule declares whether it activates manually, always, by model decision, or by a glob pattern."
+      },
+      {
+        "sourceId": "google.antigravity.cli-migration",
+        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "officialHost": "antigravity.google",
+        "sections": ["First-launch onboarding"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Support for workspace skills, rules, and MCP servers is preserved across the migration to Antigravity CLI."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.repo.skills",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".agents/skills/<name>.md, .agents/skills/<name>/SKILL.md, .agent/skills/<name>/SKILL.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Creating local workspace skills"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "To deploy workspace-specific skills, create a directory named .agents/skills/ at the project root and draft a markdown file with a .md extension whose frontmatter defines name and description; when you run agy in that directory the skill is compiled and becomes a slash command."
+      },
+      {
+        "sourceId": "google.antigravity.cli-migration",
+        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "officialHost": "antigravity.google",
+        "sections": ["Updated skills paths"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The workspace project path for skills moved from .gemini/skills/ to .agents/skills/, while the global shared path moved to ~/.gemini/antigravity-cli/skills/."
+      },
+      {
+        "sourceId": "google.antigravity.skills",
+        "url": "https://antigravity.google/docs/skills/",
+        "officialHost": "antigravity.google",
+        "sections": ["Where skills live", "Creating a skill", "Skill folder structure"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "A skill is a folder containing a SKILL.md file; a workspace-specific one lives at <workspace-root>/.agents/skills/<skill-folder>/, .agents/skills is the current default with backward support for .agent/skills, and SKILL.md is the only required file beside optional scripts, examples, and resources."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.user.agents",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "config/agents/",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-subagents",
+        "url": "https://antigravity.google/docs/cli/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Custom Agents (Markdown Format)"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Global custom agents are discovered in ~/.gemini/config/agents/."
+      },
+      {
+        "sourceId": "google.antigravity.subagents",
+        "url": "https://antigravity.google/docs/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Agent Location and Discovery", "Frontmatter Configuration (YAML)"],
+        "reviewedOn": "2026-09-11",
+        "establishes": "Custom subagents are discovered at .agents/agents/<name>.md or <name>/agent.md in the workspace and at the same two spellings below ~/.gemini/config/agents/, and the frontmatter table marks name — the unique identifier for the custom agent — as required, which is why a file declaring none has no name this vendor resolves rather than one taken from its path."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.user.context",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "GEMINI.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-migration",
+        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "officialHost": "antigravity.google",
+        "sections": ["Context files and workspace rules"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The agent automatically consults and enforces the global developer constraints located at ~/.gemini/GEMINI.md."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.user.home",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": null,
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-settings",
+        "url": "https://antigravity.google/docs/cli/settings/",
+        "officialHost": "antigravity.google",
+        "sections": ["Configuration file location"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Antigravity CLI stores user preferences in a plain JSON configuration profile at ~/.gemini/antigravity-cli/settings.json."
+      },
+      {
+        "sourceId": "google.antigravity.cli-migration",
+        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "officialHost": "antigravity.google",
+        "sections": ["Context files and workspace rules"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The agent automatically consults and enforces the global constraints located at ~/.gemini/GEMINI.md."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.user.hooks",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "config/hooks.json, hooks in antigravity-cli/settings.json",
+      "traversal": "none"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Managing hooks"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Hooks intercept agent actions right before or immediately after execution and are defined inside a plugin hooks.json or configured inside the primary settings.json file."
+      },
+      {
+        "sourceId": "google.antigravity.hooks",
+        "url": "https://antigravity.google/docs/hooks/",
+        "officialHost": "antigravity.google",
+        "sections": ["Configuration", "Schema and File Format", "Common Input Fields"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Hooks are configured in a hooks.json file located in the customization directory — .agents/ in the workspace or ~/.gemini/config/ — and the transcript a hook receives lives under ~/.gemini/antigravity-cli for the CLI, beside ~/.gemini/antigravity for Antigravity 2.0."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.user.mcp",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "config/mcp_config.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-mcp",
+        "url": "https://antigravity.google/docs/cli/mcp/",
+        "officialHost": "antigravity.google",
+        "sections": ["Global and Workspace Server Configs"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Global MCP server setups are configured in ~/.gemini/config/mcp_config.json, and workspace local setups in the active project under .agents/mcp_config.json."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.user.permissions",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "allow, ask, and deny in antigravity-cli/settings.json",
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-permissions",
+        "url": "https://antigravity.google/docs/cli/permissions/",
+        "officialHost": "antigravity.google",
+        "sections": ["Fine-grained permissions", "Supported actions & matching rules"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Every sensitive operation is a permission resource formatted as action(target), evaluated across the deny, ask, and allow lists configured inside the global settings at ~/.gemini/antigravity-cli/settings.json, with conflicting rules resolved in the order deny, then ask, then allow."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.user.plugins",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "antigravity-cli/plugins/<name>/ and antigravity-cli/import_manifest.json",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Antigravity plugins", "Plugin filesystem structure"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "When you install or import a plugin the CLI stages the bundle files within the global configuration path ~/.gemini/antigravity-cli/plugins/<plugin_name>/, whose documented layout holds plugin.json, and optionally mcp_config.json, hooks.json, skills/, agents/, and rules/."
+      },
+      {
+        "sourceId": "google.antigravity.cli-features",
+        "url": "https://antigravity.google/docs/cli/features/",
+        "officialHost": "antigravity.google",
+        "sections": ["Plugins"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Plugins are namespaced bundles containing skills, agents, rules, MCP servers, and hooks; installing one stages the files under ~/.gemini/antigravity-cli/plugins/<plugin_name>/ beside an import_manifest.json tracking manifest."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.user.settings",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "antigravity-cli/settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-settings",
+        "url": "https://antigravity.google/docs/cli/settings/",
+        "officialHost": "antigravity.google",
+        "sections": ["Setting up preferences", "Configuration file location"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The persistent settings are saved in plain JSON at ~/.gemini/antigravity-cli/settings.json, written sparsely so that only values differing from their defaults reach disk."
+      },
+      {
+        "sourceId": "google.antigravity.cli-features",
+        "url": "https://antigravity.google/docs/cli/features/",
+        "officialHost": "antigravity.google",
+        "sections": ["Advanced Customization via settings.json"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The settings.json file at ~/.gemini/antigravity-cli/settings.json carries the CLI customizations, including the terminal sandbox toggle."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.user.skills",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "antigravity-cli/skills/<name>/SKILL.md, config/skills/<name>/SKILL.md, antigravity-cli/skills/<name>.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Sharing global skills"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "To share skills across all workspaces, place the target markdown files inside the global configuration path ~/.gemini/antigravity-cli/skills/; any markdown skill there is automatically imported as a global slash command whenever agy launches in any directory."
+      },
+      {
+        "sourceId": "google.antigravity.skills",
+        "url": "https://antigravity.google/docs/skills/",
+        "officialHost": "antigravity.google",
+        "sections": ["Where skills live"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "A global skill, available across all workspaces, is a skill folder holding a SKILL.md at ~/.gemini/config/skills/<skill-folder>/ — a different directory and a different shape from the one the terminal page gives for the same scope."
+      }
+    ]
+  },
+  {
     "behaviorId": "claude.behavior.repo.agent-memory.local",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -2821,549 +3258,6 @@
         "sections": ["Agent skills settings"],
         "reviewedOn": "2026-08-19",
         "establishes": "User skill locations participate in the same setting-controlled discovery configuration as workspace locations."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.repo.agents",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "repository",
-      "lookupBase": "repository-root",
-      "relativeSelector": ".gemini/agents/*.md",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": ["experimental"],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.subagents",
-        "url": "https://geminicli.com/docs/core/subagents/",
-        "officialHost": "geminicli.com",
-        "sections": ["Agent definition files", "File format", "Disabling subagents"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Custom agents are Markdown files with YAML frontmatter placed at .gemini/agents/*.md for a project or ~/.gemini/agents/*.md for a user; the frontmatter is required and its name is the tool name the agent is invoked by; subagents are enabled by default and turned off by setting enableAgents to false under experimental in settings.json."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.repo.commands",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "repository",
-      "lookupBase": "repository-root",
-      "relativeSelector": ".gemini/commands/",
-      "traversal": "recursive-under-base"
-    },
-    "documentationStatus": "partially-documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.custom-commands",
-        "url": "https://geminicli.com/docs/cli/custom-commands/",
-        "officialHost": "geminicli.com",
-        "sections": ["File locations and precedence", "Naming and namespacing", "Required fields"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Project commands live in <project root>/.gemini/commands/ and can be committed; a command is named by its file path relative to the commands directory with the path separator converted to a colon, so a nested file becomes a namespaced command — stated as a general rule with the one example git/commit.toml, with no depth limit and no word on segment characters; a project command with the same name as a user command is always used; the only required TOML field is prompt."
-      },
-      {
-        "sourceId": "google.gemini-cli.trusted-folders",
-        "url": "https://geminicli.com/docs/cli/trusted-folders/",
-        "officialHost": "geminicli.com",
-        "sections": ["Why trust matters: The impact of an untrusted workspace"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Custom commands from .toml files are not loaded in an untrusted workspace."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.repo.context",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "repository",
-      "lookupBase": "runtime-cwd",
-      "relativeSelector": "GEMINI.md, or each name context.fileName declares",
-      "traversal": "ancestor-chain-to-repository-root"
-    },
-    "documentationStatus": "partially-documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.gemini-md",
-        "url": "https://geminicli.com/docs/cli/gemini-md/",
-        "officialHost": "geminicli.com",
-        "sections": ["Understand the context hierarchy", "Customize the context file name"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The CLI loads context files in a fixed order — the global file in the user directory, then the files it finds in the configured workspace directories and their parent directories, then just-in-time files from any directory a tool accesses and its ancestors up to a trusted root — and concatenates them all; GEMINI.md is the default filename, and context.fileName in settings.json names one or several other filenames to load instead."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.repo.env",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "repository",
-      "lookupBase": "runtime-cwd",
-      "relativeSelector": ".env; .gemini/.env",
-      "traversal": "ancestor-chain-to-repository-root"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.configuration",
-        "url": "https://geminicli.com/docs/reference/configuration/",
-        "officialHost": "geminicli.com",
-        "sections": ["Environment variables and .env files"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The CLI loads environment variables from an .env file, searching the current directory and its parents up to the project root or the home directory and then ~/.env; variables from .gemini/.env files are never excluded."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.repo.hooks",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "repository",
-      "lookupBase": "active-config-layer",
-      "relativeSelector": "hooks in .gemini/settings.json",
-      "traversal": "none"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.hooks",
-        "url": "https://geminicli.com/docs/hooks/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration", "Security and risks"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Hooks are configured in settings.json and merged from the project .gemini/settings.json, the user settings, the system settings, and installed extensions in that order of precedence; project hooks are fingerprinted, and a hook whose name or command changed is treated as a new, untrusted hook that warns before it runs."
-      },
-      {
-        "sourceId": "google.gemini-cli.hooks-reference",
-        "url": "https://geminicli.com/docs/hooks/reference/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration schema", "Hook definition", "Hook configuration"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The hooks object is keyed by event name, each holding hook definitions with an optional matcher and a hooks array whose entries carry a type of command, the shell command to execute, and optional name, timeout, and description fields."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.repo.ignore",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "repository",
-      "lookupBase": "repository-root",
-      "relativeSelector": ".geminiignore",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.gemini-ignore",
-        "url": "https://geminicli.com/docs/cli/gemini-ignore/",
-        "officialHost": "geminicli.com",
-        "sections": ["How it works", "How to use .geminiignore"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "A .geminiignore file in the project root lists paths that tools respecting the file exclude from their operations, such as files shared with the @ command; the paths stay visible to other services such as Git."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.repo.mcp",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "repository",
-      "lookupBase": "active-config-layer",
-      "relativeSelector": "mcpServers in .gemini/settings.json",
-      "traversal": "none"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.mcp-server",
-        "url": "https://geminicli.com/docs/tools/mcp-server/",
-        "officialHost": "geminicli.com",
-        "sections": [
-          "Configure the MCP server in settings.json",
-          "Configuration properties",
-          "Environment variable expansion"
-        ],
-        "reviewedOn": "2026-09-09",
-        "establishes": "MCP servers are declared by name in the mcpServers object of settings.json, at user or project scope; each declaration names exactly one transport through command, url, or httpUrl and may add args, env, cwd, headers, timeout, trust, includeTools, and excludeTools; variables written as $VAR_NAME or ${VAR_NAME} in the env block are expanded from the environment when the server is started."
-      },
-      {
-        "sourceId": "google.gemini-cli.trusted-folders",
-        "url": "https://geminicli.com/docs/cli/trusted-folders/",
-        "officialHost": "geminicli.com",
-        "sections": ["Why trust matters: The impact of an untrusted workspace"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Project-specific MCP servers do not connect in an untrusted workspace, so a declaration is not proof of a connection."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.repo.policies",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "repository",
-      "lookupBase": "repository-root",
-      "relativeSelector": ".gemini/policies/*.toml",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.policy-engine",
-        "url": "https://geminicli.com/docs/reference/policy-engine/",
-        "officialHost": "geminicli.com",
-        "sections": ["Priority system and tiers", "Policy locations"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Policies are TOML files loaded per tier — default, extension, workspace, user, admin — with the workspace tier at $WORKSPACE_ROOT/.gemini/policies/*.toml marked disabled: the page states that the workspace tier is currently non-functional and that policies defined there have no effect."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.repo.settings",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "repository",
-      "lookupBase": "repository-root",
-      "relativeSelector": ".gemini/settings.json",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.configuration",
-        "url": "https://geminicli.com/docs/reference/configuration/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration layers", "Settings files"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The project settings file is .gemini/settings.json in the project root and applies only when the CLI runs from that project; it sits above the user settings file and below the system settings file in the documented precedence, and the project .gemini directory can hold other project-specific files beside it."
-      },
-      {
-        "sourceId": "google.gemini-cli.trusted-folders",
-        "url": "https://geminicli.com/docs/cli/trusted-folders/",
-        "officialHost": "geminicli.com",
-        "sections": ["Why trust matters: The impact of an untrusted workspace"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "In an untrusted workspace the CLI does not load the project .gemini/settings.json, so whether the project layer applies at all is a trust decision the file itself cannot show."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.repo.skills",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "repository",
-      "lookupBase": "repository-root",
-      "relativeSelector": ".gemini/skills/<name>/SKILL.md; .agents/skills/<name>/SKILL.md",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.skills",
-        "url": "https://geminicli.com/docs/cli/skills/",
-        "officialHost": "geminicli.com",
-        "sections": ["Discovery tiers", "Precedence and aliases"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Skills are discovered from four tiers in ascending precedence — built-in, extension, user, workspace — with workspace skills in .gemini/skills/ or the .agents/skills/ alias; when several skills share a name the higher-precedence tier wins, and within one tier the .agents/skills/ alias takes precedence over the .gemini/skills/ directory."
-      },
-      {
-        "sourceId": "google.gemini-cli.creating-skills",
-        "url": "https://geminicli.com/docs/cli/creating-skills/",
-        "officialHost": "geminicli.com",
-        "sections": ["Skill structure", "Metadata and triggers", "Discovery aliases"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "A skill is a directory whose only required file is SKILL.md, beside optional scripts, references, and assets folders; the frontmatter names the skill and describes when to use it; .agents/skills is an alias of .gemini/skills compatible with other tools following the Agent Skills standard."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.repo.trust",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "repository",
-      "lookupBase": "repository-root",
-      "relativeSelector": null,
-      "traversal": "none"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.trusted-folders",
-        "url": "https://geminicli.com/docs/cli/trusted-folders/",
-        "officialHost": "geminicli.com",
-        "sections": ["Why trust matters: The impact of an untrusted workspace"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "An untrusted workspace runs in safe mode: workspace settings and .env files are ignored, project MCP servers do not connect, custom commands are not loaded, skills are unavailable, automatic memory loading is disabled, and tool auto-acceptance is off."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.user.agents",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "user",
-      "lookupBase": "tool-home",
-      "relativeSelector": "agents/*.md",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": ["experimental"],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.subagents",
-        "url": "https://geminicli.com/docs/core/subagents/",
-        "officialHost": "geminicli.com",
-        "sections": ["Agent definition files", "Disabling subagents"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Personal agents are Markdown files with YAML frontmatter at ~/.gemini/agents/*.md, under the same experimental enableAgents setting as project agents; the page names both locations without establishing an order between them."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.user.commands",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "user",
-      "lookupBase": "tool-home",
-      "relativeSelector": "commands/",
-      "traversal": "recursive-under-base"
-    },
-    "documentationStatus": "partially-documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.custom-commands",
-        "url": "https://geminicli.com/docs/cli/custom-commands/",
-        "officialHost": "geminicli.com",
-        "sections": ["File locations and precedence", "Naming and namespacing"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "User commands live in ~/.gemini/commands/ and are available in every project; a project command with the same name is always used instead; the name derives from the path below the commands directory with the separator converted to a colon."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.user.context",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "user",
-      "lookupBase": "tool-home",
-      "relativeSelector": "GEMINI.md",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.gemini-md",
-        "url": "https://geminicli.com/docs/cli/gemini-md/",
-        "officialHost": "geminicli.com",
-        "sections": ["Understand the context hierarchy"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The global context file at ~/.gemini/GEMINI.md provides default instructions for all projects and is the first file loaded in the context hierarchy."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.user.env",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "user",
-      "lookupBase": "tool-home",
-      "relativeSelector": ".env; ~/.env",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.configuration",
-        "url": "https://geminicli.com/docs/reference/configuration/",
-        "officialHost": "geminicli.com",
-        "sections": ["Environment variables and .env files"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "When no project .env is found the CLI falls back to ~/.env, and .gemini/.env files are never excluded from loading."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.user.extensions",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "plugin",
-      "lookupBase": "tool-home",
-      "relativeSelector": "extensions/<name>/gemini-extension.json and the components beside it",
-      "traversal": "recursive-under-base"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.extensions-reference",
-        "url": "https://geminicli.com/docs/extensions/reference/",
-        "officialHost": "geminicli.com",
-        "sections": ["Extension format", "gemini-extension.json", "Link a local extension"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The CLI loads extensions from <home>/.gemini/extensions and merges their configurations at startup; an extension directory holds gemini-extension.json beside its commands, skills, agents, hooks/hooks.json, policies, and context file; gemini extensions link creates a symbolic link from that directory to a local development directory."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.user.home",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "user",
-      "lookupBase": "tool-home",
-      "relativeSelector": null,
-      "traversal": "none"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.configuration",
-        "url": "https://geminicli.com/docs/reference/configuration/",
-        "officialHost": "geminicli.com",
-        "sections": ["Settings files", "Environment variables and .env files"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The user settings file is ~/.gemini/settings.json; GEMINI_CLI_HOME specifies the root directory for user-level configuration and storage, defaulting to the system home directory, inside which the CLI creates its .gemini folder."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.user.policies",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "user",
-      "lookupBase": "tool-home",
-      "relativeSelector": "policies/*.toml",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.policy-engine",
-        "url": "https://geminicli.com/docs/reference/policy-engine/",
-        "officialHost": "geminicli.com",
-        "sections": ["Priority system and tiers", "Policy locations", "TOML rule schema"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "User policies are the custom ~/.gemini/policies/*.toml files, the user tier whose base outranks the extension and default tiers and is outranked by the admin tier; each [[rule]] combines conditions such as toolName with a decision of allow, deny, or ask_user and a priority within the tier."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.user.settings",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "user",
-      "lookupBase": "tool-home",
-      "relativeSelector": "settings.json",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.configuration",
-        "url": "https://geminicli.com/docs/reference/configuration/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration layers", "Settings files"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The user settings file is ~/.gemini/settings.json and applies to every session of that user; it sits above the system defaults and below the project settings file in the documented precedence."
-      },
-      {
-        "sourceId": "google.gemini-cli.mcp-server",
-        "url": "https://geminicli.com/docs/tools/mcp-server/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configure the MCP server in settings.json"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The mcpServers object may be added to the user settings.json as well as the project one; the gemini mcp commands write to either scope."
-      },
-      {
-        "sourceId": "google.gemini-cli.hooks",
-        "url": "https://geminicli.com/docs/hooks/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The user settings at ~/.gemini/settings.json are one of the layers hooks are configured in and merged from."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.user.skills",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "user",
-      "lookupBase": "tool-home",
-      "relativeSelector": "skills/<name>/SKILL.md; $HOME/.agents/skills/<name>/SKILL.md",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.skills",
-        "url": "https://geminicli.com/docs/cli/skills/",
-        "officialHost": "geminicli.com",
-        "sections": ["Discovery tiers", "Precedence and aliases"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "User skills are located in ~/.gemini/skills/ or the ~/.agents/skills/ alias, the third of four tiers in ascending precedence; a higher tier wins a same-name clash, and within the user tier the alias takes precedence over the .gemini directory."
-      }
-    ]
-  },
-  {
-    "behaviorId": "gemini.behavior.user.trust-record",
-    "tool": "gemini",
-    "surfaces": ["gemini-cli"],
-    "locator": {
-      "vendorScope": "runtime-only",
-      "lookupBase": "tool-home",
-      "relativeSelector": "trustedFolders.json",
-      "traversal": "exact"
-    },
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.trusted-folders",
-        "url": "https://geminicli.com/docs/cli/trusted-folders/",
-        "officialHost": "geminicli.com",
-        "sections": ["Overriding the trust file location"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Trust decisions are saved to ~/.gemini/trustedFolders.json by default, and GEMINI_CLI_TRUSTED_FOLDERS_PATH overrides that location."
       }
     ]
   }

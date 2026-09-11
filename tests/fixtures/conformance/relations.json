@@ -1,5 +1,33 @@
 {
   "strategies": {
+    "antigravity.agents.selection": {
+      "consumesBehaviors": ["antigravity.behavior.repo.agents", "antigravity.behavior.user.agents"]
+    },
+    "antigravity.context.layering": {
+      "consumesBehaviors": [
+        "antigravity.behavior.repo.context",
+        "antigravity.behavior.user.context"
+      ]
+    },
+    "antigravity.hooks.merge": {
+      "consumesBehaviors": [
+        "antigravity.behavior.repo.hooks",
+        "antigravity.behavior.user.hooks",
+        "antigravity.behavior.user.plugins"
+      ]
+    },
+    "antigravity.mcp.configuration": {
+      "consumesBehaviors": ["antigravity.behavior.repo.mcp", "antigravity.behavior.user.mcp"]
+    },
+    "antigravity.permissions.precedence": {
+      "consumesBehaviors": ["antigravity.behavior.user.permissions"]
+    },
+    "antigravity.rules.activation": {
+      "consumesBehaviors": ["antigravity.behavior.repo.rules"]
+    },
+    "antigravity.skills.selection": {
+      "consumesBehaviors": ["antigravity.behavior.repo.skills", "antigravity.behavior.user.skills"]
+    },
     "claude.agent-context.composition": {
       "consumesBehaviors": [
         "claude.behavior.repo.agent-memory.local",
@@ -218,68 +246,100 @@
     },
     "copilot.vscode.skills.selection": {
       "consumesBehaviors": ["copilot.behavior.vscode.skills", "copilot.behavior.vscode.user.skills"]
-    },
-    "gemini.agents.selection": {
-      "consumesBehaviors": [
-        "gemini.behavior.repo.agents",
-        "gemini.behavior.repo.trust",
-        "gemini.behavior.user.agents"
-      ]
-    },
-    "gemini.commands.selection": {
-      "consumesBehaviors": [
-        "gemini.behavior.repo.commands",
-        "gemini.behavior.repo.trust",
-        "gemini.behavior.user.commands"
-      ]
-    },
-    "gemini.context.layering": {
-      "consumesBehaviors": [
-        "gemini.behavior.repo.context",
-        "gemini.behavior.repo.trust",
-        "gemini.behavior.user.context"
-      ]
-    },
-    "gemini.hooks.merge": {
-      "consumesBehaviors": [
-        "gemini.behavior.repo.hooks",
-        "gemini.behavior.repo.trust",
-        "gemini.behavior.user.extensions",
-        "gemini.behavior.user.settings"
-      ]
-    },
-    "gemini.mcp.configuration": {
-      "consumesBehaviors": [
-        "gemini.behavior.repo.mcp",
-        "gemini.behavior.repo.trust",
-        "gemini.behavior.user.extensions",
-        "gemini.behavior.user.settings"
-      ]
-    },
-    "gemini.policies.tiers": {
-      "consumesBehaviors": [
-        "gemini.behavior.repo.policies",
-        "gemini.behavior.user.extensions",
-        "gemini.behavior.user.policies"
-      ]
-    },
-    "gemini.settings.precedence": {
-      "consumesBehaviors": [
-        "gemini.behavior.repo.settings",
-        "gemini.behavior.repo.trust",
-        "gemini.behavior.user.settings"
-      ]
-    },
-    "gemini.skills.selection": {
-      "consumesBehaviors": [
-        "gemini.behavior.repo.skills",
-        "gemini.behavior.repo.trust",
-        "gemini.behavior.user.extensions",
-        "gemini.behavior.user.skills"
-      ]
     }
   },
   "rules": {
+    "antigravity.excluded.plugins": {
+      "basedOnBehaviors": ["antigravity.behavior.user.plugins"],
+      "explainedByStrategies": []
+    },
+    "antigravity.excluded.user-runtime": {
+      "basedOnBehaviors": ["antigravity.behavior.user.home"],
+      "explainedByStrategies": []
+    },
+    "antigravity.excluded.workspace-plugins": {
+      "basedOnBehaviors": ["antigravity.behavior.user.plugins"],
+      "explainedByStrategies": []
+    },
+    "antigravity.global.agent.directory": {
+      "basedOnBehaviors": ["antigravity.behavior.user.agents"],
+      "explainedByStrategies": ["antigravity.agents.selection"]
+    },
+    "antigravity.global.agent.file": {
+      "basedOnBehaviors": ["antigravity.behavior.user.agents"],
+      "explainedByStrategies": ["antigravity.agents.selection"]
+    },
+    "antigravity.global.context": {
+      "basedOnBehaviors": ["antigravity.behavior.user.context"],
+      "explainedByStrategies": ["antigravity.context.layering"]
+    },
+    "antigravity.global.hooks": {
+      "basedOnBehaviors": ["antigravity.behavior.user.hooks"],
+      "explainedByStrategies": ["antigravity.hooks.merge"]
+    },
+    "antigravity.global.hooks.inline": {
+      "basedOnBehaviors": ["antigravity.behavior.user.hooks", "antigravity.behavior.user.settings"],
+      "explainedByStrategies": ["antigravity.hooks.merge"]
+    },
+    "antigravity.global.mcp": {
+      "basedOnBehaviors": ["antigravity.behavior.user.mcp"],
+      "explainedByStrategies": ["antigravity.mcp.configuration"]
+    },
+    "antigravity.global.permissions": {
+      "basedOnBehaviors": [
+        "antigravity.behavior.user.permissions",
+        "antigravity.behavior.user.settings"
+      ],
+      "explainedByStrategies": ["antigravity.permissions.precedence"]
+    },
+    "antigravity.global.settings": {
+      "basedOnBehaviors": ["antigravity.behavior.user.settings"],
+      "explainedByStrategies": []
+    },
+    "antigravity.global.skill.directory": {
+      "basedOnBehaviors": ["antigravity.behavior.user.skills"],
+      "explainedByStrategies": ["antigravity.skills.selection"]
+    },
+    "antigravity.global.skill.file": {
+      "basedOnBehaviors": ["antigravity.behavior.user.skills"],
+      "explainedByStrategies": ["antigravity.skills.selection"]
+    },
+    "antigravity.repo.agent.directory": {
+      "basedOnBehaviors": ["antigravity.behavior.repo.agents"],
+      "explainedByStrategies": ["antigravity.agents.selection"]
+    },
+    "antigravity.repo.agent.file": {
+      "basedOnBehaviors": ["antigravity.behavior.repo.agents"],
+      "explainedByStrategies": ["antigravity.agents.selection"]
+    },
+    "antigravity.repo.context.agents-root": {
+      "basedOnBehaviors": ["antigravity.behavior.repo.context"],
+      "explainedByStrategies": ["antigravity.context.layering"]
+    },
+    "antigravity.repo.context.gemini-root": {
+      "basedOnBehaviors": ["antigravity.behavior.repo.context"],
+      "explainedByStrategies": ["antigravity.context.layering"]
+    },
+    "antigravity.repo.hooks": {
+      "basedOnBehaviors": ["antigravity.behavior.repo.hooks"],
+      "explainedByStrategies": ["antigravity.hooks.merge"]
+    },
+    "antigravity.repo.mcp": {
+      "basedOnBehaviors": ["antigravity.behavior.repo.mcp"],
+      "explainedByStrategies": ["antigravity.mcp.configuration"]
+    },
+    "antigravity.repo.rule": {
+      "basedOnBehaviors": ["antigravity.behavior.repo.rules"],
+      "explainedByStrategies": ["antigravity.rules.activation"]
+    },
+    "antigravity.repo.skill.directory": {
+      "basedOnBehaviors": ["antigravity.behavior.repo.skills"],
+      "explainedByStrategies": ["antigravity.skills.selection"]
+    },
+    "antigravity.repo.skill.file": {
+      "basedOnBehaviors": ["antigravity.behavior.repo.skills"],
+      "explainedByStrategies": ["antigravity.skills.selection"]
+    },
     "claude.excluded.plugin-files": {
       "basedOnBehaviors": ["claude.behavior.repo.marketplace", "claude.behavior.repo.plugin"],
       "explainedByStrategies": ["claude.plugins.activation"]
@@ -729,93 +789,9 @@
         "copilot.vscode.skills.selection"
       ]
     },
-    "gemini.derived.context-filename": {
-      "basedOnBehaviors": ["gemini.behavior.repo.context", "gemini.behavior.repo.settings"],
-      "explainedByStrategies": ["gemini.context.layering", "gemini.settings.precedence"]
-    },
-    "gemini.excluded.extensions": {
-      "basedOnBehaviors": ["gemini.behavior.user.extensions"],
-      "explainedByStrategies": []
-    },
-    "gemini.excluded.repo-non-customizations": {
-      "basedOnBehaviors": [
-        "gemini.behavior.repo.env",
-        "gemini.behavior.repo.hooks",
-        "gemini.behavior.repo.ignore",
-        "gemini.behavior.repo.policies"
-      ],
-      "explainedByStrategies": ["gemini.policies.tiers"]
-    },
-    "gemini.excluded.user-runtime": {
-      "basedOnBehaviors": [
-        "gemini.behavior.user.env",
-        "gemini.behavior.user.home",
-        "gemini.behavior.user.trust-record"
-      ],
-      "explainedByStrategies": []
-    },
-    "gemini.global.agent": {
-      "basedOnBehaviors": ["gemini.behavior.user.agents", "gemini.behavior.user.home"],
-      "explainedByStrategies": ["gemini.agents.selection"]
-    },
-    "gemini.global.agents-home.skill": {
-      "basedOnBehaviors": ["gemini.behavior.user.skills"],
-      "explainedByStrategies": ["gemini.skills.selection"]
-    },
-    "gemini.global.command": {
-      "basedOnBehaviors": ["gemini.behavior.user.commands", "gemini.behavior.user.home"],
-      "explainedByStrategies": ["gemini.commands.selection"]
-    },
-    "gemini.global.hooks": {
-      "basedOnBehaviors": ["gemini.behavior.user.home", "gemini.behavior.user.settings"],
-      "explainedByStrategies": ["gemini.hooks.merge"]
-    },
-    "gemini.global.instructions": {
-      "basedOnBehaviors": ["gemini.behavior.user.context", "gemini.behavior.user.home"],
-      "explainedByStrategies": ["gemini.context.layering"]
-    },
-    "gemini.global.mcp": {
-      "basedOnBehaviors": ["gemini.behavior.user.home", "gemini.behavior.user.settings"],
-      "explainedByStrategies": ["gemini.mcp.configuration"]
-    },
-    "gemini.global.policies": {
-      "basedOnBehaviors": ["gemini.behavior.user.home", "gemini.behavior.user.policies"],
-      "explainedByStrategies": ["gemini.policies.tiers"]
-    },
-    "gemini.global.settings": {
-      "basedOnBehaviors": ["gemini.behavior.user.home", "gemini.behavior.user.settings"],
-      "explainedByStrategies": ["gemini.settings.precedence"]
-    },
-    "gemini.global.skill": {
-      "basedOnBehaviors": ["gemini.behavior.user.home", "gemini.behavior.user.skills"],
-      "explainedByStrategies": ["gemini.skills.selection"]
-    },
-    "gemini.repo.agent": {
-      "basedOnBehaviors": ["gemini.behavior.repo.agents"],
-      "explainedByStrategies": ["gemini.agents.selection"]
-    },
-    "gemini.repo.command": {
-      "basedOnBehaviors": ["gemini.behavior.repo.commands"],
-      "explainedByStrategies": ["gemini.commands.selection"]
-    },
-    "gemini.repo.hooks": {
-      "basedOnBehaviors": ["gemini.behavior.repo.hooks", "gemini.behavior.repo.settings"],
-      "explainedByStrategies": ["gemini.hooks.merge"]
-    },
-    "gemini.repo.mcp": {
-      "basedOnBehaviors": ["gemini.behavior.repo.mcp", "gemini.behavior.repo.settings"],
-      "explainedByStrategies": ["gemini.mcp.configuration"]
-    },
-    "gemini.repo.settings": {
-      "basedOnBehaviors": ["gemini.behavior.repo.settings"],
-      "explainedByStrategies": ["gemini.settings.precedence"]
-    },
-    "gemini.repo.skill": {
-      "basedOnBehaviors": ["gemini.behavior.repo.skills"],
-      "explainedByStrategies": ["gemini.skills.selection"]
-    },
     "shared.excluded.managed-remote-state": {
       "basedOnBehaviors": [
+        "antigravity.behavior.user.plugins",
         "claude.behavior.user.mcp-state",
         "claude.behavior.user.plugins",
         "codex.behavior.user.plugins",
@@ -823,8 +799,7 @@
         "copilot.behavior.cloud.organization-agents",
         "copilot.behavior.cloud.organization-instructions",
         "copilot.behavior.cloud.plugins",
-        "copilot.behavior.cloud.remote-skills",
-        "gemini.behavior.user.extensions"
+        "copilot.behavior.cloud.remote-skills"
       ],
       "explainedByStrategies": []
     }

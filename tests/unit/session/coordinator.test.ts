@@ -247,7 +247,7 @@ describe('the atomic disposition (T946)', () => {
     // the absent controls are how the unbound members stay visible as
     // unevaluated rather than as refusals nothing produced.
     const control = session.snapshot().globalControl!;
-    expect(control.confirmedTools).toEqual(['copilot', 'claude', 'codex', 'gemini', 'agents']);
+    expect(control.confirmedTools).toEqual(['copilot', 'claude', 'codex', 'antigravity', 'agents']);
     expect(control.controls.map((entry) => entry.member)).toEqual(['codex']);
   });
 });

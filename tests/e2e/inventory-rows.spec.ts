@@ -138,24 +138,27 @@ test('states the documented surfaces beside a mark that names the product', asyn
       }),
     );
     for (const text of named) {
-      expect(text, kind).toMatch(/^(GitHub Copilot|Claude Code|OpenAI Codex|Gemini CLI)/u);
+      expect(text, kind).toMatch(/^(GitHub Copilot|Claude Code|OpenAI Codex|Antigravity CLI)/u);
     }
   }
 
   // The legend names each mark once for the list, which is what lets the rows
   // draw the product instead of spelling it — the fourth product included
-  // (specs/002-gemini-cli-support T035).
+  // (specs/003-antigravity-cli-support T035). Read on the instructions list,
+  // which every product reads: a legend states the products the open list
+  // holds, so a kind one of them does not read would not name it.
+  await openKind(page, 'Instructions');
   const legend = page.locator('.aci-tool-legend');
   await expect(legend).toBeVisible();
   await expect(legend).toContainText('GitHub Copilot');
-  await expect(legend).toContainText('Gemini CLI');
+  await expect(legend).toContainText('Antigravity CLI');
   // The Tool filter offers every product by name, in the closed tool order.
   await expect(page.getByLabel('Tool', { exact: true }).locator('option')).toContainText([
     /.*/u,
     'GitHub Copilot',
     'Claude Code',
     'OpenAI Codex',
-    'Gemini CLI',
+    'Antigravity CLI',
   ]);
 });
 
@@ -163,25 +166,26 @@ test('draws two marks on the root GEMINI.md line and three on an .agents skill l
   page,
 }) => {
   await page.goto(host.origin);
-  // The root `GEMINI.md` is Copilot's root alternative and Gemini CLI's own
-  // default context file: one file line, two marks (spec.md FR-013).
+  // The root `GEMINI.md` is Copilot's root alternative and Antigravity CLI's
+  // own workspace context file: one file line, two marks (spec.md § FR-007,
+  // § FR-013).
   const instructions = await openKind(page, 'Instructions');
-  const geminiLine = instructions
+  const contextLine = instructions
     .locator('.aci-source-family-blocks__members > li')
     .filter({ has: page.getByText('GEMINI.md', { exact: true }) });
-  await expect(geminiLine.locator('.aci-recognition-marks__one')).toHaveCount(2);
-  await expect(geminiLine.locator('.aci-tool-mark--copilot')).toHaveCount(1);
-  await expect(geminiLine.locator('.aci-tool-mark--gemini')).toHaveCount(1);
+  await expect(contextLine.locator('.aci-recognition-marks__one')).toHaveCount(2);
+  await expect(contextLine.locator('.aci-tool-mark--copilot')).toHaveCount(1);
+  await expect(contextLine.locator('.aci-tool-mark--antigravity')).toHaveCount(1);
 
-  // `.agents/skills/` is Codex's, Copilot's, and Gemini CLI's location: one
-  // file line, three marks.
+  // A skill folder in `.agents/skills/` is Codex's, Copilot's, and Antigravity
+  // CLI's at once: one file line, three marks.
   const skills = await openKind(page, 'Skill');
-  const aliasLine = skills.locator('.aci-source-family-blocks__members > li').filter({
-    has: page.getByText(fixture.geminiSkillFixture.sharedSkillPath, { exact: true }),
+  const sharedLine = skills.locator('.aci-source-family-blocks__members > li').filter({
+    has: page.getByText('.agents/skills/changelog/SKILL.md', { exact: true }),
   });
-  await expect(aliasLine.locator('.aci-recognition-marks__one')).toHaveCount(3);
-  for (const mark of ['copilot', 'codex', 'gemini']) {
-    await expect(aliasLine.locator(`.aci-tool-mark--${mark}`)).toHaveCount(1);
+  await expect(sharedLine.locator('.aci-recognition-marks__one')).toHaveCount(3);
+  for (const mark of ['copilot', 'codex', 'antigravity']) {
+    await expect(sharedLine.locator(`.aci-tool-mark--${mark}`)).toHaveCount(1);
   }
 });
 
@@ -202,7 +206,7 @@ test('draws four distinct marks in four distinct colours, and one under forced c
   // all four marks.
   const panel = await openKind(page, 'Instructions');
 
-  const marks = ['copilot', 'claude', 'codex', 'gemini'] as const;
+  const marks = ['copilot', 'claude', 'codex', 'antigravity'] as const;
   const read = async (): Promise<readonly { color: string; glyph: string }[]> => {
     const readings: { color: string; glyph: string }[] = [];
     for (const mark of marks) {

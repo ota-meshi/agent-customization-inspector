@@ -288,7 +288,7 @@ test('shows the addressed definition and nothing about a runtime it cannot see',
       recognitions: [
         { product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' },
         { product: 'OpenAI Codex', surfaces: 'Local clients' },
-        { product: 'Gemini CLI', surfaces: 'CLI' },
+        { product: 'Antigravity CLI', surfaces: 'CLI' },
       ],
     },
   ]);

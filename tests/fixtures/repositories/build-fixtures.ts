@@ -2,8 +2,8 @@
 // Codex-instruction, Claude-instruction, Copilot-instruction, and all-vendor
 // instruction fixture repositories for the Phase 4, Phase 8, Phase 10,
 // Phase 12, Phase 15, Phase 17, Phase 19, and Phase 21 inventory suites
-// (FR-003, FR-004, FR-005, FR-024, FR-028), and the Gemini CLI trees of
-// specs/002-gemini-cli-support (T021).
+// (FR-003, FR-004, FR-005, FR-024, FR-028), and the Antigravity CLI trees of
+// specs/003-antigravity-cli-support (T020).
 //
 // The tree is built to make the allowlist's edges observable rather than
 // assumed: every positive case has a near miss one segment away from it, so a
@@ -42,6 +42,16 @@ export interface CodexSkillFixture {
    * present only when the corresponding capability is.
    */
   readonly expectedSkillPaths: readonly string[];
+  /**
+   * The paths in this tree that only Antigravity CLI's skill rules admit: the
+   * skill folder under the superseded `.agent/` spelling that vendor still
+   * supports, and the flat Markdown file directly below `.agents/skills/`
+   * that its own page documents. Neither is a candidate for the two products
+   * `expectedSkillPaths` speaks for, and both are candidates for the third —
+   * which is why they are a list of their own rather than near misses
+   * (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
+   */
+  readonly expectedAntigravityOnlySkillPaths: readonly string[];
   /**
    * Paths that sit one segment away from an admitted skill and that no
    * shipped rule may admit. Listing them explicitly is what makes an
@@ -252,10 +262,9 @@ export function buildCodexSkillFixture(
     // Copilot shares the root `.agents` spelling, so `copilot.repo.skill`
     // admits exactly this same set; both vendors' recognitions attach to it.
     expectedSkillPaths,
+    expectedAntigravityOnlySkillPaths: ['.agent/skills/solo/SKILL.md', '.agents/skills/SKILL.md'],
     nearMissPaths: [
-      '.agent/skills/solo/SKILL.md',
       '.agents/skill/solo/SKILL.md',
-      '.agents/skills/SKILL.md',
       '.agents/skills/greet/README.md',
       '.agents/skills/uppercase/SKILL.MD',
       '.agents/skills/greet/nested/SKILL.md',
@@ -594,12 +603,19 @@ export interface AllToolSkillFixture {
   /** Every Source-relative Path `copilot.repo.skill` must admit, sorted. */
   readonly expectedCopilotSkillPaths: readonly string[];
   /**
-   * Every Source-relative Path `gemini.repo.skill` must admit, sorted. This
-   * tree holds no `.gemini/skills/`, so the set is the `.agents/skills/` alias
-   * — exactly Codex's — and every such file carries three recognitions
-   * (specs/002-gemini-cli-support FR-013).
+   * Every Source-relative Path this tree's Antigravity CLI skill rules must
+   * admit, sorted: the `.agents/skills/` folders Codex reads, and the one flat
+   * file beside them that only this vendor's own rule admits. Each folder
+   * therefore carries three recognitions and the flat file carries one
+   * (spec.md § FR-004).
    */
-  readonly expectedGeminiSkillPaths: readonly string[];
+  readonly expectedAntigravitySkillPaths: readonly string[];
+  /**
+   * The subset of the above that only this vendor admits — a near miss for
+   * every other product's rules, which is why it is not in
+   * {@link AllToolSkillFixture.nearMissPaths}.
+   */
+  readonly expectedAntigravityOnlySkillPaths: readonly string[];
   /**
    * The admitted paths whose bytes this scan cannot use — the NUL-carrying
    * candidate and, when symlinks exist, the broken link. They publish as
@@ -681,7 +697,7 @@ export function buildAllToolSkillFixture(
   write(root, '.github/skills/ship/reference.md', 'reference\n');
   write(root, '.github/skills/ship/nested/SKILL.md', 'too deep\n');
 
-  // Codex+Copilot+Gemini CLI: the shared root `.agents` spelling. `orbit` is
+  // Codex+Copilot+Antigravity CLI: the shared root `.agents` spelling. `orbit` is
   // the file the filesystem-failure injections target through the `fs-io`
   // mocks; its README makes it the one `.agents` skill with a census.
   write(root, '.agents/skills/orbit/SKILL.md', '---\nname: orbit\n---\n\nShared orbit.\n');
@@ -707,9 +723,14 @@ export function buildAllToolSkillFixture(
   write(root, 'packages/api/.claude/skills/dup/SKILL.md', '# nested dup\n');
   write(root, 'packages/api/.claude/skills/deploy/SKILL.md', '# Nested deploy\n');
 
+  // A Markdown file directly below `.agents/skills/`, which one vendor's own
+  // page documents as a skill and the two products that read only the folder
+  // shape there treat as a near miss: one path, admitted by one rule and by no
+  // other (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
+  write(root, '.agents/skills/SKILL.md', 'no name segment\n');
+
   // Near misses, one per selector edge; see the earlier builders for why
   // each is the exact shape an over-broad rule would wrongly admit.
-  write(root, '.agents/skills/SKILL.md', 'no name segment\n');
   write(root, '.claude/skill/solo/SKILL.md', 'singular skill dir\n');
   write(root, 'agents/skills/solo/SKILL.md', 'no leading dot\n');
   write(root, '.github/skills/uppercase/SKILL.MD', 'wrong case\n');
@@ -734,8 +755,12 @@ export function buildAllToolSkillFixture(
     'packages/api/.claude/skills/dup/SKILL.md',
   ];
   const diagnosticOnlyPaths = ['.agents/skills/binary/SKILL.md'];
+  // The one path only Antigravity CLI's flat skill rule admits: a Markdown
+  // file directly below `.agents/skills/`, which is a near miss for the two
+  // products that read only the folder shape there
+  // (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
+  const expectedAntigravityOnlySkillPaths = ['.agents/skills/SKILL.md'];
   const nearMissPaths = [
-    '.agents/skills/SKILL.md',
     '.claude/skill/solo/SKILL.md',
     '.copilot/skills/tool/SKILL.md',
     '.git/.agents/skills/hidden/SKILL.md',
@@ -802,10 +827,15 @@ export function buildAllToolSkillFixture(
     expectedCodexSkillPaths,
     expectedClaudeSkillPaths,
     expectedCopilotSkillPaths,
-    // The alias is the one Gemini CLI location this tree holds, so the two
-    // sets coincide; the field exists so a suite states which product it is
+    // Antigravity CLI reads the `.agents/skills/` folders this tree holds,
+    // exactly as Codex does, and one file beside them that only its own flat
+    // rule admits; the two fields exist so a suite states which product it is
     // counting rather than borrowing another's list.
-    expectedGeminiSkillPaths: expectedCodexSkillPaths,
+    expectedAntigravitySkillPaths: [
+      ...expectedCodexSkillPaths,
+      ...expectedAntigravityOnlySkillPaths,
+    ].sort(),
+    expectedAntigravityOnlySkillPaths,
     diagnosticOnlyPaths,
     nearMissPaths,
     expectedCompanionPaths,
@@ -814,6 +844,7 @@ export function buildAllToolSkillFixture(
         ...expectedCodexSkillPaths,
         ...expectedClaudeSkillPaths,
         ...expectedCopilotSkillPaths,
+        ...expectedAntigravityOnlySkillPaths,
         ...expectedCompanionPaths,
       ]),
     ].sort(),
@@ -6245,16 +6276,18 @@ export interface CopilotInstructionFixture {
    *
    * A path here is not necessarily unrecognized: `.claude/CLAUDE.md` and
    * `packages/api/CLAUDE.md` are Claude instruction files, and
-   * `packages/api/GEMINI.md` is a Gemini CLI one. What this states is that no
+   * `packages/api/GEMINI.md` is nobody's — no shipped rule reaches a context
+   * file below the root under that name. What this states is that no
    * *Copilot* rule admits them.
    */
   readonly copilotNearMissPaths: readonly string[];
   /**
-   * The Source-relative Paths Gemini CLI's context derivation admits in the
-   * same tree, sorted: `GEMINI.md` at the root — Copilot's too — and nested,
-   * which is Gemini CLI's alone (specs/002-gemini-cli-support FR-013).
+   * The Source-relative Paths Antigravity CLI's context rules admit in the
+   * same tree, sorted: the repository root's `AGENTS.md` and `GEMINI.md`, both
+   * of which another product reads too. No depth below the root is admitted
+   * (specs/003-antigravity-cli-support FR-002).
    */
-  readonly expectedGeminiInstructionPaths: readonly string[];
+  readonly expectedAntigravityInstructionPaths: readonly string[];
   /**
    * The Claude rule files this tree holds. They are Copilot near misses and
    * Claude candidates at once: `claude.repo.rules` admits them, so a scan
@@ -6292,10 +6325,11 @@ export interface CopilotInstructionFixture {
  * declares one, and the nested one declares none, so it proves the no-range
  * row rather than a range read off its location (T265).
  *
- * Shared files: the root `AGENTS.md` is Codex's and Copilot's, the root
- * `CLAUDE.md` is Claude's and Copilot's, and the root `GEMINI.md` is
- * Copilot's and Gemini CLI's — Gemini CLI reads that filename at every depth,
- * so the nested one is its alone (specs/002-gemini-cli-support FR-013).
+ * Shared files: the root `AGENTS.md` is Codex's, Copilot's and Antigravity
+ * CLI's, the root `CLAUDE.md` is Claude's and Copilot's, and the root
+ * `GEMINI.md` is Copilot's and Antigravity CLI's. No product reads a context
+ * file below the root under that name, so the nested one is nobody's
+ * (specs/003-antigravity-cli-support FR-002).
  *
  * Exclusions, written as ordinary files so their absence from the Copilot
  * inventory is observable rather than assumed: the `.claude` instruction
@@ -6366,23 +6400,23 @@ export function buildCopilotInstructionFixture(
   write(root, 'AGENTS.md', '# Shared agent instructions\n');
   write(root, 'packages/api/AGENTS.md', '# Nested agent instructions\n');
   // Positive: the two root-only agent-instruction alternatives. `CLAUDE.md` is
-  // Claude's as well and `GEMINI.md` is Gemini CLI's; the Copilot recognition
+  // Claude's as well and `GEMINI.md` is Antigravity CLI's; the Copilot recognition
   // of `GEMINI.md` names the CLI and Cloud surfaces because VS Code documents
   // no `GEMINI.md`.
   write(root, 'CLAUDE.md', '# Root Claude-compatible instructions\n');
-  write(root, 'GEMINI.md', '# Root Gemini-compatible instructions\n');
+  write(root, 'GEMINI.md', '# Root Antigravity-compatible instructions\n');
 
   // Excluded by initial scope, written so their absence is observable: the
   // `.claude` instruction spellings and the local variant VS Code and the CLI
   // document, and the non-root alternatives the CLI documents. Each is
   // `copilot.excluded.additional-standard-locations`; the first three are
-  // Claude instruction files and the fourth a Gemini CLI one, which is what
+  // Claude instruction files and the fourth one no product reads there, which is what
   // makes "no Copilot rule admits it" a statement about Copilot rather than
   // about the file.
   write(root, '.claude/CLAUDE.md', '# Directory-form Claude instructions\n');
   write(root, 'CLAUDE.local.md', '# Local Claude instructions\n');
   write(root, 'packages/api/CLAUDE.md', '# Nested Claude instructions\n');
-  write(root, 'packages/api/GEMINI.md', '# Nested Gemini instructions\n');
+  write(root, 'packages/api/GEMINI.md', '# Nested context file no rule admits\n');
   write(root, '.claude/rules/style.md', '# Claude-compatible rule\n');
 
   // Runtime-supplied lookup roots — `copilot.excluded.extra-directories`. A
@@ -6447,7 +6481,7 @@ export function buildCopilotInstructionFixture(
       'packages/api/CLAUDE.md',
     ],
     expectedCodexInstructionPaths: ['AGENTS.md'],
-    expectedGeminiInstructionPaths: ['GEMINI.md', 'packages/api/GEMINI.md'],
+    expectedAntigravityInstructionPaths: ['AGENTS.md', 'GEMINI.md'],
     expectedClaudeRulePaths: ['.claude/rules/style.md'],
     copilotNearMissPaths: [
       '.claude/CLAUDE.md',
@@ -6523,11 +6557,11 @@ export interface AllVendorInstructionFixture {
    */
   readonly expectedCopilotInstructionPaths: Readonly<Record<string, readonly string[]>>;
   /**
-   * Every Source-relative Path Gemini CLI's context derivation admits, sorted:
-   * the default `GEMINI.md` at the root — Copilot's too — and nested, which no
-   * other product reaches (specs/002-gemini-cli-support FR-013).
+   * Every Source-relative Path Antigravity CLI's context rules admit, sorted:
+   * the repository root's `AGENTS.md` and `GEMINI.md`, each of which another
+   * product reads too (specs/003-antigravity-cli-support FR-002).
    */
-  readonly expectedGeminiInstructionPaths: readonly string[];
+  readonly expectedAntigravityInstructionPaths: readonly string[];
   /**
    * The admitted paths whose bytes this scan cannot use — the NUL-carrying
    * nested `CLAUDE.md`. It publishes as a diagnostic-only file, gains no
@@ -6686,17 +6720,18 @@ export function buildAllVendorInstructionFixture(
   );
   write(root, '.github/instructions/nested/backend.instructions.md', '# Backend instructions\n');
   write(root, 'packages/api/.github/instructions/api.instructions.md', '# API path instructions\n');
-  // The root `GEMINI.md` Copilot and Gemini CLI both read, and the nested
+  // The root `GEMINI.md` Copilot and Antigravity CLI both read, and the nested
   // `AGENTS.md` files only Copilot's any-depth rule reaches — the exact shape
   // that proves Codex's rule stays anchored at the root.
-  write(root, 'GEMINI.md', '# Root Gemini-compatible instructions\n');
+  write(root, 'GEMINI.md', '# Root Antigravity-compatible instructions\n');
   write(root, 'docs/AGENTS.md', '# docs instructions\n');
   write(root, 'packages/api/AGENTS.md', '# Nested agent instructions\n');
-  // The nested `GEMINI.md`: Gemini CLI's alone, because its context file is
-  // read at every depth while Copilot documents the root alternative only —
-  // a Copilot exclusion (`copilot.excluded.additional-standard-locations`)
-  // and a Gemini CLI row at once (specs/002-gemini-cli-support FR-013).
-  write(root, 'packages/api/GEMINI.md', '# Nested Gemini instructions\n');
+  // The nested `GEMINI.md`: nobody's. Copilot documents the root alternative
+  // only, so its own exclusion
+  // (`copilot.excluded.additional-standard-locations`) keeps it out, and no
+  // other product reads that filename below the root
+  // (specs/003-antigravity-cli-support FR-002).
+  write(root, 'packages/api/GEMINI.md', '# Nested context file no rule admits\n');
 
   // Near miss: the target of the authored import. No scan may open it.
   write(root, 'docs/setup.md', '# setup\n');
@@ -6745,7 +6780,7 @@ export function buildAllVendorInstructionFixture(
     'packages/api/CLAUDE.md',
     'packages/web/CLAUDE.md',
   ];
-  const expectedGeminiInstructionPaths = ['GEMINI.md', 'packages/api/GEMINI.md'];
+  const expectedAntigravityInstructionPaths = ['AGENTS.md', 'GEMINI.md'];
   const expectedCopilotInstructionPaths = {
     'copilot.repo.instructions.agents': ['AGENTS.md', 'docs/AGENTS.md', 'packages/api/AGENTS.md'],
     'copilot.repo.instructions.claude-root': ['CLAUDE.md'],
@@ -6776,7 +6811,7 @@ export function buildAllVendorInstructionFixture(
     nestedFallbackVariantPath: 'packages/api/TEAM_GUIDE.md',
     expectedClaudeInstructionPaths,
     expectedCopilotInstructionPaths,
-    expectedGeminiInstructionPaths,
+    expectedAntigravityInstructionPaths,
     diagnosticOnlyPaths: ['packages/web/CLAUDE.md'],
     malformedInstructionPath: 'docs/CLAUDE.md',
     expectedClaudeRulePaths: ['.claude/rules/style.md'],
@@ -6811,7 +6846,7 @@ export function buildAllVendorInstructionFixture(
         ...expectedDerivedFallbackPaths,
         ...expectedClaudeInstructionPaths,
         ...Object.values(expectedCopilotInstructionPaths).flat(),
-        ...expectedGeminiInstructionPaths,
+        ...expectedAntigravityInstructionPaths,
         // The Claude rule file the tree holds: no instruction rule admits it,
         // and `claude.repo.rules` does.
         '.claude/rules/style.md',
@@ -7718,999 +7753,6 @@ const CODEX_GENERAL_CONFIGURATION = [
   '',
 ].join('\n');
 
-/**
- * One built Gemini CLI instruction fixture repository
- * (specs/002-gemini-cli-support/tasks.md T021).
- */
-export interface GeminiInstructionFixture {
-  /** The absolute fixture root to scan. */
-  readonly root: string;
-  /**
-   * Every Source-relative Path `gemini.derived.context-filename` must admit
-   * with no `context.fileName` configured, sorted: the default `GEMINI.md`
-   * at the root and at every depth (spec.md FR-002, FR-004).
-   */
-  readonly expectedInstructionPaths: readonly string[];
-  /**
-   * The Source-relative Paths Copilot's `GEMINI.md` rule admits in the same
-   * tree: the root file alone, because Copilot documents the root
-   * alternative and no nested one. The root file is therefore one candidate
-   * carrying two products' recognitions, and a nested one is Gemini CLI's
-   * alone (spec.md FR-013).
-   */
-  readonly expectedCopilotInstructionPaths: readonly string[];
-  /**
-   * Paths one step away from an admitted file that no shipped rule or
-   * derivation of any product may admit: spelling variants, the vendor's
-   * ignore file, an extension manifest at the root, VCS internals, installed
-   * packages, and a nested settings carrier whose `context.fileName` seeds
-   * nothing because only the root carrier is configuration
-   * (spec.md FR-004, FR-016; see {@link CodexInstructionFixture.nearMissPaths}).
-   */
-  readonly nearMissPaths: readonly string[];
-  /**
-   * The nested `.gemini/settings.json` that configures a context filename no
-   * scan honours: a carrier below the root is a runtime context this product
-   * does not select, so the name it declares reaches no candidate.
-   */
-  readonly nestedCarrierPath: string;
-  /** The admitted instruction file carrying the literal credential. */
-  readonly secretInstructionPath: string;
-}
-
-/**
- * Builds the canonical Gemini CLI instruction fixture repository (T021).
- *
- * Positive cases: the root `GEMINI.md` — carrying a literal credential, a
- * literal environment reference, and the vendor's `@file` import syntax, none
- * of which is resolved (FR-025, FR-026) — and the same filename in two
- * subdirectories, which the vendor loads just in time as it works below them
- * and this product lists as rows of their own range (spec.md FR-005). No
- * root `.gemini/settings.json` exists, so the default filename stands.
- *
- * Near misses: spelling variants one step from the literal, the vendor's own
- * `.geminiignore`, a root `gemini-extension.json` — an extension manifest,
- * which the exclusion keeps out whole (FR-016) — VCS internals, an installed
- * package's copy, and a nested settings carrier declaring a `context.fileName`
- * whose target exists at the root; that the target stays unlisted proves an
- * unadmitted carrier seeds nothing. The case variant lives under `tools/`
- * because a case-insensitive filesystem would fold a root-level one into the
- * admitted file itself.
- *
- * `root` overrides where the tree is written; the default is a fresh root
- * under the OS temporary directory. The dev fixture launcher
- * (`scripts/serve-fixture.ts`) passes a repo-local git-ignored directory.
- */
-export function buildGeminiInstructionFixture(
-  prefix = 'inspector-gemini-instructions',
-  root = createRepositoryFixtureRoot(prefix),
-): GeminiInstructionFixture {
-  write(
-    root,
-    'GEMINI.md',
-    [
-      '# Project context',
-      '',
-      'This is a pnpm workspace. Run `pnpm test` before proposing a change.',
-      '',
-      '@./docs/style.md',
-      '',
-      `Deploy previews report to ${FIXTURE_ENVIRONMENT_REFERENCE}.`,
-      `token: ${FIXTURE_SECRET_LITERAL}`,
-      '',
-    ].join('\n'),
-  );
-  write(
-    root,
-    'packages/api/GEMINI.md',
-    [
-      '# API package',
-      '',
-      'Every handler returns a typed result; never throw across the boundary.',
-      '',
-    ].join('\n'),
-  );
-  write(
-    root,
-    'docs/GEMINI.md',
-    '# Documentation\n\nWrite for a reader who has never seen the code.\n',
-  );
-
-  // Near miss: the import target the root file names. No scan may open it —
-  // read authority comes from a matcher alone.
-  write(root, 'docs/style.md', '# style\n');
-  // Near miss: spelling variants one step from the literal.
-  write(root, 'GEMINI.local.md', 'local variant\n');
-  write(root, 'GEMINI.md.bak', 'backup suffix\n');
-  write(root, 'tools/gemini.md', 'wrong case\n');
-  // Near miss: the vendor's ignore file is not a context file.
-  write(root, '.geminiignore', 'dist/\n');
-  // Near miss: an extension manifest at the root. Extensions are declined
-  // whole, installed copies and repository-root manifests alike (FR-016).
-  write(
-    root,
-    'gemini-extension.json',
-    `${JSON.stringify({ name: 'repo-tools', version: '0.1.0', contextFileName: 'TOOLS.md' }, null, 2)}\n`,
-  );
-  write(root, 'TOOLS.md', '# extension context that no rule reaches\n');
-  // Near miss: VCS internals and installed packages are excluded from
-  // traversal entirely.
-  write(root, '.git/GEMINI.md', 'vcs internal\n');
-  write(root, 'node_modules/some-package/GEMINI.md', '# package context\n');
-  // Near miss: a nested settings carrier. Only the root's
-  // `.gemini/settings.json` is configuration (FR-004), so the name this one
-  // declares reaches nothing even though a file of that name sits at the root.
-  write(
-    root,
-    'packages/api/.gemini/settings.json',
-    '{ "context": { "fileName": "CONTEXT.md" } }\n',
-  );
-  write(root, 'CONTEXT.md', '# named only by the nested carrier\n');
-  // Unrelated file that shares no segment with the selector.
-  write(root, 'README.md', 'unrelated\n');
-
-  return {
-    root,
-    expectedInstructionPaths: ['GEMINI.md', 'docs/GEMINI.md', 'packages/api/GEMINI.md'],
-    expectedCopilotInstructionPaths: ['GEMINI.md'],
-    nearMissPaths: [
-      '.geminiignore',
-      '.git/GEMINI.md',
-      'CONTEXT.md',
-      'GEMINI.local.md',
-      'GEMINI.md.bak',
-      'README.md',
-      'TOOLS.md',
-      'docs/style.md',
-      'gemini-extension.json',
-      'node_modules/some-package/GEMINI.md',
-      'packages/api/.gemini/settings.json',
-      'tools/gemini.md',
-    ],
-    nestedCarrierPath: 'packages/api/.gemini/settings.json',
-    secretInstructionPath: 'GEMINI.md',
-  };
-}
-
-/**
- * One built Gemini CLI settings fixture repository
- * (specs/002-gemini-cli-support/tasks.md T021).
- */
-export interface GeminiSettingsFixture {
-  /** The absolute fixture root to scan. */
-  readonly root: string;
-  /**
-   * The Source-relative Path of the root `.gemini/settings.json`: the one
-   * candidate three rules admit over one read — `gemini.repo.settings` for
-   * the document, `gemini.repo.mcp` for its `mcpServers`, and
-   * `gemini.repo.hooks` for its `hooks` (spec.md FR-002, FR-009).
-   */
-  readonly carrierPath: string;
-  /** The MCP server names the carrier declares, sorted as the inventory lists them. */
-  readonly expectedServerNames: readonly string[];
-  /** The hook events the carrier declares. */
-  readonly expectedHookEvents: readonly string[];
-  /**
-   * Paths one step away from the carrier that no shipped rule may admit: the
-   * nested layer the vendor merges at runtime, the hook script the carrier
-   * names, the environment file beside it, a workspace policy directory the
-   * vendor documents as not loaded, and the spelling variants
-   * (spec.md FR-002, FR-016).
-   */
-  readonly nearMissPaths: readonly string[];
-}
-
-/**
- * Builds the canonical Gemini CLI settings fixture repository (T021).
- *
- * The one positive case is the root `.gemini/settings.json`, written as the
- * vendor's loader reads it — JSON with comments and a trailing comma
- * (research.md § 6) — declaring general settings, a stdio server and an HTTP
- * server under `mcpServers` with a literal credential and an environment
- * reference among their values, and two hook events whose commands name a
- * script in the tree. Nothing is run, connected to, or resolved (FR-025,
- * FR-026); the detail shows the document as written.
- *
- * Near misses: the nested `.gemini/settings.json` the vendor would merge from
- * a working directory this product does not select, the named hook script,
- * the `.env` the vendor loads beside its settings, a `.gemini/policies/`
- * file — the workspace policy tier the vendor documents as non-functional,
- * so it is excluded rather than admitted as permissions — and spelling
- * variants of the carrier's name.
- */
-export function buildGeminiSettingsFixture(
-  prefix = 'inspector-gemini-settings',
-  root = createRepositoryFixtureRoot(prefix),
-): GeminiSettingsFixture {
-  write(
-    root,
-    '.gemini/settings.json',
-    [
-      '{',
-      '  // Project settings; personal overrides live in ~/.gemini/settings.json.',
-      '  "general": { "previewFeatures": true },',
-      '  "ui": { "theme": "GitHub" },',
-      '  "context": { "includeDirectories": ["../shared-docs"] },',
-      '  "tools": { "sandbox": "docker" },',
-      '  "mcpServers": {',
-      '    "github": {',
-      '      "command": "npx",',
-      '      "args": ["-y", "@modelcontextprotocol/server-github"],',
-      `      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${FIXTURE_SECRET_LITERAL}" },`,
-      '      "trust": false',
-      '    },',
-      '    "docs": {',
-      '      "httpUrl": "http://localhost:8080/mcp",',
-      `      "headers": { "Authorization": "Bearer ${FIXTURE_ENVIRONMENT_REFERENCE}" },`,
-      '      "timeout": 30000',
-      '    }',
-      '  },',
-      '  "hooks": {',
-      '    "BeforeTool": [',
-      '      {',
-      '        "matcher": "run_shell_command",',
-      '        "hooks": [{ "type": "command", "command": "./.gemini/hooks/guard.sh" }]',
-      '      }',
-      '    ],',
-      '    "AfterTool": [',
-      '      { "hooks": [{ "type": "command", "command": "pnpm run format", "timeout": 60 }] },',
-      '    ],',
-      '  },',
-      '}',
-      '',
-    ].join('\n'),
-  );
-
-  // Near miss: the nested layer the vendor merges at runtime — a working
-  // directory this product does not select (FR-002).
-  write(root, 'packages/api/.gemini/settings.json', '{ "ui": { "theme": "Default" } }\n');
-  // Near miss: the hook script the carrier names. A declaration grants no
-  // read authority; the script is never opened, let alone run (FR-019).
-  write(root, '.gemini/hooks/guard.sh', '#!/bin/sh\nexit 0\n');
-  // Near miss: the environment file the vendor loads beside its settings, a
-  // credential store rather than a customization.
-  write(root, '.gemini/.env', `GEMINI_API_KEY=${FIXTURE_SECRET_LITERAL}\n`);
-  // Near miss: the workspace policy tier. The vendor documents it as not
-  // loaded, so it is excluded rather than listed as permissions (FR-002).
-  write(
-    root,
-    '.gemini/policies/deny.toml',
-    '[[rule]]\ntoolName = "run_shell_command"\ndecision = "deny"\n',
-  );
-  // Near miss: spelling variants one step from the carrier's name.
-  write(root, '.gemini/settings.jsonc', '{}\n');
-  write(root, '.gemini/settings.local.json', '{}\n');
-  write(root, 'gemini/settings.json', '{}\n');
-  // Near miss: an extension manifest and the vendor's ignore file (FR-016).
-  write(
-    root,
-    'gemini-extension.json',
-    `${JSON.stringify({ name: 'repo-tools', version: '0.1.0' })}\n`,
-  );
-  write(root, '.geminiignore', 'dist/\n');
-  // Unrelated file that shares no segment with the selector.
-  write(root, 'README.md', 'unrelated\n');
-
-  return {
-    root,
-    carrierPath: '.gemini/settings.json',
-    expectedServerNames: ['docs', 'github'],
-    expectedHookEvents: ['AfterTool', 'BeforeTool'],
-    nearMissPaths: [
-      '.gemini/.env',
-      '.gemini/hooks/guard.sh',
-      '.gemini/policies/deny.toml',
-      '.gemini/settings.jsonc',
-      '.gemini/settings.local.json',
-      '.geminiignore',
-      'README.md',
-      'gemini-extension.json',
-      'gemini/settings.json',
-      'packages/api/.gemini/settings.json',
-    ],
-  };
-}
-
-/**
- * One built Gemini CLI custom-command fixture repository
- * (specs/002-gemini-cli-support/tasks.md T021).
- */
-export interface GeminiCommandFixture {
-  /** The absolute fixture root to scan. */
-  readonly root: string;
-  /**
-   * Every Source-relative Path `gemini.repo.command` must admit, sorted: each
-   * `.toml` below `.gemini/commands/`, at any depth (spec.md FR-002).
-   */
-  readonly expectedCommandPaths: readonly string[];
-  /**
-   * The invocation names the admitted files resolve to, sorted as the
-   * inventory lists them: the path below the commands directory with `:` for
-   * each separator and `.toml` dropped (spec.md FR-006).
-   */
-  readonly expectedCommandNames: readonly string[];
-  /**
-   * The admitted file whose TOML cannot be parsed. It keeps its path-derived
-   * name and carries its `recognition-parse-failed` diagnostic (FR-006, FR-028).
-   */
-  readonly malformedCommandPath: string;
-  /**
-   * The admitted file whose prompt embeds a `!{...}` shell block. The block
-   * is source text a scan reads and never executes (FR-019).
-   */
-  readonly shellBlockCommandPath: string;
-  /**
-   * Paths one step away from an admitted file that no shipped rule may admit:
-   * a non-TOML sibling, a singular directory spelling, a nested commands
-   * directory, and VCS internals.
-   */
-  readonly nearMissPaths: readonly string[];
-}
-
-/**
- * Builds the canonical Gemini CLI custom-command fixture repository (T021).
- *
- * Positive cases: a direct child, two namespaced files at different depths —
- * `git/commit.toml` is `git:commit` and `review/security/deps.toml` is
- * `review:security:deps` — one whose prompt embeds a `!{...}` shell block and
- * `{{args}}`, and one whose TOML is malformed so the row keeps its
- * path-derived name beside a diagnostic (FR-006, FR-028).
- *
- * Near misses: a Markdown sibling inside the commands directory, the singular
- * `.gemini/command/`, a nested `.gemini/commands/` belonging to a working
- * directory this product does not select, and VCS internals.
- */
-export function buildGeminiCommandFixture(
-  prefix = 'inspector-gemini-commands',
-  root = createRepositoryFixtureRoot(prefix),
-): GeminiCommandFixture {
-  write(
-    root,
-    '.gemini/commands/refactor.toml',
-    [
-      'description = "Refactor the selected code without changing behavior."',
-      'prompt = """',
-      'Refactor the following for clarity. Keep every test green.',
-      '',
-      '{{args}}',
-      '"""',
-      '',
-    ].join('\n'),
-  );
-  write(
-    root,
-    '.gemini/commands/git/commit.toml',
-    [
-      'description = "Write a commit message for the staged changes."',
-      'prompt = """',
-      'Staged diff:',
-      '!{git diff --cached}',
-      '',
-      'Write a conventional commit message for it.',
-      '"""',
-      '',
-    ].join('\n'),
-  );
-  write(
-    root,
-    '.gemini/commands/review/security/deps.toml',
-    [
-      'description = "Audit the dependency changes in this branch."',
-      'prompt = "List every dependency this branch adds or upgrades and what each is for."',
-      '',
-    ].join('\n'),
-  );
-  // Malformed TOML: the row keeps its path-derived name and carries the
-  // parse diagnostic beside it (FR-006).
-  write(root, '.gemini/commands/broken.toml', 'description = "unterminated\nprompt = "x"\n');
-
-  // Near miss: a non-TOML sibling inside the commands directory.
-  write(root, '.gemini/commands/README.md', '# commands\n');
-  // Near miss: the singular directory spelling.
-  write(root, '.gemini/command/solo.toml', 'prompt = "solo"\n');
-  // Near miss: a commands directory below a working directory this product
-  // does not select (FR-002).
-  write(root, 'packages/api/.gemini/commands/deploy.toml', 'prompt = "deploy"\n');
-  // Near miss: VCS internals are excluded from traversal entirely.
-  write(root, '.git/.gemini/commands/hidden.toml', 'prompt = "hidden"\n');
-  // Unrelated file that shares no segment with the selector.
-  write(root, 'README.md', 'unrelated\n');
-
-  return {
-    root,
-    expectedCommandPaths: [
-      '.gemini/commands/broken.toml',
-      '.gemini/commands/git/commit.toml',
-      '.gemini/commands/refactor.toml',
-      '.gemini/commands/review/security/deps.toml',
-    ],
-    expectedCommandNames: ['broken', 'git:commit', 'refactor', 'review:security:deps'],
-    malformedCommandPath: '.gemini/commands/broken.toml',
-    shellBlockCommandPath: '.gemini/commands/git/commit.toml',
-    nearMissPaths: [
-      '.gemini/command/solo.toml',
-      '.gemini/commands/README.md',
-      '.git/.gemini/commands/hidden.toml',
-      'README.md',
-      'packages/api/.gemini/commands/deploy.toml',
-    ],
-  };
-}
-
-/**
- * One built Gemini CLI skill fixture repository
- * (specs/002-gemini-cli-support/tasks.md T021).
- */
-export interface GeminiSkillFixture {
-  /** The absolute fixture root to scan. */
-  readonly root: string;
-  /**
-   * Every Source-relative Path `gemini.repo.skill` must admit, sorted: each
-   * skill directory's `SKILL.md` under `.gemini/skills/` and under the
-   * `.agents/skills/` alias (spec.md FR-002).
-   */
-  readonly expectedSkillPaths: readonly string[];
-  /**
-   * The one admitted file under `.agents/skills/`: Codex's and Copilot's
-   * location too, so this file is one candidate with three products'
-   * recognitions (spec.md FR-013).
-   */
-  readonly sharedSkillPath: string;
-  /**
-   * The skill names the admitted files resolve to, sorted as the inventory
-   * lists them: the declared `name` where one is declared, the skill
-   * directory otherwise (spec.md FR-006).
-   */
-  readonly expectedSkillNames: readonly string[];
-  /**
-   * The admitted file whose frontmatter cannot be parsed: its row is named by
-   * the skill directory and carries the parse diagnostic (FR-028).
-   */
-  readonly malformedSkillPath: string;
-  /**
-   * The files the admitted skills' censuses list, sorted
-   * (contracts/inspection-path-allowlist.md § Bounded companion census).
-   */
-  readonly expectedCompanionPaths: readonly string[];
-  /**
-   * Paths one segment away from an admitted skill that no shipped rule may
-   * admit; see {@link CodexSkillFixture.nearMissPaths}.
-   */
-  readonly nearMissPaths: readonly string[];
-}
-
-/**
- * Builds the canonical Gemini CLI skill fixture repository (T021).
- *
- * Positive cases: a `.gemini/skills/` skill with a script and a reference
- * beside its `SKILL.md`, one whose declared name differs from its directory —
- * which is what makes the rendered name meaningful — one declaring no name
- * and so named by its directory, one whose frontmatter is malformed, and an
- * `.agents/skills/` skill the alias admits, which Codex and Copilot read too.
- *
- * Near misses: a nested `.gemini/skills/` below a working directory this
- * product does not select, the missing name segment, the singular directory,
- * the wrong-case leaf in its own directory, and VCS internals.
- */
-export function buildGeminiSkillFixture(
-  prefix = 'inspector-gemini-skills',
-  root = createRepositoryFixtureRoot(prefix),
-): GeminiSkillFixture {
-  write(
-    root,
-    '.gemini/skills/changelog/SKILL.md',
-    [
-      '---',
-      'name: changelog',
-      'description: Draft a changelog entry from the commits since the last tag.',
-      '---',
-      '',
-      '# Changelog',
-      '',
-      'Run `scripts/collect.sh` to list the commits, then summarize them by area.',
-      'See `reference.md` for the entry format.',
-      '',
-    ].join('\n'),
-  );
-  write(
-    root,
-    '.gemini/skills/changelog/scripts/collect.sh',
-    '#!/bin/sh\ngit log --oneline "$(git describe --tags --abbrev=0)..HEAD"\n',
-  );
-  write(
-    root,
-    '.gemini/skills/changelog/reference.md',
-    '# Entry format\n\n- Area: what changed and why.\n',
-  );
-  // Declared name differs from the directory: the row is `design-api`, which
-  // cannot have come from the path.
-  write(
-    root,
-    '.gemini/skills/api-design/SKILL.md',
-    [
-      '---',
-      'name: design-api',
-      'description: Shape a new HTTP endpoint before writing its handler.',
-      '---',
-      '',
-      'Write the request and response types first, then the handler.',
-      '',
-    ].join('\n'),
-  );
-  // No declared name: the row is named by the skill directory (FR-006).
-  write(
-    root,
-    '.gemini/skills/nameless/SKILL.md',
-    '---\ndescription: Declares no name.\n---\n\nBody.\n',
-  );
-  // Malformed frontmatter: the row keeps the directory name and the diagnostic.
-  write(root, '.gemini/skills/broken/SKILL.md', '---\nname: [unterminated\n---\n\nBody.\n');
-  // The alias location, shared with Codex and Copilot: one file, three
-  // products (FR-013).
-  write(
-    root,
-    '.agents/skills/release-notes/SKILL.md',
-    [
-      '---',
-      'name: release-notes',
-      'description: Turn the merged pull requests into release notes.',
-      '---',
-      '',
-      'Group the merged pull requests by label and write one line each.',
-      '',
-    ].join('\n'),
-  );
-
-  // Near miss: a skills directory below a working directory this product
-  // does not select (FR-002).
-  write(root, 'packages/api/.gemini/skills/deploy/SKILL.md', '# Deploy\n');
-  // Near miss: no skill-name segment between `skills` and the file.
-  write(root, '.gemini/skills/SKILL.md', 'no name segment\n');
-  // Near miss: a skill directory two levels deep — the selector admits one
-  // name segment, so a nested directory is neither a skill nor a companion.
-  write(root, '.gemini/skills/nested/deeper/SKILL.md', 'two levels deep\n');
-  // Near miss: the singular directory spelling.
-  write(root, '.gemini/skill/solo/SKILL.md', 'singular skill dir\n');
-  // Near miss: the terminal literal is case-sensitive; it lives in its own
-  // directory because a case-insensitive filesystem would fold it into an
-  // admitted `SKILL.md` beside it.
-  write(root, '.gemini/skills/uppercase/SKILL.MD', 'wrong case\n');
-  // Near miss: VCS internals are excluded from traversal entirely.
-  write(root, '.git/.gemini/skills/hidden/SKILL.md', 'vcs internal\n');
-  // Unrelated file that shares no segment with the selector.
-  write(root, 'README.md', 'unrelated\n');
-
-  return {
-    root,
-    expectedSkillPaths: [
-      '.agents/skills/release-notes/SKILL.md',
-      '.gemini/skills/api-design/SKILL.md',
-      '.gemini/skills/broken/SKILL.md',
-      '.gemini/skills/changelog/SKILL.md',
-      '.gemini/skills/nameless/SKILL.md',
-    ],
-    sharedSkillPath: '.agents/skills/release-notes/SKILL.md',
-    expectedSkillNames: ['broken', 'changelog', 'design-api', 'nameless', 'release-notes'],
-    malformedSkillPath: '.gemini/skills/broken/SKILL.md',
-    expectedCompanionPaths: [
-      '.gemini/skills/changelog/reference.md',
-      '.gemini/skills/changelog/scripts/collect.sh',
-    ],
-    nearMissPaths: [
-      '.gemini/skill/solo/SKILL.md',
-      '.gemini/skills/SKILL.md',
-      '.gemini/skills/nested/deeper/SKILL.md',
-      '.gemini/skills/uppercase/SKILL.MD',
-      '.git/.gemini/skills/hidden/SKILL.md',
-      'README.md',
-      'packages/api/.gemini/skills/deploy/SKILL.md',
-    ],
-  };
-}
-
-/**
- * One built Gemini CLI sub-agent fixture repository
- * (specs/002-gemini-cli-support/tasks.md T021).
- */
-export interface GeminiAgentFixture {
-  /** The absolute fixture root to scan. */
-  readonly root: string;
-  /**
-   * Every Source-relative Path `gemini.repo.agent` must admit, sorted: each
-   * `.md` directly in `.gemini/agents/` and nothing below it (spec.md FR-002).
-   */
-  readonly expectedAgentPaths: readonly string[];
-  /**
-   * The agent names the admitted files declare, sorted — the named rows of
-   * the custom-agent inventory. A name two files declare appears once.
-   */
-  readonly expectedAgentNames: readonly string[];
-  /**
-   * The admitted files publishing no declared name, sorted — the members of
-   * the one null-named row: a file declaring none, one declaring a list, and
-   * the malformed one whose declarations could not be read (FR-008, FR-028).
-   */
-  readonly unnamedAgentPaths: readonly string[];
-  /** The admitted file whose frontmatter cannot be parsed (FR-028). */
-  readonly malformedAgentPath: string;
-  /**
-   * The admitted file whose frontmatter spells an `mcpServers` block. It joins
-   * no MCP row: an MCP declaration's home is an explicit carrier
-   * (data-model.md § Inventory unit).
-   */
-  readonly mcpSpellingAgentPath: string;
-  /**
-   * Paths no shipped rule may admit: a subdirectory below `.gemini/agents/`,
-   * non-Markdown siblings, the singular directory, a nested agents directory,
-   * and VCS internals.
-   */
-  readonly nearMissPaths: readonly string[];
-}
-
-/**
- * Builds the canonical Gemini CLI sub-agent fixture repository (T021).
- *
- * Positive cases: two ordinary agents, a pair of files declaring one name —
- * one row with two definitions — an agent whose frontmatter spells
- * `mcpServers` and joins no MCP row, a file declaring no `name`, one declaring
- * a list, and one whose frontmatter is malformed (FR-008, FR-028).
- *
- * Near misses: a file one directory below `.gemini/agents/`, non-Markdown
- * siblings, the singular `.gemini/agent/`, a nested agents directory
- * belonging to a working directory this product does not select, and VCS
- * internals.
- */
-export function buildGeminiAgentFixture(
-  prefix = 'inspector-gemini-agents',
-  root = createRepositoryFixtureRoot(prefix),
-): GeminiAgentFixture {
-  write(
-    root,
-    '.gemini/agents/reviewer.md',
-    [
-      '---',
-      'name: reviewer',
-      'description: Reviews a diff for defects before it is committed.',
-      'tools: ["read_file", "grep_search"]',
-      'model: gemini-2.5-pro',
-      '---',
-      '',
-      'Review the change for defects and report each with its file and line.',
-      '',
-    ].join('\n'),
-  );
-  write(
-    root,
-    '.gemini/agents/test-writer.md',
-    [
-      '---',
-      'name: test-writer',
-      'description: Writes the missing tests for a change.',
-      'tools: ["read_file", "write_file", "run_shell_command"]',
-      '---',
-      '',
-      'Write one focused test per behavior the change adds.',
-      '',
-    ].join('\n'),
-  );
-  // The duplicate-name row: two files declare `docs_researcher`, so the
-  // inventory shows one row with two definitions.
-  write(
-    root,
-    '.gemini/agents/docs-researcher.md',
-    [
-      '---',
-      'name: docs_researcher',
-      'description: Documentation specialist.',
-      '---',
-      '',
-      'Verify APIs against the docs.',
-      '',
-    ].join('\n'),
-  );
-  write(
-    root,
-    '.gemini/agents/docs-researcher-2.md',
-    [
-      '---',
-      'name: docs_researcher',
-      'description: Documentation specialist, strict.',
-      '---',
-      '',
-      'Cite the page you read.',
-      '',
-    ].join('\n'),
-  );
-  // An `mcpServers` block in the frontmatter: metadata of this agent, never
-  // an MCP row (data-model.md § Inventory unit).
-  write(
-    root,
-    '.gemini/agents/mcp-user.md',
-    [
-      '---',
-      'name: mcp-user',
-      'description: Uses the docs server.',
-      'mcpServers:',
-      '  docs:',
-      '    httpUrl: http://localhost:8080/mcp',
-      `    headers: { Authorization: "Bearer ${FIXTURE_SECRET_LITERAL}" }`,
-      `    endpoint: ${FIXTURE_ENVIRONMENT_REFERENCE}`,
-      '---',
-      '',
-      'Use the docs server.',
-      '',
-    ].join('\n'),
-  );
-  // The null-named row's three members (FR-008, FR-028).
-  write(root, '.gemini/agents/nameless.md', '---\ndescription: Declares no name.\n---\n\nBody.\n');
-  write(
-    root,
-    '.gemini/agents/list-name.md',
-    '---\nname: [one, two]\ndescription: Declares a list.\n---\n\nBody.\n',
-  );
-  write(root, '.gemini/agents/broken.md', '---\nname: [unterminated\n---\n\nBody.\n');
-
-  // Near miss: one directory below `.gemini/agents/` — the page names
-  // `agents/*.md` and no subtree.
-  write(root, '.gemini/agents/archive/old.md', '---\nname: old\n---\n');
-  // Near miss: non-Markdown siblings.
-  write(root, '.gemini/agents/README.txt', 'agents live here\n');
-  write(root, '.gemini/agents/notes.markdown', 'wrong suffix\n');
-  // Near miss: the singular directory spelling.
-  write(root, '.gemini/agent/solo.md', '---\nname: solo\n---\n');
-  // Near miss: an agents directory below a working directory this product
-  // does not select (FR-002).
-  write(root, 'packages/api/.gemini/agents/nested.md', '---\nname: nested\n---\n');
-  // Near miss: VCS internals are excluded from traversal entirely.
-  write(root, '.git/.gemini/agents/hidden.md', '---\nname: hidden\n---\n');
-  // Unrelated file that shares no segment with the selector.
-  write(root, 'README.md', 'unrelated\n');
-
-  return {
-    root,
-    expectedAgentPaths: [
-      '.gemini/agents/broken.md',
-      '.gemini/agents/docs-researcher-2.md',
-      '.gemini/agents/docs-researcher.md',
-      '.gemini/agents/list-name.md',
-      '.gemini/agents/mcp-user.md',
-      '.gemini/agents/nameless.md',
-      '.gemini/agents/reviewer.md',
-      '.gemini/agents/test-writer.md',
-    ],
-    expectedAgentNames: ['docs_researcher', 'mcp-user', 'reviewer', 'test-writer'],
-    unnamedAgentPaths: [
-      '.gemini/agents/broken.md',
-      '.gemini/agents/list-name.md',
-      '.gemini/agents/nameless.md',
-    ],
-    malformedAgentPath: '.gemini/agents/broken.md',
-    mcpSpellingAgentPath: '.gemini/agents/mcp-user.md',
-    nearMissPaths: [
-      '.gemini/agent/solo.md',
-      '.gemini/agents/README.txt',
-      '.gemini/agents/archive/old.md',
-      '.gemini/agents/notes.markdown',
-      '.git/.gemini/agents/hidden.md',
-      'README.md',
-      'packages/api/.gemini/agents/nested.md',
-    ],
-  };
-}
-
-/**
- * One built Gemini CLI configured-context-filename fixture repository
- * (specs/002-gemini-cli-support/tasks.md T052).
- */
-export interface GeminiContextFilenameFixture {
-  /** The absolute fixture root to scan. */
-  readonly root: string;
-  /** The Source-relative Path of the root `.gemini/settings.json` that configures the names. */
-  readonly carrierPath: string;
-  /** The context filenames the carrier declares, in authored order. */
-  readonly configuredFilenames: readonly string[];
-  /**
-   * Every Source-relative Path the context derivation admits under the
-   * configured names, sorted: each configured name at the root and at every
-   * depth, and no `GEMINI.md` — the configuration replaces the default rather
-   * than joining it (spec.md FR-004).
-   */
-  readonly expectedInstructionPaths: readonly string[];
-  /**
-   * The root `GEMINI.md`, which stays a Copilot row alone while names are
-   * configured: Copilot's root alternative is a static rule, and Gemini CLI's
-   * derivation no longer reaches the default filename (spec.md FR-013).
-   */
-  readonly copilotOnlyPath: string;
-  /**
-   * Paths no rule or derivation of any product may admit: the nested
-   * `GEMINI.md` the default would have reached, and a nested carrier's own
-   * declared name.
-   */
-  readonly nearMissPaths: readonly string[];
-}
-
-/**
- * Builds the configured-context-filename fixture repository (T052).
- *
- * The root `.gemini/settings.json` declares `context.fileName` as an array of
- * two names. `AGENTS.md` at the root is then one candidate with three
- * products' recognitions — Copilot's and Codex's static rules and Gemini CLI's
- * derivation — while the nested one is Copilot's and Gemini CLI's, and
- * `CONTEXT.md` is Gemini CLI's alone at both depths. The root `GEMINI.md` the
- * default would have admitted keeps Copilot's recognition only, and the nested
- * one becomes a near miss (spec.md FR-004, FR-013).
- */
-export function buildGeminiContextFilenameFixture(
-  prefix = 'inspector-gemini-context-filename',
-  root = createRepositoryFixtureRoot(prefix),
-): GeminiContextFilenameFixture {
-  const configuredFilenames = ['AGENTS.md', 'CONTEXT.md'];
-  write(
-    root,
-    '.gemini/settings.json',
-    [
-      '{',
-      '  // This team keeps its agent context in AGENTS.md, shared with the other tools.',
-      `  "context": { "fileName": ${JSON.stringify(configuredFilenames)} },`,
-      '  "ui": { "theme": "GitHub" }',
-      '}',
-      '',
-    ].join('\n'),
-  );
-  write(root, 'AGENTS.md', '# Agent context\n\nRun `pnpm test` before proposing a change.\n');
-  write(root, 'packages/api/AGENTS.md', '# API package context\n');
-  write(root, 'CONTEXT.md', '# Extra context\n\nThe second configured name.\n');
-  write(root, 'docs/CONTEXT.md', '# Documentation context\n');
-  // The default filename, which the configuration replaces: Copilot's root
-  // alternative still admits the root one, and nothing admits the nested one.
-  write(root, 'GEMINI.md', '# Not a Gemini CLI context file while names are configured\n');
-  write(root, 'packages/api/GEMINI.md', '# Nested default, admitted by nothing\n');
-  // A nested carrier: only the root carrier is configuration, so the name it
-  // declares reaches nothing.
-  write(root, 'packages/api/.gemini/settings.json', '{ "context": { "fileName": "LOCAL.md" } }\n');
-  write(root, 'packages/api/LOCAL.md', '# named only by the nested carrier\n');
-  write(root, 'README.md', 'unrelated\n');
-
-  return {
-    root,
-    carrierPath: '.gemini/settings.json',
-    configuredFilenames,
-    expectedInstructionPaths: [
-      'AGENTS.md',
-      'CONTEXT.md',
-      'docs/CONTEXT.md',
-      'packages/api/AGENTS.md',
-    ],
-    copilotOnlyPath: 'GEMINI.md',
-    nearMissPaths: [
-      'README.md',
-      'packages/api/.gemini/settings.json',
-      'packages/api/GEMINI.md',
-      'packages/api/LOCAL.md',
-    ],
-  };
-}
-
-/**
- * One built Gemini CLI fixture whose root `.gemini/settings.json` sets
- * `context.fileName` to one string rather than an array
- * (specs/002-gemini-cli-support/tasks.md T074; spec.md FR-004).
- */
-export interface GeminiStringContextFilenameFixture {
-  /** The absolute fixture root to scan. */
-  readonly root: string;
-  /** The Source-relative Path of the root `.gemini/settings.json` that configures the name. */
-  readonly carrierPath: string;
-  /** The one context filename the carrier declares. */
-  readonly configuredFilename: string;
-}
-
-/**
- * Builds a repository whose `context.fileName` is the string `"AGENTS.md"`: a
- * root `AGENTS.md`, a nested `AGENTS.md`, and a root `GEMINI.md` the string
- * replaces rather than joins (spec.md FR-004).
- */
-export function buildGeminiStringContextFilenameFixture(
-  prefix = 'inspector-gemini-context-filename-string',
-  root = createRepositoryFixtureRoot(prefix),
-): GeminiStringContextFilenameFixture {
-  write(root, '.gemini/settings.json', '{ "context": { "fileName": "AGENTS.md" } }\n');
-  write(root, 'AGENTS.md', '# Agent context\n\nShared with the other tools.\n');
-  write(root, 'packages/api/AGENTS.md', '# API package context\n');
-  write(root, 'GEMINI.md', '# Not a Gemini CLI context file while a name is configured\n');
-  return { root, carrierPath: '.gemini/settings.json', configuredFilename: 'AGENTS.md' };
-}
-
-/**
- * One built Gemini CLI fixture whose root `.gemini/settings.json` gives
- * `context.fileName` a value the setting's grammar does not accept, so the
- * default `GEMINI.md` stands (specs/002-gemini-cli-support/tasks.md T074;
- * spec.md FR-004).
- */
-export interface GeminiInvalidContextFilenameFixture {
-  /** The absolute fixture root to scan. */
-  readonly root: string;
-  /** The Source-relative Path of the root `.gemini/settings.json` holding the unusable value. */
-  readonly carrierPath: string;
-}
-
-/**
- * Builds a repository whose `context.fileName` is a number: the grammar
- * accepts a non-empty string or an array of them, so the value configures
- * nothing, carries no diagnostic, and leaves a root and a nested `GEMINI.md`
- * as the context files (spec.md FR-004; research.md § 2).
- */
-export function buildGeminiInvalidContextFilenameFixture(
-  prefix = 'inspector-gemini-context-filename-invalid',
-  root = createRepositoryFixtureRoot(prefix),
-): GeminiInvalidContextFilenameFixture {
-  write(root, '.gemini/settings.json', '{ "context": { "fileName": 42 } }\n');
-  write(root, 'GEMINI.md', '# Root context\n');
-  write(root, 'packages/api/GEMINI.md', '# Nested context\n');
-  write(root, 'AGENTS.md', '# Not a Gemini CLI context file\n');
-  return { root, carrierPath: '.gemini/settings.json' };
-}
-
-/**
- * One built Gemini CLI same-name skill fixture repository
- * (specs/002-gemini-cli-support/tasks.md T052).
- */
-export interface GeminiSameNameSkillFixture {
-  /** The absolute fixture root to scan. */
-  readonly root: string;
-  /** The one name both files declare. */
-  readonly skillName: string;
-  /** The `.gemini/skills/` definition, Gemini CLI's alone. */
-  readonly ownPath: string;
-  /** The `.agents/skills/` alias definition, Codex's and Copilot's too. */
-  readonly aliasPath: string;
-}
-
-/**
- * Builds the same-name skill fixture repository (T052): one skill name
- * declared by a `.gemini/skills/` file and by its `.agents/skills/` alias, so
- * the `deploy` row lists both definitions and states, for Gemini CLI, the
- * first-found rule its documented precedence derives to (spec.md FR-007).
- */
-export function buildGeminiSameNameSkillFixture(
-  prefix = 'inspector-gemini-same-name-skill',
-  root = createRepositoryFixtureRoot(prefix),
-): GeminiSameNameSkillFixture {
-  write(
-    root,
-    '.gemini/skills/deploy/SKILL.md',
-    [
-      '---',
-      'name: deploy',
-      'description: Deploy from the Gemini CLI skills directory.',
-      '---',
-      '',
-      'The `.gemini/skills/` copy.',
-      '',
-    ].join('\n'),
-  );
-  write(
-    root,
-    '.agents/skills/deploy/SKILL.md',
-    [
-      '---',
-      'name: deploy',
-      'description: Deploy from the shared agent skills directory.',
-      '---',
-      '',
-      'The `.agents/skills/` copy.',
-      '',
-    ].join('\n'),
-  );
-  return {
-    root,
-    skillName: 'deploy',
-    ownPath: '.gemini/skills/deploy/SKILL.md',
-    aliasPath: '.agents/skills/deploy/SKILL.md',
-  };
-}
-
 /** One combined fixture repository holding every customization kind at once. */
 export interface AllCustomizationKindFixture {
   /** The absolute fixture root to scan. */
@@ -8751,16 +7793,18 @@ export interface AllCustomizationKindFixture {
   readonly claudeHookFixture: ClaudeHookFixture;
   /** The Copilot hook tree: the root hook files and the settings documents that carry a block. */
   readonly copilotHookFixture: CopilotHookFixture;
-  /** The Gemini CLI context-file tree: `GEMINI.md` at the root and nested. */
-  readonly geminiInstructionFixture: GeminiInstructionFixture;
-  /** The Gemini CLI settings tree: the one JSONC carrier three rules read. */
-  readonly geminiSettingsFixture: GeminiSettingsFixture;
-  /** The Gemini CLI command tree: namespaced TOML files below `.gemini/commands/`. */
-  readonly geminiCommandFixture: GeminiCommandFixture;
-  /** The Gemini CLI skill tree: `.gemini/skills/` and the shared `.agents/skills/` alias. */
-  readonly geminiSkillFixture: GeminiSkillFixture;
-  /** The Gemini CLI sub-agent tree: Markdown files directly in `.gemini/agents/`. */
-  readonly geminiAgentFixture: GeminiAgentFixture;
+  /** The Antigravity CLI context tree: the repository root's `GEMINI.md` and `AGENTS.md`. */
+  readonly antigravityContextFixture: AntigravityFixture;
+  /** The Antigravity CLI skill tree: both admitted shapes in one `.agents/skills/`. */
+  readonly antigravitySkillFixture: AntigravityFixture;
+  /** The Antigravity CLI custom-agent tree: both shapes below `.agents/agents/`. */
+  readonly antigravityAgentFixture: AntigravityFixture;
+  /** The Antigravity CLI workspace rules tree: one file per documented activation mode. */
+  readonly antigravityRuleFixture: AntigravityFixture;
+  /** The Antigravity CLI hooks tree: the standalone `.agents/hooks.json`. */
+  readonly antigravityHookFixture: AntigravityFixture;
+  /** The Antigravity CLI MCP tree: the standalone `.agents/mcp_config.json`. */
+  readonly antigravityMcpFixture: AntigravityFixture;
 }
 
 /**
@@ -8883,7 +7927,7 @@ export function buildAllCustomizationKindFixture(
   // each carrying the permission policy and skill content the earlier builders
   // put there.
   const claudeHookFixture = buildClaudeHookFixture(prefix, root);
-  // The Gemini CLI trees (specs/002-gemini-cli-support T021), disjoint from
+  // The Antigravity CLI trees (specs/003-antigravity-cli-support T020), disjoint from
   // every other builder's paths but for three placeholders written twice
   // with the later write winning: `README.md`, the root `GEMINI.md` the
   // all-vendor instruction builder also writes — both are the default context
@@ -8892,11 +7936,12 @@ export function buildAllCustomizationKindFixture(
   // builders both write as a layer no scan selects. The settings tree's root
   // `.gemini/settings.json` configures no `context.fileName`, so the default
   // `GEMINI.md` rows the instruction tree stands on stay admitted.
-  const geminiInstructionFixture = buildGeminiInstructionFixture(prefix, root);
-  const geminiSettingsFixture = buildGeminiSettingsFixture(prefix, root);
-  const geminiCommandFixture = buildGeminiCommandFixture(prefix, root);
-  const geminiSkillFixture = buildGeminiSkillFixture(prefix, root);
-  const geminiAgentFixture = buildGeminiAgentFixture(prefix, root);
+  const antigravityContextFixture = buildAntigravityContextFixture(prefix, root);
+  const antigravitySkillFixture = buildAntigravitySkillFixture(prefix, root);
+  const antigravityAgentFixture = buildAntigravityAgentFixture(prefix, root);
+  const antigravityRuleFixture = buildAntigravityRuleFixture(prefix, root);
+  const antigravityHookFixture = buildAntigravityHookFixture(prefix, root);
+  const antigravityMcpFixture = buildAntigravityMcpFixture(prefix, root);
   // One cross-Source group for each comparing kind the builders above do not
   // already give one, named to pair with the Global homes fixture
   // (tests/fixtures/global-homes/build-fixtures.ts): with the personal setup
@@ -9018,11 +8063,12 @@ export function buildAllCustomizationKindFixture(
     hookFixture,
     claudeHookFixture,
     copilotHookFixture,
-    geminiInstructionFixture,
-    geminiSettingsFixture,
-    geminiCommandFixture,
-    geminiSkillFixture,
-    geminiAgentFixture,
+    antigravityContextFixture,
+    antigravitySkillFixture,
+    antigravityAgentFixture,
+    antigravityRuleFixture,
+    antigravityHookFixture,
+    antigravityMcpFixture,
   };
 }
 
@@ -9287,5 +8333,483 @@ export function buildCrossSourceGroupFixture(
     mcpServerName: 'tickets',
     hookEvent: 'postToolUse',
     pluginName: 'team-tools',
+  };
+}
+
+/** One built Antigravity CLI fixture repository and the paths a suite asserts. */
+export interface AntigravityFixture {
+  /** The fixture root a scan is pointed at. */
+  readonly root: string;
+  /** Every path a shipped Antigravity CLI rule admits in this tree, sorted. */
+  readonly candidatePaths: readonly string[];
+  /** Paths no shipped rule may admit, sorted. */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the Antigravity CLI skills tree (T020).
+ *
+ * Positive cases: both admitted shapes in one `.agents/skills/` — a skill
+ * folder holding a `SKILL.md`, which OpenAI Codex and GitHub Copilot read from
+ * the same path, and the flat Markdown file only this vendor's own page
+ * documents. One name is spelled in both shapes, which is one row with two
+ * definitions and no precedence between them (spec.md § FR-004). Two files
+ * declare no `name`, one of each shape, so each shape's fallback is
+ * observable: a folder falls back to its folder, and a flat file to its own
+ * name without the extension
+ * (contracts/vendors/antigravity-cli.md § Known uncertainties item 7). The
+ * superseded `.agent/skills/` spelling carries the folder shape.
+ *
+ * Near misses: the flat shape under the superseded spelling, which no page
+ * documents there; a second level below a skill folder, which is a companion
+ * rather than a candidate; a nested `.agents/` belonging to a working
+ * directory this product does not select; and the workspace plugin directory
+ * no terminal page names.
+ */
+export function buildAntigravitySkillFixture(
+  prefix = 'inspector-antigravity-skills',
+  root = createRepositoryFixtureRoot(prefix),
+): AntigravityFixture {
+  write(
+    root,
+    '.agents/skills/changelog/SKILL.md',
+    [
+      '---',
+      'name: changelog',
+      'description: Draft a changelog entry from the commits since the last tag.',
+      '---',
+      '',
+      '# Changelog',
+      '',
+      'Run `scripts/collect.sh` to list the commits, then group them by area.',
+      'See `reference.md` for the entry format.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.agents/skills/changelog/scripts/collect.sh',
+    '#!/bin/sh\ngit log --oneline "$(git describe --tags --abbrev=0)..HEAD"\n',
+  );
+  write(
+    root,
+    '.agents/skills/changelog/reference.md',
+    '# Entry format\n\n- Area: what changed and why.\n',
+  );
+  // A folder declaring no `name`: every product resolving this file falls back
+  // to the folder, so the row is `release-notes` under all three readers
+  // rather than splitting into a second row named after the file.
+  write(
+    root,
+    '.agents/skills/release-notes/SKILL.md',
+    [
+      '---',
+      'description: Assemble release notes from the merged pull requests.',
+      '---',
+      '',
+      'Group the merged pull requests by area and write one line for each.',
+      '',
+    ].join('\n'),
+  );
+  // The flat shape the terminal's own page documents, and the same name in the
+  // folder shape beside it: one row, two definitions, no precedence.
+  write(
+    root,
+    '.agents/skills/deploy.md',
+    [
+      '---',
+      'name: deploy',
+      'description: Deploy the current branch to the staging environment.',
+      '---',
+      '',
+      'Run the staging pipeline and report the deployed revision.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.agents/skills/deploy/SKILL.md',
+    [
+      '---',
+      'name: deploy',
+      'description: Deploy the current branch to the staging environment.',
+      '---',
+      '',
+      'Run the staging pipeline, then wait for the health check to pass.',
+      '',
+    ].join('\n'),
+  );
+  // A flat file declaring no `name`: this shape has no folder to take one
+  // from, so the row is the file's own name without its extension — `x`. The
+  // counterpart of the folder shape's fallback, which takes the folder
+  // (contracts/vendors/antigravity-cli.md § Known uncertainties item 7).
+  write(
+    root,
+    '.agents/skills/x.md',
+    [
+      '---',
+      'description: Expand the selected expression and explain each step.',
+      '---',
+      '',
+      'Show the expansion one step at a time and name the rule used at each.',
+      '',
+    ].join('\n'),
+  );
+  // A flat file whose frontmatter block is not YAML: the extraction fails
+  // all-or-nothing, so the skill has no declarations and no instructions to
+  // show, and the detail is left with its diagnostic and the file's own text
+  // (FR-028). The flat shape has no files tab to read that text in, which is
+  // why its panel carries the `Source` viewer every other single-file detail
+  // carries.
+  write(
+    root,
+    '.agents/skills/summarize.md',
+    [
+      '---',
+      'name: [',
+      'description: Summarize the selected text.',
+      '---',
+      '',
+      'Summarize the selection in three sentences.',
+      '',
+    ].join('\n'),
+  );
+  // The superseded spelling, in the shape the page that states the backward
+  // support shows there.
+  write(
+    root,
+    '.agent/skills/format-tests/SKILL.md',
+    [
+      '---',
+      'name: format-tests',
+      'description: Standardize and re-format Python unittest assertions.',
+      '---',
+      '',
+      'Rewrite each assertion in the canonical form and keep every test green.',
+      '',
+    ].join('\n'),
+  );
+  // Near misses.
+  write(root, '.agent/skills/legacy.md', '---\nname: legacy\n---\n\nNot admitted there.\n');
+  write(root, '.agents/skills/changelog/nested/SKILL.md', '---\nname: nested\n---\n');
+  write(root, 'packages/api/.agents/skills/api/SKILL.md', '---\nname: api\n---\n');
+  write(root, '.agents/plugins/team-tools/plugin.json', '{"name":"team-tools"}\n');
+  return {
+    root,
+    candidatePaths: [
+      '.agent/skills/format-tests/SKILL.md',
+      '.agents/skills/changelog/SKILL.md',
+      '.agents/skills/deploy.md',
+      '.agents/skills/deploy/SKILL.md',
+      '.agents/skills/release-notes/SKILL.md',
+      '.agents/skills/summarize.md',
+      '.agents/skills/x.md',
+    ],
+    nearMissPaths: [
+      '.agent/skills/legacy.md',
+      '.agents/plugins/team-tools/plugin.json',
+      '.agents/skills/changelog/nested/SKILL.md',
+      'packages/api/.agents/skills/api/SKILL.md',
+    ],
+  };
+}
+
+/**
+ * Builds the Antigravity CLI workspace rules tree (T020).
+ *
+ * Positive cases: one file per documented activation mode — always on, manual,
+ * model decision, and a glob — under `.agents/rules/`, and one under the
+ * superseded `.agent/rules/` spelling. Each activation reaches the page as the
+ * file's own frontmatter and is never evaluated (spec.md § FR-016).
+ *
+ * Near misses: a non-Markdown sibling, a second level below the rules
+ * directory the page shows no depth for, and a nested `.agents/rules/`.
+ */
+export function buildAntigravityRuleFixture(
+  prefix = 'inspector-antigravity-rules',
+  root = createRepositoryFixtureRoot(prefix),
+): AntigravityFixture {
+  write(
+    root,
+    '.agents/rules/house-style.md',
+    [
+      '---',
+      'activation: always',
+      '---',
+      '',
+      '# House style',
+      '',
+      'Prefer the longer name that is always understandable to the shorter one.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.agents/rules/release-checklist.md',
+    [
+      '---',
+      'activation: manual',
+      'description: The steps a release runs through, on request.',
+      '---',
+      '',
+      'Tag the commit, run the packaged-tree verification, then publish.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.agents/rules/api-review.md',
+    [
+      '---',
+      'activation: model-decision',
+      'description: Use when a public interface changes.',
+      '---',
+      '',
+      'Name every removed or renamed export and the migration for it.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.agents/rules/typescript.md',
+    [
+      '---',
+      'activation: glob',
+      'glob: "src/**/*.ts"',
+      '---',
+      '',
+      'No `any`. Narrow with a discriminant rather than a type assertion.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.agent/rules/legacy-imports.md',
+    ['---', 'activation: always', '---', '', 'Import from the package root.', ''].join('\n'),
+  );
+  // Near misses.
+  write(root, '.agents/rules/README.txt', 'not markdown\n');
+  write(root, '.agents/rules/frontend/components.md', '---\nactivation: always\n---\n');
+  write(root, 'packages/api/.agents/rules/api.md', '---\nactivation: always\n---\n');
+  return {
+    root,
+    candidatePaths: [
+      '.agent/rules/legacy-imports.md',
+      '.agents/rules/api-review.md',
+      '.agents/rules/house-style.md',
+      '.agents/rules/release-checklist.md',
+      '.agents/rules/typescript.md',
+    ],
+    nearMissPaths: [
+      '.agents/rules/README.txt',
+      '.agents/rules/frontend/components.md',
+      'packages/api/.agents/rules/api.md',
+    ],
+  };
+}
+
+/**
+ * Builds the Antigravity CLI workspace hooks tree (T020).
+ *
+ * Positive case: the standalone `.agents/hooks.json`, a map of named hooks
+ * each holding its own events — one carrying the documented `enabled` flag,
+ * and two declaring the same event under different names, which is the case
+ * the detail tells apart by the name its carrier wrote
+ * (contracts/vendors/antigravity-cli.md § Known uncertainties item 9).
+ *
+ * Near misses: a nested `.agents/hooks.json`, and the hook scripts the
+ * declarations name, which are relationship targets and never candidates.
+ */
+export function buildAntigravityHookFixture(
+  prefix = 'inspector-antigravity-hooks',
+  root = createRepositoryFixtureRoot(prefix),
+): AntigravityFixture {
+  write(
+    root,
+    '.agents/hooks.json',
+    [
+      '{',
+      '  "lint-on-write": {',
+      '    "PostToolUse": [',
+      '      {',
+      '        "matcher": "write_file",',
+      '        "hooks": [{ "type": "command", "command": "./scripts/lint.sh", "timeout": 10 }]',
+      '      }',
+      '    ]',
+      '  },',
+      '  "safety-gate": {',
+      '    "enabled": false,',
+      '    "PreToolUse": [',
+      '      { "matcher": "run_command", "hooks": [{ "command": "./scripts/safety-check.sh" }] }',
+      '    ]',
+      '  },',
+      '  "audit-writes": {',
+      '    "PostToolUse": [',
+      '      { "matcher": "run_command", "hooks": [{ "command": "./scripts/audit.sh" }] }',
+      '    ]',
+      '  }',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  write(root, 'scripts/lint.sh', '#!/bin/sh\nnpm run lint\n');
+  write(root, 'scripts/safety-check.sh', '#!/bin/sh\nexit 0\n');
+  write(root, 'scripts/audit.sh', '#!/bin/sh\necho audited\n');
+  write(root, 'packages/api/.agents/hooks.json', '{"nested":{"Stop":[]}}\n');
+  return {
+    root,
+    candidatePaths: ['.agents/hooks.json'],
+    nearMissPaths: [
+      'packages/api/.agents/hooks.json',
+      'scripts/audit.sh',
+      'scripts/lint.sh',
+      'scripts/safety-check.sh',
+    ],
+  };
+}
+
+/**
+ * Builds the Antigravity CLI MCP tree (T020).
+ *
+ * Positive case: `.agents/mcp_config.json` declaring a local server, a remote
+ * one using the current `serverUrl` key, and one still spelling the legacy
+ * `httpUrl` the migration page names — all three shown as written, because
+ * whether the vendor accepts one is runtime this product does not observe
+ * (spec.md § FR-005).
+ *
+ * Near misses: a nested carrier, and the vendor's other JSON documents.
+ */
+export function buildAntigravityMcpFixture(
+  prefix = 'inspector-antigravity-mcp',
+  root = createRepositoryFixtureRoot(prefix),
+): AntigravityFixture {
+  write(
+    root,
+    '.agents/mcp_config.json',
+    [
+      '{',
+      '  "mcpServers": {',
+      '    "tickets": {',
+      '      "command": "npx",',
+      '      "args": ["-y", "@example/mcp-tickets"],',
+      '      "env": { "TICKETS_TOKEN": "$TICKETS_TOKEN" }',
+      '    },',
+      '    "internal-docs": { "serverUrl": "https://mcp.internal.example.com/sse" },',
+      '    "legacy-indexer": { "httpUrl": "http://localhost:8080/mcp" }',
+      '  }',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  write(root, 'packages/api/.agents/mcp_config.json', '{"mcpServers":{"nested":{}}}\n');
+  write(root, '.agents/mcp_config.json.bak', '{"mcpServers":{}}\n');
+  return {
+    root,
+    candidatePaths: ['.agents/mcp_config.json'],
+    nearMissPaths: ['.agents/mcp_config.json.bak', 'packages/api/.agents/mcp_config.json'],
+  };
+}
+
+/**
+ * Builds the Antigravity CLI custom-agent tree (T020).
+ *
+ * Positive cases: both admitted shapes — a Markdown file directly below
+ * `.agents/agents/`, and an `agent.md` inside its own directory there — with
+ * one declaring `subagent: true`, which the page names as what makes an agent
+ * invocable by the primary one.
+ *
+ * Near misses: a companion beside an `agent.md`, which no cited page
+ * documents; an agent two levels deep; and a nested agents directory.
+ */
+export function buildAntigravityAgentFixture(
+  prefix = 'inspector-antigravity-agents',
+  root = createRepositoryFixtureRoot(prefix),
+): AntigravityFixture {
+  write(
+    root,
+    '.agents/agents/reviewer.md',
+    [
+      '---',
+      'name: reviewer',
+      'description: Reviews a diff for defects before it is committed.',
+      'subagent: true',
+      '---',
+      '',
+      'Review the change for defects and report each with its file and line.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.agents/agents/release/agent.md',
+    [
+      '---',
+      'name: release-captain',
+      'description: Runs the release checklist and reports what is left.',
+      '---',
+      '',
+      'Work the checklist in order and stop at the first step that fails.',
+      '',
+    ].join('\n'),
+  );
+  // Near misses.
+  write(root, '.agents/agents/release/notes.md', '# a companion no rule admits\n');
+  write(root, '.agents/agents/archive/old/agent.md', '---\nname: old\n---\n');
+  write(root, 'packages/api/.agents/agents/api.md', '---\nname: api\n---\n');
+  return {
+    root,
+    candidatePaths: ['.agents/agents/release/agent.md', '.agents/agents/reviewer.md'],
+    nearMissPaths: [
+      '.agents/agents/archive/old/agent.md',
+      '.agents/agents/release/notes.md',
+      'packages/api/.agents/agents/api.md',
+    ],
+  };
+}
+
+/**
+ * Builds the Antigravity CLI context tree (T020).
+ *
+ * Positive cases: the repository root's `GEMINI.md` and `AGENTS.md`, the pair
+ * the migration page names as the workspace context files. Both are shared
+ * files: the `GEMINI.md` carries GitHub Copilot's recognition beside this
+ * vendor's, and the `AGENTS.md` carries Copilot's and OpenAI Codex's
+ * (spec.md § FR-007, § FR-013).
+ *
+ * Near misses: the same two names below the root, where the migration page
+ * states no depth.
+ */
+export function buildAntigravityContextFixture(
+  prefix = 'inspector-antigravity-instructions',
+  root = createRepositoryFixtureRoot(prefix),
+): AntigravityFixture {
+  write(
+    root,
+    'GEMINI.md',
+    [
+      '# Project context',
+      '',
+      'This service owns the ticket lifecycle. Do not change the public schema',
+      'without an entry in `docs/schema-changes.md`.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    'AGENTS.md',
+    [
+      '# Agent instructions',
+      '',
+      'Run `pnpm run lint` and `pnpm run typecheck` before proposing a change.',
+      'Write both language versions of every document in the same change.',
+      '',
+    ].join('\n'),
+  );
+  write(root, 'packages/api/GEMINI.md', '# a nested copy the rule is anchored above\n');
+  write(root, 'packages/api/AGENTS.md', '# read by Copilot alone below the root\n');
+  return {
+    root,
+    candidatePaths: ['AGENTS.md', 'GEMINI.md'],
+    nearMissPaths: ['packages/api/GEMINI.md'],
   };
 }

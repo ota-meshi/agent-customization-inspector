@@ -109,30 +109,36 @@ describe('collision evidence per vendor policy (FR-007/FR-028)', () => {
   });
 });
 
-describe("Gemini CLI's clash (specs/002-gemini-cli-support T053)", () => {
+describe("Antigravity CLI's clash (T003)", () => {
   it('is row-internal, like the other products that invoke the authored name', () => {
-    // Gemini CLI invokes what each file declares, so two files it invokes by
-    // one name are the whole collision and no path elsewhere in the view
-    // bears on it — the `.gemini/skills/` file and its `.agents/skills/` alias
-    // included (FR-007).
-    const own = definition('gemini', '.gemini/skills/deploy/SKILL.md');
-    const alias = definition('gemini', '.agents/skills/deploy/SKILL.md');
-    const other = definition('gemini', '.gemini/skills/tide/SKILL.md');
-    const gate = SKILL_COLLISION_POLICY.gemini.collisionGate([own, alias, other]);
-    expect(gate([own, alias])).toBe(true);
-    expect(gate([own])).toBe(false);
+    // Antigravity CLI invokes what each file declares, so two files it invokes
+    // by one name are the whole collision and no path elsewhere in the view
+    // bears on it. This vendor reads both admitted skill shapes at one
+    // location, so a flat file and a skill folder's `SKILL.md` that resolve to
+    // one name are both its own evidence — which is what makes the clash a
+    // real one for it rather than a difference between products
+    // (specs/003-antigravity-cli-support/spec.md § FR-004). This case was
+    // watched failing against a policy table with no `antigravity` key.
+    const flat = definition('antigravity', '.agents/skills/deploy.md');
+    const folder = definition('antigravity', '.agents/skills/deploy/SKILL.md');
+    const other = definition('antigravity', '.agents/skills/tide/SKILL.md');
+    const gate = SKILL_COLLISION_POLICY.antigravity.collisionGate([flat, folder, other]);
+    expect(gate([flat, folder])).toBe(true);
+    expect(gate([flat])).toBe(false);
     expect(gate([other])).toBe(false);
   });
 
   it('excludes a failed extraction from its evidence', () => {
     // A failed extraction leaves the authored name unknown, so its row
     // membership is this product's provisional grouping rather than a clash
-    // Gemini CLI's rule answers (FR-028).
+    // Antigravity CLI's rule answers (FR-028).
     const failed = {
-      ...definition('gemini', '.gemini/skills/deploy/SKILL.md'),
+      ...definition('antigravity', '.agents/skills/deploy.md'),
       parseStatus: 'failed',
     } as const;
-    const parsed = definition('gemini', '.agents/skills/deploy/SKILL.md');
-    expect(SKILL_COLLISION_POLICY.gemini.collisionEvidence([failed, parsed])).toEqual([parsed]);
+    const parsed = definition('antigravity', '.agents/skills/deploy/SKILL.md');
+    expect(SKILL_COLLISION_POLICY.antigravity.collisionEvidence([failed, parsed])).toEqual([
+      parsed,
+    ]);
   });
 });

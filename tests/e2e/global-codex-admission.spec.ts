@@ -133,7 +133,7 @@ test('confirms with no tool selector and states what was accepted', async ({ pag
     'Copilot home — Inspected',
     'Claude home — Inspected',
     'Codex home — Inspected',
-    'Gemini home — Inspected',
+    'Antigravity home — Inspected',
     'Shared agent home — Inspected',
   ]);
   // Nothing here offers the confirmation again, and nothing offers it per

@@ -31,10 +31,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as fsIo from '../../src/server/inspection/fs-io';
 import { admitGlobalRoot } from '../../src/server/inspection/global-admission';
 import { CLAUDE_GLOBAL_RULES } from '../../src/server/inspection/rules/claude';
-import {
-  GEMINI_AGENTS_HOME_RULES,
-  GEMINI_GLOBAL_RULES,
-} from '../../src/server/inspection/rules/gemini';
+import { ANTIGRAVITY_GLOBAL_RULES } from '../../src/server/inspection/rules/antigravity';
 import type { CompiledStaticCandidateRule } from '../../src/server/inspection/rules/registry';
 import {
   CODEX_AGENTS_HOME_RULES,
@@ -248,18 +245,18 @@ async function scanClaudeHome(home: string): Promise<{
   };
 }
 
-/** Scans one Gemini CLI home with the Global catalog and returns the published paths. */
-async function scanGeminiHome(home: string): Promise<{
+/** Scans one Antigravity CLI home with the Global catalog and returns the published paths. */
+async function scanAntigravityHome(home: string): Promise<{
   readonly kind: string;
   readonly paths: readonly string[];
   readonly diagnosticCodes: readonly string[];
 }> {
   const publication = await runSourceScan({
-    sourceId: 'global-gemini',
+    sourceId: 'global-antigravity',
     root: home,
-    rootFailureOwner: 'global:gemini',
+    rootFailureOwner: 'global:antigravity',
     scope: 'global',
-    rules: GEMINI_GLOBAL_RULES,
+    rules: ANTIGRAVITY_GLOBAL_RULES,
   });
   if (publication.kind !== 'publishable') {
     return { kind: publication.kind, paths: [], diagnosticCodes: [] };
@@ -271,32 +268,34 @@ async function scanGeminiHome(home: string): Promise<{
   };
 }
 
-describe('what a consented Gemini CLI scan touches (specs/002 T041, T068)', () => {
+describe('what a consented Antigravity CLI scan touches (specs/003 T041)', () => {
   it('reads exactly the contracted member files and leaves every neighbour untouched', async () => {
     const homes = buildGlobalHomeFixture();
     cleanups.push(() => rmSync(homes.base, { recursive: true, force: true }));
-    const before = observeTree(homes.homes.gemini);
+    const before = observeTree(homes.homes.antigravity);
     // A realistic home: the admitted member files, an installed extension's
     // own tree, the trusted-folder record, the credentials, the environment
     // file, a hook script, and temporary session state.
     expect(before.size).toBeGreaterThan(10);
 
-    const scanned = await scanGeminiHome(homes.homes.gemini);
+    const scanned = await scanAntigravityHome(homes.homes.antigravity);
 
-    // The member set specs/002-gemini-cli-support FR-010 names: the context
-    // file, the settings document, the commands at two depths, the personal
-    // skill, the subagent, and the user policy. Everything else in the home is
-    // excluded state (`gemini.excluded.extensions`, `gemini.excluded.user-runtime`).
+    // The member set specs/003-antigravity-cli-support FR-009 names: the
+    // context file, the shared configuration directory's MCP carrier, hook
+    // carrier, custom agent and skill, the terminal's own skills in both
+    // admitted shapes, and its settings document. Everything else in the home
+    // is excluded state (`antigravity.excluded.plugins`,
+    // `antigravity.excluded.user-runtime`).
     expect(scanned.kind).toBe('publishable');
-    expect(scanned.paths).toEqual(homes.expectedCandidatePaths.gemini);
+    expect(scanned.paths).toEqual(homes.expectedCandidatePaths.antigravity);
     expect(scanned.diagnosticCodes).toEqual([]);
-    for (const nearMiss of homes.nearMissPaths.gemini) {
+    for (const nearMiss of homes.nearMissPaths.antigravity) {
       expect(scanned.paths, nearMiss).not.toContain(nearMiss);
     }
 
     // Nothing in the home changed, and nothing beside the admitted files was
     // opened for reading (FR-018, FR-023, SC-002).
-    const after = observeTree(homes.homes.gemini);
+    const after = observeTree(homes.homes.antigravity);
     expect([...after.keys()].toSorted()).toEqual([...before.keys()].toSorted());
     for (const [path, observed] of after) {
       expect(observed, path).toEqual(before.get(path));
@@ -308,8 +307,8 @@ describe('what a consented Gemini CLI scan touches (specs/002 T041, T068)', () =
     cleanups.push(() => rmSync(homes.base, { recursive: true, force: true }));
     // The home's own inventory of near misses is what the case above measures
     // "untouched" over (tests/fixtures/global-homes/README.md).
-    const written = [...observeTree(homes.homes.gemini).keys()].filter((path) => path !== '.');
-    for (const nearMiss of homes.nearMissPaths.gemini) {
+    const written = [...observeTree(homes.homes.antigravity).keys()].filter((path) => path !== '.');
+    for (const nearMiss of homes.nearMissPaths.antigravity) {
       expect(written, nearMiss).toContain(nearMiss);
     }
     expect(written).toContain('GEMINI.md');
@@ -1099,7 +1098,7 @@ describe('the one fixed-four transaction over real roots (T991)', () => {
     if (registered.kind !== 'admitted') {
       throw new Error('expected the operation to be registered');
     }
-    const members = ['copilot', 'claude', 'codex', 'gemini', 'agents'] as const;
+    const members = ['copilot', 'claude', 'codex', 'antigravity', 'agents'] as const;
     const settled = coordinator.settleGlobalEnable(
       registered.operationId,
       'preview-fixed-four',
@@ -1121,12 +1120,10 @@ describe('the one fixed-four transaction over real roots (T991)', () => {
       copilot: COPILOT_GLOBAL_RULES,
       claude: CLAUDE_GLOBAL_RULES,
       codex: CODEX_GLOBAL_RULES,
-      gemini: GEMINI_GLOBAL_RULES,
-      agents: [
-        ...CODEX_AGENTS_HOME_RULES,
-        ...COPILOT_AGENTS_HOME_RULES,
-        ...GEMINI_AGENTS_HOME_RULES,
-      ],
+      antigravity: ANTIGRAVITY_GLOBAL_RULES,
+      // Antigravity CLI contributes none: its global skills live below
+      // `~/.gemini`, and no cited page has it read `~/.agents` (FR-045).
+      agents: [...CODEX_AGENTS_HOME_RULES, ...COPILOT_AGENTS_HOME_RULES],
     } as const;
     const results = [];
     for (const member of members) {

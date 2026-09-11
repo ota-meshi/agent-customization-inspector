@@ -49,15 +49,18 @@ Paths are relative to the inspected repository root.
 | Hooks | `.codex/hooks.json` and `.codex/config.toml` |
 | Plugins | `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json` |
 
-### Gemini CLI
+### Antigravity CLI
+
+`.agent/` is the earlier spelling of `.agents/`, which this tool still reads.
 
 | Kind | Where |
 | --- | --- |
-| Instructions | `GEMINI.md` in any directory — or, when `.gemini/settings.json` sets `context.fileName`, the file or files it names, in any directory, in place of `GEMINI.md` |
-| Skills | `SKILL.md` in each directory under `.gemini/skills/` or `.agents/skills/` |
-| Agents | any `.md` file directly in `.gemini/agents/` |
-| Prompts and commands | any `.toml` file under `.gemini/commands/`, at any depth |
-| MCP, hooks, settings | `.gemini/settings.json` |
+| Instructions | `GEMINI.md` and `AGENTS.md`, at the root |
+| Skills | `SKILL.md` in each directory under `.agents/skills/` or `.agent/skills/`; any `.md` file directly in `.agents/skills/` |
+| Agents | any `.md` file directly in `.agents/agents/`; `agent.md` in each directory under `.agents/agents/` |
+| Rules | any `.md` file directly in `.agents/rules/` or `.agent/rules/` |
+| MCP | `.agents/mcp_config.json` |
+| Hooks | `.agents/hooks.json` |
 
 ## In your personal setup
 
@@ -105,28 +108,28 @@ is relative to the one it is listed under.
 | MCP, settings | `config.toml` |
 | Hooks | `hooks.json` and `config.toml` |
 
-### Your Gemini CLI home
+### Your Antigravity CLI home
 
-`.gemini` under `GEMINI_CLI_HOME`, or `~/.gemini`. The setting names the directory that holds
-`.gemini` rather than `.gemini` itself, so `GEMINI_CLI_HOME=/work` reads `/work/.gemini`.
+`~/.gemini`. No setting moves it. Below it, `config/` is the directory this tool shares with
+the Antigravity editor, and `antigravity-cli/` is the terminal's own.
 
 | Kind | Where |
 | --- | --- |
 | Instructions | `GEMINI.md` |
-| Skills | `SKILL.md` in each directory under `skills/` |
-| Agents | any `.md` file directly in `agents/` |
-| Prompts and commands | any `.toml` file under `commands/`, at any depth |
-| Permissions | any `.toml` file directly in `policies/` |
-| MCP, hooks, settings | `settings.json` |
+| Skills | `SKILL.md` in each directory under `config/skills/` or `antigravity-cli/skills/`; any `.md` file directly in `antigravity-cli/skills/` |
+| Agents | any `.md` file directly in `config/agents/`; `agent.md` in each directory under `config/agents/` |
+| MCP | `config/mcp_config.json` |
+| Hooks | `config/hooks.json` and `antigravity-cli/settings.json` |
+| Permissions, settings | `antigravity-cli/settings.json` |
 
 ### The shared agent home
 
-`~/.agents`, which is not any one tool's and does not move with `CODEX_HOME`,
-`COPILOT_HOME`, or `GEMINI_CLI_HOME`.
+`~/.agents`, which is not any one tool's and does not move with `CODEX_HOME` or
+`COPILOT_HOME`.
 
 | Kind | Where | Read by |
 | --- | --- | --- |
-| Skills | `SKILL.md` in each directory under `skills/` | OpenAI Codex, GitHub Copilot, and Gemini CLI |
+| Skills | `SKILL.md` in each directory under `skills/` | OpenAI Codex and GitHub Copilot |
 | Plugins | `plugins/marketplace.json` | OpenAI Codex |
 
 ## Two reads inside what was listed

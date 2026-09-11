@@ -10,6 +10,7 @@
 // keeps an event row identical whoever declared it.
 import type {
   DeclaredEntryDto,
+  DeclaredHookDto,
   HookCarrierForm,
   HookEventDeclarationDto,
 } from '../../../../shared/api-types';
@@ -36,9 +37,40 @@ import type { HookCarrierReading } from './compiled-rule';
  */
 export function declaredHookEventsIn(
   entries: readonly DeclaredEntryDto[],
+  namedHook: DeclaredHookDto | null = null,
 ): readonly HookEventDeclarationDto[] {
   return entries.flatMap((entry) =>
-    entry.value.kind === 'sequence' ? [{ event: entry.key, groups: entry.value.items }] : [],
+    entry.value.kind === 'sequence'
+      ? [{ event: entry.key, namedHook, groups: entry.value.items }]
+      : [],
+  );
+}
+
+/**
+ * The events one map of *named* hooks declares: for each named entry whose
+ * value is a mapping, the events inside it, each carrying that name and the
+ * name's own non-event keys.
+ *
+ * One vendor's carriers have this level — Antigravity CLI's `hooks.json` maps
+ * a hook name to its event configurations — and the shared projection above is
+ * what each named hook's entries are handed to, so the three-level reading is
+ * the same code for every format and only the container differs
+ * (contracts/vendors/antigravity-cli.md § Known uncertainties item 9).
+ *
+ * Classification stays structural and total: a named entry whose value is not
+ * a mapping declares no event, which is the same answer an absent container
+ * gives.
+ */
+export function declaredNamedHookEventsIn(
+  entries: readonly DeclaredEntryDto[],
+): readonly HookEventDeclarationDto[] {
+  return entries.flatMap((entry) =>
+    entry.value.kind === 'mapping'
+      ? declaredHookEventsIn(entry.value.entries, {
+          name: entry.key,
+          fields: entry.value.entries.filter((field) => field.value.kind !== 'sequence'),
+        })
+      : [],
   );
 }
 

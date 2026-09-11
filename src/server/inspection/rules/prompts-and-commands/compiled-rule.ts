@@ -37,8 +37,9 @@ export interface CompiledStaticPromptRule extends CompiledInspectionRule {
    * (`../agents/compiled-rule.ts` § agentPresentationOf), because the format
    * is the vendor's: a Claude Code, Copilot, or Codex command is Markdown
    * whose frontmatter block is the metadata and whose remainder is the prompt
-   * ({@link markdownPromptPresentationOf}), while a Gemini CLI command is TOML
-   * whose `prompt` value is the prompt and whose other keys are the metadata.
+   * ({@link markdownPromptPresentationOf}); a format that instead declares its
+   * prompt beside its other keys answers from its own reading, which is why
+   * this is the rule's question rather than one shared shape's.
    * Throws on text the format cannot read; the recognizer's extraction
    * boundary turns the throw into the recognition's `failed` state while the
    * file stays an admitted candidate whose complete source is still displayed

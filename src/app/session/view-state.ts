@@ -612,8 +612,8 @@ export class SessionViewState {
    * screen, and the second must drop it. The requested address rather than the
    * response's, so the comparison is between two things the page asked for.
    * The kind is part of it because one path can be two customizations — a
-   * `.gemini/commands/build.toml` that `context.fileName` also names is a
-   * command and a context file — and each route's detail is its own kind's
+   * `.claude/agents/CLAUDE.md` is a subagent by its directory and an
+   * instruction file by its name — and each route's detail is its own kind's
    * variant (contracts/http-api.md § get-file-detail): a step from one
    * route to the other at the same path, which the browser's history makes
    * in one navigation, is a move to another customization.

@@ -11,7 +11,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { chmodSync, mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 // The invocation directory is captured once when the CLI module loads, so
@@ -479,6 +479,13 @@ describe('personal-setup consent', () => {
       expect(preview.entries.find((entry) => entry.member === 'copilot')?.lexicalRoot).toBe(
         startupCopilot,
       );
+      // The startup capture reads three properties, and the two members below
+      // them are derived from the home directory in every case — no property
+      // relocates either, so no process mutation can move them at all (T005;
+      // specs/003-antigravity-cli-support/spec.md § FR-008).
+      const antigravity = preview.entries.find((entry) => entry.member === 'antigravity');
+      expect(antigravity?.origin).toBe('default-home');
+      expect(antigravity?.lexicalRoot).toBe(join(homedir(), '.gemini'));
     } finally {
       for (const [name, value] of Object.entries(original)) {
         if (value === undefined) {

@@ -83,6 +83,7 @@ const INJECTED_MODULE_PACKAGES = [
   // the throw below, which is the point of keeping this table exact.
   { prefix: '~icons/lucide/', name: '@iconify-json/lucide' },
   { prefix: '~icons/simple-icons/', name: '@iconify-json/simple-icons' },
+  { prefix: '~icons/thesvg/', name: '@iconify-json/thesvg' },
 ];
 
 /**

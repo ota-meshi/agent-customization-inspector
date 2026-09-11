@@ -21,6 +21,7 @@ function definition(
     parseStatus: 'parsed',
     diagnosticIds: [],
     companionFiles: [],
+    rowUnit: 'directory',
     ...overrides,
   } as SkillDefinitionDto;
 }
@@ -95,6 +96,34 @@ describe('skill row files', () => {
     ]);
 
     expect(files[0]!.companionFiles).toEqual(['.claude/skills/deploy/README.md']);
+  });
+
+  it('draws no supporting-file count for a file-shaped skill (T054)', () => {
+    // A flat skill has no directory, so the scan publishes no companions for
+    // it and the row's count is drawn from that empty list rather than
+    // suppressed here: the shape's consequence travels with the definition
+    // (spec.md § FR-004). The rendered detail's own half — the skill panel
+    // alone, with no file panel and no tab strip — is
+    // `tests/e2e/antigravity-skills-detail.spec.ts`'s, because the unit
+    // project compiles no single-file component.
+    const [flat] = skillRowFiles([
+      definition({
+        sourceRelativePath: '.agents/skills/deploy.md',
+        tool: 'antigravity',
+        rowUnit: 'file',
+      }),
+    ]);
+    expect(flat!.companionFiles).toEqual([]);
+    // Beside it, the folder shape of the same name keeps its census.
+    const [folder] = skillRowFiles([
+      definition({
+        sourceRelativePath: '.agents/skills/deploy/SKILL.md',
+        tool: 'antigravity',
+        rowUnit: 'directory',
+        companionFiles: ['.agents/skills/deploy/reference.md'],
+      }),
+    ]);
+    expect(folder!.companionFiles).toEqual(['.agents/skills/deploy/reference.md']);
   });
 
   it('states one extraction failure once, however many products recognize the file', () => {

@@ -1059,13 +1059,17 @@ watch(
     // Both halves of each side's identity (FR-030): two consented homes can
     // hold one path, so a key built from the paths alone would call a switch
     // between them the same pair and leave the tab decision unmade.
-    const decidingFor = [
+    // Serialized rather than concatenated, because the family name is
+    // authored: a manifest may spell one holding whatever a separator would
+    // be, and two different subjects that joined to one key would leave the
+    // second's tab decision unmade.
+    const decidingFor = JSON.stringify([
       name,
-      left?.source ?? '',
-      left?.sourceRelativePath ?? '',
-      right?.source ?? '',
-      right?.sourceRelativePath ?? '',
-    ].join('\u0000');
+      left?.source ?? null,
+      left?.sourceRelativePath ?? null,
+      right?.source ?? null,
+      right?.sourceRelativePath ?? null,
+    ]);
     if (tabDecidedFor === decidingFor) {
       return;
     }

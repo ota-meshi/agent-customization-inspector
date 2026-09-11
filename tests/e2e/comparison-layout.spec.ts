@@ -85,12 +85,12 @@ test("states each side's own recognitions in the table, not on the cards", async
     'GitHub Copilot',
     'Claude Code',
     'OpenAI Codex',
-    'Gemini CLI',
+    'Antigravity CLI',
   ]);
   // The product both copies share recognizes both; each copy's own product
   // recognizes one side and is stated as reading neither of the other, and
-  // Gemini CLI reads the `.agents/skills/` copy alone
-  // (specs/002-gemini-cli-support/spec.md FR-007).
+  // Antigravity CLI reads the `.agents/skills/` copy alone
+  // (specs/003-antigravity-cli-support/spec.md FR-004).
   expect(stated[0]?.first).toMatch(/^Recognized/u);
   expect(stated[0]?.second).toMatch(/^Recognized/u);
   expect(stated[1]?.first).toBe('Not recognized');

@@ -165,9 +165,7 @@ export const LEADING_OUTPUT_STYLE_FRONTMATTER_KEYS: readonly string[] = [
  * One product's table again, and for the same reason: a Claude Code command
  * file and a Copilot CLI command file take their name from the path and have
  * no documented header, so the VS Code prompt file is the one location of this
- * kind whose metadata any vendor specifies as a header; a Gemini CLI command's
- * TOML declares `description` and `prompt` and no name, so the same leading key
- * serves it.
+ * kind whose metadata any vendor specifies as a header.
  *
  * The list leads with `description` because that table does, not because this
  * product ranks it: a command file's `name` key is read by neither product
@@ -293,8 +291,8 @@ export const LEADING_AGENT_METADATA_KEYS: readonly string[] = [
  *
  * Composed here rather than transcribed, like the agent list and for the same
  * reason: the five carrier schemas this product reads — Codex's
- * `[mcp_servers.*]` tables, Claude's and Gemini CLI's `mcpServers` maps, and
- * Copilot's two documented shapes — publish no common table to take an order from. What the
+ * `[mcp_servers.*]` tables, Claude's and Antigravity CLI's `mcpServers` maps,
+ * and Copilot's two documented shapes — publish no common table to take an order from. What the
  * grouping answers is the order the questions arrive in for a reader looking
  * at one server.
  *

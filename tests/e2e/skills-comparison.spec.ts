@@ -134,6 +134,22 @@ test.beforeEach(async () => {
   // offer no comparison entry.
   await mkdir(join(fixture, '.agents/skills/solo'), { recursive: true });
   await writeFile(join(fixture, '.agents/skills/solo/SKILL.md'), '---\nname: solo\n---\n', 'utf8');
+  // A second name spelled in both admitted shapes of one `.agents/skills/`:
+  // the flat Markdown file one vendor's own page documents, and the skill
+  // folder the other pages give (spec.md § FR-004). One row, two copies, and
+  // the copies are shaped differently — which is the pair T057 is about.
+  await mkdir(join(fixture, '.agents/skills/tide'), { recursive: true });
+  await writeFile(
+    join(fixture, '.agents/skills/tide.md'),
+    '---\nname: tide\ndescription: Report the tide.\n---\n\nRead the flat table.\n',
+    'utf8',
+  );
+  await writeFile(
+    join(fixture, '.agents/skills/tide/SKILL.md'),
+    '---\nname: tide\ndescription: Report the tide.\n---\n\nRead the folder table.\n',
+    'utf8',
+  );
+  await writeFile(join(fixture, '.agents/skills/tide/table.md'), '# tide table\n', 'utf8');
   host = await launchHost(fixture);
 });
 
@@ -363,18 +379,21 @@ test('states tool recognition per tool and compares declared metadata once', asy
     'Source comparison',
   ]);
   // The `.agents` file is recognized by GitHub Copilot, OpenAI Codex, and
-  // Gemini CLI, the `.claude` file by GitHub Copilot and Claude Code: one
+  // Antigravity CLI, the `.claude` file by GitHub Copilot and Claude Code: one
   // recognition row per tool in the contracted order, each recognition
   // distinguishable from the physical file (US3 scenario 2), captioned in
-  // words.
+  // words. Each caption follows its vendor's mark, so the row header's text
+  // carries the mark's own leading space.
   const toolTable = comparison.locator('table').first();
   await expect(toolTable.locator('tbody th')).toHaveText([
-    'GitHub Copilot',
-    'Claude Code',
-    'OpenAI Codex',
-    'Gemini CLI',
+    ' GitHub Copilot',
+    ' Claude Code',
+    ' OpenAI Codex',
+    ' Antigravity CLI',
   ]);
-  await expect(toolTable.locator('tr', { hasText: 'Gemini CLI' })).toContainText('Not recognized');
+  await expect(toolTable.locator('tr', { hasText: 'Antigravity CLI' })).toContainText(
+    'Not recognized',
+  );
   await expect(toolTable.locator('tr', { hasText: 'GitHub Copilot' })).not.toContainText(
     'Not recognized',
   );
@@ -404,9 +423,12 @@ test('states tool recognition per tool and compares declared metadata once', asy
 test('shows the tab title for the comparison the page holds', async ({ page }) => {
   await openComparison(page);
   // The row and its pair ride in the title so two comparison tabs never
-  // read identically (WCAG 2.4.2).
+  // read identically (WCAG 2.4.2). The pair's own default — each side's entry
+  // file — adds nothing beyond them, because the two sides the title already
+  // names are that pair; stepping the compared-file switcher to another file
+  // is what adds a third part.
   await expect(page).toHaveTitle(
-    '⁨Comparing skill files: greet — first .agents/skills/greet/SKILL.md, second .claude/skills/greet/SKILL.md — SKILL.md⁩ — Agent Customization Inspector',
+    '⁨Comparing skill files: greet — first .agents/skills/greet/SKILL.md, second .claude/skills/greet/SKILL.md⁩ — Agent Customization Inspector',
   );
 });
 
@@ -538,4 +560,32 @@ test('rejects the same copy for both comparison inputs', async ({ page }) => {
   // a valid pair — no switchers render for a pair outside the model.
   await expect(page.locator('.aci-skill-compare')).toContainText('two distinct copies');
   await expect(page.locator('.aci-source-diff')).toHaveCount(0);
+});
+
+test('pairs a name’s two shapes entry to entry, with no file to step through', async ({ page }) => {
+  // A row whose copies are shaped differently: one is a flat Markdown file
+  // with no directory, the other a skill folder. The pair is the two entry
+  // files, because the copy-relative axis a directory pair steps through
+  // does not exist when one copy has no directory to be relative to
+  // (spec.md § FR-004).
+  await page.goto(host.origin);
+  await rowOf(page, '.agents/skills/tide.md')
+    .getByRole('link', { name: "Compare this skill's files" })
+    .click();
+  await page.waitForURL(/\/skills\/compare\/repository\?/u);
+  const sides = page.locator('.aci-compare-side');
+  await expect(sides.nth(0)).toContainText('.agents/skills/tide.md');
+  await expect(sides.nth(1)).toContainText('.agents/skills/tide/SKILL.md');
+  // Both sides hold their own content: neither is the stated absence a
+  // composed path that no copy has used to produce.
+  const diff = page.locator('.aci-skill-compare__source .aci-source-diff');
+  await expect(diff).toContainText('Read the flat table.');
+  await expect(diff).toContainText('Read the folder table.');
+  await expect(page.locator('main')).not.toContainText('No file at this path');
+  // Nothing to step, so nothing offers to: a switcher with one option would
+  // send a reader looking for the others.
+  await expect(page.locator('#aci-skill-compare-file')).toHaveCount(0);
+  // And the flat copy ships no companion, so the folder's own companion is
+  // not offered as a file the pair could step to.
+  await expect(page.locator('main')).not.toContainText('table.md');
 });

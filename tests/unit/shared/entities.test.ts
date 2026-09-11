@@ -363,7 +363,12 @@ describe('closed-catalog predicates', () => {
     // A near miss in spelling or case is not a member: the wire values are
     // exact, and a tab that opened on a guessed kind would show rows the URL
     // did not ask for.
-    for (const value of ['', 'Skill', 'skills', 'instruction', 'CLAUDE', 'Gemini', 'cursor']) {
+    //
+    // The list carries plausible near misses rather than nonsense: a kind's
+    // own word in the wrong case, a plural, a singular, and the name of a
+    // product this release does not support. A URL naming any of them must
+    // open no tab (specs/003-antigravity-cli-support/spec.md § FR-001).
+    for (const value of ['', 'Skill', 'skills', 'instruction', 'CLAUDE', 'cursor', 'Cursor']) {
       expect(isCustomizationKind(value), value).toBe(false);
       expect(isSupportedTool(value), value).toBe(false);
     }

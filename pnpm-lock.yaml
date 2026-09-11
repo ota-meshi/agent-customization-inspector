@@ -57,6 +57,9 @@ importers:
       '@iconify-json/simple-icons':
         specifier: ^1.2.93
         version: 1.2.93
+      '@iconify-json/thesvg':
+        specifier: ^1.2.4
+        version: 1.2.4
       '@nuxt/eslint':
         specifier: ^1.16.0
         version: 1.16.0(@typescript-eslint/utils@8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.40)(esbuild@0.28.1)(eslint@10.7.0(jiti@2.7.0))(magic-string@0.30.21)(magicast@0.5.3)(oxc-parser@0.133.0)(rolldown@1.1.5)(rollup@4.62.2)(srvx@0.11.22)(typescript@6.0.3)(unplugin@3.3.0(esbuild@0.28.1)(rolldown@1.1.5)(rollup@4.62.2)(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0)))(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
@@ -87,9 +90,6 @@ importers:
       '@vue/test-utils':
         specifier: ^2.4.11
         version: 2.4.11(@vue/compiler-dom@3.5.40)(@vue/server-renderer@3.5.39(vue@3.5.39(typescript@6.0.3)))(vue@3.5.39(typescript@6.0.3))
-      diff:
-        specifier: ^9.0.0
-        version: 9.0.0
       eslint:
         specifier: ^10.7.0
         version: 10.7.0(jiti@2.7.0)
@@ -126,6 +126,9 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(happy-dom@20.10.6)(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
+      vscode-diff:
+        specifier: ^3.0.1
+        version: 3.0.1
       vue:
         specifier: ^3.5.39
         version: 3.5.39(typescript@6.0.3)
@@ -676,6 +679,9 @@ packages:
 
   '@iconify-json/simple-icons@1.2.93':
     resolution: {integrity: sha512-/XhANjfGYOuqvSR3TmUnkQkINvQ4GVjVuukvymRbxtVFBvIq/yiXJqCDycKcQPT401OYT9H2vIY6ihAlz1QIAw==}
+
+  '@iconify-json/thesvg@1.2.4':
+    resolution: {integrity: sha512-cbUo2YkeifL6f9Dl7YF9Oj68JFsGzK9GVilgbUiD4zcCjptKKJqjl4VaI+ESJlFtJB2AqXnDVGVk0/9FP1BszA==}
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
@@ -2757,10 +2763,6 @@ packages:
 
   diff@8.0.4:
     resolution: {integrity: sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw==}
-    engines: {node: '>=0.3.1'}
-
-  diff@9.0.0:
-    resolution: {integrity: sha512-svtcdpS8CgJyqAjEQIXdb3OjhFVVYjzGAPO8WGCmRbrml64SPw/jJD4GoE98aR7r25A0XcgrK3F02yw9R/vhQw==}
     engines: {node: '>=0.3.1'}
 
   dom-serializer@2.0.0:
@@ -5028,6 +5030,9 @@ packages:
       jsdom:
         optional: true
 
+  vscode-diff@3.0.1:
+    resolution: {integrity: sha512-0rRDmIuGsuQMIIhbWsILSMxG4k5x8unNvkD7P+yn5cA7O6bKg28P/dhvgABRvP5ksYmGE9UKHonk/Z4PBMdojA==}
+
   vscode-uri@3.1.0:
     resolution: {integrity: sha512-/BpdSx+yCQGnCvecbyXdxHDkuk55/G3xwnC0GqY4gmQ3j+A+g8kzzgB4Nk/SINjqn6+waqw3EgbVF2QKExkRxQ==}
 
@@ -5766,6 +5771,10 @@ snapshots:
       '@iconify/types': 2.0.0
 
   '@iconify-json/simple-icons@1.2.93':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/thesvg@1.2.4':
     dependencies:
       '@iconify/types': 2.0.0
 
@@ -7876,8 +7885,6 @@ snapshots:
       dequal: 2.0.3
 
   diff@8.0.4: {}
-
-  diff@9.0.0: {}
 
   dom-serializer@2.0.0:
     dependencies:
@@ -10413,6 +10420,8 @@ snapshots:
       happy-dom: 20.10.6
     transitivePeerDependencies:
       - msw
+
+  vscode-diff@3.0.1: {}
 
   vscode-uri@3.1.0: {}
 

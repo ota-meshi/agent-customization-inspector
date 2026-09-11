@@ -30,6 +30,12 @@ import {
   buildCodexInstructionFixture,
   buildCodexMcpFixture,
   buildCodexRuleFixture,
+  buildAntigravityAgentFixture,
+  buildAntigravityContextFixture,
+  buildAntigravityHookFixture,
+  buildAntigravityMcpFixture,
+  buildAntigravityRuleFixture,
+  buildAntigravitySkillFixture,
   buildCodexSkillFixture,
   buildCopilotAgentFixture,
   buildCopilotHookFixture,
@@ -39,13 +45,6 @@ import {
   buildCopilotSkillFixture,
   buildCopilotVscodeMcpFixture,
   buildCrossSourceGroupFixture,
-  buildGeminiAgentFixture,
-  buildGeminiCommandFixture,
-  buildGeminiContextFilenameFixture,
-  buildGeminiInstructionFixture,
-  buildGeminiSameNameSkillFixture,
-  buildGeminiSettingsFixture,
-  buildGeminiSkillFixture,
   buildPriorityMcpFixture,
   buildPluginComparisonFixture,
   buildUnifiedHookFixture,
@@ -90,23 +89,18 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   // the shared settings documents are one read with a recognition per product.
   'all-hooks': buildUnifiedHookFixture,
   'codex-agents': buildCodexAgentFixture,
-  // The Gemini CLI trees (specs/002-gemini-cli-support T033): the context
-  // files at the root and nested, the one JSONC settings carrier the settings,
-  // MCP, and hook inventories all read, the namespaced commands, the skills
-  // under `.gemini/skills/` and the shared `.agents/skills/` alias, and the
-  // sub-agents.
-  'gemini-instructions': buildGeminiInstructionFixture,
-  'gemini-settings': buildGeminiSettingsFixture,
-  'gemini-commands': buildGeminiCommandFixture,
-  'gemini-skills': buildGeminiSkillFixture,
-  'gemini-agents': buildGeminiAgentFixture,
-  // The configured-context-filename tree (T055): `.gemini/settings.json`
-  // names `AGENTS.md` and `CONTEXT.md`, so those are the context rows and the
-  // root `GEMINI.md` keeps Copilot's mark alone — and the same-name skill
-  // tree, whose `deploy` row lists the `.gemini/skills/` file beside its
-  // `.agents/skills/` alias with the first-found statement.
-  'gemini-context-filename': buildGeminiContextFilenameFixture,
-  'gemini-same-name-skill': buildGeminiSameNameSkillFixture,
+  // The Antigravity CLI trees (specs/003-antigravity-cli-support T032): the
+  // context pair the vendor shares with two other products, both admitted
+  // skill shapes in one `.agents/skills/` with one name spelled in both, the
+  // workspace rules directory with one file per documented activation mode,
+  // the standalone hooks carrier, the MCP profile, and both custom-agent
+  // shapes.
+  'antigravity-skills': buildAntigravitySkillFixture,
+  'antigravity-rules': buildAntigravityRuleFixture,
+  'antigravity-hooks': buildAntigravityHookFixture,
+  'antigravity-mcp': buildAntigravityMcpFixture,
+  'antigravity-agents': buildAntigravityAgentFixture,
+  'antigravity-instructions': buildAntigravityContextFixture,
   'claude-agents': buildClaudeAgentFixture,
   'copilot-agents': buildCopilotAgentFixture,
   'claude-rules': buildClaudeRuleFixture,

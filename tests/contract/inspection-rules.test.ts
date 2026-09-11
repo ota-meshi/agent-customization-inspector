@@ -67,9 +67,28 @@ describe('same-name skill resolution', () => {
     rules.flatMap((rule) => (rule.kind === 'skill' && rule.tool !== 'shared' ? [rule.tool] : [])),
   );
 
-  it('states a resolution for every product that can recognize a skill', () => {
+  it('states a resolution for every skill-recognizing product but the one whose pages establish none', () => {
+    // Coverage is still the gate, but it is coverage with one recorded
+    // exception rather than a universal claim (T004). Antigravity CLI's skill
+    // rules name one strategy whose only operation is `unknown-order`: its
+    // pages state that a workspace skill and a global one are both available
+    // and say nothing about which answers a slash command when they share a
+    // name, nor which of the two admitted shapes the terminal takes when one
+    // name is spelled in both (contracts/vendors/antigravity-cli.md § Known
+    // uncertainties items 2 and 6). Deriving a winner there would invent one,
+    // so the row states nothing for that product and the projection drops the
+    // statement (`session.ts`, `sameNameSkillResolutionFor` returning null).
+    //
+    // Naming the exception here rather than dropping the assertion keeps what
+    // it was protecting: a product that silently stopped stating one would
+    // still fail, because it would have to be added to this list first.
+    const establishNothing = new Set(['antigravity']);
     expect(skillTools.size).toBeGreaterThan(0);
     for (const tool of skillTools) {
+      if (establishNothing.has(tool)) {
+        expect(sameNameSkillResolutionFor(tool), tool).toBeNull();
+        continue;
+      }
       expect(sameNameSkillResolutionFor(tool), tool).not.toBeNull();
     }
   });
@@ -616,12 +635,21 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
     expect(sameNameSkillResolutionFor('copilot')).toBe('surface-dependent');
   });
 
-  it('derives the first-found statement from the one Gemini CLI skill strategy', () => {
-    // The skills page documents a workspace skill over a user one and the
-    // alias over the directory: one pipeline that selects first and states its
-    // order, so the grouped row states a documented first-found winner
-    // (`skill-resolution.ts`; specs/002-gemini-cli-support/spec.md FR-007).
-    expect(sameNameSkillResolutionFor('gemini')).toBe('select-first');
+  it('derives no statement for Antigravity CLI, whose one skill strategy establishes no order', () => {
+    // Both of this vendor's skill rules name `antigravity.skills.selection`,
+    // whose only operation is `unknown-order`: the pages state that a
+    // workspace skill and a global one are both available and say nothing
+    // about which answers a slash command when they share a name — nor which
+    // of the two admitted shapes the terminal takes when one name is spelled
+    // in both. A group establishing only unresolved selection states no rule,
+    // so the row says nothing rather than inventing a winner
+    // (`skill-resolution.ts`; specs/003-antigravity-cli-support/spec.md
+    // § FR-004; contracts/vendors/antigravity-cli.md § Known uncertainties
+    // items 2 and 6).
+    //
+    // T004: this expectation failed against the previous registry, whose
+    // fourth vendor's skills strategy documented a first-found winner.
+    expect(sameNameSkillResolutionFor('antigravity')).toBeNull();
   });
 });
 
@@ -688,8 +716,21 @@ describe('the unified SKILL selector matrix (T179)', () => {
   // integration suite's (tests/integration/repository-scan.test.ts).
   const skillRules = rules.filter((rule) => rule.kind === 'skill');
 
-  it('ships exactly the ten read-authorizing skill rules', () => {
+  it('ships exactly the eleven read-authorizing skill rules', () => {
+    // T004: Antigravity CLI contributes four of the eleven, and contributes no
+    // shared-agent-home rule — its global skills live below `~/.gemini`, and no
+    // cited page has it read `~/.agents` (FR-045) — and contributes a second
+    // rule at each boundary instead, because it admits two skill shapes at one
+    // location whose row units differ (spec.md § FR-004). The two shapes are
+    // two rules at the consented home for the same reason they are two in the
+    // workspace: a rule's selectors admit paths for one row unit, so a flat
+    // skill sharing the folder rule would take the folder's unit and publish
+    // every file beside it as its own companion census.
     expect(skillRules.map((rule) => rule.ruleId).sort()).toEqual([
+      'antigravity.global.skill.directory',
+      'antigravity.global.skill.file',
+      'antigravity.repo.skill.directory',
+      'antigravity.repo.skill.file',
       'claude.global.skill',
       'claude.repo.skill',
       'codex.global.agents-home.skill',
@@ -697,9 +738,6 @@ describe('the unified SKILL selector matrix (T179)', () => {
       'copilot.global.agents-home.skill',
       'copilot.global.skill',
       'copilot.repo.skill',
-      'gemini.global.agents-home.skill',
-      'gemini.global.skill',
-      'gemini.repo.skill',
     ]);
     for (const rule of skillRules) {
       expect(rule.discoveryClass, rule.ruleId).toBe('static-candidate');
@@ -714,20 +752,33 @@ describe('the unified SKILL selector matrix (T179)', () => {
   // exclusion is the traversal boundary's, not any matcher's.
   const RECOGNITION_MATRIX: readonly (readonly [string, readonly string[]])[] = [
     ['.github/skills/ship/SKILL.md', ['copilot']],
-    ['.agents/skills/orbit/SKILL.md', ['codex', 'copilot', 'gemini']],
+    ['.agents/skills/orbit/SKILL.md', ['antigravity', 'codex', 'copilot']],
+    // The flat shape at the same location is this vendor's alone: its own page
+    // documents it and five other sources contradict it, which the rule keeps
+    // admitted and the contract records
+    // (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
+    ['.agents/skills/deploy.md', ['antigravity']],
+    // The superseded spelling reaches the folder shape the page that states
+    // the backward support shows there, and the flat shape nowhere.
+    ['.agent/skills/orbit/SKILL.md', ['antigravity']],
+    ['.agent/skills/deploy.md', []],
     ['.claude/skills/lander/SKILL.md', ['claude', 'copilot']],
     // Claude's documented lazy descendant discovery is the one downward
     // program; no other vendor documents one (FR-003).
     ['packages/api/.claude/skills/deploy/SKILL.md', ['claude']],
     ['packages/api/.agents/skills/deploy/SKILL.md', []],
-    // Gemini CLI documents its `.gemini` directory at the project root alone.
-    ['.gemini/skills/lander/SKILL.md', ['gemini']],
+    // No supported tool reads a `.gemini/` repository path in this release.
+    ['.gemini/skills/lander/SKILL.md', []],
     ['packages/api/.gemini/skills/deploy/SKILL.md', []],
     ['packages/api/.github/skills/nested-ship/SKILL.md', []],
     // Configured-root shapes stay condition facts rather than selectors.
     ['.copilot/skills/tool/SKILL.md', []],
-    // No skill-name segment, one level too deep, and a sibling companion.
-    ['.agents/skills/SKILL.md', []],
+    // No skill-name segment, one level too deep, and a sibling companion. The
+    // first is a near miss for every directory-shaped rule and a hit for the
+    // one flat rule: a Markdown file directly below `.agents/skills/` is what
+    // that rule admits, whatever it is named, so this path is a skill named
+    // `SKILL` for the vendor whose own page documents the flat shape.
+    ['.agents/skills/SKILL.md', ['antigravity']],
     ['.agents/skills/orbit/nested/SKILL.md', []],
     ['.agents/skills/orbit/README.md', []],
   ];
@@ -751,13 +802,22 @@ describe('the unified instruction selector matrix (T269)', () => {
     (rule) => rule.discoveryClass === 'static-candidate',
   );
 
-  it('ships exactly the fourteen static instruction selectors of the four vendors', () => {
+  it('ships exactly the sixteen static instruction selectors of the four vendors', () => {
     // Nine Repository selectors plus the five Global selectors consent
-    // authorizes; Gemini CLI's Repository context file is the derived rule below. They are in this list rather than a Global one of their own
+    // authorizes. They are in this list rather than a Global one of their own
     // because the matrix is about the instruction kind: a selector's base is a
     // field of it, and the Global-scope assertions below are what separate the
     // two.
+    //
+    // T004: sixteen, of which Antigravity CLI contributes three — the
+    // repository root's `GEMINI.md` and `AGENTS.md`, and the consented home's
+    // `GEMINI.md` — all of them static, because no cited page documents a
+    // terminal setting that renames a context file, so this vendor ships no
+    // derived rule at all.
     expect(staticInstructionRules.map((rule) => rule.ruleId).sort()).toEqual([
+      'antigravity.global.context',
+      'antigravity.repo.context.agents-root',
+      'antigravity.repo.context.gemini-root',
       'claude.global.instructions',
       'claude.repo.instructions',
       'codex.global.instructions',
@@ -771,7 +831,6 @@ describe('the unified instruction selector matrix (T269)', () => {
       'copilot.repo.instructions.path-cli-context',
       'copilot.repo.instructions.repository',
       'copilot.repo.instructions.repository-cli-context',
-      'gemini.global.instructions',
     ]);
     for (const rule of staticInstructionRules) {
       expect(rule.matcher, rule.ruleId).not.toBeNull();
@@ -786,28 +845,41 @@ describe('the unified instruction selector matrix (T269)', () => {
     const derived = instructionRules.filter(
       (rule) => rule.discoveryClass === 'bounded-derived-candidate',
     );
-    // Two derivations, one per vendor whose configuration names the kind's
-    // files: Codex's fallback basenames at the root, and Gemini CLI's context
-    // filenames at every depth — the one rule that owns the default `GEMINI.md`
-    // too, so no static Gemini CLI instruction selector exists at the
-    // Repository scope (specs/002-gemini-cli-support/research.md § 2).
+    // One derivation, from the one vendor whose configuration names the kind's
+    // files: Codex's fallback basenames at the root. Antigravity CLI ships
+    // none, because no cited page documents a terminal setting that renames or
+    // relocates a workspace customization
+    // (contracts/vendors/antigravity-cli.md § Derived Repository rules).
+    //
+    // T004: this assertion was watched failing against the shipped registry
+    // before the one entry below was written.
     expect(derived.map((rule) => rule.ruleId).toSorted()).toEqual([
       'codex.derived.fallback-basename',
-      'gemini.derived.context-filename',
     ]);
     for (const rule of derived) {
       expect(rule.matcher, rule.ruleId).toBeNull();
     }
-    expect(derived.map((rule) => rule.tool).toSorted()).toEqual(['codex', 'gemini']);
+    expect(derived.map((rule) => rule.tool).toSorted()).toEqual(['codex']);
   });
 
   it('keeps every shipped exclusion non-authorizing', () => {
     // The shipped exclusions are the five Copilot ones (T251 owns the four
-    // instruction/settings shapes), the two plugin-content records, and the two
+    // instruction/settings shapes), the plugin-content records, and the
     // User-runtime records consent is measured against; an exclusion authorizes
     // nothing: no matcher to admit by and no kind to recognize as.
+    //
+    // T004: three of the fourteen are Antigravity CLI's. Its third is a
+    // workspace plugin directory rather than a runtime-state record, and it
+    // exists because
+    // the installed-copy reason the other plugin exclusions give does not reach
+    // a plugin authored in a repository
+    // (contracts/vendors/antigravity-cli.md § Relationship-only and excluded
+    // groups).
     const exclusions = rules.filter((rule) => rule.discoveryClass === 'excluded');
     expect(exclusions.map((rule) => rule.ruleId).toSorted()).toEqual([
+      'antigravity.excluded.plugins',
+      'antigravity.excluded.user-runtime',
+      'antigravity.excluded.workspace-plugins',
       'claude.excluded.plugin-files',
       'claude.excluded.user-runtime',
       'codex.excluded.plugin-files',
@@ -818,9 +890,6 @@ describe('the unified instruction selector matrix (T269)', () => {
       'copilot.excluded.extra-directories',
       'copilot.excluded.user-runtime',
       'copilot.excluded.vscode-settings',
-      'gemini.excluded.extensions',
-      'gemini.excluded.repo-non-customizations',
-      'gemini.excluded.user-runtime',
       'shared.excluded.managed-remote-state',
     ]);
     for (const rule of exclusions) {
@@ -840,7 +909,7 @@ describe('the unified instruction selector matrix (T269)', () => {
   // `node_modules` are absent on purpose — their exclusion is the traversal
   // boundary's, not any matcher's.
   const RECOGNITION_MATRIX: readonly (readonly [string, readonly string[]])[] = [
-    ['AGENTS.md', ['codex', 'copilot']],
+    ['AGENTS.md', ['antigravity', 'codex', 'copilot']],
     ['AGENTS.override.md', ['codex']],
     ['docs/AGENTS.md', ['copilot']],
     ['CLAUDE.md', ['claude', 'copilot']],
@@ -848,13 +917,15 @@ describe('the unified instruction selector matrix (T269)', () => {
     ['.claude/CLAUDE.md', ['claude']],
     ['CLAUDE.local.md', ['claude']],
     ['packages/api/CLAUDE.local.md', ['claude']],
-    // The root file is two products': Copilot's static rule, and Gemini CLI's
-    // — whose Repository rule is a derivation rather than a static selector,
-    // so the match this matrix sees is its Global rule's `GEMINI.md`, the same
-    // spelling at the consented home. The traversal suite covers the merged
-    // Repository candidate.
-    ['GEMINI.md', ['copilot', 'gemini']],
+    // The root file is two products': Copilot's static rule, which FR-013
+    // leaves exactly as it was, and Antigravity CLI's — a static selector of
+    // its own, because this vendor derives no context filename. Below the root
+    // it is nobody's: the migration page states the workspace context files as
+    // the active directory's and states no depth
+    // (contracts/vendors/antigravity-cli.md § Known uncertainties item 1).
+    ['GEMINI.md', ['antigravity', 'copilot']],
     ['packages/api/GEMINI.md', []],
+    ['packages/api/AGENTS.md', ['copilot']],
     ['.github/copilot-instructions.md', ['copilot']],
     ['packages/api/.github/copilot-instructions.md', ['copilot']],
     ['.github/instructions/frontend.instructions.md', ['copilot']],
@@ -1017,6 +1088,8 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
     // Sorted: the aggregate's own order is per-vendor spread order, which is
     // not what this case is about.
     expect(mcpRules.map((rule) => rule.ruleId).toSorted()).toEqual([
+      'antigravity.global.mcp',
+      'antigravity.repo.mcp',
       'claude.repo.mcp',
       'codex.global.config',
       'codex.repo.config',
@@ -1024,8 +1097,6 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
       'copilot.repo.mcp',
       'copilot.repo.mcp.vscode',
       'copilot.repo.mcp.vscode-root',
-      'gemini.global.mcp',
-      'gemini.repo.mcp',
     ]);
     // The matrix is about the Repository scope: a Global carrier's selector
     // is authored against its consented member boundary, so running it
@@ -1128,10 +1199,13 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
       'codex.global.hooks.inline',
       'codex.repo.hooks',
       'codex.repo.hooks.inline',
-      // Gemini CLI documents one hook owner, its settings document, at each
-      // of its two tiers (specs/002-gemini-cli-support/spec.md FR-009).
-      'gemini.global.hooks',
-      'gemini.repo.hooks',
+      // Antigravity CLI documents three hook carriers: the settings document's
+      // inline declarations, and a standalone `hooks.json` at each of its two
+      // tiers — the workspace's `.agents/` and the user tier's `config/`
+      // (specs/003-antigravity-cli-support/spec.md § FR-017).
+      'antigravity.global.hooks.inline',
+      'antigravity.global.hooks',
+      'antigravity.repo.hooks',
     ]);
   });
 });
@@ -1173,29 +1247,49 @@ describe('structure-only projection vocabulary', () => {
 });
 
 describe('the registry this release owns (T913)', () => {
-  it('ships one hundred rules: fifty-seven Repository and forty-three Global (T992)', () => {
+  it('ships one hundred and three rules: fifty-nine Repository and forty-four Global (T992)', () => {
     // The phase gate: not a per-family list — each family's own case above
     // owns that — but the total this release is allowed to read by, split by
     // the scope each rule reads at. A rule added without a phase that owns it
     // fails here, which is the point of freezing the numbers rather than
     // deriving them.
-    expect(rules).toHaveLength(100);
+    //
+    // T004: every literal in this case was written only after it was watched
+    // failing against the shipped registry. Antigravity CLI ships twenty-three
+    // rules, and where they fall follows from its own pages — no derived rule,
+    // because none documents a terminal setting that renames a customization;
+    // one Repository exclusion for the workspace plugin directory, which needs
+    // a reason the installed-copy exclusion does not give; and no
+    // shared-agent-home rule at all.
+    expect(rules).toHaveLength(103);
     const repository = rules.filter((rule) => rule.sourceKinds.includes('repository'));
     const global = rules.filter((rule) => rule.sourceKinds.includes('global'));
-    expect(repository).toHaveLength(57);
+    expect(repository).toHaveLength(59);
     expect(repository.filter((rule) => rule.discoveryClass === 'static-candidate')).toHaveLength(
-      47,
+      50,
     );
     expect(
       repository.filter((rule) => rule.discoveryClass === 'bounded-derived-candidate'),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(repository.filter((rule) => rule.discoveryClass === 'excluded')).toHaveLength(8);
-    // The complete Global scope (T992): thirty-seven static read-authorizing
+    // The complete Global scope (T992): thirty-eight static read-authorizing
     // rules across the five members, the five vendor exclusions, and the
     // shared managed-remote-state record. Naming the set is what keeps a new
     // rule from arriving without the phase that owns it.
-    expect(global.filter((rule) => rule.discoveryClass === 'static-candidate')).toHaveLength(37);
+    expect(global.filter((rule) => rule.discoveryClass === 'static-candidate')).toHaveLength(38);
     expect(global.map((rule) => rule.ruleId).toSorted()).toEqual([
+      'antigravity.excluded.plugins',
+      'antigravity.excluded.user-runtime',
+      'antigravity.global.agent.directory',
+      'antigravity.global.agent.file',
+      'antigravity.global.context',
+      'antigravity.global.hooks',
+      'antigravity.global.hooks.inline',
+      'antigravity.global.mcp',
+      'antigravity.global.permissions',
+      'antigravity.global.settings',
+      'antigravity.global.skill.directory',
+      'antigravity.global.skill.file',
       'claude.excluded.user-runtime',
       'claude.global.agent',
       'claude.global.command',
@@ -1227,17 +1321,6 @@ describe('the registry this release owns (T913)', () => {
       'copilot.global.mcp',
       'copilot.global.settings',
       'copilot.global.skill',
-      'gemini.excluded.extensions',
-      'gemini.excluded.user-runtime',
-      'gemini.global.agent',
-      'gemini.global.agents-home.skill',
-      'gemini.global.command',
-      'gemini.global.hooks',
-      'gemini.global.instructions',
-      'gemini.global.mcp',
-      'gemini.global.policies',
-      'gemini.global.settings',
-      'gemini.global.skill',
       'shared.excluded.managed-remote-state',
     ]);
     // No rule reads at both scopes. A Global selector is authored against a

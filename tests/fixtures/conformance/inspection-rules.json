@@ -1,5 +1,941 @@
 [
   {
+    "ruleId": "antigravity.excluded.plugins",
+    "tool": "antigravity",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["global"],
+    "matcher": null,
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Antigravity plugins", "Plugin filesystem structure"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Installing or importing a plugin stages the bundle files within ~/.gemini/antigravity-cli/plugins/<plugin_name>/, whose layout holds plugin.json and optionally mcp_config.json, hooks.json, skills/, agents/, and rules/ — so what the vendor loads there is a copy of a source this rule declines."
+      },
+      {
+        "sourceId": "google.antigravity.cli-features",
+        "url": "https://antigravity.google/docs/cli/features/",
+        "officialHost": "antigravity.google",
+        "sections": ["Plugins"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The CLI stages plugin files in the home directory under ~/.gemini/antigravity-cli/plugins/<plugin_name>/ beside an import_manifest.json tracking manifest."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.excluded.user-runtime",
+    "tool": "antigravity",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["global"],
+    "matcher": null,
+    "policyRefs": ["FR-013", "FR-018", "QR-003", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-migration",
+        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "officialHost": "antigravity.google",
+        "sections": ["First-launch onboarding"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "On first launch the CLI detects existing profiles and migrates active session tokens into the operating system native keyring storage, which is credential material rather than an authored customization."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.excluded.workspace-plugins",
+    "tool": "antigravity",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["repository"],
+    "matcher": null,
+    "policyRefs": ["FR-003", "FR-013", "FR-018", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Antigravity plugins", "Plugin filesystem structure"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The terminal stages a plugin it installs or imports within ~/.gemini/antigravity-cli/plugins/<plugin_name>/ and documents no workspace location a plugin can be authored at."
+      },
+      {
+        "sourceId": "google.antigravity.cli-features",
+        "url": "https://antigravity.google/docs/cli/features/",
+        "officialHost": "antigravity.google",
+        "sections": ["Plugins"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Installing a plugin has the CLI stage its files in the home directory under ~/.gemini/antigravity-cli/plugins/<plugin_name>/, which is the only plugin location the terminal pages give."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.agent.directory",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "agent",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "config"
+          },
+          {
+            "kind": "literal",
+            "value": "agents"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "agent.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.subagents",
+        "url": "https://antigravity.google/docs/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Agent Location and Discovery"],
+        "reviewedOn": "2026-09-11",
+        "establishes": "Custom subagents are discovered at ~/.gemini/config/agents/<name>.md or at <name>/agent.md inside that same directory, the two spellings this page gives for the user tier as it gives them for the workspace."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.agent.file",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "agent",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "config"
+          },
+          {
+            "kind": "literal",
+            "value": "agents"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-subagents",
+        "url": "https://antigravity.google/docs/cli/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Custom Agents (Markdown Format)"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Global custom agents are discovered in ~/.gemini/config/agents/."
+      },
+      {
+        "sourceId": "google.antigravity.subagents",
+        "url": "https://antigravity.google/docs/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Agent Location and Discovery"],
+        "reviewedOn": "2026-09-11",
+        "establishes": "Custom subagents are discovered at ~/.gemini/config/agents/<name>.md or at <name>/agent.md inside that same directory, the two spellings this page gives for the user tier as it gives them for the workspace."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.context",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "GEMINI.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-migration",
+        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "officialHost": "antigravity.google",
+        "sections": ["Context files and workspace rules"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The agent automatically consults and enforces the global constraints located at ~/.gemini/GEMINI.md."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.hooks",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "hook",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "config"
+          },
+          {
+            "kind": "literal",
+            "value": "hooks.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.hooks",
+        "url": "https://antigravity.google/docs/hooks/",
+        "officialHost": "antigravity.google",
+        "sections": ["Configuration", "Schema and File Format"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Hooks are configured in a hooks.json file located in the customization directory, ~/.gemini/config/ being one, and that file maps a hook name to its event configurations, each holding matcher groups of command handlers."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.hooks.inline",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "hook",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "antigravity-cli"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Managing hooks"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Hooks are defined inside a plugin hooks.json or configured inside the primary settings.json file."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.mcp",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "MCP",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "config"
+          },
+          {
+            "kind": "literal",
+            "value": "mcp_config.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-mcp",
+        "url": "https://antigravity.google/docs/cli/mcp/",
+        "officialHost": "antigravity.google",
+        "sections": ["Global and Workspace Server Configs"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Global MCP server setups are configured in ~/.gemini/config/mcp_config.json."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.permissions",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "permissions",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "antigravity-cli"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-permissions",
+        "url": "https://antigravity.google/docs/cli/permissions/",
+        "officialHost": "antigravity.google",
+        "sections": ["Fine-grained permissions"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Permissions are evaluated across the deny, ask, and allow access lists configured inside the global settings at ~/.gemini/antigravity-cli/settings.json."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.settings",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "settings/config",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "antigravity-cli"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-settings",
+        "url": "https://antigravity.google/docs/cli/settings/",
+        "officialHost": "antigravity.google",
+        "sections": ["Configuration file location"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The persistent settings are saved in plain JSON at ~/.gemini/antigravity-cli/settings.json."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.skill.directory",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "skill",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "antigravity-cli"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": "config"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.skills",
+        "url": "https://antigravity.google/docs/skills/",
+        "officialHost": "antigravity.google",
+        "sections": ["Where skills live"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "A global skill, available across all workspaces, is a skill folder holding a SKILL.md at ~/.gemini/config/skills/<skill-folder>/."
+      },
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Sharing global skills"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Any skill placed in ~/.gemini/antigravity-cli/skills/ is automatically imported as a global slash command whenever agy launches in any directory, which is the second root a global skill folder is admitted at."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.skill.file",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "skill",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "antigravity-cli"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Sharing global skills"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Any skill placed in ~/.gemini/antigravity-cli/skills/ is automatically imported as a global slash command whenever agy launches in any directory."
+      },
+      {
+        "sourceId": "google.antigravity.skills",
+        "url": "https://antigravity.google/docs/skills/",
+        "officialHost": "antigravity.google",
+        "sections": ["Where skills live"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "A skill is a folder containing a SKILL.md file, which is the shape this page gives for a global skill and is why this rule is recorded as a conflict rather than as documented."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.repo.agent.directory",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "agent",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".agents"
+          },
+          {
+            "kind": "literal",
+            "value": "agents"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "agent.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-subagents",
+        "url": "https://antigravity.google/docs/cli/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Custom Agents (Markdown Format)"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Workspace agents are discovered at .agents/agents/<name>.md or .agents/agents/<name>/agent.md."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.repo.agent.file",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "agent",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".agents"
+          },
+          {
+            "kind": "literal",
+            "value": "agents"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-subagents",
+        "url": "https://antigravity.google/docs/cli/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Custom Agents (Markdown Format)"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Workspace agents are discovered at .agents/agents/<name>.md or .agents/agents/<name>/agent.md."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.repo.context.agents-root",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "AGENTS.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-migration",
+        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "officialHost": "antigravity.google",
+        "sections": ["Context files and workspace rules"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The agent parses and enforces the rule constraints defined inside the active directory GEMINI.md and AGENTS.md files."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.repo.context.gemini-root",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "instructions",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "GEMINI.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-migration",
+        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "officialHost": "antigravity.google",
+        "sections": ["Context files and workspace rules"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "The agent parses and enforces the rule constraints defined inside the active directory GEMINI.md and AGENTS.md files."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.repo.hooks",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "hook",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".agents"
+          },
+          {
+            "kind": "literal",
+            "value": "hooks.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.hooks",
+        "url": "https://antigravity.google/docs/hooks/",
+        "officialHost": "antigravity.google",
+        "sections": ["Configuration", "Schema and File Format"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Hooks are configured in a hooks.json file located in the customization directory, .agents/ in the workspace being one, and that file maps a hook name to its event configurations, each holding matcher groups of command handlers."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.repo.mcp",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "MCP",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".agents"
+          },
+          {
+            "kind": "literal",
+            "value": "mcp_config.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-mcp",
+        "url": "https://antigravity.google/docs/cli/mcp/",
+        "officialHost": "antigravity.google",
+        "sections": ["Global and Workspace Server Configs"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Workspace local MCP setups are configured in the active project under .agents/mcp_config.json."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.repo.rule",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "rule",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".agents"
+          },
+          {
+            "kind": "literal",
+            "value": "rules"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".agent"
+          },
+          {
+            "kind": "literal",
+            "value": "rules"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules-workflows/",
+        "officialHost": "antigravity.google",
+        "sections": ["Workspace Rules"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Workspace rules live in the .agents/rules folder of the workspace or git root, with backward support for .agent/rules, and each rule declares whether it activates manually, always, by model decision, or by a glob pattern."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.repo.skill.directory",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "skill",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".agents"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".agent"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "SKILL.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.skills",
+        "url": "https://antigravity.google/docs/skills/",
+        "officialHost": "antigravity.google",
+        "sections": ["Where skills live", "Creating a skill"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "A workspace-specific skill is a folder at <workspace-root>/.agents/skills/<skill-folder>/ holding a SKILL.md, and .agents/skills is the current default while .agent/skills keeps backward support."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.repo.skill.file",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "skill",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".agents"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Creating local workspace skills"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Create a directory named .agents/skills/ at the project root and draft a markdown file with a .md extension whose frontmatter defines name and description; the skill is compiled into a slash command when agy runs in that directory."
+      },
+      {
+        "sourceId": "google.antigravity.skills",
+        "url": "https://antigravity.google/docs/skills/",
+        "officialHost": "antigravity.google",
+        "sections": ["Where skills live", "Creating a skill"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "A skill is a folder containing a SKILL.md file, which is the shape this page gives for the same .agents/skills/ directory and is why this rule is recorded as a conflict rather than as documented."
+      }
+    ]
+  },
+  {
     "ruleId": "claude.excluded.plugin-files",
     "tool": "claude",
     "discoveryClass": "excluded",
@@ -3526,753 +4462,6 @@
         "sections": ["Creating and adding a skill"],
         "reviewedOn": "2026-08-27",
         "establishes": "The cloud agent reads the same three directories at the repository root, so a root candidate is authored inventory for all three surfaces at once."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.derived.context-filename",
-    "tool": "gemini",
-    "discoveryClass": "bounded-derived-candidate",
-    "kind": "instructions",
-    "sourceKinds": ["repository"],
-    "matcher": null,
-    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "partially-documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.gemini-md",
-        "url": "https://geminicli.com/docs/cli/gemini-md/",
-        "officialHost": "geminicli.com",
-        "sections": ["Understand the context hierarchy", "Customize the context file name"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "GEMINI.md is the default context filename, found in the workspace directories and their parents and just-in-time in any directory a tool accesses; context.fileName in settings.json names the file or files to load instead, as one name or a list."
-      },
-      {
-        "sourceId": "google.gemini-cli.configuration",
-        "url": "https://geminicli.com/docs/reference/configuration/",
-        "officialHost": "geminicli.com",
-        "sections": ["Available settings in settings.json"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "context.fileName accepts either a single string or an array of strings naming the context file or files to load into memory."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.excluded.extensions",
-    "tool": "gemini",
-    "discoveryClass": "excluded",
-    "kind": null,
-    "sourceKinds": ["global"],
-    "matcher": null,
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.extensions-reference",
-        "url": "https://geminicli.com/docs/extensions/reference/",
-        "officialHost": "geminicli.com",
-        "sections": ["Extension format", "Link a local extension"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Extensions are loaded from <home>/.gemini/extensions, each a directory of gemini-extension.json and bundled components, and a local development directory reaches the CLI only through the symbolic link gemini extensions link creates there — so the installed copy is the only thing the vendor reads, and it is a copy this rule declines."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.excluded.repo-non-customizations",
-    "tool": "gemini",
-    "discoveryClass": "excluded",
-    "kind": null,
-    "sourceKinds": ["repository"],
-    "matcher": null,
-    "policyRefs": ["FR-003", "FR-004", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.policy-engine",
-        "url": "https://geminicli.com/docs/reference/policy-engine/",
-        "officialHost": "geminicli.com",
-        "sections": ["Policy locations"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The workspace policy tier at .gemini/policies is currently non-functional and its files have no effect, so listing them as read would name a reader of a file the product does not read."
-      },
-      {
-        "sourceId": "google.gemini-cli.gemini-ignore",
-        "url": "https://geminicli.com/docs/cli/gemini-ignore/",
-        "officialHost": "geminicli.com",
-        "sections": ["How it works"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "A .geminiignore file tells the tools that respect it which paths to exclude; it is an exclusion list, not a customization the model reads."
-      },
-      {
-        "sourceId": "google.gemini-cli.configuration",
-        "url": "https://geminicli.com/docs/reference/configuration/",
-        "officialHost": "geminicli.com",
-        "sections": ["Environment variables and .env files"],
-        "reviewedOn": "2026-09-09",
-        "establishes": ".env files hold environment variables the CLI loads into its process — credentials rather than a customization — so this rule declines them."
-      },
-      {
-        "sourceId": "google.gemini-cli.hooks",
-        "url": "https://geminicli.com/docs/hooks/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "A hook is declared in settings.json and its command names a script such as one under .gemini/hooks/; the script is the declaration’s target, not a declaration, so this rule declines it."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.excluded.user-runtime",
-    "tool": "gemini",
-    "discoveryClass": "excluded",
-    "kind": null,
-    "sourceKinds": ["global"],
-    "matcher": null,
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.trusted-folders",
-        "url": "https://geminicli.com/docs/cli/trusted-folders/",
-        "officialHost": "geminicli.com",
-        "sections": ["Overriding the trust file location"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "trustedFolders.json in the user directory records trust decisions — runtime state the CLI writes, not a customization the reader authored — so this rule declines it."
-      },
-      {
-        "sourceId": "google.gemini-cli.configuration",
-        "url": "https://geminicli.com/docs/reference/configuration/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration layers", "Environment variables and .env files"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The user .env file holds environment variables, and the system defaults and system settings files live in administrator-owned directories outside the home; neither is a customization below a consented root, so this rule declines both."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.global.agent",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "agent",
-    "sourceKinds": ["global"],
-    "matcher": {
-      "base": {
-        "kind": "global",
-        "member": "gemini"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": "agents"
-          },
-          {
-            "kind": "regex",
-            "pattern": "/\\.md$/u"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": ["experimental"],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.subagents",
-        "url": "https://geminicli.com/docs/core/subagents/",
-        "officialHost": "geminicli.com",
-        "sections": ["Agent definition files"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "User-level custom agents are Markdown files at ~/.gemini/agents/*.md, the exact shape this rule admits below the consented boundary."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.global.agents-home.skill",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "skill",
-    "sourceKinds": ["global"],
-    "matcher": {
-      "base": {
-        "kind": "global",
-        "member": "agents"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": "skills"
-          },
-          {
-            "kind": "regex",
-            "pattern": "/(?:)/u"
-          },
-          {
-            "kind": "literal",
-            "value": "SKILL.md"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "FR-045", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.skills",
-        "url": "https://geminicli.com/docs/cli/skills/",
-        "officialHost": "geminicli.com",
-        "sections": ["Discovery tiers", "Precedence and aliases"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "User skills may live in the ~/.agents/skills/ alias, the interoperable path shared with other tools — the exact location this rule admits below the consented shared agent home."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.global.command",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "prompt/command",
-    "sourceKinds": ["global"],
-    "matcher": {
-      "base": {
-        "kind": "global",
-        "member": "gemini"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": "commands"
-          },
-          {
-            "kind": "recursive-directories"
-          },
-          {
-            "kind": "regex",
-            "pattern": "/\\.toml$/u"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.custom-commands",
-        "url": "https://geminicli.com/docs/cli/custom-commands/",
-        "officialHost": "geminicli.com",
-        "sections": ["File locations and precedence", "Naming and namespacing"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "User commands are .toml files in ~/.gemini/commands/, namespaced by subdirectory — the recursion this rule admits below the consented boundary."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.global.hooks",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "hook",
-    "sourceKinds": ["global"],
-    "matcher": {
-      "base": {
-        "kind": "global",
-        "member": "gemini"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": "settings.json"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.hooks",
-        "url": "https://geminicli.com/docs/hooks/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The user settings at ~/.gemini/settings.json are one of the layers hooks are configured in."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.global.instructions",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "instructions",
-    "sourceKinds": ["global"],
-    "matcher": {
-      "base": {
-        "kind": "global",
-        "member": "gemini"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": "GEMINI.md"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.gemini-md",
-        "url": "https://geminicli.com/docs/cli/gemini-md/",
-        "officialHost": "geminicli.com",
-        "sections": ["Understand the context hierarchy"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The global context file is ~/.gemini/GEMINI.md, the exact location this rule admits below the consented boundary."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.global.mcp",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "MCP",
-    "sourceKinds": ["global"],
-    "matcher": {
-      "base": {
-        "kind": "global",
-        "member": "gemini"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": "settings.json"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.mcp-server",
-        "url": "https://geminicli.com/docs/tools/mcp-server/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configure the MCP server in settings.json"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The mcpServers object may be declared in the user config ~/.gemini/settings.json, the carrier this rule reads the declarations from."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.global.policies",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "permissions",
-    "sourceKinds": ["global"],
-    "matcher": {
-      "base": {
-        "kind": "global",
-        "member": "gemini"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": "policies"
-          },
-          {
-            "kind": "regex",
-            "pattern": "/\\.toml$/u"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.policy-engine",
-        "url": "https://geminicli.com/docs/reference/policy-engine/",
-        "officialHost": "geminicli.com",
-        "sections": ["Policy locations", "TOML rule schema"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "User policies are the custom ~/.gemini/policies/*.toml files, each holding [[rule]] entries that decide whether a tool call is allowed, denied, or confirmed — the exact shape this rule admits as a permissions document."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.global.settings",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "settings/config",
-    "sourceKinds": ["global"],
-    "matcher": {
-      "base": {
-        "kind": "global",
-        "member": "gemini"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": "settings.json"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.configuration",
-        "url": "https://geminicli.com/docs/reference/configuration/",
-        "officialHost": "geminicli.com",
-        "sections": ["Settings files"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The user settings file is ~/.gemini/settings.json, the exact location this rule admits below the consented boundary."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.global.skill",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "skill",
-    "sourceKinds": ["global"],
-    "matcher": {
-      "base": {
-        "kind": "global",
-        "member": "gemini"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": "skills"
-          },
-          {
-            "kind": "regex",
-            "pattern": "/(?:)/u"
-          },
-          {
-            "kind": "literal",
-            "value": "SKILL.md"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.skills",
-        "url": "https://geminicli.com/docs/cli/skills/",
-        "officialHost": "geminicli.com",
-        "sections": ["Discovery tiers"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "User skills are located in ~/.gemini/skills/, the directory this rule admits a SKILL.md one level below."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.repo.agent",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "agent",
-    "sourceKinds": ["repository"],
-    "matcher": {
-      "base": {
-        "kind": "repository"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": ".gemini"
-          },
-          {
-            "kind": "literal",
-            "value": "agents"
-          },
-          {
-            "kind": "regex",
-            "pattern": "/\\.md$/u"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": ["experimental"],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.subagents",
-        "url": "https://geminicli.com/docs/core/subagents/",
-        "officialHost": "geminicli.com",
-        "sections": ["Agent definition files", "Disabling subagents"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Project-level custom agents are Markdown files at .gemini/agents/*.md, the exact shape this rule admits, under an experimental setting that is on by default."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.repo.command",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "prompt/command",
-    "sourceKinds": ["repository"],
-    "matcher": {
-      "base": {
-        "kind": "repository"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": ".gemini"
-          },
-          {
-            "kind": "literal",
-            "value": "commands"
-          },
-          {
-            "kind": "recursive-directories"
-          },
-          {
-            "kind": "regex",
-            "pattern": "/\\.toml$/u"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.custom-commands",
-        "url": "https://geminicli.com/docs/cli/custom-commands/",
-        "officialHost": "geminicli.com",
-        "sections": ["File locations and precedence", "Naming and namespacing"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Project commands are .toml files in <project root>/.gemini/commands/, with subdirectories forming namespaces joined by a colon — the recursion this rule admits with its one trailing recursive step."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.repo.hooks",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "hook",
-    "sourceKinds": ["repository"],
-    "matcher": {
-      "base": {
-        "kind": "repository"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": ".gemini"
-          },
-          {
-            "kind": "literal",
-            "value": "settings.json"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.hooks",
-        "url": "https://geminicli.com/docs/hooks/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configuration"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Hooks are configured in the hooks object of settings.json, whose project layer is .gemini/settings.json in the current directory."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.repo.mcp",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "MCP",
-    "sourceKinds": ["repository"],
-    "matcher": {
-      "base": {
-        "kind": "repository"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": ".gemini"
-          },
-          {
-            "kind": "literal",
-            "value": "settings.json"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.mcp-server",
-        "url": "https://geminicli.com/docs/tools/mcp-server/",
-        "officialHost": "geminicli.com",
-        "sections": ["Configure the MCP server in settings.json", "Configuration structure"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "MCP servers are declared in the mcpServers object of settings.json, and the project scope of that file is .gemini/settings.json — the carrier this rule reads the declarations from."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.repo.settings",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "settings/config",
-    "sourceKinds": ["repository"],
-    "matcher": {
-      "base": {
-        "kind": "repository"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": ".gemini"
-          },
-          {
-            "kind": "literal",
-            "value": "settings.json"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.configuration",
-        "url": "https://geminicli.com/docs/reference/configuration/",
-        "officialHost": "geminicli.com",
-        "sections": ["Settings files"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "The project settings file is .gemini/settings.json within the project root, which is the exact location this rule admits."
-      }
-    ]
-  },
-  {
-    "ruleId": "gemini.repo.skill",
-    "tool": "gemini",
-    "discoveryClass": "static-candidate",
-    "kind": "skill",
-    "sourceKinds": ["repository"],
-    "matcher": {
-      "base": {
-        "kind": "repository"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": ".gemini"
-          },
-          {
-            "kind": "literal",
-            "value": "skills"
-          },
-          {
-            "kind": "regex",
-            "pattern": "/(?:)/u"
-          },
-          {
-            "kind": "literal",
-            "value": "SKILL.md"
-          }
-        ],
-        [
-          {
-            "kind": "literal",
-            "value": ".agents"
-          },
-          {
-            "kind": "literal",
-            "value": "skills"
-          },
-          {
-            "kind": "regex",
-            "pattern": "/(?:)/u"
-          },
-          {
-            "kind": "literal",
-            "value": "SKILL.md"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.gemini-cli.skills",
-        "url": "https://geminicli.com/docs/cli/skills/",
-        "officialHost": "geminicli.com",
-        "sections": ["Discovery tiers"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "Workspace skills are located in .gemini/skills/ or the .agents/skills/ alias, the two locations this rule admits a SKILL.md one directory below."
-      },
-      {
-        "sourceId": "google.gemini-cli.creating-skills",
-        "url": "https://geminicli.com/docs/cli/creating-skills/",
-        "officialHost": "geminicli.com",
-        "sections": ["Skill structure", "Discovery aliases"],
-        "reviewedOn": "2026-09-09",
-        "establishes": "A skill is a directory holding a required SKILL.md beside optional scripts, references, and assets, and .agents/skills is an alias of .gemini/skills."
       }
     ]
   },

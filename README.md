@@ -6,10 +6,10 @@
 diffs.**
 
 What is your repository telling AI coding agents? Not a question you can answer by opening
-one file. Claude Code, GitHub Copilot, OpenAI Codex, and Gemini CLI each look for instructions, skills,
+one file. Claude Code, GitHub Copilot, OpenAI Codex, and Antigravity CLI each look for instructions, skills,
 MCP servers, hooks, and permission rules in paths of their own: `AGENTS.md` at the root, a
 `.claude/settings.json` a teammate added, a `copilot-instructions.md` that arrived with the
-repository, a `.gemini/commands/` directory someone started, the same MCP server declared in
+repository, an `.agents/rules/` directory someone started, the same MCP server declared in
 three places. Some of it you wrote. Some of it
 came with the project. None of it is in one place.
 
@@ -53,8 +53,8 @@ so you can see for yourself which ones disagree.
 
 **"And my own setup, not the repository's?"** The customizations that follow you into every
 project live in `~/.claude`, `~/.codex`, `~/.copilot`, and `~/.gemini` — or wherever
-`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `COPILOT_HOME` point instead, and in `.gemini` under
-`GEMINI_CLI_HOME` — plus the shared `~/.agents`. Open *Personal setup* under *Sources* and the page names the ones it resolved
+`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `COPILOT_HOME` point instead — plus the shared
+`~/.agents`. Open *Personal setup* under *Sources* and the page names the ones it resolved
 before reading any of them; `--inspect-personal-setup` is that confirmation given on the
 command line, so it reads them before the page exists.
 

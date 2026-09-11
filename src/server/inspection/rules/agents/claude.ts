@@ -73,8 +73,8 @@ export class ClaudeCompiledAgentRule extends ClaudeCompiledRule implements Compi
    * neither the file name nor the directory above it names a row here, and a
    * file declaring none joins the row that says the name is not known.
    *
-   * The path is unused for that reason, and the shared reading is the one both
-   * declared-name products use (`registry.ts` § declaredAgentNameOf).
+   * The path is unused for that reason, and the shared reading is the one all
+   * three declared-name products use (`declared-name.ts` § declaredAgentNameOf).
    */
   public agentNameOf(
     _sourceRelativePath: string,

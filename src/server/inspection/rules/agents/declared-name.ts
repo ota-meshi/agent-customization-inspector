@@ -2,16 +2,16 @@
 // each of them documents as the agent's identity.
 //
 // One rule rather than three that happen to agree — Codex, Claude Code, and
-// Gemini CLI document the same field for the same purpose — while Copilot's
-// units answer from their own contract, which is why that answer is its own
-// module rather than a branch here.
+// Antigravity CLI document the same field for the same purpose — while
+// Copilot's units answer from their own contract, which is why that answer is
+// its own module rather than a branch here.
 import type { DeclaredEntryDto } from '../../../../shared/api-types';
 
 /**
  * The declared-`name` answer to {@link CompiledStaticAgentRule.agentNameOf},
- * shared by the two products that document the field as the agent's identity —
- * Codex and Claude Code — because their answer is one rule rather than two
- * that happen to agree. Read by the string key and the scalar kind: a sequence
+ * shared by the three products that document the field as the agent's
+ * identity — Codex, Claude Code, and Antigravity CLI — because their answer is
+ * one rule rather than three that happen to agree. Read by the string key and the scalar kind: a sequence
  * under that key has a rendering too, and taking its text would name an agent
  * after the first item of a list the file did not write as a name.
  *

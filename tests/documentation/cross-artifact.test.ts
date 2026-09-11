@@ -42,7 +42,7 @@ import { describe, expect, it } from 'vitest';
 import packageJson from '../../package.json' with { type: 'json' };
 import { CLAUDE_INSPECTION_RULES } from '../../src/shared/registries/claude/rules';
 import { CODEX_INSPECTION_RULES } from '../../src/shared/registries/codex/rules';
-import { GEMINI_INSPECTION_RULES } from '../../src/shared/registries/gemini/rules';
+import { ANTIGRAVITY_INSPECTION_RULES } from '../../src/shared/registries/antigravity/rules';
 import { COPILOT_INSPECTION_RULES } from '../../src/shared/registries/copilot/rules';
 
 /** Repository root, from which every artifact and quoted path is resolved. */
@@ -323,7 +323,7 @@ function literalSegments(): ReadonlySet<string> {
     CLAUDE_INSPECTION_RULES,
     COPILOT_INSPECTION_RULES,
     CODEX_INSPECTION_RULES,
-    GEMINI_INSPECTION_RULES,
+    ANTIGRAVITY_INSPECTION_RULES,
   ]) {
     for (const rule of Object.values(rules)) {
       if (rule.discoveryClass !== 'static-candidate' || rule.matcher === null) continue;
@@ -353,29 +353,29 @@ describe('the missing-file page accounts for every location a rule reaches', () 
     expect(missing, `${name} names no location for: ${missing.join(', ')}`).toEqual([]);
   });
 
-  it('carries the two derived rules the containment check cannot see', () => {
+  it('carries the one derived rule the containment check cannot see', () => {
     // Containment reads literal path segments, and a derived rule has no
     // matcher to take them from: it admits names read out of a file at scan
-    // time. So the set is frozen instead — the page states the two that ship,
-    // and a third cannot arrive without this failing and someone deciding what
-    // the page now says (AGENTS.md § Implementation simplicity policy, on
-    // freezes). Gemini CLI's derivation owns the default filename too, so the
-    // page must name that default beside the setting that replaces it.
+    // time. So the set is frozen instead — the page states the one that ships,
+    // and a second cannot arrive without this failing and someone deciding
+    // what the page now says (AGENTS.md § Implementation simplicity policy, on
+    // freezes). T059: the fourth vendor ships no derived rule, because no
+    // cited page documents a terminal setting that renames or relocates a
+    // workspace customization; this case was watched failing before the
+    // literal below was written.
     const derived = [
       CLAUDE_INSPECTION_RULES,
       COPILOT_INSPECTION_RULES,
       CODEX_INSPECTION_RULES,
-      GEMINI_INSPECTION_RULES,
+      ANTIGRAVITY_INSPECTION_RULES,
     ]
       .flatMap((rules) => Object.values(rules))
       .filter((rule) => rule.discoveryClass === 'bounded-derived-candidate')
       .map((rule) => rule.ruleId)
       .toSorted();
-    expect(derived).toEqual(['codex.derived.fallback-basename', 'gemini.derived.context-filename']);
+    expect(derived).toEqual(['codex.derived.fallback-basename']);
     for (const page of [notListedEnglish, notListedJapanese]) {
       expect(page).toContain('project_doc_fallback_filenames');
-      expect(page).toContain('GEMINI.md');
-      expect(page).toContain('context.fileName');
     }
   });
 });
@@ -484,16 +484,18 @@ describe('task set', () => {
     expect(tasksJapanese.match(/^## フェーズ /gmu)).toHaveLength(119);
   });
 
-  it('freezes the Gemini CLI feature’s task and phase counts in both languages', () => {
-    // The same freeze for specs/002-gemini-cli-support (its T063): ninety
-    // tasks in eight phases, spelled here and in the task files both, so a task
-    // or phase added without deciding to add one fails.
-    const geminiEnglish = readArtifact('specs/002-gemini-cli-support/tasks.md');
-    const geminiJapanese = readArtifact('specs/002-gemini-cli-support/tasks.ja.md');
-    expect(parseTasks(geminiEnglish).size).toBe(90);
-    expect(parseTasks(geminiJapanese).size).toBe(90);
-    expect(geminiEnglish.match(/^## Phase /gmu)).toHaveLength(8);
-    expect(geminiJapanese.match(/^## Phase /gmu)).toHaveLength(8);
+  it('freezes the Antigravity CLI feature’s task and phase counts in both languages', () => {
+    // The same freeze for specs/003-antigravity-cli-support (its T065):
+    // seventy-three tasks in six phases, spelled here and in the task files
+    // both, so a task or phase added without deciding to add one fails. Two
+    // IDs in that range are vacant, which the task file states; the freeze
+    // counts tasks rather than the highest ID for that reason.
+    const antigravityEnglish = readArtifact('specs/003-antigravity-cli-support/tasks.md');
+    const antigravityJapanese = readArtifact('specs/003-antigravity-cli-support/tasks.ja.md');
+    expect(parseTasks(antigravityEnglish).size).toBe(73);
+    expect(parseTasks(antigravityJapanese).size).toBe(73);
+    expect(antigravityEnglish.match(/^## Phase /gmu)).toHaveLength(6);
+    expect(antigravityJapanese.match(/^## Phase /gmu)).toHaveLength(6);
   });
 
   it('keeps every task self-contained, with no out-of-line amendment', () => {

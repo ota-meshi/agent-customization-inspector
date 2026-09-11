@@ -26,7 +26,7 @@
 import { CLAUDE_BEHAVIOR_STATEMENTS } from './claude/behaviors';
 import { CODEX_BEHAVIOR_STATEMENTS } from './codex/behaviors';
 import { COPILOT_BEHAVIOR_STATEMENTS } from './copilot/behaviors';
-import { GEMINI_BEHAVIOR_STATEMENTS } from './gemini/behaviors';
+import { ANTIGRAVITY_BEHAVIOR_STATEMENTS } from './antigravity/behaviors';
 import type { BehaviorId } from './identifier-types';
 import type { VendorBehaviorStatement } from './behavior-types';
 
@@ -35,7 +35,7 @@ export type {
   ClaudeBehaviorId,
   CodexBehaviorId,
   CopilotBehaviorId,
-  GeminiBehaviorId,
+  AntigravityBehaviorId,
 } from './identifier-types';
 export type {
   LookupBase,
@@ -54,5 +54,5 @@ export const VENDOR_BEHAVIOR_STATEMENTS: Readonly<Record<BehaviorId, VendorBehav
   ...COPILOT_BEHAVIOR_STATEMENTS,
   ...CLAUDE_BEHAVIOR_STATEMENTS,
   ...CODEX_BEHAVIOR_STATEMENTS,
-  ...GEMINI_BEHAVIOR_STATEMENTS,
+  ...ANTIGRAVITY_BEHAVIOR_STATEMENTS,
 };

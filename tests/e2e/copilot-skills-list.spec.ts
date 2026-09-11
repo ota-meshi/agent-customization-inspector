@@ -104,7 +104,7 @@ test('lists each recognition exactly once as a definition with the exact matrix'
   await expectTools('orbit', '.agents/skills/orbit/SKILL.md', [
     'GitHub Copilot VS Code, CLI, Cloud agent',
     'OpenAI Codex Local clients',
-    'Gemini CLI CLI',
+    'Antigravity CLI CLI',
   ]);
   await expectTools(
     'packages/api:lander-nested',

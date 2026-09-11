@@ -1073,7 +1073,11 @@ watch(
     // together (FR-030), so two Sources holding one path are two subjects —
     // and the tab strip is one product's reading, so moving between products
     // is moving to another subject too.
-    const decidingFor = `${source}\u0000${path}\u0000${tool}\u0000${pluginName}\u0000${filePath}`;
+    // Serialized rather than concatenated, because the plugin name is
+    // authored: a catalog may spell one holding whatever a separator would be,
+    // and two different plugins that joined to one key would leave the
+    // second's tab decision unmade.
+    const decidingFor = JSON.stringify([source, path, tool, pluginName, filePath]);
     if (tabDecidedFor === decidingFor) {
       return;
     }

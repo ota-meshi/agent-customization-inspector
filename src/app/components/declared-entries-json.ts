@@ -128,10 +128,21 @@ export function declaredEntriesJsonText(fields: readonly DeclaredEntryDto[]): st
 }
 
 /**
- * Serializes one declared lifecycle event to the JSON document the hook
- * comparison shows as one side (FR-011): the event key its carrier
- * wrote with the groups under it, every nested mapping's keys sorted so both
- * sides align line by line.
+ * Serializes one carrier's declarations of one lifecycle event to the JSON
+ * document the hook comparison shows as one side (FR-011): the keys its
+ * carrier wrote with the groups under them, every nested mapping's keys
+ * sorted so both sides align line by line.
+ *
+ * Every declaration of the event rather than one, because a carrier of the
+ * named-hook format declares one event under as many names as its author
+ * wrote (`api-types.ts` § DeclaredHookDto): showing the first would drop the
+ * rest from a side without saying so. The other three formats declare an
+ * event once, so their side is the one document it always was.
+ *
+ * A named declaration starts at its hook's name and carries that hook's own
+ * keys — the documented `enabled` among them — because that is the shape its
+ * file wrote. The names order the document so both sides align, which is the
+ * comparison's own rule and the one thing it does that the detail does not.
  *
  * The event key stays in the document, as it does in the detail's own
  * rendering: it is what a reader pastes back into a hook map, and it is
@@ -140,12 +151,37 @@ export function declaredEntriesJsonText(fields: readonly DeclaredEntryDto[]): st
  * because a reader comparing their own files needs it shown rather than
  * dropped (FR-007, FR-026).
  */
-export function canonicalHookEventJsonText(event: HookEventDeclarationDto): string {
-  return JSON.stringify(
-    { [event.event]: event.groups.map((group) => jsonValue(group, true)) },
-    null,
-    2,
+export function canonicalHookEventJsonText(
+  declarations: readonly HookEventDeclarationDto[],
+): string {
+  const ordered = declarations.toSorted((a, b) => {
+    const left = a.namedHook?.name ?? '';
+    const right = b.namedHook?.name ?? '';
+    return left < right ? -1 : left > right ? 1 : 0;
+  });
+  // Built through `Object.fromEntries`, as every object here is, because the
+  // keys are authored: a carrier may name a hook — or an event — `__proto__`,
+  // and `document[name] = value` on an ordinary object runs
+  // `Object.prototype`'s setter instead of creating that property, so the
+  // declaration would leave the document with no trace of itself while the
+  // detail still showed it (FR-007). `Object.fromEntries` and a computed key
+  // in an object literal both define an own property, so the name survives
+  // whatever it is.
+  const document = Object.fromEntries(
+    ordered.map((declaration) => {
+      const groups = declaration.groups.map((group) => jsonValue(group, true));
+      return declaration.namedHook === null
+        ? ([declaration.event, groups] as const)
+        : ([
+            declaration.namedHook.name,
+            {
+              ...objectOf(declaration.namedHook.fields.toSorted(compareKeyText), true),
+              [declaration.event]: groups,
+            },
+          ] as const);
+    }),
   );
+  return JSON.stringify(document, null, 2);
 }
 
 /**

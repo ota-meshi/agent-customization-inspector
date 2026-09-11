@@ -408,11 +408,11 @@ export const COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE = {
  * three — VS Code documents no `GEMINI.md` — which is why its recognition
  * names the CLI and Cloud surfaces and not the editor's.
  *
- * The root file is one candidate with two products' recognitions: Gemini CLI
- * reads the same filename as its own context file, through its derived rule
- * (`gemini.derived.context-filename`), so the row names both products while
- * this rule stays Copilot's own answer for the root
- * (specs/002-gemini-cli-support/spec.md FR-013).
+ * The root file is one candidate with two products' recognitions: Antigravity
+ * CLI reads the same filename at the repository root, through its own static
+ * rule (`antigravity.repo.context.gemini-root`), so the row names both
+ * products while this rule stays Copilot's own answer for the root
+ * (specs/003-antigravity-cli-support/spec.md FR-002).
  */
 export const COPILOT_REPO_INSTRUCTIONS_GEMINI_ROOT_RULE = {
   ruleId: 'copilot.repo.instructions.gemini-root',

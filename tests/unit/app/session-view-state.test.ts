@@ -455,7 +455,7 @@ describe('session view state — session loss', () => {
           : {
               state: 'active',
               previewId: 'preview-1',
-              confirmedTools: ['copilot', 'claude', 'codex', 'gemini', 'agents'],
+              confirmedTools: ['copilot', 'claude', 'codex', 'antigravity', 'agents'],
               controls: [],
               pendingTools: ['codex'],
               retryableTools: [],
@@ -522,7 +522,7 @@ describe('session view state — session loss', () => {
       globalControl: {
         consentGiven: true,
         disabling: false,
-        confirmedTools: ['copilot', 'claude', 'codex', 'gemini', 'agents'],
+        confirmedTools: ['copilot', 'claude', 'codex', 'antigravity', 'agents'],
         controls: [],
         pendingTools: ['codex'],
         retryableTools: [],

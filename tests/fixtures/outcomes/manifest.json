@@ -1,5 +1,5 @@
 {
-  "manifestVersion": 4,
+  "manifestVersion": 5,
   "fixtures": {
     "filesystem": {
       "kind": "deterministic-builder",
@@ -9,12 +9,12 @@
     "global-homes": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/global-homes/build-fixtures.ts",
-      "sha256": "8706ab4bb9cda4a643d6d72dc0a1ee43c50bab29f652964a6498a10f86403ba6"
+      "sha256": "8658cbc1557161efcfd95c6f2aed02ae66a5603d5d25161df7a36e80aa3d7847"
     },
     "repositories": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/repositories/build-fixtures.ts",
-      "sha256": "ea7d5a8b7ba05a023095b3056881b5c6560c1a13b84fbbaaefd90e463ceae310"
+      "sha256": "f7f408f9d60cb523734bc4a280be2d4ddbd482059b8b7e181a4ccbbcb5eac2f7"
     },
     "secrets": {
       "kind": "deterministic-builder",
@@ -30,6 +30,41 @@
       "kind": "inline-fixture-suite",
       "path": "tests/contract/http-api-session.test.ts",
       "sha256": "51be67e4578419b5e04ddabc1af60287bc70ae877cb0df242cc8bb347841945f"
+    },
+    "tests/e2e/antigravity-custom-agents-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/antigravity-custom-agents-detail.spec.ts",
+      "sha256": "f7a79ffa6a3bf830ffb402480e0aff7ccc29647aae98313f09ba5ef1dead6eb2"
+    },
+    "tests/e2e/antigravity-hooks-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/antigravity-hooks-detail.spec.ts",
+      "sha256": "3a1958b284f190238e12e30b67635c26249907a7a24e5a0f36f7adceca53c4dd"
+    },
+    "tests/e2e/antigravity-instructions-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/antigravity-instructions-detail.spec.ts",
+      "sha256": "9e424a4a00d8fc315061e62a3e7676bb63c842d8320c5eef21b3cff9320b9eef"
+    },
+    "tests/e2e/antigravity-mcp-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/antigravity-mcp-detail.spec.ts",
+      "sha256": "4141eee6d8224ef269a8638bc78279c52ffbef0dbac4c20639b6af11a05f3b25"
+    },
+    "tests/e2e/antigravity-rules-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/antigravity-rules-detail.spec.ts",
+      "sha256": "610d7c002277f1071a3783b851e5e3d4395df0943a39de22d2ae2883d17eb45a"
+    },
+    "tests/e2e/antigravity-settings-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/antigravity-settings-detail.spec.ts",
+      "sha256": "0bef24145a6b35411a6303bb0718e53c514ebe45ee94db261b18087317aad6ee"
+    },
+    "tests/e2e/antigravity-skills-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/antigravity-skills-detail.spec.ts",
+      "sha256": "928d3f46b787747f561ffad086ae765bcec97f04914d1de513f346d45e7be2f4"
     },
     "tests/e2e/claude-commands-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -119,12 +154,12 @@
     "tests/e2e/claude-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-skills-detail.spec.ts",
-      "sha256": "45996ef068bddc24babd86a39ac24c886c7a9db40952a41f53c7db6443dc567b"
+      "sha256": "13a4fd0abd1a3996c6eaca144d6d4478231cd1d06231c366fd1954e3a26eab93"
     },
     "tests/e2e/claude-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-skills-list.spec.ts",
-      "sha256": "310d379b009863d3eb72df81dc0f197e6b84e01d29a85a2f47cb11963bea213f"
+      "sha256": "87ae7cce8e7bbfe39c98e1addd19b37d258d90e45aa8a02c1f4547981874f78f"
     },
     "tests/e2e/codex-config-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -199,7 +234,7 @@
     "tests/e2e/codex-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-skills-detail.spec.ts",
-      "sha256": "f49b5d92d1c0a2ab64a7fab6e09137381b73053ad4bfd0cb7fe20249853b3da1"
+      "sha256": "0019fb3df69ffe5f202ec21a405dc7230e2be82da418a2a949640719a9e90341"
     },
     "tests/e2e/codex-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -244,12 +279,12 @@
     "tests/e2e/copilot-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-instructions-detail.spec.ts",
-      "sha256": "394fce49f5aa4a23093a96feb7c154efaaac959b3857cd33b0d2fbdf7ba15e58"
+      "sha256": "b3f10cc5d0eea38491eb62922d385003c1e46a40a525d9821c4ac97f68a5987e"
     },
     "tests/e2e/copilot-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-instructions-inventory.spec.ts",
-      "sha256": "de7c552dc83ccb9c42975fc4b1db0425badabf468c6b38322a84f071174ac570"
+      "sha256": "d32f5befd5c71d71d4843a8a809a11ee2a93cf4d938ded8a3654a236a6ddcce9"
     },
     "tests/e2e/copilot-plugins-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -274,12 +309,12 @@
     "tests/e2e/copilot-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-skills-detail.spec.ts",
-      "sha256": "48a73e93dd9a2873a69c1e121f96597c738cb024b680162047f1b5f25bd31035"
+      "sha256": "f3b6b079fc779bcd517c5c8022919b7cbdc5a930f593a39baf8cb8cb65fdd724"
     },
     "tests/e2e/copilot-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-skills-list.spec.ts",
-      "sha256": "da85ec3f0774b62f05115701d348df8544040a466c31624fca5c330f625b3331"
+      "sha256": "096a92e326fc105c79c902d82cdf63dfbe4e60c8fc3bf8f3741765994c62f172"
     },
     "tests/e2e/copilot-vscode-mcp-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -291,75 +326,10 @@
       "path": "tests/e2e/copilot-vscode-mcp-inventory.spec.ts",
       "sha256": "df39bf30b14d43ee036505efcc5cde50cbfd4c9ccec3c5fa759632b01b532498"
     },
-    "tests/e2e/gemini-commands-detail.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-commands-detail.spec.ts",
-      "sha256": "a76faba6de6b5637ce72ffa4e07903fb9c2c26d794c895ad8d797e469c3c5c73"
-    },
-    "tests/e2e/gemini-commands-inventory.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-commands-inventory.spec.ts",
-      "sha256": "1f51c8665a97d413ab0cb87909e9d276f492491de5e1e8f5a9874566a218df83"
-    },
-    "tests/e2e/gemini-context-filename.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-context-filename.spec.ts",
-      "sha256": "37a8a36bdc3750d366fcbffd458d762c562163b6492fb3e34560067b85f41c0a"
-    },
-    "tests/e2e/gemini-custom-agents-detail.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-custom-agents-detail.spec.ts",
-      "sha256": "f8486a881725891dde2c6fe64cdb0a47ee90ea1568d4a66e9ab28e32c447a31b"
-    },
-    "tests/e2e/gemini-custom-agents-inventory.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-custom-agents-inventory.spec.ts",
-      "sha256": "581e52f747d8d0c8c3e8180accc8fd96a4171b197fcf28759b2023e427489229"
-    },
-    "tests/e2e/gemini-instructions-detail.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-instructions-detail.spec.ts",
-      "sha256": "bdec045a0c475c9b77d53796f92d323053422af00ea6833262b36468c804498c"
-    },
-    "tests/e2e/gemini-instructions-inventory.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-instructions-inventory.spec.ts",
-      "sha256": "2cdd22ff9ceb084a523cb97879c121dd9b1d5930d82e1caf741aadca3a028a38"
-    },
-    "tests/e2e/gemini-same-name-skill.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-same-name-skill.spec.ts",
-      "sha256": "be8697a31508b10beec312ea20a8f65755e89aea78b38acfea12098ffd5f8486"
-    },
-    "tests/e2e/gemini-settings-detail.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-settings-detail.spec.ts",
-      "sha256": "5692063433dc2496e9f9d251b0da8ee8587ca06d4d402929b5a1bd130245e13f"
-    },
-    "tests/e2e/gemini-settings-inventory.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-settings-inventory.spec.ts",
-      "sha256": "0dcaa705c851108cf8f19efd653b9021a2bf4669367f9d790c9f47dfaddbbbc7"
-    },
-    "tests/e2e/gemini-skills-detail.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-skills-detail.spec.ts",
-      "sha256": "a6981d08dad94adab186ba084bb85de94aab6982dc2f7a3e846e8f7de85aff9c"
-    },
-    "tests/e2e/gemini-skills-list.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/gemini-skills-list.spec.ts",
-      "sha256": "adcfab92b8821077534d3bcce41bf508500bef0597ec44a8f13eb41a198e1b87"
-    },
-    "tests/e2e/global-gemini-admission.spec.ts": {
-      "kind": "inline-fixture-suite",
-      "path": "tests/e2e/global-gemini-admission.spec.ts",
-      "sha256": "033280f3975bdc8b39d1ea7d7db700ef480ab3c2bc8bb280944ad83dd7e76c8c"
-    },
     "tests/e2e/global-same-path-skill.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/global-same-path-skill.spec.ts",
-      "sha256": "dd29efeabbfe7c2c2c8113ba974185d34281674ed42075653e49abafd3dbffdc"
+      "sha256": "23d0beacc27c4536e05228eb523ffe235e95d473fa4cf8857f269ddb88b45581"
     },
     "tests/e2e/inspection-safety.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -616,62 +586,6 @@
           "verifiedBy": ["tests/e2e/copilot-skills-list.spec.ts"]
         },
         {
-          "caseId": "sc003.row.gemini.mcp",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-settings-inventory.spec.ts"],
-          "expectedOutcome": "Every Gemini CLI MCP candidate the shipped rules admit at the Repository boundary is recognized and published in the MCP inventory with Gemini CLI among its recognizing tools, and no path outside those rules is.",
-          "verifiedBy": ["tests/e2e/gemini-settings-inventory.spec.ts"]
-        },
-        {
-          "caseId": "sc003.row.gemini.agent",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-custom-agents-inventory.spec.ts"],
-          "expectedOutcome": "Every Gemini CLI agent candidate the shipped rules admit at the Repository boundary is recognized and published in the agent inventory with Gemini CLI among its recognizing tools, and no path outside those rules is.",
-          "verifiedBy": ["tests/e2e/gemini-custom-agents-inventory.spec.ts"]
-        },
-        {
-          "caseId": "sc003.row.gemini.hook",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-settings-inventory.spec.ts"],
-          "expectedOutcome": "Every Gemini CLI hook candidate the shipped rules admit at the Repository boundary is recognized and published in the hook inventory with Gemini CLI among its recognizing tools, and no path outside those rules is.",
-          "verifiedBy": ["tests/e2e/gemini-settings-inventory.spec.ts"]
-        },
-        {
-          "caseId": "sc003.row.gemini.instructions",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-instructions-inventory.spec.ts"],
-          "expectedOutcome": "Every Gemini CLI instructions candidate the shipped rules admit at the Repository boundary is recognized and published in the instructions inventory with Gemini CLI among its recognizing tools, and no path outside those rules is.",
-          "verifiedBy": ["tests/e2e/gemini-instructions-inventory.spec.ts"]
-        },
-        {
-          "caseId": "sc003.row.gemini.permissions",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/global-gemini-admission.spec.ts"],
-          "expectedOutcome": "Every Gemini CLI permissions candidate the shipped rules admit at the consented Gemini CLI home — a `policies/*.toml` direct child, the one location the vendor documents as loaded — is recognized and published in the permissions inventory with Gemini CLI among its recognizing tools, and no path outside those rules is.",
-          "verifiedBy": ["tests/e2e/global-gemini-admission.spec.ts"]
-        },
-        {
-          "caseId": "sc003.row.gemini.prompt-command",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-commands-inventory.spec.ts"],
-          "expectedOutcome": "Every Gemini CLI prompt/command candidate the shipped rules admit at the Repository boundary is recognized and published in the prompt/command inventory with Gemini CLI among its recognizing tools, and no path outside those rules is.",
-          "verifiedBy": ["tests/e2e/gemini-commands-inventory.spec.ts"]
-        },
-        {
-          "caseId": "sc003.row.gemini.settings-config",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-settings-inventory.spec.ts"],
-          "expectedOutcome": "Every Gemini CLI settings/config candidate the shipped rules admit at the Repository boundary is recognized and published in the settings/config inventory with Gemini CLI among its recognizing tools, and no path outside those rules is.",
-          "verifiedBy": ["tests/e2e/gemini-settings-inventory.spec.ts"]
-        },
-        {
-          "caseId": "sc003.row.gemini.skill",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-skills-list.spec.ts"],
-          "expectedOutcome": "Every Gemini CLI skill candidate the shipped rules admit at the Repository boundary is recognized and published in the skill inventory with Gemini CLI among its recognizing tools, and no path outside those rules is.",
-          "verifiedBy": ["tests/e2e/gemini-skills-list.spec.ts"]
-        },
-        {
           "caseId": "sc003.near-miss.exact",
           "requiredClasses": ["rejected-selector-family"],
           "fixtureRefs": ["filesystem", "repositories"],
@@ -715,7 +629,7 @@
           "caseId": "sc003.shared-file.repository-agents-md",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository-root `AGENTS.md` is attributed to OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository-root `AGENTS.md` is attributed to OpenAI Codex and GitHub Copilot and Antigravity CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
         },
         {
@@ -729,7 +643,7 @@
           "caseId": "sc003.shared-file.repository-agents-skill",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "A repository `.agents/skills/<name>/SKILL.md` is attributed to OpenAI Codex and GitHub Copilot and Gemini CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "A repository `.agents/skills/<name>/SKILL.md` is attributed to OpenAI Codex and GitHub Copilot and Antigravity CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/skills-inventory.spec.ts"]
         },
         {
@@ -761,21 +675,11 @@
           "verifiedBy": ["tests/integration/repository-scan.test.ts"]
         },
         {
-          "caseId": "sc003.shared-file.repository-root-gemini-md",
-          "requiredClasses": ["shared-file-attribution"],
-          "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository-root `GEMINI.md` is attributed to GitHub Copilot and Gemini CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows, while a nested `GEMINI.md` is attributed to Gemini CLI alone.",
-          "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
-        },
-        {
           "caseId": "sc003.shared-file.global-shared-agent-home-skill",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["tests/e2e/global-same-path-skill.spec.ts"],
-          "expectedOutcome": "A `skills/<name>/SKILL.md` held by two consented Global member boundaries at once is attributed to OpenAI Codex and GitHub Copilot and Gemini CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
-          "verifiedBy": [
-            "tests/e2e/global-same-path-skill.spec.ts",
-            "tests/e2e/global-gemini-admission.spec.ts"
-          ]
+          "expectedOutcome": "A `skills/<name>/SKILL.md` held by two consented Global member boundaries at once is attributed to OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "verifiedBy": ["tests/e2e/global-same-path-skill.spec.ts"]
         },
         {
           "caseId": "sc003.global-source-form.claude",
@@ -799,11 +703,74 @@
           "verifiedBy": ["tests/e2e/global-copilot-admission.spec.ts"]
         },
         {
-          "caseId": "sc003.global-source-form.gemini",
+          "caseId": "sc003.row.antigravity.mcp",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-mcp-detail.spec.ts"],
+          "expectedOutcome": "Every Antigravity CLI MCP candidate the shipped rules admit is recognized and published in the MCP inventory with Antigravity CLI among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/antigravity-mcp-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.antigravity.agent",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-custom-agents-detail.spec.ts"],
+          "expectedOutcome": "Every Antigravity CLI agent candidate the shipped rules admit is recognized and published in the agent inventory with Antigravity CLI among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/antigravity-custom-agents-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.antigravity.hook",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-hooks-detail.spec.ts"],
+          "expectedOutcome": "Every Antigravity CLI hook candidate the shipped rules admit is recognized and published in the hook inventory with Antigravity CLI among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/antigravity-hooks-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.antigravity.instructions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-instructions-detail.spec.ts"],
+          "expectedOutcome": "Every Antigravity CLI instructions candidate the shipped rules admit is recognized and published in the instructions inventory with Antigravity CLI among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/antigravity-instructions-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.antigravity.permissions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-settings-detail.spec.ts"],
+          "expectedOutcome": "Every Antigravity CLI permissions candidate the shipped rules admit is recognized and published in the permissions inventory with Antigravity CLI among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/antigravity-settings-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.antigravity.rule",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-rules-detail.spec.ts"],
+          "expectedOutcome": "Every Antigravity CLI rule candidate the shipped rules admit is recognized and published in the rule inventory with Antigravity CLI among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/antigravity-rules-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.antigravity.settings-config",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-settings-detail.spec.ts"],
+          "expectedOutcome": "Every Antigravity CLI settings/config candidate the shipped rules admit is recognized and published in the settings/config inventory with Antigravity CLI among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/antigravity-settings-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.antigravity.skill",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-skills-detail.spec.ts"],
+          "expectedOutcome": "Every Antigravity CLI skill candidate the shipped rules admit is recognized and published in the skill inventory with Antigravity CLI among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/antigravity-skills-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc003.shared-file.repository-root-gemini-md",
+          "requiredClasses": ["shared-file-attribution"],
+          "fixtureRefs": ["repositories"],
+          "expectedOutcome": "The repository-root `GEMINI.md` is attributed to GitHub Copilot and Antigravity CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows, while a `GEMINI.md` below the root reaches no row at all.",
+          "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.global-source-form.antigravity",
           "requiredClasses": ["global-source-form"],
           "fixtureRefs": ["global-homes"],
-          "expectedOutcome": "At the Global boundary, Gemini CLI's consented member locations — the `.gemini` below the directory `GEMINI_CLI_HOME` names — are admitted and published as their own Source, and no path outside that member's allowlist is.",
-          "verifiedBy": ["tests/e2e/global-gemini-admission.spec.ts"]
+          "expectedOutcome": "At the Global boundary, Antigravity CLI's consented member locations — the `.gemini` below the captured home directory, which no property relocates — are admitted and published as their own Source, and no path outside that member's allowlist is.",
+          "verifiedBy": ["tests/e2e/global-antigravity-admission.spec.ts"]
         }
       ]
     },
@@ -864,16 +831,6 @@
           "verifiedBy": [
             "tests/integration/inspection-safety.test.ts",
             "tests/e2e/inspection-safety.spec.ts"
-          ]
-        },
-        {
-          "caseId": "sc004.tool.gemini",
-          "requiredClasses": ["supported-tool"],
-          "fixtureRefs": ["global-homes", "repositories"],
-          "expectedOutcome": "Inspecting a repository or a consented Gemini CLI home whose customizations Gemini CLI recognizes — a settings hook command, stdio and HTTP MCP declarations, and a command prompt with a shell block among them — causes no prohibited effect of any class on any instrumented surface.",
-          "verifiedBy": [
-            "tests/security/global-zero-activation.test.ts",
-            "tests/integration/repository-scan.test.ts"
           ]
         },
         {
@@ -960,6 +917,16 @@
           "fixtureRefs": ["filesystem"],
           "expectedOutcome": "A result arriving after its authority was revoked is discarded without any hard-cancellation claim, and a recoverable resource failure at enumerate, resolve, or read aborts the attempt rather than being blamed on one file.",
           "verifiedBy": ["tests/integration/boundaries/traversal.test.ts"]
+        },
+        {
+          "caseId": "sc004.tool.antigravity",
+          "requiredClasses": ["supported-tool"],
+          "fixtureRefs": ["global-homes", "repositories"],
+          "expectedOutcome": "Inspecting a repository or a consented Antigravity CLI home whose customizations Antigravity CLI recognizes — a hook carrier's declared commands, stdio and HTTP MCP declarations, a settings document's permission rules, and a workspace rule's declared activation among them — causes no prohibited effect of any class on any instrumented surface.",
+          "verifiedBy": [
+            "tests/security/global-zero-activation.test.ts",
+            "tests/integration/security/zero-activation.test.ts"
+          ]
         }
       ]
     },
@@ -1181,62 +1148,6 @@
           "verifiedBy": ["tests/e2e/copilot-skills-detail.spec.ts"]
         },
         {
-          "caseId": "sc005.row.gemini.mcp",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-settings-detail.spec.ts"],
-          "expectedOutcome": "The detail surface for a readable Gemini CLI MCP file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
-          "verifiedBy": ["tests/e2e/gemini-settings-detail.spec.ts"]
-        },
-        {
-          "caseId": "sc005.row.gemini.agent",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-custom-agents-detail.spec.ts"],
-          "expectedOutcome": "The detail surface for a readable Gemini CLI agent file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
-          "verifiedBy": ["tests/e2e/gemini-custom-agents-detail.spec.ts"]
-        },
-        {
-          "caseId": "sc005.row.gemini.hook",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-settings-detail.spec.ts"],
-          "expectedOutcome": "The detail surface for a readable Gemini CLI hook file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
-          "verifiedBy": ["tests/e2e/gemini-settings-detail.spec.ts"]
-        },
-        {
-          "caseId": "sc005.row.gemini.instructions",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-instructions-detail.spec.ts"],
-          "expectedOutcome": "The detail surface for a readable Gemini CLI instructions file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
-          "verifiedBy": ["tests/e2e/gemini-instructions-detail.spec.ts"]
-        },
-        {
-          "caseId": "sc005.row.gemini.permissions",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/global-gemini-admission.spec.ts"],
-          "expectedOutcome": "The detail surface for a readable Gemini CLI permissions file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
-          "verifiedBy": ["tests/e2e/global-gemini-admission.spec.ts"]
-        },
-        {
-          "caseId": "sc005.row.gemini.prompt-command",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-commands-detail.spec.ts"],
-          "expectedOutcome": "The detail surface for a readable Gemini CLI prompt/command file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
-          "verifiedBy": ["tests/e2e/gemini-commands-detail.spec.ts"]
-        },
-        {
-          "caseId": "sc005.row.gemini.settings-config",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-settings-detail.spec.ts"],
-          "expectedOutcome": "The detail surface for a readable Gemini CLI settings/config file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
-          "verifiedBy": ["tests/e2e/gemini-settings-detail.spec.ts"]
-        },
-        {
-          "caseId": "sc005.row.gemini.skill",
-          "requiredClasses": ["supported-source-row"],
-          "fixtureRefs": ["tests/e2e/gemini-skills-detail.spec.ts"],
-          "expectedOutcome": "The detail surface for a readable Gemini CLI skill file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
-          "verifiedBy": ["tests/e2e/gemini-skills-detail.spec.ts"]
-        },
-        {
           "caseId": "sc005.surface.source",
           "requiredClasses": ["display-surface"],
           "fixtureRefs": ["global-homes"],
@@ -1280,6 +1191,62 @@
           "fixtureRefs": ["global-homes"],
           "expectedOutcome": "With the referenced variable unset, the displayed text is unchanged from the set state and carries no empty-substitution artifact.",
           "verifiedBy": ["tests/integration/global-literal-display.test.ts"]
+        },
+        {
+          "caseId": "sc005.row.antigravity.mcp",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-mcp-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Antigravity CLI MCP file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/antigravity-mcp-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.antigravity.agent",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-custom-agents-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Antigravity CLI agent file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/antigravity-custom-agents-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.antigravity.hook",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-hooks-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Antigravity CLI hook file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/antigravity-hooks-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.antigravity.instructions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-instructions-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Antigravity CLI instructions file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/antigravity-instructions-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.antigravity.permissions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-settings-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Antigravity CLI permissions file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/antigravity-settings-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.antigravity.rule",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-rules-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Antigravity CLI rule file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/antigravity-rules-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.antigravity.settings-config",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-settings-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Antigravity CLI settings/config file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/antigravity-settings-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.antigravity.skill",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/antigravity-skills-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Antigravity CLI skill file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/antigravity-skills-detail.spec.ts"]
         }
       ]
     },

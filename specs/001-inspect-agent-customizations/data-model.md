@@ -89,7 +89,7 @@ BrowserState
 |---|---|---|---|
 | `sessionId` | opaque string | DTO | Random per process; non-authorizing session identity only, never an access-control secret |
 | `createdAt` | `UtcTimestamp` | DTO | Process start time |
-| `sources` | `Source[]` | DTO | Exactly one Repository; zero to five Global, with at most one for each member — Copilot, Claude, Codex, Gemini CLI, and the shared agent home (FR-045; specs/002-gemini-cli-support/spec.md FR-010) |
+| `sources` | `Source[]` | DTO | Exactly one Repository; zero to five Global, with at most one for each member — Copilot, Claude, Codex, Antigravity CLI, and the shared agent home (FR-045; specs/003-antigravity-cli-support/spec.md FR-009) |
 | `repositoryGeneration` | `GenerationNumber` | DTO | Identifies the Repository sequence's last committed snapshot; monotonically increases only on a successful complete or partial Repository-sequence commit |
 | `globalGeneration` | `GenerationNumber \| null` | DTO | Identifies the Global sequence's last committed snapshot; null exactly while no Global sequence exists (Global inspection disabled or never enabled); monotonically increases within one sequence, and a fresh sequence created after disable restarts at `1` under the incremented `globalContentEpoch` |
 | `snapshotState` | `current \| stale-after-fatal-rescan` | DTO | Derived from `staleFailures`; stale exactly while one or more explicit-rescan failures remain unresolved |
@@ -206,7 +206,7 @@ are closed by `GlobalDisableOperation`; no other command may copy that exception
 |---|---|---|
 | `sourceId` | opaque ASCII string | Server-generated and stable for the process lifetime |
 | `kind` | `repository \| global` | Exactly one Repository source; zero to five Global Sources |
-| `member` | `copilot \| claude \| codex \| gemini \| agents \| null` | Repository pairs with null; each Global Source pairs with exactly one member of the fixed five-member set — the four supported tools plus the shared agent home — and no two Global Sources share a member |
+| `member` | `copilot \| claude \| codex \| antigravity \| agents \| null` | Repository pairs with null; each Global Source pairs with exactly one member of the fixed five-member set — the four supported tools plus the shared agent home — and no two Global Sources share a member |
 | `enabled` | boolean | Repository and every published Global Source are true; absence means only that no Source is published for that tool, while `globalControl` distinguishes disabled, pending, and retryable control states; a disabling source remains true until atomic removal |
 | `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | Follows transitions below; public `partial` denotes only a generation committed after complete traversal in which one or more files have file-confined outcomes (unreadable, an admitted candidate's binary content, parse failure — a census-listed companion's binary bytes are its ordinary fact and confine nothing, FR-025) while every unaffected file is complete; `failed` means the latest attempt failed while the last committed snapshot remains available; only a fatal explicit rescan marks that snapshot stale |
 | `boundary` | `SourceBoundary` | Exactly one selected root: the captured `process.cwd()` or resolved `--root` for Repository, or the one consented home root for this Global Source's tool |
@@ -224,7 +224,7 @@ changes only through an atomic generation commit.
 
 | Field | Type | Visibility | Rules |
 |---|---|---|---|
-| `member` | `copilot \| claude \| codex \| gemini \| agents \| null` | internal | Must equal the owning Source's already-published member; Repository uses null |
+| `member` | `copilot \| claude \| codex \| antigravity \| agents \| null` | internal | Must equal the owning Source's already-published member; Repository uses null |
 | `displayRoot` | ASCII `RootPresentationEncoding` string | DTO | Deterministic encoding of the Source root; not a `SourceRelativePath`, inventory-item locator, caller input, or read authority |
 | `root` | exact absolute platform path string | internal | The selected Repository root or this tool's consented home root; the base path for every inspected-source filesystem operation of this Source |
 | `origin` | `process-cwd \| root-option \| default-home \| environment` | DTO | Explains how the root was selected without granting read authority |
@@ -298,8 +298,8 @@ but never treats build output as an inspected-source fallback.
 ### GlobalRootInputCapture
 
 Each session creates one startup capture before editor-launcher discovery. The host reads
-the four environment properties exactly once in the fixed order `COPILOT_HOME`,
-`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`. Only a captured JavaScript `undefined` means absent;
+the three environment properties exactly once in the fixed order `COPILOT_HOME`,
+`CLAUDE_CONFIG_DIR`, `CODEX_HOME`. Only a captured JavaScript `undefined` means absent;
 every string, including `''`, is a present override. The host calls the
 already imported `node:os.homedir()` exactly once for that session — the shared agent
 home always derives from it — and retains its exact returned string as `capturedHomedir`. It does not read or
@@ -309,16 +309,13 @@ that platform behavior.
 The fixed mapping is Copilot → `COPILOT_HOME` or
 `node:path.join(capturedHomedir, '.copilot')`, Claude → `CLAUDE_CONFIG_DIR` or
 `node:path.join(capturedHomedir, '.claude')`, Codex → `CODEX_HOME` or
-`node:path.join(capturedHomedir, '.codex')`, and Gemini CLI →
-`node:path.join(GEMINI_CLI_HOME, '.gemini')` or `node:path.join(capturedHomedir, '.gemini')`.
-Each member descriptor states which of the two spellings its setting names through
-`settingNames`: `root` for the three settings that name the member's directory itself, and
-`parent` for `GEMINI_CLI_HOME`, which the vendor documents as naming the directory the
-`.gemini` directory is created in (specs/002-gemini-cli-support/spec.md FR-011). A `root`
-setting's join occurs at most once and only for an absent property in that session; a
-`parent` setting's join occurs for a present eligible value as well as for the absent
-default, and a present value that is empty, relative, or invalid is retained as captured
-and classified as such without a join. It is lexical and performs no existence check or other filesystem
+`node:path.join(capturedHomedir, '.codex')`, and Antigravity CLI →
+`node:path.join(capturedHomedir, '.gemini')` in every case. That member has no setting of
+its own: no cited page documents a property that relocates it, so the capture reads none for
+it and its origin is always the default home
+(specs/003-antigravity-cli-support/spec.md FR-008). A setting's join occurs at most once and
+only for an absent property in that session, and a present value that is empty, relative, or
+invalid is retained as captured and classified as such without a join. It is lexical and performs no existence check or other filesystem
 operation. Its exact string becomes `lexicalRoot`; empty, relative, NUL-containing, or
 otherwise unrepresentable results remain strings and receive the closed lexical input state
 instead of another fallback. If environment access, `homedir()`, joining, retention,
@@ -347,8 +344,8 @@ job or authority.
 | `previewEpoch` | non-negative safe integer | Internal and never serialized; records the creation order by incrementing with every newly created preview, but is not carried or compared by an enable operation because `previewId` identifies the current record and the operation registration prevents its replacement |
 | `allowlistVersion` | date string | Current shipped contract version |
 | `traversalPlanVersion` | date string | Version of the shipped typed traversal-plan set; with `allowlistVersion` this record-level pair identifies the closed selection policy and canonical selector programs the preview binds |
-| `entries` | exactly five member entries | Fixed Copilot, Claude, Codex, Gemini CLI, shared-agent-home order |
-| `entries[].member` | member enum (`copilot \| claude \| codex \| gemini \| agents`) | Closed value; `agents` is the shared agent home (FR-045) |
+| `entries` | exactly five member entries | Fixed Copilot, Claude, Codex, Antigravity CLI, shared-agent-home order |
+| `entries[].member` | member enum (`copilot \| claude \| codex \| antigravity \| agents`) | Closed value; `agents` is the shared agent home (FR-045) |
 | `entries[].origin` | `default-home \| environment` | An environment entry is used even when invalid; no silent fallback |
 | `entries[].lexicalRoot` | exact raw string | Internal only; preserves the pre-escape environment/default value; never logged or serialized |
 | `entries[].displayRoot` | ASCII `RootPresentationEncoding` string | Exact deterministic encoding of `lexicalRoot`; originates before an owning Source exists, and is never a `SourceRelativePath`, inventory-item locator, canonicalization claim, or read authority |
@@ -403,7 +400,7 @@ in-flight enable from committing authority for an unreachable preview.
 |---|---|---|
 | `allowlistVersion` | date string | Must equal the displayed current contract |
 | `previewId` | opaque string | Must match the current in-memory preview exactly |
-| `confirmedTools` | exact `[copilot, claude, codex, gemini, agents]` | Server-derived fixed member set matching all five frozen entries; the request contains no selector and cannot narrow it |
+| `confirmedTools` | exact `[copilot, claude, codex, antigravity, agents]` | Server-derived fixed member set matching all five frozen entries; the request contains no selector and cannot narrow it |
 | `confirmedAt` | `UtcTimestamp` | Memory only |
 | `active` | boolean | Cleared when Global inspection is disabled and all member Global Sources are removed |
 
@@ -489,7 +486,7 @@ No DTO can create or mutate this authority.
 |---|---|---|
 | `state` | `active \| disabling` | `disabling` begins when the priority barrier is accepted and lasts until the field becomes null at its single commit |
 | `previewId` | exact 43-character base64url string | Equals the active 256-bit `GlobalConsentPreview.previewId`; an opaque lookup reference that is neither a filesystem path nor any grant of authority |
-| `confirmedTools` | exact `[copilot, claude, codex, gemini, agents]` | Fixed all-members consent set; never client-selected |
+| `confirmedTools` | exact `[copilot, claude, codex, antigravity, agents]` | Fixed all-members consent set; never client-selected |
 | `pendingTools` | sorted tool enum[] | Admitted tools owned by one accepted subset scan only after atomic batch acceptance; initial and retry validation/admission are operation-local and unobservable; empty with null `batchStatus` while `disabling` after cancellation begins |
 | `batchStatus` | `GlobalBatchStatus \| null` | Non-null from accepted admitted-subset queueing through terminal success/failure; preserves the promoted `scanRequestId` for fresh-snapshot and lost-acceptance-response recovery |
 | `retryableTools` | sorted tool enum[] | While `active`, exactly each non-pending unpublished `admitted` control and each `rejected` control whose `retryDisposition` is `same-preview`; it retains the exact pre-operation projection during operation-local retry validation, lexical `new-preview-required` controls are excluded, `unvalidated` exists only in non-serialized operation-local work, and the array is empty while `disabling` |
@@ -2096,7 +2093,7 @@ old file records in place.
    the single `--root` value resolved against it. It is not required to be a Git root, and
    its label grants no read authority.
 3. Global is disabled in every new process. A session has zero to five Global Sources,
-   at most one each for Copilot, Claude, Codex, Gemini CLI, and the shared agent home; every Source
+   at most one each for Copilot, Claude, Codex, Antigravity CLI, and the shared agent home; every Source
    owns exactly one boundary confirmed for that same member by the current allowlist
    consent.
 4. Every accepted file path is admitted by a shipped static or typed derived rule below

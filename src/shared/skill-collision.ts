@@ -15,7 +15,7 @@
 import { CLAUDE_SKILL_COLLISION_POLICY } from './registries/claude/skill-collision';
 import { CODEX_SKILL_COLLISION_POLICY } from './registries/codex/skill-collision';
 import { COPILOT_SKILL_COLLISION_POLICY } from './registries/copilot/skill-collision';
-import { GEMINI_SKILL_COLLISION_POLICY } from './registries/gemini/skill-collision';
+import { ANTIGRAVITY_SKILL_COLLISION_POLICY } from './registries/antigravity/skill-collision';
 import type {
   SameNameCollisionDefinition,
   SkillCollisionPolicy,
@@ -35,8 +35,8 @@ export const SKILL_COLLISION_POLICY: Readonly<Record<SupportedTool, SkillCollisi
   claude: CLAUDE_SKILL_COLLISION_POLICY,
   /** Codex's clash is one row's own; see `registries/codex/skill-collision.ts`. */
   codex: CODEX_SKILL_COLLISION_POLICY,
-  /** Gemini CLI's clash is one row's own; see `registries/gemini/skill-collision.ts`. */
-  gemini: GEMINI_SKILL_COLLISION_POLICY,
+  /** Antigravity CLI's clash is one row's own; see `registries/antigravity/skill-collision.ts`. */
+  antigravity: ANTIGRAVITY_SKILL_COLLISION_POLICY,
 };
 
 /**

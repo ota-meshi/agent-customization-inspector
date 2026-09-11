@@ -285,26 +285,6 @@ function acceptsComments({ tool, sourceRelativePath }: JsonDocumentContext): boo
       //   '/'`) or a trailing comma (`Expected double-quoted property name`)
       //   — called directly on that build's `runtime.node`, 2026-08-26.
       return false;
-    case 'gemini':
-      // Both carriers lenient, measured rather than documented: the vendor's
-      // own settings loader parses every settings file with
-      // `JSON.parse(stripJsonComments(content))`
-      // (`packages/cli/src/config/settings.ts` of google-gemini/gemini-cli,
-      // read 2026-09-09), while the configuration reference says nothing
-      // about comments. The two spellings are the one repository carrier and
-      // the one Global carrier a scan produces (`.gemini/settings.json` at the
-      // selected root; `settings.json` at the consented Gemini CLI boundary);
-      // the Global literal cannot collide with Copilot's `settings.json`
-      // above because the tool is part of this key.
-      //
-      // The vendor strips comments alone; the lenient reading here also blanks
-      // a trailing comma, so a file with one shows its declarations on a row
-      // whose product would reject it — the milder error the Copilot entries
-      // already accept, recorded here rather than given a third format
-      // (specs/002-gemini-cli-support/research.md § 6).
-      return (
-        sourceRelativePath === '.gemini/settings.json' || sourceRelativePath === 'settings.json'
-      );
     case 'claude':
       // Every carrier strict, one line each:
       //
@@ -326,6 +306,15 @@ function acceptsComments({ tool, sourceRelativePath }: JsonDocumentContext): boo
       //   version disagreement with the plugin's manifest when the file has no
       //   comments, and proceeds as if no entry existed when it has them
       //   (2026-08-26).
+      return false;
+    case 'antigravity':
+      // Strict, as the cited pages show it. Every Antigravity CLI carrier this
+      // product reads — the two `mcp_config.json` profiles and the user
+      // `settings.json` — is documented with strict-JSON examples and no page
+      // mentions comments, so nothing here claims a leniency the vendor has
+      // not stated (specs/003-antigravity-cli-support/data-model.md
+      // § Parser format table). A measurement that shows otherwise is
+      // recorded here, as the other vendors' are.
       return false;
     case 'codex':
       // Every carrier strict, from the vendor's own source, one line each

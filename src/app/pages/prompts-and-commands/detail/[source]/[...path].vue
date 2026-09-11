@@ -658,10 +658,10 @@ useReportedPageSubject(titleSubject);
                sized to the block, because a metadata set is short
                (SourceViewer § fitContent). "Metadata" rather than
                "Frontmatter", because the keys arrive as a frontmatter fence
-               only for the products whose command file is Markdown: a Gemini
-               CLI command is TOML, and its keys sit beside its `prompt` — which
-               is why the wire shape is `PromptPresentationDto` rather than the
-               Markdown one (api-types.ts). The agent detail solved the same
+               only for the products whose command file is Markdown, and the
+               wire shape does not assume that: it is `PromptPresentationDto`
+               rather than the Markdown one, so a format declaring its keys
+               beside its prompt reaches this page unchanged (api-types.ts). The agent detail solved the same
                problem the same way — its agents are declared as Markdown
                frontmatter and as YAML — so the two pages share the word;
                "Declaration" is not it, being what this product calls a

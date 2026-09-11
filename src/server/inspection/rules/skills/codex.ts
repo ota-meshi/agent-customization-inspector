@@ -28,6 +28,9 @@ export class CodexCompiledSkillRule extends CodexCompiledRule implements Compile
   /** Narrowed to the one kind this unit compiles; the constructor proves it. */
   declare public readonly kind: 'skill';
 
+  /** A directory: this vendor documents one skill shape, the folder holding an entry point. */
+  public readonly skillRowUnit: 'directory';
+
   /**
    * The `name` the file declares, with the skill directory as the fallback —
    * the shared answer of every product that resolves a skill by that field
@@ -46,5 +49,6 @@ export class CodexCompiledSkillRule extends CodexCompiledRule implements Compile
     if (rule.kind !== 'skill') {
       throw new TypeError(`rule ${rule.ruleId} is not a Codex skill rule`);
     }
+    this.skillRowUnit = 'directory';
   }
 }

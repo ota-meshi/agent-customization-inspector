@@ -222,12 +222,28 @@ export interface SkillDefinitionDto {
    * offers the customization's own directory. The row shows how many there are
    * and the detail view shows which; the count is `length` rather than a second
    * field, because two states can disagree and one cannot. Empty when the
-   * `SKILL.md` sits alone — being a directory is what a skill is, so every
-   * recognized skill has been enumerated. The census is the file's, so every
-   * definition of one file — across tools and across entries — carries the
-   * same list.
+   * entry point sits alone in its directory, and empty for every definition
+   * whose {@link SkillDefinitionDto.rowUnit} is `file` — that shape has no
+   * directory to enumerate. The census is the file's, so every definition of
+   * one file — across tools and across entries — carries the same list.
    */
   readonly companionFiles: readonly string[];
+  /**
+   * What this definition's row unit is: the directory whose entry point the
+   * admitting rule matched, or the matched file itself.
+   *
+   * Carried from that rule rather than derived from the path, so a surface
+   * cannot reach a second answer that disagrees with the one the census used
+   * (`rules/skills/compiled-rule.ts` § skillRowUnit). Three of the four
+   * products document one shape and always say `directory`; Antigravity CLI
+   * admits both at one location (spec.md § FR-004).
+   *
+   * What a surface does with it: a `file` definition has no directory, so its
+   * detail shows the skill alone — no file panel, whose subject would be a
+   * directory the skill does not have, and no tab strip, because a strip
+   * offering one tab is not a choice.
+   */
+  readonly rowUnit: 'directory' | 'file';
 }
 
 /**
@@ -1124,8 +1140,8 @@ export interface AgentFileDetailDto extends FileDetailBase {
  * Its own shape rather than {@link MarkdownPresentationDto}, for the reason
  * {@link AgentPresentationDto} has one: the split is not always a frontmatter
  * block. A Claude Code, Copilot, or Codex command is Markdown split at the
- * frontmatter fence, while a Gemini CLI command is TOML whose `prompt` string
- * is the prompt and whose remaining top-level keys are the metadata. Naming
+ * frontmatter fence, while a format that declares its prompt as one key holds
+ * the prompt in that key and the metadata in the keys beside it. Naming
  * the halves after what they are lets every vendor spell the same two fields,
  * and lets one detail surface render them the same way — the metadata as
  * YAML, the prompt as Markdown.
@@ -1141,8 +1157,9 @@ export interface PromptPresentationDto {
   readonly metadata: readonly DeclaredEntryDto[];
   /**
    * The prompt the file gives the reader's agent, as the parser resolved it:
-   * a Markdown file's body once its frontmatter block is removed, a Gemini
-   * CLI command's `prompt` string. Empty when the file declares none.
+   * a Markdown file's body once its frontmatter block is removed, or the
+   * value of the key a format declares its prompt in. Empty when the file
+   * declares none.
    */
   readonly promptText: string;
 }
@@ -1703,6 +1720,33 @@ export interface McpCarrierDetailDto {
 }
 
 /**
+ * One named hook a carrier declares: the level between the carrier and its
+ * events, which one documented format has and three do not.
+ *
+ * Antigravity CLI's `hooks.json` maps a hook name to an object holding that
+ * hook's events and its own keys, so one carrier can declare an event twice —
+ * under two names — and the two blocks would otherwise be indistinguishable in
+ * the detail (contracts/vendors/antigravity-cli.md § Known uncertainties item
+ * 9). The inventory row is unaffected: its unit is the declared event and its
+ * lines are one per carrier, which a carrier declaring an event twice already
+ * collapses to one.
+ */
+export interface DeclaredHookDto {
+  /** The name the carrier gave this hook, exactly as its key declares it (FR-007). */
+  readonly name: string;
+  /**
+   * The keys this named hook declares beside its events, in the parser's
+   * resolved order — the documented `enabled` flag among them.
+   *
+   * Published as the file's own keys and never interpreted: whether a hook
+   * runs is runtime this product does not observe, so no surface renders
+   * `enabled: false` as "disabled" or "inactive" and the reader is shown what
+   * the file says (FR-009, FR-026).
+   */
+  readonly fields: readonly DeclaredEntryDto[];
+}
+
+/**
  * One event declaration of a hook carrier, as its detail shows it
  * (contracts/http-api.md § get-hook-carrier-detail, data-model.md § Inventory
  * unit): the declared event — the key its inventory row is named by — and the
@@ -1713,6 +1757,18 @@ export interface McpCarrierDetailDto {
 export interface HookEventDeclarationDto {
   /** The event name exactly as the carrier's key declares it (FR-007). */
   readonly event: string;
+  /**
+   * The named hook this event was declared inside, or null in a format whose
+   * carrier maps an event directly to its groups.
+   *
+   * One field rather than a name beside a field list, because the two are one
+   * fact: a format either has this level or it does not, and two siblings
+   * could publish a name with no fields or fields with no name — states that
+   * mean nothing (AGENTS.md § Implementation simplicity policy, "Publish one
+   * fact"). Three of the four documented formats have no such level; see
+   * {@link DeclaredHookDto}.
+   */
+  readonly namedHook: DeclaredHookDto | null;
   /**
    * The matcher groups this event declares, in authored order, each as the
    * parser resolved it: a group is one item of the event's declared list, and
@@ -2046,7 +2102,7 @@ export type SourceKind =
  * One Global member: the four tool homes and the shared agent home
  * (spec.md § FR-013, FR-045). A member is what one preview entry, one control,
  * and at most one Global Source are about; `agents` is `~/.agents`, the
- * directory Codex, Copilot, and Gemini CLI document for personal skills and
+ * directory Codex and Copilot document for personal skills and
  * Codex for the personal plugin marketplace, which no setting relocates. Every `…Tools`-spelled
  * control and batch field carries these member ids
  * (contracts/http-api.md § create-global-consent-preview).
@@ -2787,7 +2843,7 @@ export interface GlobalConsentPreviewDto {
   readonly allowlistVersion: string;
   /** The shipped compiled traversal-plan set version this preview binds. */
   readonly traversalPlanVersion: string;
-  /** Exactly five rows: Copilot, Claude, Codex, Gemini, then the shared agent home. */
+  /** Exactly five rows: Copilot, Claude, Codex, Antigravity, then the shared agent home. */
   readonly entries: readonly GlobalPreviewEntryDto[];
   /**
    * The excluded rules' IDs, sorted, which drive the displayed exclusions. A

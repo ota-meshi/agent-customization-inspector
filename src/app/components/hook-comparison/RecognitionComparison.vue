@@ -71,15 +71,21 @@ const contentLabel = computed(
 );
 
 /**
- * One side's serialized declaration, or the empty object when this carrier's
- * reading declares the event nowhere. A ready pair always holds the event on
- * both sides — the compare route only opens carriers the event's row lists —
- * so the empty document is the torn frame between a snapshot replacement and
- * the re-request it triggers, rendered rather than thrown.
+ * One side's serialized declarations of the compared event, or the empty
+ * object when this carrier's reading declares it nowhere. A ready pair always
+ * holds the event on both sides — the compare route only opens carriers the
+ * event's row lists — so the empty document is the torn frame between a
+ * snapshot replacement and the re-request it triggers, rendered rather than
+ * thrown.
+ *
+ * Every declaration of the event, not the first: a carrier of the named-hook
+ * format declares one event under as many names as its author wrote, and
+ * taking one would leave the others out of the side without saying so
+ * (`declared-entries-json.ts` § canonicalHookEventJsonText).
  */
 function serialize(detail: HookCarrierDetailDto): string {
-  const declared = (detail.events ?? []).find((candidate) => candidate.event === props.event);
-  return declared === undefined ? '{}' : canonicalHookEventJsonText(declared);
+  const declared = (detail.events ?? []).filter((candidate) => candidate.event === props.event);
+  return declared.length === 0 ? '{}' : canonicalHookEventJsonText(declared);
 }
 
 /** The two sides as the template renders them, in the link's own order. */

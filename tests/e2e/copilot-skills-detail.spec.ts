@@ -194,7 +194,7 @@ test('opens a shared .claude file once, naming what each product invokes it by',
 });
 
 test('names every product of a shared .agents file on the one page', async ({ page }) => {
-  // Codex, Copilot, and Gemini CLI invoke the authored name, so the shared
+  // Codex, Copilot, and Antigravity CLI invoke the authored name, so the shared
   // `.agents` file is one row and its page names all three against the same
   // name.
   await openSkillAt(page, '.agents/skills/orbit/SKILL.md');
@@ -206,7 +206,7 @@ test('names every product of a shared .agents file on the one page', async ({ pa
       recognitions: [
         { product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' },
         { product: 'OpenAI Codex', surfaces: 'Local clients' },
-        { product: 'Gemini CLI', surfaces: 'CLI' },
+        { product: 'Antigravity CLI', surfaces: 'CLI' },
       ],
     },
   ]);

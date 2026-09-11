@@ -205,8 +205,8 @@ export const GLOBAL_MEMBER_ORDER: readonly GlobalMemberId[] = [...SUPPORTED_TOOL
  * Not the tools' own captions, which is what a member label spread from
  * `SUPPORTED_TOOL_TEXT` used to be. A member says where a file came from and a
  * recognition says which product reads it, and those are different questions
- * with different answers: `~/.agents` is one directory that Codex, Copilot,
- * and Gemini CLI all read (FR-045), so no product names it — and on a row that states both,
+ * with different answers: `~/.agents` is one directory that Codex and Copilot
+ * both read (FR-045), so no product names it — and on a row that states both,
  * a product-named member said the same product twice while meaning something
  * else by it.
  */
@@ -218,13 +218,16 @@ export const GLOBAL_MEMBER_TEXT: Readonly<Record<GlobalMemberId, string>> = {
   /** `~/.codex`: Codex's own directory. */
   codex: 'Codex home',
   /**
-   * `~/.gemini`: Gemini CLI's own directory, the `.gemini` below `GEMINI_CLI_HOME`
-   * or the home. `Gemini` rather than the product's full name, as the other
-   * members drop the vendor and the suffix: this table names a directory by
-   * whose it is, while `SUPPORTED_TOOL_TEXT` names the product.
+   * `~/.gemini`: Antigravity CLI's own directory, which holds its global
+   * context file, the shared `config/`, and the terminal's own
+   * `antigravity-cli/`. Named for whose directory it is rather than for the
+   * directory's own name, as `~/.config/github-copilot` is named
+   * `Copilot home`; the member's root path is shown beside this label, so the
+   * label says whose and the path says where
+   * (specs/003-antigravity-cli-support/spec.md FR-008).
    */
-  gemini: 'Gemini home',
-  /** `~/.agents`: the directory Codex, Copilot, and Gemini CLI all read skills from (FR-045). */
+  antigravity: 'Antigravity home',
+  /** `~/.agents`: the directory Codex and Copilot both read skills from (FR-045). */
   agents: 'Shared agent home',
 };
 
@@ -239,7 +242,7 @@ export const SOURCE_SELECTOR_TEXT: Readonly<Record<SourceSelector, string>> = {
   'global-copilot': GLOBAL_MEMBER_TEXT.copilot,
   'global-claude': GLOBAL_MEMBER_TEXT.claude,
   'global-codex': GLOBAL_MEMBER_TEXT.codex,
-  'global-gemini': GLOBAL_MEMBER_TEXT.gemini,
+  'global-antigravity': GLOBAL_MEMBER_TEXT.antigravity,
   'global-agents': GLOBAL_MEMBER_TEXT.agents,
 };
 
