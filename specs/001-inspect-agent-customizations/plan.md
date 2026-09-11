@@ -9,7 +9,7 @@
 ## Summary
 
 Build a read-only local inspector, launched with `npx`, that inventories and compares
-allowlisted customization files for GitHub Copilot, Claude Code, and OpenAI Codex without
+allowlisted customization files for GitHub Copilot, Claude Code, OpenAI Codex, and Antigravity CLI without
 activating any inspected content. Use one cohesive package: a Nuxt client SPA in `src/app/`,
 a Node CLI and local inspection host in `src/server/`, serializable contracts in `src/shared/`, and
 one published `dist/` tree whose `dist/cli.mjs` is the direct `package.json.bin` target. A fixed clean step removes only
@@ -77,7 +77,7 @@ composition strategies (`strategyId`). Each record cites the official pages esta
 in its own `evidence` array, keyed by `sourceId`, rather than through a registry of its
 own. The common
 allowlist contract owns matcher grammar and safety
-invariants; separate Copilot, Claude, and Codex contracts own vendor behavior and
+invariants; separate Copilot, Claude, Codex, and Antigravity contracts own vendor behavior and
 tool-specific rules; the composition contract owns ordering and relationship-only rules;
 and the source registry owns exact official URL/section evidence and review metadata.
 Repository and User/Global behavior use separate tables, and Copilot VS Code, CLI, and
@@ -469,8 +469,9 @@ location.
 **Scale/Scope**: One local user, exactly one Repository source rooted at the
 selected Repository root (the exact one-time invocation `process.cwd()` capture by default
 or the accepted single `--root` value), zero
-to four admitted member Global sources produced by one session-wide all-members
-opt-in (at most one each for Copilot, Claude, and Codex), exactly one root per Source, and
+to five admitted member Global sources produced by one session-wide all-members
+opt-in (at most one each for the Copilot, Claude, Codex, and Antigravity homes and the shared
+agent home), exactly one root per Source, and
 at most two distinct readable customization files in a comparison, or one shown against its stated absent counterpart. Inventory size is governed by the supported runtime and
 execution environment rather than a product-defined item ceiling.
 
@@ -919,7 +920,7 @@ the product assembles or reads them. The contract gate reads them from the recor
 themselves, rejects missing or duplicate subjects, and sorts by the fixed subject-kind/ID
 order.
 
-The Presentation Allowlist sections in the three maintained vendor contracts are a separate
+The Presentation Allowlist sections in the four maintained vendor contracts are a separate
 normative design input. Before the first parser, recognizer, API, or UI detail task, those
 sections enumerate every supported `(tool, kind)`, the admitted source forms covered by its
 row, and its relationship-kind set in both languages. A row lists no metadata field
@@ -1104,7 +1105,7 @@ configuration.
   and must resolve to exactly one enumerated allowlisted entry before read,
   so ADS, device, and trailing-dot/space spellings
   are rejected before the file is opened. FR-015 through
-  FR-018 and FR-045 limit Global reads to the four members' frozen rule catalogs even when
+  FR-018 and FR-045 limit Global reads to the five members' frozen rule catalogs even when
   the vendor behavior registry records other supported User customizations.
 - Tool recognizers attach exactly one `ToolRecognition` per `(file, tool, kind)` and sort
   them by the closed tool/kind order. Compatible admissions merge provenances; incompatible
@@ -1384,12 +1385,12 @@ configuration.
   apply the retry partition and, when roots were admitted, attach every context and transfer
   one batch. Batch scan results and graph records then remain tentative until their one
   generation commit.
-  Initial enable attempts all four frozen entries. Retry derives the complete fixed-order
+  Initial enable attempts all five frozen entries. Retry derives the complete fixed-order
   `retryableTools` projection from the same tuple: non-pending unpublished `admitted` controls
   plus `rejected` controls whose `retryDisposition` is `same-preview`; it excludes published,
   pending, and lexical `new-preview-required` controls, and the request cannot add, omit, or
   reorder it. Admission partitions that server-owned set into a deterministic
-  rejected subset and an admitted subset of zero to four roots. A lexically invalid entry
+  rejected subset and an admitted subset of zero to five roots. A lexically invalid entry
   or a consented root that is missing or is not a readable directory excludes only that
   root — recorded as absent or failed per the closed admission outcomes — and
   allows admitted siblings to continue. Any other unexpected throw or
@@ -1405,7 +1406,7 @@ configuration.
   transfers them together into exactly one `GlobalBatchScan` with one `scanRequestId`, one
   publication authority, and one working set. That batch
   assembles one separately identified Global Source for each admitted tool/root pair—never a
-  logical Source combining Copilot, Claude, and Codex—and publishes all of them together only
+  logical Source combining Copilot, Claude, Codex, and Antigravity—and publishes all of them together only
   through one `committable-complete` or `committable-partial` Global generation
   commit. Initial enable or retry therefore has exactly one batch-level scan job, result, and
   observable commit.
@@ -1530,7 +1531,7 @@ configuration.
 | Otherwise active-platform `node:path.isAbsolute` returns false             | `inputState: relative` / `preview-invalid`      | Retain the relative preview entry with zero filesystem/network I/O; do not normalize, resolve, fall back, or create authority                                                                                                                                                                                                           |
 | Otherwise the string is absolute, including one outside the ordinary home  | `inputState: eligible` / `preview-eligible`     | Escape and retain the stored exact raw lexical value in the server-retained preview record with zero filesystem/network I/O, keep it in the fixed four-entry confirmation, and await the one all-tools consent action; only this row can reach post-consent admission                                                                   |
 | Consent names a stale, replayed, or superseded `previewId`                 | `consent-rejected`                              | Perform zero proposed-root I/O; create no authority                                                                                                                                                                                                                                                                                     |
-| A consented root is missing or is not a readable directory                 | `absent` or `root-rejected`                     | Record that member as absent or failed without creating its Source and without blocking sibling members; continue partitioning the current server-owned set—all four members initially or exact `retryableTools` on retry                                                                                                               |
+| A consented root is missing or is not a readable directory                 | `absent` or `root-rejected`                     | Record that member as absent or failed without creating its Source and without blocking sibling members; continue partitioning the current server-owned set—all five members initially or exact `retryableTools` on retry                                                                                                               |
 | Any proposed-root operation throws or rejects unexpectedly                 | Ordinary-error propagation                      | Abort the whole Global transaction, discard every provisional sibling context/result, publish no admitted subset, and retain the prior snapshot                                                                                                                                                                                         |
 | Post-consent admission succeeds for one or more roots                      | `root-admitted` batch subset                    | Atomically attach all admitted contexts/IDs to their controls and transfer them together to the one `GlobalBatchScan`; create no public Source or graph before its single atomic commit                                                                                                                                                 |
 

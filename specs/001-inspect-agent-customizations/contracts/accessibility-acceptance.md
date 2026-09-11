@@ -161,7 +161,7 @@ weight as well (1.4.1).
 Under `forced-colors: active` every token returns to a system colour, so the reader's own
 palette replaces all of the above and none of these numbers applies: the three surfaces
 collapse to `Canvas`, the two line tokens and the muted text to `CanvasText`, the accent to
-`LinkText`, and the three vendor marks to `CanvasText` together — a mark's colour is a
+`LinkText`, and the four vendor marks to `CanvasText` together — a mark's colour is a
 scanning aid and nothing rests on it (AGENTS.md § Icon policy).
 
 `tests/e2e/palette-contrast.spec.ts` re-measures every row above in a real engine, in both

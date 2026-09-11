@@ -625,7 +625,7 @@ Contract and fixture validation must prove all of the following:
    absent or safely-read empty override, that an unreadable or binary override ends the
    branch with its file Diagnostic and no fallback, and that the two selectors are never
    both published.
-   Global-consent fixtures reject selector-shaped input, evaluate all four frozen entries,
+   Global-consent fixtures reject selector-shaped input, evaluate all five frozen entries,
    partition missing or unreadable roots from admitted readable ones, publish all admitted
    one-root Sources in one batch
    generation, and prove that an unexpected failure aborts the whole provisional subset

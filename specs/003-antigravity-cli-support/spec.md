@@ -155,9 +155,14 @@ one name spelled in both, and confirm each row states the products that resolve 
 
 - **FR-001**: Antigravity CLI MUST be a supported tool, the fourth beside GitHub Copilot, Claude
   Code, and OpenAI Codex, named `Antigravity CLI` on every surface. Every surface that names the
-  supported tools — the tool filter, the legend, the empty-state scope, the consent surface, the
-  launch option's description, and the user documentation — MUST name those four and no other
-  product. The parent specification's statements written for three tools and four Global members
+  supported tools — the tool filter, the legend, the consent surface, and the user documentation
+  — MUST name those four and no other product. Two surfaces name none, and stay that way: the
+  inventory's empty state, which states that nothing was recognized and leaves which products
+  the release covers to the documentation, because copy that spelled out the shipped catalog
+  would be a second copy of the registry; and the `--inspect-personal-setup` description, which
+  names the kinds it reads and the shared `~/.agents` directory rather than the tools. A surface
+  that names no tool cannot name four, so neither is on the list above. The parent
+  specification's statements written for three tools and four Global members
   MUST read four tools and five members in both languages. The supported tool is the vendor's
   terminal client alone: its editor extensions and its desktop application are separate surfaces
   this release does not recognize, and no location only they read enters the allowlist

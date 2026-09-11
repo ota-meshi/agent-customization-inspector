@@ -766,7 +766,8 @@ real home directory. Verify:
    separately identified member Global Sources—at most one each for Copilot, Claude,
    Codex, Antigravity CLI, and the shared agent home—and every Source has exactly one root.
    The Antigravity CLI home publishes its `GEMINI.md`, its `config/mcp_config.json`,
-   `config/hooks.json`, `config/agents/*.md`, and `config/skills/*/SKILL.md`, the terminal's
+   `config/hooks.json`, `config/agents/*.md` and `config/agents/*/agent.md`, and
+   `config/skills/*/SKILL.md`, the terminal's
    own `antigravity-cli/skills/` in both admitted shapes, and its
    `antigravity-cli/settings.json` under the settings, permissions, and hook rows, and
    nothing beside them (specs/003-antigravity-cli-support/spec.md FR-009). Every admitted Source from the

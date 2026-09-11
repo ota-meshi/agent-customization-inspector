@@ -641,9 +641,9 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
     // workspace skill and a global one are both available and say nothing
     // about which answers a slash command when they share a name — nor which
     // of the two admitted shapes the terminal takes when one name is spelled
-    // in both. A group establishing only unresolved selection states no rule,
-    // so the row says nothing rather than inventing a winner
-    // (`skill-resolution.ts`; specs/003-antigravity-cli-support/spec.md
+    // in both. A pipeline recording neither a selection nor a retention
+    // establishes nothing, so the row says nothing rather than inventing a
+    // winner (`skill-resolution.ts`; specs/003-antigravity-cli-support/spec.md
     // § FR-004; contracts/vendors/antigravity-cli.md § Known uncertainties
     // items 2 and 6).
     //

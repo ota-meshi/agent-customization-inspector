@@ -25,7 +25,7 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 
 | Requirement | Owning implementation, verification, and evidence tasks |
 |---|---|
-| FR-001 | T003, T006, T008, T018, T035, T048, T059–T060, T068–T070 |
+| FR-001 | T003, T006, T008, T018, T035, T048, T059–T060, T068–T070, T076, T078–T080 |
 | FR-002 | T011, T020–T021, T023, T025–T029, T036–T037 |
 | FR-003 | T011, T021, T023 |
 | FR-004 | T022, T026, T030–T031, T052–T056, T058 |
@@ -39,7 +39,7 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 | FR-012 | T011, T016, T021 |
 | FR-013 | T023 |
 | FR-014 | T012–T013, T016, T063, T065 |
-| FR-015 | T002, T009, T073 |
+| FR-015 | T002, T009, T073, T077 |
 | FR-016 | T011, T020–T021, T037–T038, T059 |
 | FR-017 | T011, T020–T021, T036, T038, T051, T059 |
 | QR-001 | T007, T009–T014, T017, T032, T072 |
@@ -47,14 +47,14 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 | QR-003 | T020–T024, T033–T034, T036–T042, T049, T051–T054, T057, T061–T062, T064, T071 |
 | QR-004 | T004, T063, T065 |
 | QR-005 | T042, T047 |
-| QR-006 | T001–T002, T016–T017, T059–T060, T074–T075 |
+| QR-006 | T001–T002, T016–T017, T059–T060, T074–T075, T080 |
 | SC-001 | T023 |
 | SC-002 | T021, T023, T040–T041 |
 | SC-003 | T005, T039, T041, T048 |
 | SC-004 | T024, T042 |
 | SC-005 | T006, T048, T059–T060, T071 |
 | SC-006 | T067, T071 |
-| SC-007 | T073 |
+| SC-007 | T073, T077 |
 
 ---
 
@@ -242,3 +242,16 @@ Each story phase ends at a state the independent test above can measure. Phase 6
 - A frozen count, digest, tuple, or version literal changes only after its gate has been watched failing against the new source.
 - Every host an agent starts takes `--no-open --port 0` and is stopped before the turn ends.
 - End-to-end runs name their specs and use `--project=chromium`; the whole browser suite is not run for this feature.
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: What the tree still owes this feature's specification and plan, found by `/speckit-converge` on 2026-09-11 and appended here for `/speckit-implement` to close. No existing task changes.
+
+- [X] T076 Amend the parent specification's remaining statements written for three tools and four Global members to four tools and five members, in both languages, in `specs/001-inspect-agent-customizations/spec.md` and `spec.ja.md`: the User Story 1 narrative that names GitHub Copilot, Claude Code, and OpenAI Codex alone; that story's acceptance scenario 1, whose Japanese still reads 「3ツールすべて」 where the English reads "all four tools"; and the Clarifications answers that still count four — "zero to four Global Sources" (Session 2026-07-17), "all four frozen preview entries" (Session 2026-07-20), and "four consented member roots — the Copilot, Claude, and Codex tool homes and the shared agent home" (Session 2026-08-27) — each restated with a dated amendment note, as the amended answers in that section already are, per FR-001 (partial).
+- [X] T077 Run `pnpm run check:official-sources -- --network` over the registry as it now stands — 63 records, eleven of them `google.antigravity.*` — and record the run in `specs/001-inspect-agent-customizations/validation.md` and `validation.ja.md`: the run recorded there is the 2026-09-10 one over 62 records and ten Google records, and no recorded run follows the eleventh, `google.antigravity.subagents`, reviewed on 2026-09-11 in `contracts/official-sources.md`, per SC-007 (partial).
+- [X] T078 [P] Amend the parent plan and contracts that still count three tools, four members, or three vendor marks, in both languages: `specs/001-inspect-agent-customizations/plan.md` and `plan.ja.md` — the Summary's three tools, "separate Copilot, Claude, and Codex contracts", "zero to four admitted member Global sources … (at most one each for Copilot, Claude, and Codex)", "the four members' frozen rule catalogs", "never a logical Source combining Copilot, Claude, and Codex", and the failure table's "all four members initially"; `contracts/runtime-composition.md` and `runtime-composition.ja.md` — the User row's "zero to four member Global Sources" and "all four frozen member entries"; `contracts/accessibility-acceptance.md` and `accessibility-acceptance.ja.md` — "the three vendor marks" under forced colours, now four; and `quickstart.md` and `quickstart.ja.md`, whose Antigravity CLI home step names `config/agents/*.md` alone where FR-009 admits `config/agents/<name>/agent.md` beside it, per FR-001 (partial).
+- [X] T079 Settle FR-001's list against the two surfaces on it that name no product: the `--inspect-personal-setup` description in `src/server/cli.ts`, which names the kinds it reads and the shared `~/.agents` directory and no tool, and the inventory empty state in `src/app/components/inventory/InventoryList.vue`, whose header records why it names no vendor. Either name the four supported tools on each, or amend FR-001 in `specs/003-antigravity-cli-support/spec.md` and `spec.ja.md` to drop the two from the surfaces that name the tools, since a surface naming none cannot name four, per FR-001 (partial).
+- [X] T080 [P] Name Antigravity CLI among the readers of the committed `.agents/skills/speckit-*` directories in the contributor section of `README.md` and `README.ja.md`, which names Codex and Copilot alone while the shipped `antigravity.repo.skill.directory` rule makes Antigravity CLI a third reader of every `SKILL.md` there, per FR-001 (partial).
+- [X] T081 [P] Correct the three comments this feature left stale — `src/shared/registries/skill-resolution.ts`, which says no shipped product's skill strategies establish `unknown-order` alone, while Antigravity CLI's do and the decided answer is that the row states nothing (`tests/contract/inspection-rules.test.ts`); `src/shared/registries/antigravity/skill-collision.ts`, which says the row's same-name statement says the vendor documents no resolution, while the derivation yields `null` and no statement is rendered; and `src/server/inspection/parsers/json.ts`, which enumerates "every Antigravity CLI carrier" as the two `mcp_config.json` profiles and `settings.json`, omitting `.agents/hooks.json` and `config/hooks.json`, which `src/server/inspection/rules/hooks/antigravity.ts` reads through the same seam — per Constitution II (partial).

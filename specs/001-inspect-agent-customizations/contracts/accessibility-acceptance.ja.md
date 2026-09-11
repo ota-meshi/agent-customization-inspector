@@ -148,7 +148,7 @@ forced coloursでは破棄される。よって選択されたrail項目は、ac
 
 `forced-colors: active` ではすべてのtokenがsystem colourへ戻るため、読み手自身のpaletteが上記すべてを
 置き換え、これらの数値はどれも当てはまらない: 3段のsurfaceは`Canvas`へ、2つの線のtokenとmuted textは
-`CanvasText`へ、accentは`LinkText`へ、そして3つのvendor markはまとめて`CanvasText`へ戻る — markの色は
+`CanvasText`へ、accentは`LinkText`へ、そして4つのvendor markはまとめて`CanvasText`へ戻る — markの色は
 走査の助けであり、何もそれに依拠していない（AGENTS.md § Iconの方針）。
 
 `tests/e2e/palette-contrast.spec.ts` は上記すべての行を、実engineで、両schemeおよびforced coloursの下で

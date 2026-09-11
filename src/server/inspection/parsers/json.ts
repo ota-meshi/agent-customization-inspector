@@ -309,12 +309,14 @@ function acceptsComments({ tool, sourceRelativePath }: JsonDocumentContext): boo
       return false;
     case 'antigravity':
       // Strict, as the cited pages show it. Every Antigravity CLI carrier this
-      // product reads — the two `mcp_config.json` profiles and the user
-      // `settings.json` — is documented with strict-JSON examples and no page
-      // mentions comments, so nothing here claims a leniency the vendor has
-      // not stated (specs/003-antigravity-cli-support/data-model.md
-      // § Parser format table). A measurement that shows otherwise is
-      // recorded here, as the other vendors' are.
+      // product reads through this seam — the two `mcp_config.json` profiles,
+      // the user `settings.json`, and the `hooks.json` at the workspace's
+      // `.agents/` and the user tier's `config/` (`rules/hooks/antigravity.ts`)
+      // — is documented with JSON examples and no cited page mentions
+      // comments, so nothing here claims a leniency the vendor has not stated
+      // (specs/003-antigravity-cli-support/data-model.md § Parser format
+      // table). A measurement that shows otherwise is recorded here, as the
+      // other vendors' are.
       return false;
     case 'codex':
       // Every carrier strict, from the vendor's own source, one line each

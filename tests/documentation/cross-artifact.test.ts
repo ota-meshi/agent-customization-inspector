@@ -486,16 +486,16 @@ describe('task set', () => {
 
   it('freezes the Antigravity CLI feature’s task and phase counts in both languages', () => {
     // The same freeze for specs/003-antigravity-cli-support (its T065):
-    // seventy-three tasks in six phases, spelled here and in the task files
+    // seventy-nine tasks in seven phases, spelled here and in the task files
     // both, so a task or phase added without deciding to add one fails. Two
     // IDs in that range are vacant, which the task file states; the freeze
     // counts tasks rather than the highest ID for that reason.
     const antigravityEnglish = readArtifact('specs/003-antigravity-cli-support/tasks.md');
     const antigravityJapanese = readArtifact('specs/003-antigravity-cli-support/tasks.ja.md');
-    expect(parseTasks(antigravityEnglish).size).toBe(73);
-    expect(parseTasks(antigravityJapanese).size).toBe(73);
-    expect(antigravityEnglish.match(/^## Phase /gmu)).toHaveLength(6);
-    expect(antigravityJapanese.match(/^## Phase /gmu)).toHaveLength(6);
+    expect(parseTasks(antigravityEnglish).size).toBe(79);
+    expect(parseTasks(antigravityJapanese).size).toBe(79);
+    expect(antigravityEnglish.match(/^## Phase /gmu)).toHaveLength(7);
+    expect(antigravityJapanese.match(/^## Phase /gmu)).toHaveLength(7);
   });
 
   it('keeps every task self-contained, with no out-of-line amendment', () => {

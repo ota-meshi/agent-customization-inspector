@@ -396,8 +396,8 @@ walk方向、target file、trust、enablement、selection、installation、produ
 独立したbehavior/strategy factにする。Behavior record、source record、strategy、relationship、excluded ruleはreadを
 認可しない。
 
-Admitしたtool-home rootはtool別の独立したGlobal Sourceとして表す。Codex、Claude、Copilotごとに最大1つ、
-したがって1 sessionで0から4つのGlobal Sourceとする。各Sourceは正確に1つのrootと1つのSource-relative Path
+Admitしたtool-home rootはtool別の独立したGlobal Sourceとして表す。Codex、Claude、Copilot、Antigravity、共有agent homeごとに最大1つ、
+したがって1 sessionで0から5つのGlobal Sourceとする。各Sourceは正確に1つのrootと1つのSource-relative Path
 namespaceを所有し、そのroot配下にある異なるcustomization typeのfileは別々のinventory itemとして保つ。
 「repository-relative path」はRepository Sourceだけに使い、inventory-file/normalized-targetのDTO locator field、filter、
 file-scoped diagnostic、cross-source comparisonではSource-relative Pathを使う。Enabled Sourceとconsent previewの
@@ -465,7 +465,7 @@ relationshipまたはexcludedのままとする。
 
 Vendor contractは将来の保守のため、文書化済みUser settings、agent、skill、rule、hook、MCP source、plugin、
 state、deprecated surfaceもinventoryする。これらUser tableはevidenceでありconsentではない。FR-015からFR-018とFR-045が認可するのは、
-正確に4 memberのfrozen Global rule catalog — 各memberの文書化済みcustomization kindと、共有agent homeのskillおよび個人plugin
+正確に5 memberのfrozen Global rule catalog — 各memberの文書化済みcustomization kindと、共有agent homeのskillおよび個人plugin
 marketplace file — であり、vendor behavior registryが記録していても、それらcatalog外のUser
 surfaceはspecification変更なしではすべて`excluded`のままとする。
 
@@ -1010,7 +1010,7 @@ error messageを参照する（FR-030）。Startupのfailureにはrequest owner�
 ないためprocess top levelへ到達する。Tool別Global rescanのfatal failureはその
 Sourceのconsent、accepted root context、最後にcommitしたgraphをretry/disable用に保持する。
 
-Session-wide consent 1件で4 member全てを固定し、frozen preview entryごとに`GlobalToolControl`を1つ持ち、selectorは
+Session-wide consent 1件で5 member全てを固定し、frozen preview entryごとに`GlobalToolControl`を1つ持ち、selectorは
 持たない。Consent後validationは、missingまたはreadable directoryではないconsent済みrootを、他のmemberを
 blockせずそのtoolのabsent/failed outcomeとして記録する（FR-014）。1つのtoolのrootに限定されない
 unexpected failureは全transactionをowning request
@@ -1099,7 +1099,7 @@ recursive-directory segment）を拒否し、exact/direct-child/explicit descend
 `ANY_DIRECTORIES` segmentがvendor traversal factをsatisfiedにしないことを証明する。Targeted regression fixtureはCopilotの別々のVS Code/CLI/Cloud lookup表、
 選択した正確なRepository rootだけのClaude project settings、non-recursiveなCodex rule directory、plugin activation対
 authored manifest inventory、FR-015からFR-018およびFR-045の外へのGlobal read 0件を扱う。
-さらに、member Global Sourceが0から4つで各member最大1つ、各Sourceが正確に1つのrootとSource-relative Path
+さらに、member Global Sourceが0から5つで各member最大1つ、各Sourceが正確に1つのrootとSource-relative Path
 namespaceを持つこと、literal credentialのexact表示、reveal controlがないこと、環境変数を置換しないことを
 検証する。Lifecycle fixtureは全4 Sourceの未解決failure共存、Source別clear/replace/removal、自動初回failureの
 current stateを扱う。Browser fixtureはordinaryなrequest rejectionがrequest-localに留まること、transportが報告する
@@ -1169,8 +1169,8 @@ runの固定scoringを組み合わせる。
 
 **決定**: 次のruleが全design artifactにわたって成り立つ。
 
-1. Admitしたmember root 1つをmember Global Source 1つとし、Codex、Claude、Copilot、共有agent homeごとに最大1つ、
-   1 sessionで0から4つとする。
+1. Admitしたmember root 1つをmember Global Source 1つとし、Codex、Claude、Copilot、Antigravity、共有agent homeごとに最大1つ、
+   1 sessionで0から5つとする。
 2. 読み取り可能なsource、表示対象の宣言済みmetadata、comparison contentは記述済みliteral valueを維持する。
    Credential maskingとreveal workflowは持たない。調査対象content内の環境変数参照はliteralのまま解決も置換も
    せず、文書化済みの3つのtool-home変数はGlobal rootの特定だけに使う。
@@ -1330,7 +1330,7 @@ mutationとしてscoreすること、server-sideおよびclient-sideのacknowled
    platform自身のpath処理が所有する。Valueの欠落はGunshiのtyped argument validationが所有し、productの固定
    startup errorを受けるのは明示的なempty valueだけで、反復optionはparserのlast valueへ解決する。Generation 0は
    stableでreadを認可しないRepository Sourceを同期的に含む。
-2. Global consentはselectorなしのall-tools action 1件とする。Initial processingは必ずfrozen preview entry 4件全てを評価し、
+2. Global consentはselectorなしのall-tools action 1件とする。Initial processingは必ずfrozen preview entry 5件全てを評価し、
    retryはcurrent server-side `retryableTools`のcomplete set、すなわちnon-pending unpublished `admitted` controlと
    `retryDisposition: same-preview`の`rejected` controlを導出し、lexicalな`new-preview-required`を除外する。決定的に
    rejectされたentryはsiblingをblockしない。Admitした全rootをbatch
