@@ -588,7 +588,7 @@ Inspector matcher look like vendor lookup behavior:
 The vendor contracts also inventory documented User settings, agents, skills, rules,
 hooks, MCP sources, plugins, state, and deprecated surfaces for future maintenance. These
 User tables are evidence, not consent. FR-015 through FR-018 and FR-045 authorize exactly
-the four members' frozen Global rule catalogs — each member's documented customization
+the five members' frozen Global rule catalogs — each member's documented customization
 kinds, and the shared agent home's skills and personal plugin marketplace file; every
 User surface outside those catalogs remains `excluded` without a specification change,
 even when the vendor behavior registry documents it.
@@ -1279,7 +1279,7 @@ startup failure has no request owner and reaches the process top level. A fatal 
 retains that Source's consent, accepted root context, and last committed graph for retry or
 disable.
 
-One session-wide consent fixes all four members, with one `GlobalToolControl` per frozen
+One session-wide consent fixes all five members, with one `GlobalToolControl` per frozen
 preview entry and no selector. Post-consent validation records a consented root that is
 missing or not a readable directory as that tool's absent or failed outcome without
 blocking the other tools (FR-014); an unexpected failure outside one tool's root aborts
@@ -1388,7 +1388,7 @@ a vendor traversal fact.
 Targeted regression fixtures cover Copilot's separate VS Code/CLI/Cloud lookup tables,
 Claude project settings only at the exact selected Repository root, non-recursive Codex rule directories,
 plugin activation versus authored manifest inventory, and zero Global reads beyond
-FR-015 through FR-018 and FR-045. They also verify zero to four member Global Sources, at
+FR-015 through FR-018 and FR-045. They also verify zero to five member Global Sources, at
 most one per member, exactly one root and Source-relative Path namespace per Source, exact literal
 credential display, no reveal controls, and no environment-variable substitution.
 Lifecycle fixtures cover concurrent unresolved failures for all four Sources, per-Source
@@ -1500,8 +1500,8 @@ release tarball inspection, and the fixed scoring of an agent-driven first-use r
 **Decision**: These rules hold across every design artifact:
 
 1. One admitted member root equals one member Global Source, with at most one
-   Source each for Codex, Claude, Copilot, and the shared agent home and zero to four in a
-   session.
+   Source each for Codex, Claude, Copilot, Antigravity, and the shared agent home and zero to
+   five in a session.
 2. Readable source, displayed declared metadata, and comparison content preserve authored
    literal values. There is no credential masking or reveal workflow. Environment-variable
    references in inspected content remain literal and are not resolved or substituted;
@@ -1709,7 +1709,7 @@ display:
    option resolves to the parser's last value. Generation 0 synchronously contains the
    stable, non-authorizing Repository Source.
 2. Global consent is one selector-free all-tools action. Initial processing always evaluates
-   all four frozen preview entries; retry derives the complete current server-side
+   all five frozen preview entries; retry derives the complete current server-side
    `retryableTools` set: non-pending unpublished `admitted` controls plus `rejected` controls
    whose `retryDisposition` is `same-preview`, excluding lexical `new-preview-required`. A
    deterministic rejected entry does not block siblings. All admitted roots are scanned as

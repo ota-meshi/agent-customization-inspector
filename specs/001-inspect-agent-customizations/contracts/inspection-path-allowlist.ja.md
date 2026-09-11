@@ -506,7 +506,7 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    whitespace-only、non-empty、replacement-decoded、binary、unreadable caseを適用し、fallbackがabsent
    または安全にreadしたempty overrideの場合だけ適用されること、unreadable/binaryなoverrideがそのfile
    Diagnosticでbranchを終了してfallbackしないこと、両selectorを同時にpublishしないことを証明する。
-   Global-consent fixtureはselector-shaped inputをrejectし、frozen entry 4つすべてをevaluateし、
+   Global-consent fixtureはselector-shaped inputをrejectし、frozen entry 5つすべてをevaluateし、
    missing/unreadableなrootとadmit済みreadable rootをpartitionし、admit済みone-root Sourceをすべて
    1 batch generationへpublishし、unexpected failureが実際のerrorを報告してprovisional
    subset全体をabortすることを証明する。

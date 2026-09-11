@@ -152,8 +152,13 @@ read もされないことを確認する。
 - **FR-001**: Antigravity CLI はサポート対象ツールでなければならず (MUST)、GitHub Copilot、
   Claude Code、OpenAI Codex に並ぶ4つ目として、どの surface でも `Antigravity CLI` と名指され
   なければならない (MUST)。サポート対象ツールを名指すすべての surface — tool filter、legend、
-  empty-state の scope、consent surface、起動オプションの説明、ユーザー文書 — はこの4つを名指し、
-  他の製品を名指してはならない (MUST NOT)。親仕様の3ツール・4 member 向けの記述は、両言語で
+  consent surface、ユーザー文書 — はこの4つを名指し、他の製品を名指してはならない (MUST NOT)。
+  ツールを名指さない surface が2つあり、それはそのままとする。inventory の empty state は
+  「何も認識されなかった」という事実だけを述べ、このリリースがどの製品を対象とするかは文書に
+  委ねる。出荷 catalog を書き並べる文言は registry の2つ目の写しになるからである。
+  `--inspect-personal-setup` の説明は、読む kind と共有の `~/.agents` ディレクトリを名指し、
+  ツールを名指さない。ツールを名指さない surface は4つを名指せないので、どちらも上の一覧には
+  入らない。親仕様の3ツール・4 member 向けの記述は、両言語で
   4ツール・5 member と読めるようにしなければならない (MUST)。サポート対象ツールは vendor の端末
   client だけである。その editor 拡張と desktop アプリは別の surface であり、このリリースは認識
   しない。それらだけが読む location は allowlist に入れない (§ Clarifications)。

@@ -615,7 +615,8 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    retainedされたままになり得る。どちらのfailureもauthorityやjobを作らず、`scanRequestId`を発行しない。
 3. Opt-in後は文書化されたmember candidateだけが0から5つの別識別member Global Sourceに表示される。
    Copilot、Claude、Codex、Antigravity CLI、共有agent homeごとに最大1つで、各Sourceは正確に1つのrootを持つ。
-   Antigravity CLI homeは`GEMINI.md`、`config/mcp_config.json`、`config/hooks.json`、`config/agents/*.md`、
+   Antigravity CLI homeは`GEMINI.md`、`config/mcp_config.json`、`config/hooks.json`、`config/agents/*.md`と
+   `config/agents/*/agent.md`、
    `config/skills/*/SKILL.md`、2つのadmitされた形での端末自身の`antigravity-cli/skills/`、そしてsettings・
    permissions・hookの各rowに載る`antigravity-cli/settings.json`をpublishし、その他は何もpublishしない
    （specs/003-antigravity-cli-support/spec.md FR-009）。Initial/retry transactionでadmitされた

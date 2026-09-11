@@ -118,10 +118,10 @@ change here starts from the task list rather than from the code:
 holds the numbered phases, [`.specify/memory/constitution.md`](.specify/memory/constitution.md)
 governs how work is done, and [`AGENTS.md`](AGENTS.md) holds the working policy.
 
-The Spec Kit skills are committed here — `.agents/skills/speckit-*` for Codex and Copilot,
-`.claude/skills/speckit-*` for Claude Code — so cloning is the whole setup and there is no
-`specify init` to run. A finished task is ticked in `tasks.md` and `tasks.ja.md` together, in
-the change that finishes it.
+The Spec Kit skills are committed here — `.agents/skills/speckit-*` for Codex, Copilot, and
+Antigravity CLI, `.claude/skills/speckit-*` for Claude Code — so cloning is the whole setup and
+there is no `specify init` to run. A finished task is ticked in `tasks.md` and `tasks.ja.md`
+together, in the change that finishes it.
 
 ### Where to start, by kind of change
 

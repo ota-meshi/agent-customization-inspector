@@ -25,7 +25,16 @@
 
 **変更。** commandは何も変更しない。報告するだけで、その後をreviewerが決める。
 
-**Network実行。** 2026-09-10、62 record全件 — 10件の`google.antigravity.*` recordを含む — に対して
+**Network実行。** 2026-09-11、63 record全件 — 11件の`google.antigravity.*` recordを含む — に対して
+実行した（specs/003-antigravity-cli-support T077）。11件目は`google.antigravity.subagents`で、user
+tierがadmitする2つのcustom agentの綴りのために同日reviewしたものである。Googleのrecordはすべて
+解決した。各URLは`antigravity.google`上で直接`200`を返し、引用した全section — `Agent Location and
+Discovery`と`Frontmatter Configuration (YAML)`を含む — が配信されたheadingとして解決した。driftを
+持つ1 recordは下のrunが既に報告していたものと同じで変化はない。
+`anthropic.claude-code.skills.locations-discovery`の引用した2 sectionは依然として配信されていない。
+同じ4件のClaude Code changelog anchorが、配信されたtable of contents経由で解決した。
+
+2026-09-10、62 record全件 — 10件の`google.antigravity.*` recordを含む — に対して
 実行した（specs/003-antigravity-cli-support T073）。Googleのrecordはすべて解決した。各URLは
 `antigravity.google`上で直接`200`を返し、引用した全sectionが配信されたheadingとして解決した。Runは
 reviewerが解決すべきdriftを1 record報告したが、この機能の外である。

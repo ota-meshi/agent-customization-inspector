@@ -25,7 +25,7 @@
 
 | Requirement | Owning implementation, verification, and evidence tasks |
 |---|---|
-| FR-001 | T003、T006、T008、T018、T035、T048、T059–T060、T068–T070 |
+| FR-001 | T003、T006、T008、T018、T035、T048、T059–T060、T068–T070、T076、T078–T080 |
 | FR-002 | T011、T020–T021、T023、T025–T029、T036–T037 |
 | FR-003 | T011、T021、T023 |
 | FR-004 | T022、T026、T030–T031、T052–T056、T058 |
@@ -39,7 +39,7 @@
 | FR-012 | T011、T016、T021 |
 | FR-013 | T023 |
 | FR-014 | T012–T013、T016、T063、T065 |
-| FR-015 | T002、T009、T073 |
+| FR-015 | T002、T009、T073、T077 |
 | FR-016 | T011、T020–T021、T037–T038、T059 |
 | FR-017 | T011、T020–T021、T036、T038、T051、T059 |
 | QR-001 | T007、T009–T014、T017、T032、T072 |
@@ -47,14 +47,14 @@
 | QR-003 | T020–T024、T033–T034、T036–T042、T049、T051–T054、T057、T061–T062、T064、T071 |
 | QR-004 | T004、T063、T065 |
 | QR-005 | T042、T047 |
-| QR-006 | T001–T002、T016–T017、T059–T060、T074–T075 |
+| QR-006 | T001–T002、T016–T017、T059–T060、T074–T075、T080 |
 | SC-001 | T023 |
 | SC-002 | T021、T023、T040–T041 |
 | SC-003 | T005、T039、T041、T048 |
 | SC-004 | T024、T042 |
 | SC-005 | T006、T048、T059–T060、T071 |
 | SC-006 | T067、T071 |
-| SC-007 | T073 |
+| SC-007 | T073、T077 |
 
 ---
 
@@ -242,3 +242,16 @@ Phase 1・2・3 で、リポジトリの inventory が4つ目のツールを名�
 - 凍結された件数・digest・tuple・version literal は、その gate が新しい source に対して落ちるところを確認してからのみ変更する。
 - エージェントが起動する host は `--no-open --port 0` を取り、ターンが終わる前に停止する。
 - end-to-end の実行は spec を名指しし `--project=chromium` を使う。この機能のためにブラウザ suite 全体は走らせない。
+
+---
+
+## Phase 7: Convergence
+
+**目的**: この機能の specification と plan に対して tree がまだ負っているもの。2026-09-11 に `/speckit-converge` が見つけ、`/speckit-implement` が閉じるためにここへ追記した。既存の task は変えない。
+
+- [X] T076 親 specification に残る、3ツールと4つの Global member 向けに書かれた記述を、両言語で4ツールと5 member に改める。`specs/001-inspect-agent-customizations/spec.md` と `spec.ja.md`: GitHub Copilot、Claude Code、OpenAI Codex だけを名指す User Story 1 の本文、英語が "all four tools" と読むところを日本語がまだ「3ツールすべて」と読む同 story の受け入れシナリオ 1、そして今も4つを数える Clarifications の回答 — 「0から4つのGlobal Source」(Session 2026-07-17)、「frozen previewの4 entryすべて」(Session 2026-07-20)、「4つのconsent済みmember root — Copilot、Claude、Codexのtool homeと、共有agent home」(Session 2026-08-27) — を、同じ節の修正済みの回答がすでにそうであるように、日付付きの修正注記を添えて言い直す。FR-001 に基づく (partial)。
+- [X] T077 現在の registry — 63 record、うち `google.antigravity.*` が11件 — に対して `pnpm run check:official-sources -- --network` を実行し、その実行を `specs/001-inspect-agent-customizations/validation.md` と `validation.ja.md` に記録する。そこに記録された実行は 2026-09-10 の 62 record・10件の Google record を対象としたもので、`contracts/official-sources.md` で 2026-09-11 に review された11件目 `google.antigravity.subagents` の後の実行は記録されていない。SC-007 に基づく (partial)。
+- [X] T078 [P] 今も3ツール・4 member・3つの vendor mark を数える親の plan と contract を両言語で改める: `specs/001-inspect-agent-customizations/plan.md` と `plan.ja.md` — 概要の3ツール、「Copilot・Claude・Codexの個別contract」、「member Global sourceを0から4つ（Copilot、Claude、Codex、共有agent homeごとに最大1つ）」、「4 memberのfrozen rule catalog」、「Copilot、Claude、Codexを1つのlogical Sourceへ結合しない」、失敗表の「全4 member」; `contracts/runtime-composition.md` と `runtime-composition.ja.md` — User 行の「0から4つのmember Global Source」と「固定4-member entry」; `contracts/accessibility-acceptance.md` と `accessibility-acceptance.ja.md` — forced colours 下の「3つのvendor mark」、今は4つ; そして `quickstart.md` と `quickstart.ja.md` — Antigravity CLI home の手順が `config/agents/*.md` だけを挙げ、FR-009 がその隣に admit する `config/agents/<name>/agent.md` を挙げていない。FR-001 に基づく (partial)。
+- [X] T079 FR-001 の一覧を、その中で製品を1つも名指さない2つの surface と突き合わせて決着させる: `src/server/cli.ts` の `--inspect-personal-setup` の説明は読む kind と共有の `~/.agents` ディレクトリを挙げてツールを挙げず、`src/app/components/inventory/InventoryList.vue` の inventory の空状態はなぜ vendor を名指さないかをヘッダーに記録している。それぞれにサポート対象の4ツールを名指させるか、`specs/003-antigravity-cli-support/spec.md` と `spec.ja.md` の FR-001 を改めてこの2つをツールを名指す surface の一覧から外すかのどちらかである。何も名指さない surface は4つを名指せない。FR-001 に基づく (partial)。
+- [X] T080 [P] `README.md` と `README.ja.md` の contributor 向けの節で、コミット済みの `.agents/skills/speckit-*` ディレクトリの読み手に Antigravity CLI を加える。その節は Codex と Copilot だけを挙げているが、出荷済みの `antigravity.repo.skill.directory` rule により Antigravity CLI はそこにあるすべての `SKILL.md` の3つ目の読み手である。FR-001 に基づく (partial)。
+- [X] T081 [P] この機能が古いままにした3つのコメントを正す — `src/shared/registries/skill-resolution.ts` は skill strategy が `unknown-order` だけを確立する出荷済み製品は無いと言うが、Antigravity CLI のものがそうであり、決着した答えは行が何も述べないことである (`tests/contract/inspection-rules.test.ts`); `src/shared/registries/antigravity/skill-collision.ts` は行の同名 statement が「vendor は解決を文書化していない」と述べると言うが、導出は `null` を返し statement は描かれない; `src/server/inspection/parsers/json.ts` は「Antigravity CLI のすべての carrier」を2つの `mcp_config.json` profile と `settings.json` と列挙し、`src/server/inspection/rules/hooks/antigravity.ts` が同じ seam を通して読む `.agents/hooks.json` と `config/hooks.json` を落としている — Constitution II に基づく (partial)。

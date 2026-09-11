@@ -8,7 +8,7 @@
 
 ## 概要
 
-`npx`で起動し、GitHub Copilot、Claude Code、OpenAI Codexのallowlist対象
+`npx`で起動し、GitHub Copilot、Claude Code、OpenAI Codex、Antigravity CLIのallowlist対象
 カスタマイズファイルを、有効化せずに一覧表示・比較する読み取り専用ローカルInspectorを構築する。
 1つの凝集したpackageとして、Nuxt client SPAを`src/app/`、Node CLIとローカルinspection hostを`src/server/`、
 serializable contractを`src/shared/`に置き、1つの公開`dist/`にまとめ、その`dist/cli.mjs`を`package.json.bin`の直接targetとする。
@@ -64,7 +64,7 @@ Customization discoveryは、文書化済みvendor lookup behavior（`behaviorId
 （`ruleId`）、runtime composition strategy（`strategyId`）という3つのcontract-versioned registryとして
 保守する。各recordは、それを確立するofficial pageを`sourceId`をkeyとする自身の`evidence`配列で引用し、
 専用のregistryは持たない。
-共通allowlist contractはmatcher grammarとsafety invariant、Copilot・Claude・Codexの個別contractはvendor
+共通allowlist contractはmatcher grammarとsafety invariant、Copilot・Claude・Codex・Antigravityの個別contractはvendor
 behaviorとtool固有rule、composition contractはorderとrelationship-only rule、source registryは正確な公式
 URL/section evidenceとreview metadataを所有する。RepositoryとUser/Global behaviorは別表とし、Copilotの
 VS Code、CLI、Cloud surfaceを1つのlookup modelへcollapseしない。
@@ -345,7 +345,7 @@ file-scope `Diagnostic` DTOは、actionableなlocationとして必要最小限�
 
 **規模・scope**: ローカルuser 1人、選択済みRepository root（defaultでは1回captureしたexact invocation
 `process.cwd()`、またはaccepted single `--root` value）をrootとするRepository sourceを正確に1つ、session-wideな
-all-members opt-in 1回から作るadmit済みのmember Global sourceを0から4つ（Copilot、Claude、Codex、共有agent homeごとに最大1つ）、Sourceごとにrootを正確に1つ、
+all-members opt-in 1回から作るadmit済みのmember Global sourceを0から5つ（Copilot、Claude、Codex、Antigravityのhomeと共有agent homeごとに最大1つ）、Sourceごとにrootを正確に1つ、
 comparison内は異なるreadableなカスタマイズファイル最大2件、または明示された不在の対応物に対して表示する1件。Inventory sizeはproduct定義のitem上限ではなくsupported runtimeと
 execution environmentによって決まる。
 
@@ -729,7 +729,7 @@ anchorなしevidence、またはauthorしたsegment programがclosed token gramm
 Contract gateはrecord自身から読み、`(subjectKind, subjectId)`ごとにexactなsubject
 recordを1件copyし、missing/duplicate subjectをrejectしてfixed subject-kind/ID orderでsortする。
 
-維持管理する3つのvendor contractにあるPresentation Allowlist sectionを、独立した規範的design inputとする。
+維持管理する4つのvendor contractにあるPresentation Allowlist sectionを、独立した規範的design inputとする。
 最初のparser、recognizer、API、UI detail taskより前に、supportedな全`(tool, kind)`、そのrowがcoverするadmit済み
 source form、relationship-kind setを英日両方で列挙する。Rowはmetadata fieldのcatalogを持たない。
 Skillの宣言はfileが書いたkeyで公開されるため、列挙できる閉じた集合が存在しないからである。Effective eligibilityはtuple
@@ -877,7 +877,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   host-independentなclosed spelling grammarを通し、enumerate済みallowlist entry正確に1件へresolveできた
   場合だけ読み、ADS、device、trailing-dot/space spellingはfile open前に拒否する。
   Vendor behavior registryがその他の
-  supported User customizationを記録する場合も、FR-015からFR-018とFR-045によりGlobal readは4 memberのfrozen rule catalogだけに
+  supported User customizationを記録する場合も、FR-015からFR-018とFR-045によりGlobal readは5 memberのfrozen rule catalogだけに
   制限し続ける。
 - Tool recognizerは`(file, tool, kind)`ごとにexact `ToolRecognition` 1件を付け、closed tool/kind順でsortする。
   Compatible admissionはprovenanceをmergeし、incompatible parsed meaningはそのrecognitionのall-or-nothing extractionだけを
@@ -1073,11 +1073,11 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   Source/boundary IDをoperation-localに保つ。Owned toolすべてが決定的なadmission outcomeに達した後の1回のcoordinator decisionで
   initial consent/controlをactivateするかretry partitionを適用し、rootをadmitした場合だけ全contextをattachして1 batchへ
   transferする。その後もbatch scan resultとgraph recordは1回のgeneration commitまでtentativeのままにする。
-  Initial enableはfrozen entry 4件すべてを試行する。Retryは同じfixed tupleから、non-pending unpublished `admitted` controlと
+  Initial enableはfrozen entry 5件すべてを試行する。Retryは同じfixed tupleから、non-pending unpublished `admitted` controlと
   `retryDisposition: same-preview`の`rejected` controlで構成するfixed-order `retryableTools` projection全体をserver側でderiveする。
   Published、pending、lexicalな`new-preview-required` controlを除外し、requestはtargetを追加、omit、reorderできない。
   Admissionはserver所有のsetを、決定的なrejected subsetと
-  0〜4件のrootからなるadmitted subsetへpartitionする。Lexicalにinvalidなentry、またはmissingか
+  0〜5件のrootからなるadmitted subsetへpartitionする。Lexicalにinvalidなentry、またはmissingか
   readableなdirectoryでないconsent済みrootはそのrootだけを除外し（closed admission outcomeに従って
   absentまたはfailedとして記録する）、admit可能なsiblingを続行させる。それ以外のunexpectedなthrowまたは
   rejectionは通常のerrorとしてattemptをfailさせ、enable/retry transaction全体を
@@ -1089,7 +1089,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   contextとcandidate IDを各controlへatomicにattachし、一緒に、1つの`scanRequestId`、1つのpublication authority、1つの
   working setを持つ正確に1つの`GlobalBatchScan`へtransferする。そのbatchはadmit済みtool/root pairごとに独立識別された
   Global Sourceを1つassembleし、
-  Copilot、Claude、Codexを1つのlogical Sourceへ結合しない。全Sourceを、
+  Copilot、Claude、Codex、Antigravityを1つのlogical Sourceへ結合しない。全Sourceを、
   `committable-complete`または`committable-partial`のGlobal generation commit 1回だけで一緒にpublishする。Initialまたはretryには、
   batch levelのscan job、result、観測可能なcommitが正確に1つだけ存在する。
   Admission後、最後のregistered-operation-ID checkと直後の同期的coordinator settlementでresponse dispositionをatomicに
@@ -1173,7 +1173,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
 | それ以外でactive-platform `node:path.isAbsolute`がfalseを返す       | `inputState: relative` / `preview-invalid`      | Filesystem/network I/O 0件でrelative preview entryを保持し、normalize、resolve、fallback、authority作成を行わない                                                                                                                                                                      |
 | それ以外（通常のhome外を含むabsolute string）                       | `inputState: eligible` / `preview-eligible`     | 保存するexact raw lexical valueをfilesystem/network I/Oなしでescapeしてserver保持preview recordに保持し、fixed four-entry confirmationに保持して1回のall-tools consent actionを待つ。このrowだけがconsent後admissionへ進める                                                           |
 | Consentがstale、replayed、またはsupersededな`previewId`を指名       | `consent-rejected`                              | Proposed-root I/Oを行わず、authorityを作らない                                                                                                                                                                                                                                         |
-| Consent済みrootがmissing、またはreadableなdirectoryでない           | `absent`または`root-rejected`                   | そのSourceを作らず、sibling memberをblockせずにそのmemberをabsentまたはfailedとして記録する。initialでは全4 member、retryではexact `retryableTools`というcurrent server-owned setのpartitionを続行する                                                                                 |
+| Consent済みrootがmissing、またはreadableなdirectoryでない           | `absent`または`root-rejected`                   | そのSourceを作らず、sibling memberをblockせずにそのmemberをabsentまたはfailedとして記録する。initialでは全5 member、retryではexact `retryableTools`というcurrent server-owned setのpartitionを続行する                                                                                 |
 | Proposed-root operationがunexpectedにthrowまたはreject              | 通常のerror propagation                         | Global transaction全体をabortし、全provisional sibling context/resultを破棄し、admitted subsetを一切publishせず以前のsnapshotを保持する                                                                                                                                                |
 | 1件以上のrootでconsent後admissionが成功                             | `root-admitted` batch subset                    | 全admitted context/IDを各controlへatomicにattachし、一緒に1つの`GlobalBatchScan`へtransferして、その1回のatomic commit前にpublic Source/graphを作らない                                                                                                                                |
 

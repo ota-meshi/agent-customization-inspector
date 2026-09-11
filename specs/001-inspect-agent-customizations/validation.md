@@ -32,7 +32,18 @@ is found by that reading, not by a lookup.
 
 **Mutation.** The command changes nothing. It reports, and a reviewer decides what follows.
 
-**Network runs.** 2026-09-10, over all 62 records, the ten `google.antigravity.*` records
+**Network runs.** 2026-09-11, over all 63 records, the eleven `google.antigravity.*` records
+included (specs/003-antigravity-cli-support T077) — the eleventh being
+`google.antigravity.subagents`, reviewed that day for the two custom-agent spellings the user
+tier admits. Every Google record resolved: each URL answered `200` directly on
+`antigravity.google`, and every cited section — `Agent Location and Discovery` and
+`Frontmatter Configuration (YAML)` among them — resolved as a served heading. The one record
+with drift is the one the run below had already reported, unchanged:
+`anthropic.claude-code.skills.locations-discovery`, whose two cited sections are still not
+served. The same four Claude Code changelog anchors were established through a served table of
+contents.
+
+2026-09-10, over all 62 records, the ten `google.antigravity.*` records
 included (specs/003-antigravity-cli-support T073). Every Google record resolved: each URL
 answered `200` directly on `antigravity.google`, and every cited section resolved as a served
 heading. The run reported one record with drift a reviewer must resolve, outside this

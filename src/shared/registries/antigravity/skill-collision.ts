@@ -4,8 +4,10 @@
 // presentation allowlist), so its clash is one row's own — two files it invokes
 // by one name — and a file whose extraction failed never had that name
 // resolved. The vendor does not document which of a workspace and a global
-// skill of one name it uses, which the row's same-name statement says
-// (`skill-resolution.ts`) rather than a reason to count the clash differently.
+// skill of one name it uses; the row therefore renders no same-name statement
+// for this product — its one skill strategy establishes nothing, so the
+// derivation yields `null` (`skill-resolution.ts`) — and that silence is not a
+// reason to count the clash differently.
 // `src/shared/skill-collision.ts` composes this into the closed per-tool table.
 import {
   SkillCollisionPolicy,

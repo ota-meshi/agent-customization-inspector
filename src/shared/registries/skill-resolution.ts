@@ -61,8 +61,12 @@ type EstablishedResolution = SameNameSkillResolution | 'selects-in-unestablished
  * `all-remain-context-selected`. `select-first` beside `unknown-order` is the
  * selecting pipeline whose duplicate order is recorded unresolved; see
  * {@link EstablishedResolution}. A pipeline that states none of these yields
- * nothing, and so does one that states both `retain-all` and `select-first`:
- * what a vendor documents that way is a question for evidence review, not for
+ * nothing — Antigravity CLI's `unknown-order` alone is the shipped case, its
+ * pages saying that a workspace and a global skill of one name are both
+ * available and nothing about which answers, so its row states nothing
+ * (contracts/vendors/antigravity-cli.md § Known uncertainties items 2 and 6)
+ * — and so does one that states both `retain-all` and `select-first`: what a
+ * vendor documents that way is a question for evidence review, not for
  * arithmetic over an enum.
  */
 function resolutionOf(strategy: RuntimeCompositionStrategy): EstablishedResolution | null {
@@ -99,7 +103,9 @@ function resolutionOf(strategy: RuntimeCompositionStrategy): EstablishedResoluti
  * A group agreeing on `selects-in-unestablished-order` alone would have no
  * publishable member to agree on and yields `null` — what such a product's
  * row should say is evidence review for the phase that ships one, and no
- * shipped product has that shape.
+ * shipped product has that shape: Antigravity CLI, the one product whose
+ * strategy records `unknown-order` without a selection beside it, reaches
+ * `null` through the pipeline that states none of the three, above.
  */
 export function sameNameSkillResolutionOf(
   strategies: readonly RuntimeCompositionStrategy[],
