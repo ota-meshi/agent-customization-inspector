@@ -112,9 +112,10 @@ Node.js `^24.11.0 || ^26.0.0` と、最近のブラウザ。それだけです�
 にあり、進め方は [`.specify/memory/constitution.md`](.specify/memory/constitution.md) が、作業方針は
 [`AGENTS.md`](AGENTS.ja.md) が定めています。
 
-Spec Kit のスキルはリポジトリに入っています。Codex、Copilot、Antigravity CLI 向けが
-`.agents/skills/speckit-*`、Claude Code 向けが `.claude/skills/speckit-*` なので、clone すればそれで準備は終わりで、`specify init`
-を走らせる必要はありません。終わったタスクは `tasks.md` と `tasks.ja.md` の両方に、それを終わらせる
+Spec Kit のスキルはリポジトリに入っています。Codex と Antigravity CLI 向けが
+`.agents/skills/speckit-*`、Claude Code 向けが `.claude/skills/speckit-*`、Copilot 向けが
+`.github/skills/speckit-*` なので、clone すればそれで準備は終わりで、`specify init` を走らせる
+必要はありません。終わったタスクは `tasks.md` と `tasks.ja.md` の両方に、それを終わらせる
 同じ変更でチェックを入れます。
 
 ### 変更の種類ごとの入り口

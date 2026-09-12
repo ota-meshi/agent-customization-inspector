@@ -19,6 +19,7 @@ test-results/
 .specify/
 .agents/skills/speckit-*/
 .claude/skills/speckit-*/
+.github/skills/speckit-*/
 
 # Vendored third-party skills are kept byte-identical to their upstream
 # (AGENTS.md § Vendored agent customizations); formatting them would make the
