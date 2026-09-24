@@ -341,8 +341,8 @@ export class GlobalConsentPreview {
     //
     // `traversalPlanVersion` is distinct from `TraversalPlan.schemaVersion`,
     // which versions one plan record's shape rather than what the set selects.
-    this.allowlistVersion = '2026-09-10';
-    this.traversalPlanVersion = '2026-09-10';
+    this.allowlistVersion = '2026-09-24';
+    this.traversalPlanVersion = '2026-09-24';
     this.excludedRuleIds = Object.values(INSPECTION_RULES)
       .filter((rule) => rule.discoveryClass === 'excluded' && rule.sourceKinds.includes('global'))
       .map((rule) => rule.ruleId)

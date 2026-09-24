@@ -24,25 +24,30 @@ about four and five.
 
 - Q: Antigravity CLI reads `~/.gemini/GEMINI.md`, `~/.gemini/config/`, and `~/.gemini/antigravity-cli/`. How does the personal-setup member reach it? → A: As the fifth member, which is a directory rather than a product: `~/.gemini` is what that member proposes, and the paths admitted below it are this vendor's.
 - Q: The vendor documents a terminal, editor extensions, and a desktop application, and the editor and desktop surfaces read locations the terminal does not. Which of them does this release recognize? → A: The terminal alone. The transition this feature follows is one terminal replacing another, and the reader it serves is deciding about the terminal they run; folding in the editor and desktop surfaces would admit locations such as a workspace plugin directory that no terminal page documents, which widens what the inventory lists past what that reader runs. A location the shared `.agents/` pages document and a terminal page corroborates is not such a widening: the terminal reads that directory, and which of its entries the terminal reads is settled by the pages rather than by which product tree a page sits in. The other surfaces stay available to a later feature, which would add them as surfaces of this same tool rather than as another tool.
-- Q: `.agents/skills/` holds two shapes. When `deploy.md` and `deploy/SKILL.md` sit side by side, is that one inventory row or two? → A: One row. A skill row's unit is one name as each product resolves it, which is what already puts a `.agents/skills/x/SKILL.md` and a `.claude/skills/x/SKILL.md` on one row; the row carries both definitions and states which product reads which. No new mechanism is needed, and no precedence between the two shapes is invented.
-- Q: The terminal's own page shows a workspace skill as a flat `.md` file, while the vendor's Agent Skills page shows the same directory holding a folder with a `SKILL.md`. Which shapes does this release admit? → A: Both, for this tool. `.agents/skills/` is one directory three of the vendor's products read, and each shape is documented for it on an official page of that vendor; admitting one and declining the other would leave a reader's own `.agents/skills/deploy/SKILL.md` unlisted for the terminal while the same file is listed for two other products. The file shape is the terminal page's, the directory shape is the Agent Skills page's, and neither page states a precedence, so none is invented. What the terminal's own global directory admits is unchanged: `antigravity-cli/skills/` is the terminal's alone and only the flat shape is documented there.
+- Q: `.agents/skills/` can hold `deploy.md` beside `deploy/SKILL.md`. Is that one inventory row or two? → A: One row, holding the folder alone. A skill row's unit is one name as each product resolves it, which is what puts a `.agents/skills/x/SKILL.md` and a `.claude/skills/x/SKILL.md` on one row; the flat `deploy.md` is no product's skill (FR-004), so it is on no row and no precedence between the two is stated. (Amended 2026-09-24: the flat file left the allowlist, so the row carries one shape.)
+- Q: Which skill shapes does this release admit for this tool? → A: The folder holding a `SKILL.md`, in the workspace and in the home. Every page that gives a terminal skill location shows that shape — the terminal's skills page and the vendor's Agent Skills page alike — and the shipped terminal filters a flat Markdown file directly below `skills/` out before reading a name, so a flat file is admitted nowhere. `.agents/skills/` is one directory three of the vendor's products read, so one `.agents/skills/deploy/SKILL.md` carries three recognitions. (Amended 2026-09-24: the flat shape left the allowlist, because the terminal's own page no longer documents it and the terminal does not discover it.)
 - Q: `.agents/` also holds a rules directory and a hooks file. Are they admitted for this tool? → A: Yes, both. The vendor's Rules page places workspace rules in `.agents/rules/`, the Hooks page places a `hooks.json` in the workspace's `.agents/` and in the home's `config/`, and the terminal's own migration page states that workspace skills, rules, and MCP servers are preserved — which is a terminal page naming the rules directory as one the terminal reads. Both are published under the kinds that already exist, shown as written: an activation mode is not evaluated against a file and a hook command is never run.
-- Q: The skills and rules pages both record a superseded `.agent/` spelling beside the current `.agents/`. Is it admitted? → A: Yes, at the locations and in the shapes those pages document there — `.agent/skills/<name>/SKILL.md` and `.agent/rules/<name>.md` — and nowhere else. Backward support is stated on the page that states the location, so the deprecated spelling reaches exactly what that page shows at it; the flat skill shape is the terminal page's and that page names only `.agents/`, so `.agent/skills/<name>.md` stays out and is recorded as a known uncertainty.
-- Q: A static analysis of the published `agy` 1.2.0 binary shows the terminal discovering only the folder shape, and shows an unnamed skill resolving to `SKILL` rather than to its folder name. Does the release follow the binary or the pages? → A: Both, each where it is the better evidence. The flat shape stays admitted, because a reader who followed the terminal's own page has that file and declining it would show them nothing about it, while admitting it costs a row the vendor's own documentation supports; the observation is recorded on the vendor contract and the rule goes when a page or a later build settles it. The naming does not follow the binary. A row's name is the one the recognizing product resolves, and the same binary's `GetSkillsCreatePath` builds `{workspace}/.agents/skills/{skill_name}/SKILL.md`, so the terminal itself treats the folder as carrying the name: an unnamed folder is named by its folder, which is the answer the two other products reading that file give, and an unnamed flat file by its own file name, having no folder to take one from. The global allowlist does follow the binary, admitting both documented global roots rather than ranking them, because the terminal walks both. (Amended 2026-09-11: the naming half of this answer was corrected to the fallback FR-004 and the shipped units state, after the two readings inside the binary were weighed against each other.)
+- Q: The skills and rules pages both record a superseded `.agent/` spelling beside the current `.agents/`. Is it admitted? → A: Yes, at the locations and in the shapes those pages document there — `.agent/skills/<name>/SKILL.md` and `.agent/rules/<name>.md`, the rules directory at every depth the current spelling is admitted at — and nowhere else. Backward support is stated on the page that states the location, so the deprecated spelling reaches exactly what that page shows at it. (Amended 2026-09-24: the rules directory is admitted at every depth under both spellings, and no flat skill is admitted under either.)
+- Q: A static analysis of the published `agy` 1.2.0 binary shows the terminal discovering only the folder shape, and shows an unnamed skill resolving to `SKILL` rather than to its folder name. Does the release follow the binary or the pages? → A: The pages, and on discovery the two now agree: they document the folder shape alone and the binary discovers it alone. The naming does not follow the binary. A row's name is the one the recognizing product resolves, and the same binary's `GetSkillsCreatePath` builds `{workspace}/.agents/skills/{skill_name}/SKILL.md`, so the terminal itself treats the folder as carrying the name: an unnamed folder is named by its folder, which is the answer the two other products reading that file give. The global allowlist does follow the binary, admitting both global skill roots rather than ranking them, because the terminal walks both. (Amended 2026-09-11: the naming half of this answer was corrected to the fallback FR-004 and the shipped units state, after the two readings inside the binary were weighed against each other. Amended 2026-09-24: the discovery half follows the pages, which no longer document a flat skill.)
 - Q: The vendor documents a workspace plugin directory at `.agents/plugins/`. Is it admitted? → A: No. No terminal page names it: the terminal's own pages document a plugin only as a bundle `agy` installs into the home, which is why installed copies are excluded. That exclusion's reason — an installed copy is reproduced from its source — does not cover a plugin authored in a repository, so the vendor contract states the workspace directory's own reason separately: this release has no terminal evidence that the terminal loads it.
-- Q: Does an Antigravity CLI recognition reach `GEMINI.md` and `AGENTS.md` below the repository root? → A: No, the repository root's pair alone. The migration guide states the workspace context files as the ones in the active directory and says nothing about a depth, so reaching deeper would rest on an inference — the same reason the home instruction rule was not widened for the previous vendor. The depth is recorded as a known uncertainty on the vendor contract, and the rule widens when the vendor documents the hierarchy.
+- Q: Does an Antigravity CLI recognition reach `GEMINI.md` and `AGENTS.md` below the repository root? → A: Yes, at every depth, each governing the directory holding it. The Rules page states that whenever the terminal reads or edits a file it walks up from that file's folder to the workspace root, loading `<dir>/AGENTS.md` or `<dir>/GEMINI.md` and `<dir>/.agents/AGENTS.md` or `<dir>/.agents/GEMINI.md` at each level, so a file at any level is one the terminal can load, and the `.agents/` spelling belongs to the directory holding that `.agents/`. (Amended 2026-09-24: the Rules page now documents the hierarchy, which the answer had waited for.)
 - Q: The fifth member's directory stays `~/.gemini` while the product it was named for is no longer supported. What does its label say? → A: `Antigravity home`. The member table names a member by whose directory it is rather than by the directory's own name, and a label that differs from the path is already what that table does: `~/.config/github-copilot` is labelled `Copilot home`. The short form follows the same family — `Antigravity CLI` shortens to `Antigravity` as `OpenAI Codex` shortens to `Codex` — and the member's root path is shown beside the label, so the label says whose directory it is and the path says where.
-- Q: A skill that is one file — the shape the terminal's own page documents, in the repository and in the home — has no directory, and the detail's file panel is the panel holding the skill's directory and the open file. What does that page show? → A: The skill panel alone, with no file panel and no tab strip: the panel's subject is a directory the skill does not have, and a tab strip offering one tab is not a choice. The heading stays the skill's own path, because what it says — the one identity every product reading it shares, where the names they invoke it by differ — is true of a file as it is of a directory. A row's companion count needs nothing new: it is already drawn only where a skill ships companions. The skill panel carries the file's own text under the `Source` viewer every single-file detail carries, on the same condition they use — readable, never parsed successfully — because the panel is the whole page here and the files tab is where the folder shape reads that text. (Amended 2026-09-11: the answer named the panels this page drops and left what the remaining panel holds to be inferred; a flat skill whose extraction failed then had a page with a diagnostic and nothing to read.)
+- Q: A skill that is one file has no directory, and the detail's file panel is the panel holding the skill's directory and the open file. What does that page show? → A: Nothing new: no rule admits a skill that is one file (FR-004), so every skill detail is the folder one, with its file panel and its tabs. (Amended 2026-09-24: the flat shape left the allowlist, and with it the panel-only detail.)
 - Q: The parent specification repeats its first-use evaluation only when the designated file's ground truth moves. That file is the repository root `AGENTS.md`, and this tool reads it, so its recognizing tools go from two to three. Is a run owed? → A: Yes. The condition the parent set is met, so the study inputs are updated and the twenty agent-driven sessions are run before release, with the result recorded. A reader of the designated file now has a harder answer to give, and a criterion measured against a page that no longer matches would be measuring nothing.
 - Q: Does the release publish the prompt and command kind for this tool? → A: No. Antigravity CLI's migration guide converts legacy commands into skills, and no page documents a repository command directory, so this tool contributes no row of that kind. The kind stays in the closed set for the three tools that do publish it.
+
+### Session 2026-09-24
+
+- Q: The vendor's Rules page now documents context files and rules below the repository root, a global `AGENTS.md` beside the global `GEMINI.md`, the same pair below the home's `config/`, and modular global rules. Does the allowlist follow? → A: Yes, to exactly what the page states. In the repository: `GEMINI.md` and `AGENTS.md` in any directory and in any directory's `.agents/`, and a rules directory's immediate `.md` children at every depth. In the home: `AGENTS.md`, `config/GEMINI.md`, and `config/AGENTS.md` beside `GEMINI.md`, and a rule at `config/rules/<name>.md` or `antigravity-cli/rules/<name>.md`. The recognition was waiting for the vendor to document the hierarchy, and it now has.
+- Q: The terminal's skills page no longer shows a flat `.md` skill, and the shipped terminal filters one out. Does the flat rule stay? → A: No. Both flat rules — `.agents/skills/<name>.md` and `antigravity-cli/skills/<name>.md` — are removed, and with them the mechanism that told a file-shaped skill from a folder-shaped one: once no rule admits the file shape, every skill is its folder, and a discriminant that can take only one value is a second state for the same fact.
 
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - See Antigravity CLI as a Reader of Repository Files (Priority: P1)
 
-A developer opens a repository that carries an `.agents/` directory: skills in both shapes, a
-rules directory, a hooks file, an MCP configuration, custom agents, and a root `GEMINI.md` and
-`AGENTS.md`. Today the
+A developer opens a repository that carries an `.agents/` directory: skill folders, a rules
+directory, a hooks file, an MCP configuration, custom agents, and `GEMINI.md` and `AGENTS.md`
+files at the root and in subdirectories. Today the
 inventory lists those files under the products that already read them and says nothing about
 the terminal the developer actually runs. After this feature the same rows name Antigravity CLI
 as one of their readers, and the files only Antigravity CLI reads appear at all.
@@ -58,7 +63,7 @@ and that no excluded neighbour is listed or read.
 
 **Acceptance Scenarios**:
 
-1. **Given** a repository with `.agents/skills/format-tests.md`, **When** the reader opens the
+1. **Given** a repository with `.agents/skills/format-tests/SKILL.md`, **When** the reader opens the
    skills inventory, **Then** a row for that skill names Antigravity CLI as its reader and the
    detail shows the file's declarations and its instructions.
 2. **Given** a repository with `.agents/mcp_config.json` declaring a local and a remote server,
@@ -74,6 +79,9 @@ and that no excluded neighbour is listed or read.
    and its activation is shown as written, with no pattern matched against any file.
 6. **Given** a repository with `.agents/hooks.json`, **When** the reader opens the hooks
    inventory, **Then** its declarations are listed as written and no command is run.
+7. **Given** a repository with `packages/api/AGENTS.md`, **When** the reader opens the
+   instructions inventory, **Then** the file is listed with Antigravity CLI among its readers,
+   governing `packages/api/`.
 
 ### User Story 2 - Inspect the Antigravity CLI Home After Consent (Priority: P2)
 
@@ -93,7 +101,7 @@ path is enumerated, opened, or read.
 
 1. **Given** a consented home holding `GEMINI.md`, `config/mcp_config.json`,
    `config/agents/reviewer.md`, `antigravity-cli/skills/refactor/SKILL.md`,
-   `config/skills/triage/SKILL.md`, `antigravity-cli/skills/legacy.md`, and
+   `config/skills/triage/SKILL.md`, `config/rules/style.md`, and
    `antigravity-cli/settings.json`, **When** the scan completes, **Then** each is listed under
    the personal setup with Antigravity CLI as its reader, both global skill roots included.
 2. **Given** that home also holds an installed plugin copy and the manifest that tracks it,
@@ -102,27 +110,26 @@ path is enumerated, opened, or read.
    opens the permissions and hooks inventories, **Then** the declarations are shown as written
    and nothing is evaluated, resolved, or run.
 
-### User Story 3 - Tell One Skill Shape From the Other (Priority: P3)
+### User Story 3 - See Which Products Read a Shared Skill Folder (Priority: P3)
 
-`.agents/skills/` holds two shapes at once: a directory whose `SKILL.md` OpenAI Codex, GitHub
-Copilot, and Antigravity CLI all read, and a Markdown file only Antigravity CLI reads. A reader
-looking at that directory needs to see which of their skills each product actually picks up,
-and the answer differs by shape rather than by name.
+`.agents/skills/` is one directory three products read: OpenAI Codex, GitHub Copilot, and
+Antigravity CLI all take a skill folder's `SKILL.md` there. A reader looking at that directory
+needs to see that one folder is one skill with three readers, and that a Markdown file sitting
+directly in the directory is none of theirs.
 
 **Why this priority**: It is a comprehension problem inside a story the first two already
 deliver, so it is valuable but not what makes the feature worth shipping.
 
-**Independent Test**: Inspect a repository whose `.agents/skills/` holds both shapes, including
-one name spelled in both, and confirm each row states the products that resolve it.
+**Independent Test**: Inspect a repository whose `.agents/skills/` holds a skill folder and a
+flat Markdown file, and confirm the folder's row states all three products and the flat file is
+on no row.
 
 **Acceptance Scenarios**:
 
-1. **Given** `.agents/skills/deploy.md` and `.agents/skills/release/SKILL.md`, **When** the
-   reader opens the skills inventory, **Then** both are listed, the file names Antigravity CLI
-   alone, and the directory names all three products that read its shape.
-2. **Given** `.agents/skills/deploy.md` beside `.agents/skills/deploy/SKILL.md`, **When** the
-   reader opens the skills inventory, **Then** the product states what each name resolves to for
-   each product without inventing a precedence between them.
+1. **Given** `.agents/skills/release/SKILL.md`, **When** the reader opens the skills inventory,
+   **Then** the row names all three products that read that folder.
+2. **Given** `.agents/skills/deploy.md`, **When** the reader opens the skills inventory,
+   **Then** it is not listed, and it is never read.
 
 ### Edge Cases
 
@@ -137,8 +144,10 @@ one name spelled in both, and confirm each row states the products that resolve 
 - `.agents/rules/` holding a file that is not Markdown produces no rule row; a rules file whose
   frontmatter cannot be parsed keeps its row and carries one file-confined diagnostic.
 - A repository holding `.agent/skills/deploy/SKILL.md` or `.agent/rules/style.md` lists both
-  under the superseded spelling the vendor still supports; one holding `.agent/skills/deploy.md`
-  lists nothing, because no page documents the flat shape at that spelling.
+  under the superseded spelling the vendor still supports; one holding `.agents/skills/deploy.md`
+  or `.agent/skills/deploy.md` lists neither, because no page documents a flat skill.
+- A rules directory's subdirectory lists nothing below it: the terminal scans a rules
+  directory's immediate `.md` children only.
 - A home with no `antigravity-cli` directory at all is admitted and lists whatever of the other
   admitted paths it holds.
 - A repository holding `.gemini/commands/`, `.gemini/agents/`, or `.gemini/skills/` lists none
@@ -168,13 +177,14 @@ one name spelled in both, and confirm each row states the products that resolve 
   this release does not recognize, and no location only they read enters the allowlist
   (§ Clarifications).
 - **FR-002**: The Repository inspection path allowlist for Antigravity CLI MUST admit exactly:
-  the root context files `GEMINI.md` and `AGENTS.md`; a skill at `.agents/skills/<name>.md` or
-  `.agents/skills/<name>/SKILL.md`; a rule at `.agents/rules/<name>.md`; the hooks carrier
+  the context files `GEMINI.md` and `AGENTS.md` in any directory, `.agents/` included; a skill
+  at `.agents/skills/<name>/SKILL.md`; a rule at `<dir>/.agents/rules/<name>.md` for the root
+  and every directory below it; the hooks carrier
   `.agents/hooks.json`; a custom agent at `.agents/agents/<name>.md` or
   `.agents/agents/<name>/agent.md`; and the MCP carrier `.agents/mcp_config.json`. The
   superseded `.agent/` spelling MUST be admitted for the two locations whose pages state
   backward support for it, in the shape each of those pages documents there —
-  `.agent/skills/<name>/SKILL.md` and `.agent/rules/<name>.md` — and nowhere else. No other
+  `.agent/skills/<name>/SKILL.md` and `<dir>/.agent/rules/<name>.md` — and nowhere else. No other
   repository location is admitted for this tool.
 - **FR-003**: The Repository inspection MUST NOT admit, for this tool, any `.gemini/` path, any
   workspace settings file, or any workspace plugin directory including `.agents/plugins/` and
@@ -183,20 +193,13 @@ one name spelled in both, and confirm each row states the products that resolve 
   state that reason for the workspace plugin directory separately from the installed-copy reason
   FR-010 gives, because a plugin authored in a repository is not a copy of anything
   (§ Clarifications).
-- **FR-004**: An Antigravity CLI skill MUST be published in both admitted shapes, named by the
-  `name` its frontmatter declares and, when it declares none, by the shape's own fallback: the
-  skill folder for a folder, and the file's own name without its extension for a flat file,
-  which has no folder to take one from. The folder fallback is the one every other product
-  resolving the same file uses, so one `SKILL.md` stays one row with three readers rather than
-  splitting into two rows under two names. A file-shaped skill carries no companion
-  directory, so its row states none and its detail shows the skill alone, without the file panel
-  whose subject is a directory it does not have — while still showing the file's own text under
-  the `Source` viewer every single-file detail carries, on the condition they use
-  (§ Clarifications). A skill file and a
-  same-named skill directory in one `.agents/skills/` MUST be one inventory row, carrying both
-  definitions and stating which product resolves the name to which file, exactly as a name
-  spelled in two directories is one row today. No precedence between the two shapes may be
-  stated (§ Clarifications).
+- **FR-004**: An Antigravity CLI skill MUST be published in the folder shape, named by the
+  `name` its frontmatter declares and, when it declares none, by its skill folder. That fallback
+  is the one every other product resolving the same file uses, so one `SKILL.md` stays one row
+  with three readers rather than splitting into two rows under two names. A Markdown file
+  directly below a skills directory MUST NOT be admitted, in the repository or in the home: no
+  cited page documents that shape, and the shipped terminal filters it out before reading a
+  name (§ Clarifications).
 - **FR-005**: The MCP carriers MUST publish one row per declared server name, with every
   declared field shown as written, including a remote server's `serverUrl` and any legacy `url`
   or `httpUrl` a file still spells. No server is started, connected to, or probed, and no
@@ -206,11 +209,11 @@ one name spelled in both, and confirm each row states the products that resolve 
   inventory's no-name row rather than be named after its file or its directory: this vendor
   documents `name` as the agent's identity, as the two other declared-name products do, and a
   path fallback would report an agent name the product does not have.
-- **FR-007**: The repository root's `GEMINI.md` and `AGENTS.md` MUST carry an Antigravity CLI
-  recognition beside the recognitions they already carry, so one file stays one row with more
-  than one reader. A `GEMINI.md` or `AGENTS.md` below the root MUST NOT carry one: no cited page
-  states a depth, so the recognition stops where the documentation does, and the vendor contract
-  MUST record that depth as a known uncertainty (§ Clarifications).
+- **FR-007**: Every `GEMINI.md` and `AGENTS.md` in the repository MUST carry an Antigravity CLI
+  recognition beside the recognitions it already carries, so one file stays one row with more
+  than one reader. Each governs the directory holding it, and one inside a directory's
+  `.agents/` governs that directory: the terminal loads the pair from both places at each level
+  it walks up through from a file it reads or edits (§ Clarifications).
 - **FR-008**: The fifth Global member MUST stay the `~/.gemini` directory, in its current
   position after the three other tool homes and before the shared agent home, admitted and
   consented exactly as it is today. No environment property relocates it: no cited page
@@ -218,11 +221,13 @@ one name spelled in both, and confirm each row states the products that resolve 
   directory and nothing else. The member MUST be labelled `Antigravity home`, naming whose
   directory it is, with its root path shown beside it (§ Clarifications).
 - **FR-009**: The Global inspection path allowlist for that member MUST admit exactly:
-  `GEMINI.md`; `config/mcp_config.json`; `config/hooks.json`; a custom agent at
-  `config/agents/<name>.md` or `config/agents/<name>/agent.md`; a skill at
-  `antigravity-cli/skills/<name>/SKILL.md`, `config/skills/<name>/SKILL.md`, or
-  `antigravity-cli/skills/<name>.md`; and
-  `antigravity-cli/settings.json`. Both documented global skill roots are admitted rather than
+  `GEMINI.md`, `AGENTS.md`, `config/GEMINI.md`, and `config/AGENTS.md`; a rule at
+  `config/rules/<name>.md` or `antigravity-cli/rules/<name>.md`; `config/mcp_config.json`;
+  `config/hooks.json`; a custom agent at `config/agents/<name>.md` or
+  `config/agents/<name>/agent.md`; a skill at `antigravity-cli/skills/<name>/SKILL.md` or
+  `config/skills/<name>/SKILL.md`; and `antigravity-cli/settings.json`. The four context files
+  govern every project alike, because the page states that they apply across all projects and
+  are always active. Both documented global skill roots are admitted rather than
   ranked, because the terminal walks both. Both custom-agent shapes are admitted at the user
   tier for the reason both are admitted in the workspace: the subagents page gives the two
   spellings for that directory as it gives them for the workspace one, so admitting the file
@@ -258,8 +263,8 @@ one name spelled in both, and confirm each row states the products that resolve 
   citation — the evidence records are documentation's — and MUST be recorded in the vendor
   contract's prose with the exact build it was made against and a statement that no cited page
   establishes it.
-- **FR-016**: A workspace rule MUST be published under the rule kind, one row per Markdown file
-  below the rules directory, with the activation its frontmatter declares — manual, always on,
+- **FR-016**: A rule MUST be published under the rule kind, one row per Markdown file directly
+  in a rules directory FR-002 or FR-009 admits, with the activation its frontmatter declares — manual, always on,
   model decision, or a glob — shown exactly as written. No activation is evaluated: no glob is
   matched against a path and no description is judged for relevance.
 - **FR-017**: The two standalone hook carriers — the repository's `.agents/hooks.json` and the
@@ -276,10 +281,9 @@ one name spelled in both, and confirm each row states the products that resolve 
   outside this release.
 - **`~/.gemini` Global member**: the fifth consent member, whose admitted paths this feature
   states.
-- **Antigravity CLI skill**: one skill name, spelled in the repository as a Markdown file or as
-  a directory holding a `SKILL.md`, and in the home as a Markdown file. The file shape's row
-  unit is the file itself, which is the shape that carries no companion directory.
-- **Antigravity CLI workspace rule**: one Markdown file below the workspace rules directory,
+- **Antigravity CLI skill**: one skill name, spelled as a folder holding a `SKILL.md` in the
+  repository and in the home.
+- **Antigravity CLI rule**: one Markdown file directly in a repository or home rules directory,
   carrying the activation mode its frontmatter declares.
 
 ## Quality Requirements _(mandatory)_
@@ -293,19 +297,17 @@ one name spelled in both, and confirm each row states the products that resolve 
   same-name statement derivation, the which-files prose, the fixture launcher's rows — MUST name
   the same four tools: a surface naming a product this release does not support is an unfinished
   change.
-- **QR-002**: The skill kind MUST accommodate both row shapes without widening one record into a
-  type whose invariants hold for neither. A file-shaped skill states the facts it has; it does
-  not carry an empty directory census as though it had one. One vendor reading both shapes at
-  one location does not make them one record shape: the two rules stay separate records, as the
-  two custom-agent shapes already are.
+- **QR-002**: The skill kind MUST keep one row shape: a skill is its folder for every product,
+  so no field, unit, or branch may distinguish a file-shaped skill that no rule admits.
 
 ### Testing and Verification
 
 - **QR-003**: Automated verification MUST cover, for Antigravity CLI: every admitted Repository
   and Global location with a positive fixture and every selector family with a rejected
-  near-miss; the root `GEMINI.md` as one file with two recognitions; both skill shapes in one
-  `.agents/skills/` directory, including a name spelled in both, and the same two shapes under
-  the superseded `.agent/` spelling with the flat one rejected there; a rules file per
+  near-miss; the root `GEMINI.md` as one file with two recognitions; a nested context pair and
+  a directory's `.agents/` pair, each with the range it governs; a skill folder in one
+  `.agents/skills/` directory and under the superseded `.agent/` spelling, with a flat file
+  rejected under both; a rules file per
   documented activation mode; both standalone hook carriers; both custom-agent shapes; an
   MCP declaration carrying a remote `serverUrl` and one carrying a legacy key; the five-member
   preview; the exclusions FR-003 and FR-010 name; and zero execution, MCP connection, outbound
@@ -370,7 +372,8 @@ one name spelled in both, and confirm each row states the products that resolve 
 
 ## Assumptions
 
-- The Antigravity CLI surfaces above were read on 2026-09-10 from the official documentation at
+- The Antigravity CLI surfaces above were read on 2026-09-10, and the Rules and skills pages
+  again on 2026-09-24, from the official documentation at
   `https://antigravity.google/docs/` — the CLI overview, features, migration, MCP, plugins and
   skills, subagents, settings, and permissions pages, and the shared Agent Skills, Rules, Hooks,
   and Plugins pages. Planning revalidates each path against
@@ -387,10 +390,6 @@ one name spelled in both, and confirm each row states the products that resolve 
   the terminal reads at a shared root, and a page in another product's tree establishes only
   that product's own directory — which is why the three products' global skill directories
   differ and this release admits the terminal's alone.
-- The vendor's own pages disagree about the shape of a workspace skill, and the disagreement is
-  not resolved here: both shapes are admitted because both are documented for the directory, and
-  no page states which the terminal prefers when a name is spelled in both. That question is
-  recorded as a known uncertainty rather than answered.
 - The vendor's settings file is read as ordinary JSON unless planning measures otherwise, and any
   divergence between the vendor's own reading and the product's is recorded where the parser
   entry records the others.

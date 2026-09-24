@@ -84,9 +84,7 @@ test('inspects the Antigravity home as its own Source from the one confirmation'
   await expect(main).toContainText('5 of these directories were read');
 });
 
-test('publishes the one GEMINI.md instruction row beside the repository’s own', async ({
-  page,
-}) => {
+test('publishes the home’s four context files beside the repository’s own', async ({ page }) => {
   await page.goto(host.origin);
   await page.getByRole('tab', { name: /^Instructions/u }).click();
   const addresses = await page
@@ -95,16 +93,22 @@ test('publishes the one GEMINI.md instruction row beside the repository’s own'
     .evaluateAll((anchors) =>
       anchors.map((anchor) => new URL((anchor as HTMLAnchorElement).href).pathname),
     );
-  // The home's one context file, under its own Source, beside the
+  // The home's four context files, under their own Source, beside the
   // repository's file of the same name — two Sources, one path each (FR-010,
-  // FR-030). The home's `settings.json` names other context filenames and
-  // changes nothing here: the home admits `GEMINI.md` alone (spec.md
-  // § Clarifications).
-  expect(addresses).toContain('/instructions/detail/global-antigravity/GEMINI.md');
+  // FR-030). The Rules page names `GEMINI.md` and `AGENTS.md` directly in the
+  // home and in its `config/`, and nothing else there is a context file
+  // (spec.md FR-009).
   expect(addresses).toContain('/instructions/detail/repository/GEMINI.md');
   expect(
-    addresses.filter((address) => address.startsWith('/instructions/detail/global-antigravity/')),
-  ).toEqual(['/instructions/detail/global-antigravity/GEMINI.md']);
+    addresses
+      .filter((address) => address.startsWith('/instructions/detail/global-antigravity/'))
+      .toSorted(),
+  ).toEqual([
+    '/instructions/detail/global-antigravity/AGENTS.md',
+    '/instructions/detail/global-antigravity/GEMINI.md',
+    '/instructions/detail/global-antigravity/config/AGENTS.md',
+    '/instructions/detail/global-antigravity/config/GEMINI.md',
+  ]);
 });
 
 test('publishes every contracted Antigravity CLI kind from the one confirmation', async ({
@@ -113,31 +117,15 @@ test('publishes every contracted Antigravity CLI kind from the one confirmation'
   await page.goto(host.origin);
   const panel = page.getByRole('tabpanel');
 
-  // Skills at both documented global roots and in both admitted shapes: the
-  // shared configuration directory's folder, the terminal's own folder, and
-  // the flat file its page documents. The folder that declares no `name` takes
-  // its folder, which is what every product resolving a `SKILL.md` does
-  // (contracts/vendors/antigravity-cli.md § Known uncertainties item 7); the
-  // flat file has no folder to take, so it takes its own file name.
+  // Skill folders at both documented global roots: the shared configuration
+  // directory's and the terminal's own. The folder that declares no `name`
+  // takes its folder, which is what every product resolving a `SKILL.md` does
+  // (contracts/vendors/antigravity-cli.md § Known uncertainties item 7). The
+  // flat Markdown file beside them is no skill (spec.md § FR-004).
   await page.getByRole('tab', { name: /^Skill/u }).click();
   await expect(panel).toContainText('changelog');
-  await expect(panel).toContainText('refactor');
   await expect(panel).toContainText('release-notes');
-
-  // The two shapes stay two row units here as they do in a workspace: the flat
-  // file occupies no directory, so its detail is the skill alone and the files
-  // beside it in `antigravity-cli/skills/` are other rows rather than its
-  // companions (spec.md § FR-004). A single rule carrying both shapes gave
-  // this file the folder's unit, and its page then listed every file in the
-  // directory it shares.
-  await panel.getByRole('link', { name: 'refactor' }).first().click();
-  await expect(page.locator('.aci-skill-detail h2')).toHaveText(
-    'antigravity-cli/skills/refactor.md',
-  );
-  await expect(page.getByRole('tab', { name: /^files/iu })).toHaveCount(0);
-  await expect(page.getByRole('navigation', { name: 'Files in this skill' })).toHaveCount(0);
-  await page.goBack();
-  await page.getByRole('tab', { name: /^Skill/u }).click();
+  await expect(panel).not.toContainText('refactor');
   // The shared agent home's skill names the two products that document that
   // location; this vendor is not one of them (FR-045).
   const shared = panel.locator('.aci-item').filter({ hasText: 'pathfinder' });
@@ -152,6 +140,13 @@ test('publishes every contracted Antigravity CLI kind from the one confirmation'
   await expect(panel).toContainText('reviewer');
   await expect(panel).toContainText('triage');
   await expect(panel).not.toContainText('config/agents/archive/old.md');
+
+  // The modular global rules, one row per file directly in either rules
+  // directory, while a second level below one stays a near miss.
+  await page.getByRole('tab', { name: /^Rule/u }).click();
+  await expect(panel).toContainText('config/rules/style.md');
+  await expect(panel).toContainText('antigravity-cli/rules/terse.md');
+  await expect(panel).not.toContainText('config/rules/archive/old.md');
 
   // The settings document's permission policy, one row for the file.
   await page.getByRole('tab', { name: /^Permissions/u }).click();

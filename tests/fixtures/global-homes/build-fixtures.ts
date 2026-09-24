@@ -689,12 +689,12 @@ export function buildGlobalHomeFixture(
   write(homes.codex, 'sessions/rollout.jsonl', '{"kind":"session"}\n');
   write(homes.codex, 'docs/AGENTS.md', '# a nested copy the rule is anchored above\n');
 
-  // ---- Antigravity CLI (specs/003-antigravity-cli-support FR-009): the
-  // global context file, the shared `config/` directory's MCP carrier, hook
-  // carrier, custom agent and skill, the terminal's own `antigravity-cli/`
-  // skills in both admitted shapes, and its settings document — beside the
-  // installed plugin copies, credentials, conversation state, and the other
-  // two products' private directories the exclusions decline.
+  // ---- Antigravity CLI (specs/003-antigravity-cli-support FR-009): the four
+  // global context files, the two rules directories, the shared `config/`
+  // directory's MCP carrier, hook carrier, custom agent and skill, the
+  // terminal's own `antigravity-cli/` skill folder, and its settings document
+  // — beside the installed plugin copies, credentials, conversation state, and
+  // the other two products' private directories the exclusions decline.
   write(
     homes.antigravity,
     'GEMINI.md',
@@ -705,6 +705,22 @@ export function buildGlobalHomeFixture(
       `Staging deploys report to ${GLOBAL_HOME_ENVIRONMENT_REFERENCES.antigravity}.`,
       '',
     ].join('\n'),
+  );
+  // The three other global context files the Rules page names beside it,
+  // each applying across every project.
+  write(homes.antigravity, 'AGENTS.md', '# Personal agent instructions\n');
+  write(homes.antigravity, 'config/GEMINI.md', '# Shared configuration context\n');
+  write(homes.antigravity, 'config/AGENTS.md', '# Shared configuration agent instructions\n');
+  // A modular global rule in each rules directory the page names.
+  write(
+    homes.antigravity,
+    'config/rules/style.md',
+    '---\ntrigger: always_on\n---\n\nPrefer small, reviewable changes.\n',
+  );
+  write(
+    homes.antigravity,
+    'antigravity-cli/rules/terse.md',
+    '---\ntrigger: manual\n---\n\nAnswer in as few words as the question allows.\n',
   );
   // Strict JSON on purpose: no cited page documents comments in this vendor's
   // carriers, and the parser entry records that (research.md § 6).
@@ -801,9 +817,9 @@ export function buildGlobalHomeFixture(
       '',
     ].join('\n'),
   );
-  // The terminal's own skills, in both admitted shapes. The folder declares no
-  // `name`, so the row takes the folder — the fallback every product resolving
-  // a `SKILL.md` uses, and the one this vendor's contract settles on
+  // The terminal's own skill folder. It declares no `name`, so the row takes
+  // the folder — the fallback every product resolving a `SKILL.md` uses, and
+  // the one this vendor's contract settles on
   // (contracts/vendors/antigravity-cli.md § Known uncertainties item 7).
   write(
     homes.antigravity,
@@ -814,19 +830,6 @@ export function buildGlobalHomeFixture(
       '---',
       '',
       'Group the merged pull requests by area and write one line for each.',
-      '',
-    ].join('\n'),
-  );
-  write(
-    homes.antigravity,
-    'antigravity-cli/skills/refactor.md',
-    [
-      '---',
-      'name: refactor',
-      'description: Refactor the selected code without changing behavior.',
-      '---',
-      '',
-      'Refactor the following for clarity. Keep every test green.',
       '',
     ].join('\n'),
   );
@@ -856,11 +859,19 @@ export function buildGlobalHomeFixture(
       '',
     ].join('\n'),
   );
-  // Near misses inside admitted directories: a skill folder with no
-  // `SKILL.md`, a custom-agent directory whose file is not the `agent.md` the
-  // page names as the entry point, and a second level below the terminal's own
+  // Near misses inside admitted directories: a Markdown file directly below
+  // a skills directory, which no page documents as a skill; a custom-agent
+  // directory whose file is not the `agent.md` the page names as the entry
+  // point; a second level below a rules directory, where only the immediate
+  // `.md` children are scanned; and a second level below the terminal's own
   // skills directory.
   write(homes.antigravity, 'config/skills/README.md', '# personal skills live here\n');
+  write(
+    homes.antigravity,
+    'antigravity-cli/skills/refactor.md',
+    '---\nname: refactor\n---\n\nA flat file, not a skill.\n',
+  );
+  write(homes.antigravity, 'config/rules/archive/old.md', '---\ntrigger: manual\n---\n');
   write(homes.antigravity, 'config/agents/archive/old.md', '---\nname: old\n---\n');
   write(
     homes.antigravity,
@@ -943,17 +954,21 @@ export function buildGlobalHomeFixture(
       'rules/safety.rules',
     ],
     antigravity: [
+      'AGENTS.md',
       'GEMINI.md',
+      'antigravity-cli/rules/terse.md',
       'antigravity-cli/settings.json',
-      'antigravity-cli/skills/refactor.md',
       'antigravity-cli/skills/release-notes/SKILL.md',
       // The census enumerates a skill folder's own files, so the companion
       // beside that entry point is published beside it (FR-024).
       'antigravity-cli/skills/release-notes/examples/sample.md',
+      'config/AGENTS.md',
+      'config/GEMINI.md',
       'config/agents/reviewer.md',
       'config/agents/triage/agent.md',
       'config/hooks.json',
       'config/mcp_config.json',
+      'config/rules/style.md',
       'config/skills/changelog/SKILL.md',
     ],
     agents: ['plugins/marketplace.json', 'skills/pathfinder/SKILL.md'],
@@ -1003,9 +1018,11 @@ export function buildGlobalHomeFixture(
       'antigravity-cli/import_manifest.json',
       'antigravity-cli/plugins/security-tools/plugin.json',
       'antigravity-cli/plugins/security-tools/skills/scan/SKILL.md',
+      'antigravity-cli/skills/refactor.md',
       'antigravity-ide/skills/ide-only/SKILL.md',
       'antigravity/skills/desktop-only/SKILL.md',
       'config/agents/archive/old.md',
+      'config/rules/archive/old.md',
       'config/skills/README.md',
       'google_accounts.json',
       'hooks/audit.sh',

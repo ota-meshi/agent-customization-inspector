@@ -8,7 +8,7 @@
 
 **テスト**: すべての振る舞いの変更は、実装の前にリスクに応じた自動テストを要する。テストの task はそれが覆う実装に先行し、凍結された件数・digest・tuple・version literal は、その gate が新しい source に対して落ちるところを確認してからのみ変更する (AGENTS.md § Implementation simplicity policy)。
 
-**構成**: task は user story ごとにまとめる。Phase 2 は、すべての story が compile の対象とする閉じた語彙・vendor registry・凍結された contract である。閉じた union は、その上のすべての網羅的な record が一緒に動かなければ member を1つも増やせないからである。Phase 3 はリポジトリ (US1)、Phase 4 は Antigravity home (US2)、Phase 5 は1行を共有する2つの skill の形 (US3)、Phase 6 はリリース evidence と parity review である。
+**構成**: task は user story ごとにまとめる。Phase 2 は、すべての story が compile の対象とする閉じた語彙・vendor registry・凍結された contract である。閉じた union は、その上のすべての網羅的な record が一緒に動かなければ member を1つも増やせないからである。Phase 3 はリポジトリ (US1)、Phase 4 は Antigravity home (US2)、Phase 5 は共有された skill フォルダ (US3)、Phase 6 はリリース evidence と parity review、Phase 7 は convergence の指摘、Phase 8 は vendor の 2026-09-24 のページ改訂である。
 
 ## Format: `[ID] [P?] [Story?] Description`
 
@@ -26,30 +26,30 @@
 | Requirement | Owning implementation, verification, and evidence tasks |
 |---|---|
 | FR-001 | T003、T006、T008、T018、T035、T048、T059–T060、T068–T070、T076、T078–T080 |
-| FR-002 | T011、T020–T021、T023、T025–T029、T036–T037 |
+| FR-002 | T011、T020–T021、T023、T025–T029、T036–T037、T082–T083 |
 | FR-003 | T011、T021、T023 |
-| FR-004 | T022、T026、T030–T031、T052–T056、T058 |
+| FR-004 | T022、T026、T030–T031、T052–T056、T058、T082、T084 |
 | FR-005 | T021、T029、T042 |
 | FR-006 | T021、T028 |
-| FR-007 | T021、T023、T025 |
+| FR-007 | T021、T023、T025、T082–T083 |
 | FR-008 | T005、T019、T039、T041、T048 |
-| FR-009 | T040–T041、T043–T046、T051 |
+| FR-009 | T040–T041、T043–T046、T051、T082–T083 |
 | FR-010 | T040、T042、T047 |
 | FR-011 | T044–T046、T050 |
 | FR-012 | T011、T016、T021 |
 | FR-013 | T023 |
 | FR-014 | T012–T013、T016、T063、T065 |
-| FR-015 | T002、T009、T073、T077 |
-| FR-016 | T011、T020–T021、T037–T038、T059 |
+| FR-015 | T002、T009、T073、T077、T086 |
+| FR-016 | T011、T020–T021、T037–T038、T059、T082–T083 |
 | FR-017 | T011、T020–T021、T036、T038、T051、T059 |
 | QR-001 | T007、T009–T014、T017、T032、T072 |
-| QR-002 | T026、T030、T053 |
-| QR-003 | T020–T024、T033–T034、T036–T042、T049、T051–T054、T057、T061–T062、T064、T071 |
-| QR-004 | T004、T063、T065 |
+| QR-002 | T026、T030、T053、T084 |
+| QR-003 | T020–T024、T033–T034、T036–T042、T049、T051–T054、T057、T061–T062、T064、T071、T085、T087 |
+| QR-004 | T004、T063、T065、T086 |
 | QR-005 | T042、T047 |
-| QR-006 | T001–T002、T016–T017、T059–T060、T074–T075、T080 |
-| SC-001 | T023 |
-| SC-002 | T021、T023、T040–T041 |
+| QR-006 | T001–T002、T016–T017、T059–T060、T074–T075、T080、T086–T087 |
+| SC-001 | T023、T085 |
+| SC-002 | T021、T023、T040–T041、T085 |
 | SC-003 | T005、T039、T041、T048 |
 | SC-004 | T024、T042 |
 | SC-005 | T006、T048、T059–T060、T071 |
@@ -159,11 +159,11 @@
 
 ---
 
-## Phase 5: User Story 3 - 2つの skill の形を見分ける (Priority: P3)
+## Phase 5: User Story 3 - 共有された skill フォルダをどの製品が読むかを見る (Priority: P3)
 
-**目標**: `.agents/skills/` を見る読み手が、自分の skill のどれをどの製品が拾うのかを、両方の形で綴られた名前も含めて見られる。
+**目標**: `.agents/skills/` を見る読み手が、1つの skill フォルダが3つの読み手を持つ1つの skill であり、ディレクトリ直下の Markdown ファイルはどの製品のものでもないことを見られる。
 
-**独立テスト**: `.agents/skills/` に両方の形を、両方で綴られた同名も含めて置いたリポジトリを調べ、各行がそれを解決する製品を述べ、形の間に優先順位がないことを確認する。
+**独立テスト**: `.agents/skills/` に skill フォルダとフラットな Markdown ファイルを置いたリポジトリを調べ、フォルダの行が3製品すべてを述べ、フラットなファイルがどの行にも載らないことを確認する。
 
 ### User Story 3 のテスト (必須) ⚠️
 
@@ -253,5 +253,18 @@ Phase 1・2・3 で、リポジトリの inventory が4つ目のツールを名�
 - [X] T077 現在の registry — 63 record、うち `google.antigravity.*` が11件 — に対して `pnpm run check:official-sources -- --network` を実行し、その実行を `specs/001-inspect-agent-customizations/validation.md` と `validation.ja.md` に記録する。そこに記録された実行は 2026-09-10 の 62 record・10件の Google record を対象としたもので、`contracts/official-sources.md` で 2026-09-11 に review された11件目 `google.antigravity.subagents` の後の実行は記録されていない。SC-007 に基づく (partial)。
 - [X] T078 [P] 今も3ツール・4 member・3つの vendor mark を数える親の plan と contract を両言語で改める: `specs/001-inspect-agent-customizations/plan.md` と `plan.ja.md` — 概要の3ツール、「Copilot・Claude・Codexの個別contract」、「member Global sourceを0から4つ（Copilot、Claude、Codex、共有agent homeごとに最大1つ）」、「4 memberのfrozen rule catalog」、「Copilot、Claude、Codexを1つのlogical Sourceへ結合しない」、失敗表の「全4 member」; `contracts/runtime-composition.md` と `runtime-composition.ja.md` — User 行の「0から4つのmember Global Source」と「固定4-member entry」; `contracts/accessibility-acceptance.md` と `accessibility-acceptance.ja.md` — forced colours 下の「3つのvendor mark」、今は4つ; そして `quickstart.md` と `quickstart.ja.md` — Antigravity CLI home の手順が `config/agents/*.md` だけを挙げ、FR-009 がその隣に admit する `config/agents/<name>/agent.md` を挙げていない。FR-001 に基づく (partial)。
 - [X] T079 FR-001 の一覧を、その中で製品を1つも名指さない2つの surface と突き合わせて決着させる: `src/server/cli.ts` の `--inspect-personal-setup` の説明は読む kind と共有の `~/.agents` ディレクトリを挙げてツールを挙げず、`src/app/components/inventory/InventoryList.vue` の inventory の空状態はなぜ vendor を名指さないかをヘッダーに記録している。それぞれにサポート対象の4ツールを名指させるか、`specs/003-antigravity-cli-support/spec.md` と `spec.ja.md` の FR-001 を改めてこの2つをツールを名指す surface の一覧から外すかのどちらかである。何も名指さない surface は4つを名指せない。FR-001 に基づく (partial)。
-- [X] T080 [P] `README.md` と `README.ja.md` の contributor 向けの節で、コミット済みの `.agents/skills/speckit-*` ディレクトリの読み手に Antigravity CLI を加える。その節は Codex と Copilot だけを挙げているが、出荷済みの `antigravity.repo.skill.directory` rule により Antigravity CLI はそこにあるすべての `SKILL.md` の3つ目の読み手である。FR-001 に基づく (partial)。
+- [X] T080 [P] `README.md` と `README.ja.md` の contributor 向けの節で、コミット済みの `.agents/skills/speckit-*` ディレクトリの読み手に Antigravity CLI を加える。その節は Codex と Copilot だけを挙げているが、出荷済みの `antigravity.repo.skill` rule により Antigravity CLI はそこにあるすべての `SKILL.md` の3つ目の読み手である。FR-001 に基づく (partial)。
 - [X] T081 [P] この機能が古いままにした3つのコメントを正す — `src/shared/registries/skill-resolution.ts` は skill strategy が `unknown-order` だけを確立する出荷済み製品は無いと言うが、Antigravity CLI のものがそうであり、決着した答えは行が何も述べないことである (`tests/contract/inspection-rules.test.ts`); `src/shared/registries/antigravity/skill-collision.ts` は行の同名 statement が「vendor は解決を文書化していない」と述べると言うが、導出は `null` を返し statement は描かれない; `src/server/inspection/parsers/json.ts` は「Antigravity CLI のすべての carrier」を2つの `mcp_config.json` profile と `settings.json` と列挙し、`src/server/inspection/rules/hooks/antigravity.ts` が同じ seam を通して読む `.agents/hooks.json` と `config/hooks.json` を落としている — Constitution II に基づく (partial)。
+
+---
+
+## Phase 8: vendor の 2026-09-24 の Rules と skills のページ
+
+**目的**: vendor の Rules ページは今、リポジトリルートより下の context file と rule、global の `AGENTS.md`、home の `config/` 配下の同じ2つ、モジュール化された global rule を文書化しており、フラットな skill を示すページはもう無い (spec.ja.md § Clarifications Session 2026-09-24)。既存の task は変えない。
+
+- [X] T082 この機能の specification・plan・data model・research・quickstart を両言語で、広がった allowlist とフォルダの形だけに合わせて改める — `specs/003-antigravity-cli-support/spec.md`、`plan.md`、`data-model.md`、`research.md`、`quickstart.md` とそれぞれの `*.ja.md`。2026-09-24 の Clarifications session を加え、`checklists/vendor-integration.md` と `checklists/requirements.md` でこの変更が置き換える各 checklist 項目に日付付きの注記を添える。FR-002、FR-004、FR-007、FR-009、FR-016 に基づく。
+- [X] T083 `GEMINI.md` と `AGENTS.md` をすべての深さで1つの `antigravity.repo.context` rule の下に、rules ディレクトリをすべての深さで、home の4つの context file を、そして home の2つの rules ディレクトリを `antigravity.global.rule` の下に admit し、Rules ページを引用する behavior・strategy・relation を `src/shared/registries/antigravity/` と `src/shared/registries/identifier-types.ts` に置く。`src/server/inspection/rules/instructions/antigravity.ts` と `src/server/inspection/rules/antigravity.ts` で、workspace の context file にはそれを置くディレクトリ — `.agents/` の中にあるときはその `.agents/` を置くディレクトリ — の範囲を、global のものには boundary 全体を与える。FR-002、FR-007、FR-009、FR-016 に基づく。
+- [X] T084 2つのフラットな skill rule と、ファイルの形の skill とフォルダの形の skill を見分けていた仕組みを取り除く — `src/shared/api-types.ts` の `SkillDefinitionDto.rowUnit`、`src/server/inspection/rules/skills/` の `skillRowUnit` と `AntigravityCompiledFileSkillRule`、`src/server/inspection/recognizers/candidate.ts` と `src/server/session/session.ts` の row-unit の分岐、`src/app/pages/skills/detail/[source]/[...path].vue` と `src/app/pages/skills/compare/[family].vue` のフラットの分岐、`src/app/components/inspection/SubjectTabPanel.vue` の `standalone` prop — そして残る skill rule を `antigravity.repo.skill` と `antigravity.global.skill` に改名する。FR-004、QR-002 に基づく。
+- [X] T085 fixture と suite を広がった allowlist とフォルダの形へ移す。`tests/fixtures/repositories/build-fixtures.ts` の Antigravity CLI の tree と `tests/fixtures/global-homes/` の home、そしてフラットな skill やルートだけの context の組を assert していた unit・contract・integration・end-to-end の case である — 入れ子の組とあるディレクトリの `.agents/` の組がそれぞれ範囲を持ち、フラットなファイルが両方の綴りと両方の global root で reject される。QR-003、SC-001、SC-002 に基づく。
+- [X] T086 広がった allowlist と取り除いたフラットな rule を、contract とユーザー文書に両言語で記録する: `specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md`、`contracts/runtime-composition.md`、`spec.md` の Antigravity CLI の行と `quickstart.md` の home の手順、`docs/which-files-are-listed.md`。conformance fixture を再生成し、凍結された件数、presentation allowlist の digest、outcome manifest とその digest、`src/server/host/global-consent.ts` の `allowlistVersion` と `traversalPlanVersion` の literal を記録し直し、その実行を `specs/001-inspect-agent-customizations/validation.md` に記録する。FR-015、QR-004、QR-006 に基づく。
+- [X] T087 広がった Antigravity CLI の allowlist ともう挙がらないフラットな skill について `.changeset/` に `minor` の changeset を加え、変更が届く gate — `pnpm run test:docs`、`test:unit`、`test:contract`、`test:integration`、`test:security`、`lint`、`typecheck`、`format:check`、Chromium での Antigravity CLI の end-to-end spec — を実行する。QR-006、QR-003 に基づく。

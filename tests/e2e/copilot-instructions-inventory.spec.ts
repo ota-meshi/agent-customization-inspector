@@ -62,9 +62,8 @@ test.describe('Copilot instruction rows and their surfaces', () => {
     await writeFile(join(fixture, 'CLAUDE.md'), '# Claude-compatible\n', 'utf8');
     await writeFile(join(fixture, 'GEMINI.md'), '# Antigravity-compatible\n', 'utf8');
     // Excluded by initial scope: the `.claude` spelling and the non-root
-    // alternatives Copilot documents but this release does not admit. The
-    // first stays a Claude row; the second is nobody's, because no shipped
-    // rule reads a context file below the root under that name.
+    // alternatives Copilot documents but this release does not admit for it.
+    // The first stays a Claude row; the second is Antigravity CLI's alone.
     await mkdir(join(fixture, '.claude'), { recursive: true });
     await writeFile(join(fixture, '.claude/CLAUDE.md'), '# Directory form\n', 'utf8');
     await writeFile(join(fixture, 'packages/api/GEMINI.md'), '# Nested context file\n', 'utf8');
@@ -133,14 +132,13 @@ test.describe('Copilot instruction rows and their surfaces', () => {
     await expect(nestedRepositoryWide).toContainText('CLI');
     await expect(nestedRepositoryWide).not.toContainText('VS Code');
     // `GEMINI.md` names the two surfaces that document it and not the editor,
-    // beside Antigravity CLI's own recognition of it; the nested one reaches
-    // no row at all, because no shipped rule reads that filename below the
-    // root.
+    // beside Antigravity CLI's own recognition of it; the nested one is
+    // Antigravity CLI's alone, because Copilot documents the root file only.
     const rootContext = entryFor('GEMINI.md');
     await expect(rootContext).toContainText('CLI, Cloud agent');
     await expect(rootContext).not.toContainText('VS Code');
     await expect(rootContext).toContainText('Antigravity CLI');
-    expect(await page.locator('main').innerText()).not.toContain('packages/api/GEMINI.md');
+    await expect(entryFor('packages/api/GEMINI.md')).not.toContainText('GitHub Copilot');
 
     // The shared files keep every product that recognizes them, each with its
     // own surface, and the Claude-only spelling stays Claude's.
@@ -191,14 +189,16 @@ test.describe('Copilot instruction rows and their surfaces', () => {
       .getByRole('tabpanel')
       .locator('.aci-source-family-blocks__members > li');
     await expect(items).toHaveCount(3);
-    await expect(fileEntries).toHaveCount(7);
+    await expect(fileEntries).toHaveCount(8);
 
     // Tool: GitHub Copilot keeps every file Copilot recognizes and drops the
-    // `.claude` spelling it does not, leaving every range standing.
+    // `.claude` spelling and the nested `GEMINI.md` it does not, leaving every
+    // range standing.
     await page.getByLabel('Tool').selectOption('copilot');
     await expect(items).toHaveCount(3);
     await expect(fileEntries).toHaveCount(6);
     await expect(page.getByRole('tabpanel')).not.toContainText('.claude/CLAUDE.md');
+    await expect(page.getByRole('tabpanel')).not.toContainText('packages/api/GEMINI.md');
     // A recognition is kept whole: filtering by product never drops a surface
     // from the product it kept.
     await expect(
@@ -220,7 +220,7 @@ test.describe('Copilot instruction rows and their surfaces', () => {
     // included.
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(3);
-    await expect(fileEntries).toHaveCount(7);
+    await expect(fileEntries).toHaveCount(8);
   });
 });
 

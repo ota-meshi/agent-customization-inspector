@@ -765,10 +765,11 @@ real home directory. Verify:
 3. After opt-in, only the documented member candidates appear under zero to five
    separately identified member Global Sources—at most one each for Copilot, Claude,
    Codex, Antigravity CLI, and the shared agent home—and every Source has exactly one root.
-   The Antigravity CLI home publishes its `GEMINI.md`, its `config/mcp_config.json`,
-   `config/hooks.json`, `config/agents/*.md` and `config/agents/*/agent.md`, and
-   `config/skills/*/SKILL.md`, the terminal's
-   own `antigravity-cli/skills/` in both admitted shapes, and its
+   The Antigravity CLI home publishes its `GEMINI.md` and `AGENTS.md` and the same pair
+   below `config/`, `config/rules/*.md` and `antigravity-cli/rules/*.md`, its
+   `config/mcp_config.json`, `config/hooks.json`, `config/agents/*.md` and
+   `config/agents/*/agent.md`, `config/skills/*/SKILL.md` and
+   `antigravity-cli/skills/*/SKILL.md`, and its
    `antigravity-cli/settings.json` under the settings, permissions, and hook rows, and
    nothing beside them (specs/003-antigravity-cli-support/spec.md FR-009). Every admitted Source from the
    initial/retry transaction appears together in one atomic Global generation — the enable

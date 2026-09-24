@@ -125,6 +125,18 @@ specification、data model、vendor contract、runtime-composition contractと�
 `/speckit.tasks`で再生成せず、初期実装以降のすべての変更と同じくフェーズ116で拡張した。他のvendorの
 digestは動いていない。
 
+**Antigravity CLIの組は2026-09-24に、driftではなく変更として再記録した。** vendorのRulesページが
+repository rootより下とhomeのcontext fileとruleを文書化し、平置きのskillを示すページがもう無いため、
+`skill`行は平置きのファイルを述べるのをやめ、`rule`行はworkspaceと言うのをやめた
+（specs/003-antigravity-cli-support T082〜T086）。両行を両言語で変更し、再計算した2つのdigest — 英語
+`459f17af2fa11f372847a99ccdf81eaa7de48f804ab15ef297d4dc4e1e276812`、日本語
+`d79efa39bda4758b6a8de3504ad53927d7e5fdbe6ce189f145c005497edaaec0` — を、両行が拠って立つ
+specification、vendor contract、runtime-composition contractと共に、同じ変更の中で
+`contracts/official-sources.md`、その日本語版、freeze suiteに書いた。`allowlistVersion`と
+`traversalPlanVersion`はこれと共に`2026-09-24`へ進めた。この変更と、contractとplanの両方を動かしながら
+どちらも進めていなかった上記のClaude Codeの変更の分である。task setは再生成せず、
+specs/003-antigravity-cli-supportのフェーズ8で拡張した。他のvendorのdigestは動いていない。
+
 ## Dependency review
 
 `pnpm outdated`は27 packageに新しいreleaseがあると報告する。`package.json`の依存はすべてcaret range
@@ -154,6 +166,14 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 破壊的なpublic-contract変更も提案していない。このreviewによってtask setはsupersededにならない。
 
 ## Release gateの実行
+
+**Antigravity CLIのページ改訂は2026-09-24にgateを実行した**（specs/003-antigravity-cli-support T087）。
+`pnpm run test:docs` 42、`pnpm run test:unit` 1288、`pnpm run test:contract` 411、
+`pnpm run test:integration` 277、`pnpm run test:security` 5、`pnpm run test:package` 53 testがこのhost上で
+すべてpassし、`pnpm run format:check`、`pnpm run lint`、`pnpm run typecheck`はcleanだった。browser側は
+Outcome manifestによる基準に記録している。`pnpm run docs:images`でこのtreeに対してreadmeの
+screenshotを2枚とも撮り直し、byte単位で同一の画像を得た。どちらにもnestedなcontext fileも平置きの
+skillも写っていない。
 
 **Claude Codeによる`AGENTS.md`のreadは2026-09-24にgateを実行した**（T1215〜T1219、reviewの修正後に再実行）。
 `pnpm run test:docs` 42、`pnpm run test:unit` 1288、`pnpm run test:contract` 411、
@@ -623,8 +643,27 @@ silhouetteを3つ見分けるのではなく色をたどって目的のものを
 
 ## Outcome manifestによる基準
 
-凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 6**、canonical SHA-256
-`44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 6は
+凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 7**、canonical SHA-256
+`7cf8c51216de88aeb7c20ddee322dc2da8318ccc88d3a4eae199d1c2817d58f5`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 7は
+期待結果を1つ変える。`sc003.shared-file.repository-root-gemini-md`が、root より下の`GEMINI.md`を、
+どの行にも届かなかったところから、Antigravity CLIだけのものとする。vendorのRulesページが、端末がたどって
+上る各階層のpairを文書化しているためである（specs/003-antigravity-cli-support T082〜T086）。期待結果の
+変更はdenominatorの変更であり、それがversionを6から進める理由である。118 caseとそのrequired classは
+それ以外変わらない。遷移はこのsessionがreviewした。agent-drivenなreviewであり、比較したのはそのcaseの
+期待結果と、shipped ruleによるそのpathの認識である。参照fixtureが5つ共に変わった —
+`tests/fixtures/repositories/build-fixtures.ts`はAntigravity CLIのtreeが平置きのskillを失い、nestedな
+context fileとnestedなrules directoryを得た。`tests/fixtures/global-homes/build-fixtures.ts`は
+Antigravity homeが他の3つのcontext fileと2つのrules directoryを得て、平置きのskillをnear missにした。
+`antigravity-instructions-detail`、`antigravity-skills-detail`、`copilot-instructions-inventory`は
+自身のtreeを組み立てる — そしてすべてのdigestをcanonical digestと共に再記録した。それらのfixtureが届く
+caseは2026-09-24にこのhost上で実行した。vitestのcaseはRelease gateの実行に記録したgate scriptで、
+browserのcaseは、Antigravity CLIのsurface、instructionまたはskillの行・detail・比較、あるいは同意済みの
+homeに届く36 specに対するChromium projectで、280 test、すべてpassした。それらのfixtureが届かない
+browser specはこのsetでは再実行していない。contract suiteは同じrunでcanonical digestと73件すべての
+fixture digestを再現した。
+
+その前のsetは**version 6**、canonical SHA-256
+`44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`である。Version 6は
 期待結果を1つ変える。`sc003.shared-file.repository-agents-md`が、Claude Codeが2.1.277以降readするroot
 `AGENTS.md`の認識toolにClaude Codeを挙げる（T1217）。期待結果の変更はdenominatorの変更であり、それが
 versionを5から進める理由である。118 caseとそのrequired classはそれ以外変わらない。遷移はこのsessionが

@@ -8,7 +8,7 @@
 
 **Tests**: Every behavioral change requires risk-appropriate automated tests before implementation. A test task precedes the implementation it covers, and a frozen count, digest, tuple, or version literal is changed only after its gate has been watched failing against the new source (AGENTS.md § Implementation simplicity policy).
 
-**Organization**: Tasks are grouped by user story. Phase 2 is the closed vocabulary, the vendor registry, and the frozen contracts every story compiles against, because a closed union cannot gain a member without every exhaustive record over it moving with it. Phase 3 is the repository (US1), Phase 4 the Antigravity home (US2), Phase 5 the two skill shapes sharing a row (US3), and Phase 6 the release evidence and the parity review.
+**Organization**: Tasks are grouped by user story. Phase 2 is the closed vocabulary, the vendor registry, and the frozen contracts every story compiles against, because a closed union cannot gain a member without every exhaustive record over it moving with it. Phase 3 is the repository (US1), Phase 4 the Antigravity home (US2), Phase 5 the shared skill folder (US3), Phase 6 the release evidence and the parity review, Phase 7 the convergence findings, and Phase 8 the vendor's 2026-09-24 page revisions.
 
 ## Format: `[ID] [P?] [Story?] Description`
 
@@ -26,30 +26,30 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 | Requirement | Owning implementation, verification, and evidence tasks |
 |---|---|
 | FR-001 | T003, T006, T008, T018, T035, T048, T059–T060, T068–T070, T076, T078–T080 |
-| FR-002 | T011, T020–T021, T023, T025–T029, T036–T037 |
+| FR-002 | T011, T020–T021, T023, T025–T029, T036–T037, T082–T083 |
 | FR-003 | T011, T021, T023 |
-| FR-004 | T022, T026, T030–T031, T052–T056, T058 |
+| FR-004 | T022, T026, T030–T031, T052–T056, T058, T082, T084 |
 | FR-005 | T021, T029, T042 |
 | FR-006 | T021, T028 |
-| FR-007 | T021, T023, T025 |
+| FR-007 | T021, T023, T025, T082–T083 |
 | FR-008 | T005, T019, T039, T041, T048 |
-| FR-009 | T040–T041, T043–T046, T051 |
+| FR-009 | T040–T041, T043–T046, T051, T082–T083 |
 | FR-010 | T040, T042, T047 |
 | FR-011 | T044–T046, T050 |
 | FR-012 | T011, T016, T021 |
 | FR-013 | T023 |
 | FR-014 | T012–T013, T016, T063, T065 |
-| FR-015 | T002, T009, T073, T077 |
-| FR-016 | T011, T020–T021, T037–T038, T059 |
+| FR-015 | T002, T009, T073, T077, T086 |
+| FR-016 | T011, T020–T021, T037–T038, T059, T082–T083 |
 | FR-017 | T011, T020–T021, T036, T038, T051, T059 |
 | QR-001 | T007, T009–T014, T017, T032, T072 |
-| QR-002 | T026, T030, T053 |
-| QR-003 | T020–T024, T033–T034, T036–T042, T049, T051–T054, T057, T061–T062, T064, T071 |
-| QR-004 | T004, T063, T065 |
+| QR-002 | T026, T030, T053, T084 |
+| QR-003 | T020–T024, T033–T034, T036–T042, T049, T051–T054, T057, T061–T062, T064, T071, T085, T087 |
+| QR-004 | T004, T063, T065, T086 |
 | QR-005 | T042, T047 |
-| QR-006 | T001–T002, T016–T017, T059–T060, T074–T075, T080 |
-| SC-001 | T023 |
-| SC-002 | T021, T023, T040–T041 |
+| QR-006 | T001–T002, T016–T017, T059–T060, T074–T075, T080, T086–T087 |
+| SC-001 | T023, T085 |
+| SC-002 | T021, T023, T040–T041, T085 |
 | SC-003 | T005, T039, T041, T048 |
 | SC-004 | T024, T042 |
 | SC-005 | T006, T048, T059–T060, T071 |
@@ -159,11 +159,11 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 
 ---
 
-## Phase 5: User Story 3 - Tell One Skill Shape From the Other (Priority: P3)
+## Phase 5: User Story 3 - See Which Products Read a Shared Skill Folder (Priority: P3)
 
-**Goal**: A reader looking at `.agents/skills/` sees which of their skills each product picks up, including a name spelled in both shapes.
+**Goal**: A reader looking at `.agents/skills/` sees that one skill folder is one skill with three readers, and that a Markdown file directly in the directory is none of theirs.
 
-**Independent Test**: Inspect a repository whose `.agents/skills/` holds both shapes, including one name in both, and confirm each row states the products that resolve it with no precedence between the shapes.
+**Independent Test**: Inspect a repository whose `.agents/skills/` holds a skill folder and a flat Markdown file, and confirm the folder's row states all three products and the flat file is on no row.
 
 ### Tests for User Story 3 (REQUIRED) ⚠️
 
@@ -253,5 +253,18 @@ Each story phase ends at a state the independent test above can measure. Phase 6
 - [X] T077 Run `pnpm run check:official-sources -- --network` over the registry as it now stands — 63 records, eleven of them `google.antigravity.*` — and record the run in `specs/001-inspect-agent-customizations/validation.md` and `validation.ja.md`: the run recorded there is the 2026-09-10 one over 62 records and ten Google records, and no recorded run follows the eleventh, `google.antigravity.subagents`, reviewed on 2026-09-11 in `contracts/official-sources.md`, per SC-007 (partial).
 - [X] T078 [P] Amend the parent plan and contracts that still count three tools, four members, or three vendor marks, in both languages: `specs/001-inspect-agent-customizations/plan.md` and `plan.ja.md` — the Summary's three tools, "separate Copilot, Claude, and Codex contracts", "zero to four admitted member Global sources … (at most one each for Copilot, Claude, and Codex)", "the four members' frozen rule catalogs", "never a logical Source combining Copilot, Claude, and Codex", and the failure table's "all four members initially"; `contracts/runtime-composition.md` and `runtime-composition.ja.md` — the User row's "zero to four member Global Sources" and "all four frozen member entries"; `contracts/accessibility-acceptance.md` and `accessibility-acceptance.ja.md` — "the three vendor marks" under forced colours, now four; and `quickstart.md` and `quickstart.ja.md`, whose Antigravity CLI home step names `config/agents/*.md` alone where FR-009 admits `config/agents/<name>/agent.md` beside it, per FR-001 (partial).
 - [X] T079 Settle FR-001's list against the two surfaces on it that name no product: the `--inspect-personal-setup` description in `src/server/cli.ts`, which names the kinds it reads and the shared `~/.agents` directory and no tool, and the inventory empty state in `src/app/components/inventory/InventoryList.vue`, whose header records why it names no vendor. Either name the four supported tools on each, or amend FR-001 in `specs/003-antigravity-cli-support/spec.md` and `spec.ja.md` to drop the two from the surfaces that name the tools, since a surface naming none cannot name four, per FR-001 (partial).
-- [X] T080 [P] Name Antigravity CLI among the readers of the committed `.agents/skills/speckit-*` directories in the contributor section of `README.md` and `README.ja.md`, which names Codex and Copilot alone while the shipped `antigravity.repo.skill.directory` rule makes Antigravity CLI a third reader of every `SKILL.md` there, per FR-001 (partial).
+- [X] T080 [P] Name Antigravity CLI among the readers of the committed `.agents/skills/speckit-*` directories in the contributor section of `README.md` and `README.ja.md`, which names Codex and Copilot alone while the shipped `antigravity.repo.skill` rule makes Antigravity CLI a third reader of every `SKILL.md` there, per FR-001 (partial).
 - [X] T081 [P] Correct the three comments this feature left stale — `src/shared/registries/skill-resolution.ts`, which says no shipped product's skill strategies establish `unknown-order` alone, while Antigravity CLI's do and the decided answer is that the row states nothing (`tests/contract/inspection-rules.test.ts`); `src/shared/registries/antigravity/skill-collision.ts`, which says the row's same-name statement says the vendor documents no resolution, while the derivation yields `null` and no statement is rendered; and `src/server/inspection/parsers/json.ts`, which enumerates "every Antigravity CLI carrier" as the two `mcp_config.json` profiles and `settings.json`, omitting `.agents/hooks.json` and `config/hooks.json`, which `src/server/inspection/rules/hooks/antigravity.ts` reads through the same seam — per Constitution II (partial).
+
+---
+
+## Phase 8: The Vendor's Rules and Skills Pages of 2026-09-24
+
+**Purpose**: The vendor's Rules page now documents context files and rules below the repository root, a global `AGENTS.md`, the same pair below the home's `config/`, and modular global rules, and no page shows a flat skill any longer (spec.md § Clarifications Session 2026-09-24). No existing task changes.
+
+- [X] T082 Amend this feature's specification, plan, data model, research, and quickstart in both languages — `specs/003-antigravity-cli-support/spec.md`, `plan.md`, `data-model.md`, `research.md`, `quickstart.md`, and their `*.ja.md` — to the widened allowlist and the folder shape alone, adding the 2026-09-24 Clarifications session and a dated note on each checklist item the change supersedes in `checklists/vendor-integration.md` and `checklists/requirements.md`, per FR-002, FR-004, FR-007, FR-009, FR-016.
+- [X] T083 Admit `GEMINI.md` and `AGENTS.md` at every depth under one `antigravity.repo.context` rule, the rules directory at every depth, the home's four context files, and the home's two rules directories under `antigravity.global.rule`, with the behaviors, strategies, and relations that cite the Rules page, in `src/shared/registries/antigravity/` and `src/shared/registries/identifier-types.ts`; give a workspace context file the range of the directory holding it — the directory holding its `.agents/` when it sits in one — and a global one the whole boundary, in `src/server/inspection/rules/instructions/antigravity.ts` and `src/server/inspection/rules/antigravity.ts`, per FR-002, FR-007, FR-009, FR-016.
+- [X] T084 Remove the two flat skill rules and the mechanism that told a file-shaped skill from a folder-shaped one — `SkillDefinitionDto.rowUnit` in `src/shared/api-types.ts`, `skillRowUnit` and `AntigravityCompiledFileSkillRule` in `src/server/inspection/rules/skills/`, the row-unit branches of `src/server/inspection/recognizers/candidate.ts` and `src/server/session/session.ts`, the flat branches of `src/app/pages/skills/detail/[source]/[...path].vue` and `src/app/pages/skills/compare/[family].vue`, and the `standalone` prop of `src/app/components/inspection/SubjectTabPanel.vue` — and rename the remaining skill rules `antigravity.repo.skill` and `antigravity.global.skill`, per FR-004, QR-002.
+- [X] T085 Move the fixtures and the suites to the widened allowlist and the folder shape: the Antigravity CLI trees in `tests/fixtures/repositories/build-fixtures.ts` and the home in `tests/fixtures/global-homes/`, and the unit, contract, integration, and end-to-end cases that asserted a flat skill or a root-only context pair — a nested pair and a directory's `.agents/` pair each carrying its range, a flat file rejected under both spellings and at both global roots — per QR-003, SC-001, SC-002.
+- [X] T086 Record the widened allowlist and the removed flat rules in the contracts and the user documentation, in both languages: `specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md`, `contracts/runtime-composition.md`, the Antigravity CLI row of `spec.md` and its home step in `quickstart.md`, and `docs/which-files-are-listed.md`; regenerate the conformance fixtures, re-record the frozen counts, the presentation-allowlist digests, the outcome manifest and its digests, and the `allowlistVersion` and `traversalPlanVersion` literals in `src/server/host/global-consent.ts`, and record the run in `specs/001-inspect-agent-customizations/validation.md`, per FR-015, QR-004, QR-006.
+- [X] T087 Add a `minor` changeset in `.changeset/` for the widened Antigravity CLI allowlist and the flat skills no longer listed, and run the gates the change reaches — `pnpm run test:docs`, `test:unit`, `test:contract`, `test:integration`, `test:security`, `lint`, `typecheck`, `format:check`, and the Antigravity CLI end-to-end specs on Chromium — per QR-006, QR-003.

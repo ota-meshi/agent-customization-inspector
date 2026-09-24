@@ -36,7 +36,9 @@
 - 未解決だった2つの問いは 2026-09-10 にユーザーへ確認し、回答を得た。1つの `.agents/skills/`
   にある skill ファイルと同名の skill ディレクトリは1つの inventory 行とし、Antigravity CLI の
   recognition はリポジトリルートの context file だけに届く。どちらも仕様の Clarifications と、
-  それが決める要件に記録した。
+  それが決める要件に記録した。（2026-09-24 に置き換え: Rules ページが階層を文書化しているので
+  recognition はすべての深さに届き、フラットな skill は admit しない — spec.ja.md
+  § Clarifications Session 2026-09-24。）
 - skill の行の形はデザイナーへの相談事項である。ファイルの形の skill は companion ディレクトリ
-  を持たないが、今日の skill の行と detail はそれを持つディレクトリを前提に描かれている。
+  を持たないが、今日の skill の行と detail はそれを持つディレクトリを前提に描かれている。（2026-09-24 に置き換え: ファイルの形の skill を admit する rule は無い。）
 - 未完了の項目は `/speckit-clarify` または `/speckit-plan` の前に仕様の更新を要する

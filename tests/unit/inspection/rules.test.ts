@@ -4664,17 +4664,24 @@ describe('the shipped Antigravity CLI Repository programs and their near misses 
     const programOf = (ruleId: string) =>
       ANTIGRAVITY_REPOSITORY_RULES.find((compiled) => compiled.rule.ruleId === ruleId)!.plan
         .selectors;
-    // The flat skill is a direct child of `.agents/skills/`; the folder shape
-    // is one name segment then the fixed entry point, under both the current
-    // spelling and the superseded one the vendor still supports. No recursive
-    // token appears in either: no cited page documents a depth below these.
-    expect(programOf('antigravity.repo.skill.file')).toHaveLength(1);
-    expect(programOf('antigravity.repo.skill.file')[0]!.remainder).toEqual([
+    // The context files and the rules directory are reached at every depth,
+    // because the terminal walks up from each file it reads or edits and
+    // loads what each level holds; the rules directory itself is scanned for
+    // its immediate `.md` children only. The skill folder is one name segment
+    // then the fixed entry point, under both the current spelling and the
+    // superseded one the vendor still supports, with no recursive token: no
+    // cited page documents a depth below the root for it.
+    expect(programOf('antigravity.repo.context').map((selector) => selector.remainder)).toEqual([
+      [{ kind: 'recursive-directories' }, { kind: 'literal', value: 'GEMINI.md' }],
+      [{ kind: 'recursive-directories' }, { kind: 'literal', value: 'AGENTS.md' }],
+    ]);
+    expect(programOf('antigravity.repo.rule')[0]!.remainder).toEqual([
+      { kind: 'recursive-directories' },
       { kind: 'literal', value: '.agents' },
-      { kind: 'literal', value: 'skills' },
+      { kind: 'literal', value: 'rules' },
       { kind: 'regex', pattern: /\.md$/u },
     ]);
-    expect(programOf('antigravity.repo.skill.directory')).toHaveLength(2);
+    expect(programOf('antigravity.repo.skill')).toHaveLength(2);
     expect(programOf('antigravity.repo.rule')).toHaveLength(2);
     expect(programOf('antigravity.repo.hooks')).toHaveLength(1);
     expect(programOf('antigravity.repo.mcp')).toHaveLength(1);

@@ -81,6 +81,7 @@ test('lists every range with each file’s recognizing products', async ({ page 
     'packages/api/.github/copilot-instructions.md',
     'packages/api/AGENTS.md',
     'packages/api/CLAUDE.md',
+    'packages/api/GEMINI.md',
     '.github/instructions/frontend.instructions.md',
     '.github/instructions/nested/backend.instructions.md',
     'packages/api/.github/instructions/api.instructions.md',
@@ -111,13 +112,14 @@ test('lists every range with each file’s recognizing products', async ({ page 
   // promotes a nested file (Phase 21).
   await expect(entryFor('packages/api/CLAUDE.md')).toContainText('Claude Code');
   await expect(entryFor('packages/api/CLAUDE.md')).not.toContainText('OpenAI Codex');
-  // The root `GEMINI.md` is Copilot's root alternative and one of the two
-  // context files Antigravity CLI reads at the repository root. The nested one
-  // is nobody's: no shipped rule reads that filename below the root
-  // (specs/003-antigravity-cli-support FR-002).
+  // The root `GEMINI.md` is Copilot's root alternative and one of the
+  // context files Antigravity CLI reads at every depth. The nested one is
+  // Antigravity CLI's alone, because Copilot documents the root file only
+  // (specs/003-antigravity-cli-support FR-007).
   await expect(entryFor('GEMINI.md')).toContainText('GitHub Copilot');
   await expect(entryFor('GEMINI.md')).toContainText('Antigravity CLI');
-  expect(await page.locator('main').innerText()).not.toContain('packages/api/GEMINI.md');
+  await expect(entryFor('packages/api/GEMINI.md')).toContainText('Antigravity CLI');
+  await expect(entryFor('packages/api/GEMINI.md')).not.toContainText('GitHub Copilot');
 
   // What no rule admits is simply absent — the excluded Copilot locations,
   // the nested fallback variant, the absent declared name, and the carrier.

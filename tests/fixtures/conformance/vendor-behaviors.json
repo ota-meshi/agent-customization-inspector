@@ -36,13 +36,21 @@
     "surfaces": ["antigravity-cli"],
     "locator": {
       "vendorScope": "repository",
-      "lookupBase": "repository-root",
-      "relativeSelector": "GEMINI.md; AGENTS.md",
-      "traversal": "exact"
+      "lookupBase": "target-path-chain",
+      "relativeSelector": "GEMINI.md; AGENTS.md; .agents/GEMINI.md; .agents/AGENTS.md",
+      "traversal": "ancestor-chain-to-repository-root"
     },
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
+      {
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules/",
+        "officialHost": "antigravity.google",
+        "sections": ["Directory-scoped rules", "Managing rules in Antigravity CLI"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The CLI evaluates AGENTS.md and GEMINI.md at the repository root and in subdirectories: whenever it reads or edits a file it walks up from that file’s folder to the workspace root, loading <dir>/AGENTS.md or <dir>/GEMINI.md and <dir>/.agents/AGENTS.md or <dir>/.agents/GEMINI.md at each level; neither file uses frontmatter and each is always active for its directory scope."
+      },
       {
         "sourceId": "google.antigravity.cli-migration",
         "url": "https://antigravity.google/docs/cli/gcli-migration/",
@@ -122,11 +130,11 @@
     "surfaces": ["antigravity-cli"],
     "locator": {
       "vendorScope": "repository",
-      "lookupBase": "repository-root",
+      "lookupBase": "target-path-chain",
       "relativeSelector": ".agents/rules/<name>.md, .agent/rules/<name>.md",
-      "traversal": "exact"
+      "traversal": "ancestor-chain-to-repository-root"
     },
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
@@ -161,10 +169,10 @@
     "locator": {
       "vendorScope": "repository",
       "lookupBase": "repository-root",
-      "relativeSelector": ".agents/skills/<name>.md, .agents/skills/<name>/SKILL.md, .agent/skills/<name>/SKILL.md",
+      "relativeSelector": ".agents/skills/<name>/SKILL.md, .agent/skills/<name>/SKILL.md",
       "traversal": "exact"
     },
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
@@ -229,12 +237,20 @@
     "locator": {
       "vendorScope": "user",
       "lookupBase": "tool-home",
-      "relativeSelector": "GEMINI.md",
+      "relativeSelector": "GEMINI.md; AGENTS.md; config/GEMINI.md; config/AGENTS.md",
       "traversal": "exact"
     },
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
+      {
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules/",
+        "officialHost": "antigravity.google",
+        "sections": ["Global rules", "Managing rules in Antigravity CLI"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The standalone global files ~/.gemini/AGENTS.md, ~/.gemini/GEMINI.md, ~/.gemini/config/AGENTS.md, and ~/.gemini/config/GEMINI.md apply across all projects, need no frontmatter, and are always active, and the CLI section names the first two among its global rules."
+      },
       {
         "sourceId": "google.antigravity.cli-migration",
         "url": "https://antigravity.google/docs/cli/gcli-migration/",
@@ -381,6 +397,29 @@
     ]
   },
   {
+    "behaviorId": "antigravity.behavior.user.rules",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "config/rules/<name>.md, antigravity-cli/rules/<name>.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules/",
+        "officialHost": "antigravity.google",
+        "sections": ["Global rules", "Activation modes", "Managing rules in Antigravity CLI"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Modular global rules live in ~/.gemini/config/rules/*.md and need YAML frontmatter declaring a trigger, the CLI also evaluates ~/.gemini/antigravity-cli/rules/*.md, and only a rules directory’s immediate .md children are scanned."
+      }
+    ]
+  },
+  {
     "behaviorId": "antigravity.behavior.user.settings",
     "tool": "antigravity",
     "surfaces": ["antigravity-cli"],
@@ -418,7 +457,7 @@
     "locator": {
       "vendorScope": "user",
       "lookupBase": "tool-home",
-      "relativeSelector": "antigravity-cli/skills/<name>/SKILL.md, config/skills/<name>/SKILL.md, antigravity-cli/skills/<name>.md",
+      "relativeSelector": "antigravity-cli/skills/<name>/SKILL.md, config/skills/<name>/SKILL.md",
       "traversal": "exact"
     },
     "documentationStatus": "partially-documented",

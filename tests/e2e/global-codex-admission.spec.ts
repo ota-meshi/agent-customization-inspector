@@ -191,11 +191,16 @@ test('publishes exactly one Codex instruction file from the home', async ({ page
     // override is the one published file: the vendor selects one per location and
     // this rule publishes that one rather than admitting both.
     await expect(panel).toContainText('AGENTS.override.md');
-    const rows = await panel.locator('.aci-path').allInnerTexts();
-    // The home's fallback is not among them: the override is non-empty, so it
-    // is the selection and `AGENTS.md` beside it is published by nothing.
-    expect(rows.filter((row) => row === 'AGENTS.override.md')).toHaveLength(1);
-    expect(rows.filter((row) => row === 'AGENTS.md')).toHaveLength(0);
+    // Read by address, because the Antigravity home publishes an `AGENTS.md`
+    // of its own: the Codex home's fallback is not among its rows, since the
+    // override is non-empty, so it is the selection and `AGENTS.md` beside it
+    // is published by nothing.
+    const codexAddresses = await panel
+      .locator('a[href^="/instructions/detail/global-codex/"]')
+      .evaluateAll((anchors) =>
+        anchors.map((anchor) => new URL((anchor as HTMLAnchorElement).href).pathname),
+      );
+    expect(codexAddresses).toEqual(['/instructions/detail/global-codex/AGENTS.override.md']);
   } finally {
     await stopHost(own);
   }
@@ -438,12 +443,16 @@ test('filters the inventory by Source rather than by tool', async ({ page }) => 
         anchors.map((anchor) => new URL((anchor as HTMLAnchorElement).href).pathname),
       );
     expect((await addresses()).toSorted()).toEqual([
+      '/instructions/detail/global-antigravity/AGENTS.md',
       '/instructions/detail/global-codex/AGENTS.md',
       '/instructions/detail/repository/AGENTS.md',
     ]);
 
     await sourceFilter.selectOption({ label: 'Your personal setup' });
-    expect(await addresses()).toEqual(['/instructions/detail/global-codex/AGENTS.md']);
+    expect((await addresses()).toSorted()).toEqual([
+      '/instructions/detail/global-antigravity/AGENTS.md',
+      '/instructions/detail/global-codex/AGENTS.md',
+    ]);
     await sourceFilter.selectOption({ label: 'Repository' });
     expect(await addresses()).toEqual(['/instructions/detail/repository/AGENTS.md']);
     // The selection rides in the URL as the family's own word, which survives a

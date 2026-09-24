@@ -21,10 +21,18 @@
     "strategyId": "antigravity.context.layering",
     "tool": "antigravity",
     "surfaces": ["antigravity-cli"],
-    "operations": ["concatenate"],
-    "documentationStatus": "partially-documented",
+    "operations": ["concatenate", "select-closest"],
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
+      {
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules/",
+        "officialHost": "antigravity.google",
+        "sections": ["Where rules are stored", "Directory-scoped rules", "Global rules"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Rules are cumulative rather than replacement-based: the global, workspace, and directory-scoped files — AGENTS.md and GEMINI.md among them — are combined into the prompt, and when instructions conflict the more specific directory’s take priority."
+      },
       {
         "sourceId": "google.antigravity.cli-migration",
         "url": "https://antigravity.google/docs/cli/gcli-migration/",
@@ -93,7 +101,7 @@
     "strategyId": "antigravity.rules.activation",
     "tool": "antigravity",
     "surfaces": ["antigravity-cli"],
-    "operations": ["filter"],
+    "operations": ["filter", "concatenate", "select-closest"],
     "documentationStatus": "partially-documented",
     "lifecycleQualifiers": [],
     "evidence": [

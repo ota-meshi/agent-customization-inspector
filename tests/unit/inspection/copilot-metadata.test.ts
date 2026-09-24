@@ -167,10 +167,6 @@ describe('Copilot skill invocation name', () => {
       'frontmatter',
       'invocationName',
       'kind',
-      // The row unit the admitting rule declared, carried so the census does
-      // not re-derive a skill's shape from its path
-      // (`rules/skills/compiled-rule.ts` § skillRowUnit).
-      'rowUnit',
     ]);
     expect(recognition.details.frontmatter).toEqual([
       {
@@ -228,7 +224,6 @@ describe('Copilot skill invocation name', () => {
         'frontmatter',
         'invocationName',
         'kind',
-        'rowUnit',
       ]);
     }
     expect(ship.provenances.map((provenance) => provenance.matchedPath)).toEqual([

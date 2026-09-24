@@ -149,6 +149,21 @@ runtime-composition contract the row rests on. The task set was extended by Phas
 than regenerated with `/speckit.plan` and `/speckit.tasks`, the way every change since the
 initial implementation extends it. The other vendors' digests did not move.
 
+**The Antigravity CLI pair was re-recorded on 2026-09-24, as a change rather than a drift.**
+The vendor's Rules page documents context files and rules below the repository root and in the
+home, and no page shows a flat skill any longer, so the `skill` row stopped describing a flat
+file and the `rule` row stopped saying workspace
+(specs/003-antigravity-cli-support T082–T086). Both rows were changed in both languages, and
+both recomputed digests — English
+`459f17af2fa11f372847a99ccdf81eaa7de48f804ab15ef297d4dc4e1e276812`, Japanese
+`d79efa39bda4758b6a8de3504ad53927d7e5fdbe6ce189f145c005497edaaec0` — were written into
+`contracts/official-sources.md`, its Japanese companion, and the freeze suite in the same
+change, together with the specification, vendor contract, and runtime-composition contract the
+rows rest on. `allowlistVersion` and `traversalPlanVersion` advanced to `2026-09-24` with them,
+for this change and for Claude Code's above, which moved both the contracts and the plans
+without advancing either. The task set was extended by specs/003-antigravity-cli-support
+Phase 8 rather than regenerated. The other vendors' digests did not move.
+
 ## Dependency review
 
 `pnpm outdated` reports 27 packages with a newer release available. Every dependency in
@@ -186,6 +201,14 @@ profile or user data, and no migration workflow. No breaking public-contract cha
 proposed. The task set is not superseded by this review.
 
 ## Release gate execution
+
+**The Antigravity CLI page revisions ran the gates on 2026-09-24**
+(specs/003-antigravity-cli-support T087): `pnpm run test:docs` 42, `pnpm run test:unit` 1288,
+`pnpm run test:contract` 411, `pnpm run test:integration` 277, `pnpm run test:security` 5, and
+`pnpm run test:package` 53 tests, all passing on this host, with `pnpm run format:check`,
+`pnpm run lint`, and `pnpm run typecheck` clean. The browser half is recorded under
+Outcome-manifest criteria. `pnpm run docs:images` retook both readme screenshots against this
+tree and produced byte-identical images: neither shows a nested context file or a flat skill.
 
 **Claude Code's `AGENTS.md` reading ran the gates on 2026-09-24** (T1215–T1219, run again after
 the review's fixes):
@@ -749,9 +772,32 @@ the vendor's own glyph.
 
 ## Outcome-manifest criteria
 
-The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 6**, canonical
-SHA-256 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`, recorded in
-`tests/fixtures/outcomes/manifest.sha256`. Version 6 changes one expected outcome:
+The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 7**, canonical
+SHA-256 `7cf8c51216de88aeb7c20ddee322dc2da8318ccc88d3a4eae199d1c2817d58f5`, recorded in
+`tests/fixtures/outcomes/manifest.sha256`. Version 7 changes one expected outcome:
+`sc003.shared-file.repository-root-gemini-md` attributes a `GEMINI.md` below the root to
+Antigravity CLI alone, where it had reached no row, because the vendor's Rules page documents
+the pair at every level the terminal walks up through (specs/003-antigravity-cli-support
+T082–T086). A changed expected outcome is a denominator change, which is what advances the
+version from 6; the 118 cases and their required classes are otherwise unchanged. The
+transition was reviewed by this session, an agent-driven review: what it compared is that
+case's expected outcome against the shipped rules' recognitions of the path. Five referenced
+fixtures changed with it — `tests/fixtures/repositories/build-fixtures.ts`, whose Antigravity
+CLI trees lost their flat skills and gained nested context files and a nested rules directory;
+`tests/fixtures/global-homes/build-fixtures.ts`, whose Antigravity home gained its three other
+context files and two rules directories and turned its flat skill into a near miss; and
+`antigravity-instructions-detail`, `antigravity-skills-detail`, and
+`copilot-instructions-inventory`, which build their own trees — and every digest was
+re-recorded with the canonical digest. The cases those fixtures reach were executed on
+2026-09-24 on this host: the vitest cases through the gate scripts recorded under Release gate
+execution, and the browser cases through the Chromium project over the 36 specs that reach an
+Antigravity CLI surface, an instruction or skill row, detail, or comparison, or a consented
+home — 280 tests, all passing. The browser specs those fixtures cannot reach were not re-run
+for this set. The contract suite reproduced the canonical digest and all 73 fixture digests in
+the same run.
+
+The set before it was **version 6**, canonical SHA-256
+`44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`. Version 6 changes one expected outcome:
 `sc003.shared-file.repository-agents-md` names Claude Code among the recognizing tools of the
 root `AGENTS.md`, which Claude Code reads from 2.1.277 (T1217). A changed expected outcome is a
 denominator change, which is what advances the version from 5; the 118 cases and their required

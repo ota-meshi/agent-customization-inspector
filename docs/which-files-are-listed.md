@@ -55,10 +55,10 @@ Paths are relative to the inspected repository root.
 
 | Kind | Where |
 | --- | --- |
-| Instructions | `GEMINI.md` and `AGENTS.md`, at the root |
-| Skills | `SKILL.md` in each directory under `.agents/skills/` or `.agent/skills/`; any `.md` file directly in `.agents/skills/` |
+| Instructions | `GEMINI.md` and `AGENTS.md` in any directory, a directory's `.agents/` included |
+| Skills | `SKILL.md` in each directory under `.agents/skills/` or `.agent/skills/` |
 | Agents | any `.md` file directly in `.agents/agents/`; `agent.md` in each directory under `.agents/agents/` |
-| Rules | any `.md` file directly in `.agents/rules/` or `.agent/rules/` |
+| Rules | any `.md` file directly in a `.agents/rules/` or `.agent/rules/` directory at any depth, wherever that directory sits |
 | MCP | `.agents/mcp_config.json` |
 | Hooks | `.agents/hooks.json` |
 
@@ -115,9 +115,10 @@ the Antigravity editor, and `antigravity-cli/` is the terminal's own.
 
 | Kind | Where |
 | --- | --- |
-| Instructions | `GEMINI.md` |
-| Skills | `SKILL.md` in each directory under `config/skills/` or `antigravity-cli/skills/`; any `.md` file directly in `antigravity-cli/skills/` |
+| Instructions | `GEMINI.md` and `AGENTS.md`, directly in `~/.gemini` or in `config/` |
+| Skills | `SKILL.md` in each directory under `config/skills/` or `antigravity-cli/skills/` |
 | Agents | any `.md` file directly in `config/agents/`; `agent.md` in each directory under `config/agents/` |
+| Rules | any `.md` file directly in `config/rules/` or `antigravity-cli/rules/` |
 | MCP | `config/mcp_config.json` |
 | Hooks | `config/hooks.json` and `antigravity-cli/settings.json` |
 | Permissions, settings | `antigravity-cli/settings.json` |

@@ -222,28 +222,11 @@ export interface SkillDefinitionDto {
    * offers the customization's own directory. The row shows how many there are
    * and the detail view shows which; the count is `length` rather than a second
    * field, because two states can disagree and one cannot. Empty when the
-   * entry point sits alone in its directory, and empty for every definition
-   * whose {@link SkillDefinitionDto.rowUnit} is `file` — that shape has no
-   * directory to enumerate. The census is the file's, so every definition of
-   * one file — across tools and across entries — carries the same list.
+   * entry point sits alone in its directory. The census is the file's, so
+   * every definition of one file — across tools and across entries — carries
+   * the same list.
    */
   readonly companionFiles: readonly string[];
-  /**
-   * What this definition's row unit is: the directory whose entry point the
-   * admitting rule matched, or the matched file itself.
-   *
-   * Carried from that rule rather than derived from the path, so a surface
-   * cannot reach a second answer that disagrees with the one the census used
-   * (`rules/skills/compiled-rule.ts` § skillRowUnit). Three of the four
-   * products document one shape and always say `directory`; Antigravity CLI
-   * admits both at one location (spec.md § FR-004).
-   *
-   * What a surface does with it: a `file` definition has no directory, so its
-   * detail shows the skill alone — no file panel, whose subject would be a
-   * directory the skill does not have, and no tab strip, because a strip
-   * offering one tab is not a choice.
-   */
-  readonly rowUnit: 'directory' | 'file';
 }
 
 /**

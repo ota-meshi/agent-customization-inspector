@@ -77,7 +77,6 @@ function definition(
     parseStatus,
     diagnosticIds: [],
     companionFiles: [],
-    rowUnit: 'directory',
   };
 }
 

@@ -13,6 +13,7 @@ import {
   ANTIGRAVITY_REPO_SKILLS_BEHAVIOR,
   ANTIGRAVITY_USER_AGENTS_BEHAVIOR,
   ANTIGRAVITY_USER_CONTEXT_BEHAVIOR,
+  ANTIGRAVITY_USER_RULES_BEHAVIOR,
   ANTIGRAVITY_USER_HOME_BEHAVIOR,
   ANTIGRAVITY_USER_HOOKS_BEHAVIOR,
   ANTIGRAVITY_USER_MCP_BEHAVIOR,
@@ -32,18 +33,16 @@ import {
   ANTIGRAVITY_GLOBAL_HOOKS_RULE,
   ANTIGRAVITY_GLOBAL_MCP_RULE,
   ANTIGRAVITY_GLOBAL_PERMISSIONS_RULE,
+  ANTIGRAVITY_GLOBAL_RULE_RULE,
   ANTIGRAVITY_GLOBAL_SETTINGS_RULE,
-  ANTIGRAVITY_GLOBAL_SKILL_DIRECTORY_RULE,
-  ANTIGRAVITY_GLOBAL_SKILL_FILE_RULE,
+  ANTIGRAVITY_GLOBAL_SKILL_RULE,
   ANTIGRAVITY_REPO_AGENT_DIRECTORY_RULE,
   ANTIGRAVITY_REPO_AGENT_FILE_RULE,
-  ANTIGRAVITY_REPO_CONTEXT_AGENTS_ROOT_RULE,
-  ANTIGRAVITY_REPO_CONTEXT_GEMINI_ROOT_RULE,
+  ANTIGRAVITY_REPO_CONTEXT_RULE,
   ANTIGRAVITY_REPO_HOOKS_RULE,
   ANTIGRAVITY_REPO_MCP_RULE,
   ANTIGRAVITY_REPO_RULE_RULE,
-  ANTIGRAVITY_REPO_SKILL_DIRECTORY_RULE,
-  ANTIGRAVITY_REPO_SKILL_FILE_RULE,
+  ANTIGRAVITY_REPO_SKILL_RULE,
 } from './rules';
 import {
   ANTIGRAVITY_AGENTS_SELECTION_STRATEGY,
@@ -90,13 +89,12 @@ export const ANTIGRAVITY_STRATEGY_RELATIONS: Readonly<
     consumesBehaviors: [ANTIGRAVITY_USER_PERMISSIONS_BEHAVIOR],
   },
   /**
-   * Rule activation composes the workspace rules alone. The global counterpart
-   * the Rules page names is `~/.gemini/GEMINI.md`, which this vendor already
-   * publishes as its global context file rather than as a second rules
-   * location, so the context behavior is not consumed here.
+   * Rule activation composes the workspace and global rule directories. The
+   * standalone context files the same page calls rules are the context
+   * layering's, so the context behaviors are not consumed here.
    */
   [ANTIGRAVITY_RULES_ACTIVATION_STRATEGY.strategyId]: {
-    consumesBehaviors: [ANTIGRAVITY_REPO_RULES_BEHAVIOR],
+    consumesBehaviors: [ANTIGRAVITY_REPO_RULES_BEHAVIOR, ANTIGRAVITY_USER_RULES_BEHAVIOR],
   },
   /** Skill selection spans the workspace and global skill locations. */
   [ANTIGRAVITY_SKILLS_SELECTION_STRATEGY.strategyId]: {
@@ -170,18 +168,18 @@ export const ANTIGRAVITY_RULE_RELATIONS: Readonly<Record<AntigravityRuleId, Rule
     basedOnBehaviors: [ANTIGRAVITY_USER_PERMISSIONS_BEHAVIOR, ANTIGRAVITY_USER_SETTINGS_BEHAVIOR],
     explainedByStrategies: [ANTIGRAVITY_PERMISSIONS_PRECEDENCE_STRATEGY],
   },
+  /** The global rules rule rests on the global rules behavior, explained by rule activation. */
+  [ANTIGRAVITY_GLOBAL_RULE_RULE.ruleId]: {
+    basedOnBehaviors: [ANTIGRAVITY_USER_RULES_BEHAVIOR],
+    explainedByStrategies: [ANTIGRAVITY_RULES_ACTIVATION_STRATEGY],
+  },
   /** The settings rule rests on the user settings behavior and is explained by no strategy: the document is the row. */
   [ANTIGRAVITY_GLOBAL_SETTINGS_RULE.ruleId]: {
     basedOnBehaviors: [ANTIGRAVITY_USER_SETTINGS_BEHAVIOR],
     explainedByStrategies: [],
   },
-  /** The directory-shaped global skill rule rests on the global skill behavior, explained by skill selection. */
-  [ANTIGRAVITY_GLOBAL_SKILL_DIRECTORY_RULE.ruleId]: {
-    basedOnBehaviors: [ANTIGRAVITY_USER_SKILLS_BEHAVIOR],
-    explainedByStrategies: [ANTIGRAVITY_SKILLS_SELECTION_STRATEGY],
-  },
-  /** The flat global skill rule rests on the same behavior. */
-  [ANTIGRAVITY_GLOBAL_SKILL_FILE_RULE.ruleId]: {
+  /** The global skill rule rests on the global skill behavior, explained by skill selection. */
+  [ANTIGRAVITY_GLOBAL_SKILL_RULE.ruleId]: {
     basedOnBehaviors: [ANTIGRAVITY_USER_SKILLS_BEHAVIOR],
     explainedByStrategies: [ANTIGRAVITY_SKILLS_SELECTION_STRATEGY],
   },
@@ -195,13 +193,8 @@ export const ANTIGRAVITY_RULE_RELATIONS: Readonly<Record<AntigravityRuleId, Rule
     basedOnBehaviors: [ANTIGRAVITY_REPO_AGENTS_BEHAVIOR],
     explainedByStrategies: [ANTIGRAVITY_AGENTS_SELECTION_STRATEGY],
   },
-  /** The root `AGENTS.md` rule rests on the workspace context behavior. */
-  [ANTIGRAVITY_REPO_CONTEXT_AGENTS_ROOT_RULE.ruleId]: {
-    basedOnBehaviors: [ANTIGRAVITY_REPO_CONTEXT_BEHAVIOR],
-    explainedByStrategies: [ANTIGRAVITY_CONTEXT_LAYERING_STRATEGY],
-  },
-  /** The root `GEMINI.md` rule rests on the same behavior. */
-  [ANTIGRAVITY_REPO_CONTEXT_GEMINI_ROOT_RULE.ruleId]: {
+  /** The workspace context rule rests on the workspace context behavior. */
+  [ANTIGRAVITY_REPO_CONTEXT_RULE.ruleId]: {
     basedOnBehaviors: [ANTIGRAVITY_REPO_CONTEXT_BEHAVIOR],
     explainedByStrategies: [ANTIGRAVITY_CONTEXT_LAYERING_STRATEGY],
   },
@@ -220,13 +213,8 @@ export const ANTIGRAVITY_RULE_RELATIONS: Readonly<Record<AntigravityRuleId, Rule
     basedOnBehaviors: [ANTIGRAVITY_REPO_RULES_BEHAVIOR],
     explainedByStrategies: [ANTIGRAVITY_RULES_ACTIVATION_STRATEGY],
   },
-  /** The directory-shaped workspace skill rule rests on the workspace skill behavior. */
-  [ANTIGRAVITY_REPO_SKILL_DIRECTORY_RULE.ruleId]: {
-    basedOnBehaviors: [ANTIGRAVITY_REPO_SKILLS_BEHAVIOR],
-    explainedByStrategies: [ANTIGRAVITY_SKILLS_SELECTION_STRATEGY],
-  },
-  /** The file-shaped workspace skill rule rests on the same behavior. */
-  [ANTIGRAVITY_REPO_SKILL_FILE_RULE.ruleId]: {
+  /** The workspace skill rule rests on the workspace skill behavior. */
+  [ANTIGRAVITY_REPO_SKILL_RULE.ruleId]: {
     basedOnBehaviors: [ANTIGRAVITY_REPO_SKILLS_BEHAVIOR],
     explainedByStrategies: [ANTIGRAVITY_SKILLS_SELECTION_STRATEGY],
   },

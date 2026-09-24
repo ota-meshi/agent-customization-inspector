@@ -17,25 +17,30 @@ import type { AntigravityStrategyId } from '../identifier-types';
 import type { RuntimeCompositionStrategy } from '../strategy-types';
 
 /**
- * Antigravity CLI context layering: the workspace context files and the global
- * one are parsed together and reach the agent as one context
- * (`concatenate`).
- *
- * `partially-documented`: the migration page names the workspace files as the
- * ones in the active directory and the global one by its exact path, and says
- * nothing about the order they compose in or about a depth below the
- * workspace root (contracts/vendors/antigravity-cli.md § Known uncertainties
- * item 1). What is not stated is not invented here.
+ * Antigravity CLI context layering: the context files of every level — the
+ * global ones, and each workspace directory's from the root down to the folder
+ * of the file being worked on — are combined into one context rather than
+ * replacing each other (`concatenate`), and where two conflict the more
+ * specific directory's takes priority (`select-closest`).
  */
 export const ANTIGRAVITY_CONTEXT_LAYERING_STRATEGY = {
   strategyId: 'antigravity.context.layering',
   tool: 'antigravity',
   surfaces: ['antigravity-cli'],
-  operations: ['concatenate'],
-  documentationStatus: 'partially-documented',
+  operations: ['concatenate', 'select-closest'],
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
+        {
+          sourceId: 'google.antigravity.rules',
+          url: 'https://antigravity.google/docs/rules/',
+          officialHost: 'antigravity.google',
+          sections: ['Where rules are stored', 'Directory-scoped rules', 'Global rules'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Rules are cumulative rather than replacement-based: the global, workspace, and directory-scoped files — AGENTS.md and GEMINI.md among them — are combined into the prompt, and when instructions conflict the more specific directory’s take priority.',
+        },
         {
           sourceId: 'google.antigravity.cli-migration',
           url: 'https://antigravity.google/docs/cli/gcli-migration/',
@@ -203,23 +208,21 @@ export const ANTIGRAVITY_PERMISSIONS_PRECEDENCE_STRATEGY = {
 } as const satisfies RuntimeCompositionStrategy;
 
 /**
- * Antigravity CLI rule activation: a workspace rule narrows the set of files
- * or turns it reaches (`filter`).
+ * Antigravity CLI rule activation: a rule's declared trigger narrows the set
+ * of files or turns it reaches (`filter`), the rules of every level that pass
+ * are combined rather than replacing each other (`concatenate`), and where two
+ * conflict the more specific directory's takes priority (`select-closest`).
  *
- * `partially-documented`: the Rules page states the four triggers — manual,
- * always on, model decision, and a glob the rule declares — each of which
- * decides *whether* a rule applies rather than *when* it composes with
- * another. The same page states that rules are cumulative and that the more
- * specific directory rule takes priority in a conflict, which this record's
- * operations do not carry, and states no order among the rules of one
- * directory (contracts/vendors/antigravity-cli.md § Known uncertainties
+ * `partially-documented`: the Rules page states the four triggers, the
+ * cumulation, and the directory priority, and states no order among the rules
+ * of one directory (contracts/vendors/antigravity-cli.md § Known uncertainties
  * item 10).
  */
 export const ANTIGRAVITY_RULES_ACTIVATION_STRATEGY = {
   strategyId: 'antigravity.rules.activation',
   tool: 'antigravity',
   surfaces: ['antigravity-cli'],
-  operations: ['filter'],
+  operations: ['filter', 'concatenate', 'select-closest'],
   documentationStatus: 'partially-documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA

@@ -201,21 +201,47 @@
             "kind": "literal",
             "value": "GEMINI.md"
           }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": "AGENTS.md"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": "config"
+          },
+          {
+            "kind": "literal",
+            "value": "GEMINI.md"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": "config"
+          },
+          {
+            "kind": "literal",
+            "value": "AGENTS.md"
+          }
         ]
       ]
     },
     "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
     "precedenceGroup": null,
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
-        "sourceId": "google.antigravity.cli-migration",
-        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules/",
         "officialHost": "antigravity.google",
-        "sections": ["Context files and workspace rules"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "The agent automatically consults and enforces the global constraints located at ~/.gemini/GEMINI.md."
+        "sections": ["Global rules", "Managing rules in Antigravity CLI"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The standalone global files ~/.gemini/AGENTS.md, ~/.gemini/GEMINI.md, ~/.gemini/config/AGENTS.md, and ~/.gemini/config/GEMINI.md apply across all projects and are always active, and the CLI section names the first two among its global rules."
       }
     ]
   },
@@ -376,6 +402,63 @@
     ]
   },
   {
+    "ruleId": "antigravity.global.rule",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "rule",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "config"
+          },
+          {
+            "kind": "literal",
+            "value": "rules"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": "antigravity-cli"
+          },
+          {
+            "kind": "literal",
+            "value": "rules"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules/",
+        "officialHost": "antigravity.google",
+        "sections": ["Global rules", "Managing rules in Antigravity CLI"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Modular global rules live in ~/.gemini/config/rules/*.md, and the CLI also evaluates ~/.gemini/antigravity-cli/rules/*.md; only a rules directory’s immediate .md children are scanned."
+      }
+    ]
+  },
+  {
     "ruleId": "antigravity.global.settings",
     "tool": "antigravity",
     "discoveryClass": "static-candidate",
@@ -415,7 +498,7 @@
     ]
   },
   {
-    "ruleId": "antigravity.global.skill.directory",
+    "ruleId": "antigravity.global.skill",
     "tool": "antigravity",
     "discoveryClass": "static-candidate",
     "kind": "skill",
@@ -480,49 +563,6 @@
         ],
         "reviewedOn": "2026-09-24",
         "establishes": "The CLI skill locations table gives a global skill, available in all workspaces, as a skill folder at ~/.gemini/antigravity-cli/skills/<skill-folder>/ — the first root this rule admits — while ~/.gemini/config/skills/<skill-folder>/, the second, is the global location the page gives Antigravity 2.0 and the standalone IDE rather than the terminal."
-      }
-    ]
-  },
-  {
-    "ruleId": "antigravity.global.skill.file",
-    "tool": "antigravity",
-    "discoveryClass": "static-candidate",
-    "kind": "skill",
-    "sourceKinds": ["global"],
-    "matcher": {
-      "base": {
-        "kind": "global",
-        "member": "antigravity"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": "antigravity-cli"
-          },
-          {
-            "kind": "literal",
-            "value": "skills"
-          },
-          {
-            "kind": "regex",
-            "pattern": "/\\.md$/u"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "unknown",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.antigravity.skills",
-        "url": "https://antigravity.google/docs/skills/",
-        "officialHost": "antigravity.google",
-        "sections": ["Agent skills", "CLI skill locations"],
-        "reviewedOn": "2026-09-24",
-        "establishes": "A skill is a folder containing a SKILL.md file, and the CLI skill locations table gives the terminal’s global skills as skill folders at ~/.gemini/antigravity-cli/skills/<skill-folder>/; no page documents a flat Markdown file in that directory, which is why this rule is recorded as unknown."
       }
     ]
   },
@@ -615,7 +655,7 @@
     ]
   },
   {
-    "ruleId": "antigravity.repo.context.agents-root",
+    "ruleId": "antigravity.repo.context",
     "tool": "antigravity",
     "discoveryClass": "static-candidate",
     "kind": "instructions",
@@ -626,6 +666,18 @@
       },
       "selectors": [
         [
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "literal",
+            "value": "GEMINI.md"
+          }
+        ],
+        [
+          {
+            "kind": "recursive-directories"
+          },
           {
             "kind": "literal",
             "value": "AGENTS.md"
@@ -635,50 +687,16 @@
     },
     "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
     "precedenceGroup": null,
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
-        "sourceId": "google.antigravity.cli-migration",
-        "url": "https://antigravity.google/docs/cli/gcli-migration/",
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules/",
         "officialHost": "antigravity.google",
-        "sections": ["Context files and workspace rules"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "The agent parses and enforces the rule constraints defined inside the active directory GEMINI.md and AGENTS.md files."
-      }
-    ]
-  },
-  {
-    "ruleId": "antigravity.repo.context.gemini-root",
-    "tool": "antigravity",
-    "discoveryClass": "static-candidate",
-    "kind": "instructions",
-    "sourceKinds": ["repository"],
-    "matcher": {
-      "base": {
-        "kind": "repository"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": "GEMINI.md"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "partially-documented",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.antigravity.cli-migration",
-        "url": "https://antigravity.google/docs/cli/gcli-migration/",
-        "officialHost": "antigravity.google",
-        "sections": ["Context files and workspace rules"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "The agent parses and enforces the rule constraints defined inside the active directory GEMINI.md and AGENTS.md files."
+        "sections": ["Directory-scoped rules", "Managing rules in Antigravity CLI"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The CLI evaluates AGENTS.md and GEMINI.md at the repository root and in subdirectories: whenever it reads or edits a file it walks up from that file’s folder to the workspace root, loading <dir>/AGENTS.md or <dir>/GEMINI.md and <dir>/.agents/AGENTS.md or <dir>/.agents/GEMINI.md at each level."
       }
     ]
   },
@@ -771,6 +789,9 @@
       "selectors": [
         [
           {
+            "kind": "recursive-directories"
+          },
+          {
             "kind": "literal",
             "value": ".agents"
           },
@@ -784,6 +805,9 @@
           }
         ],
         [
+          {
+            "kind": "recursive-directories"
+          },
           {
             "kind": "literal",
             "value": ".agent"
@@ -801,7 +825,7 @@
     },
     "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
     "precedenceGroup": null,
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
@@ -820,7 +844,7 @@
     ]
   },
   {
-    "ruleId": "antigravity.repo.skill.directory",
+    "ruleId": "antigravity.repo.skill",
     "tool": "antigravity",
     "discoveryClass": "static-candidate",
     "kind": "skill",
@@ -870,7 +894,7 @@
     },
     "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
     "precedenceGroup": null,
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
@@ -880,48 +904,6 @@
         "sections": ["What are skills?", "Anatomy of a skill", "CLI skill locations"],
         "reviewedOn": "2026-09-24",
         "establishes": "A workspace skill is a folder at <workspace-root>/.agents/skills/<skill-folder>/ holding a required SKILL.md — the location the CLI skill locations table gives the terminal — and .agents/skills is the default while .agent/skills keeps backward compatibility."
-      }
-    ]
-  },
-  {
-    "ruleId": "antigravity.repo.skill.file",
-    "tool": "antigravity",
-    "discoveryClass": "static-candidate",
-    "kind": "skill",
-    "sourceKinds": ["repository"],
-    "matcher": {
-      "base": {
-        "kind": "repository"
-      },
-      "selectors": [
-        [
-          {
-            "kind": "literal",
-            "value": ".agents"
-          },
-          {
-            "kind": "literal",
-            "value": "skills"
-          },
-          {
-            "kind": "regex",
-            "pattern": "/\\.md$/u"
-          }
-        ]
-      ]
-    },
-    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
-    "precedenceGroup": null,
-    "documentationStatus": "unknown",
-    "lifecycleQualifiers": [],
-    "evidence": [
-      {
-        "sourceId": "google.antigravity.skills",
-        "url": "https://antigravity.google/docs/skills/",
-        "officialHost": "antigravity.google",
-        "sections": ["Agent skills", "CLI skill locations"],
-        "reviewedOn": "2026-09-24",
-        "establishes": "A skill is a folder containing a SKILL.md file, and the CLI skill locations table gives the terminal’s workspace skills as skill folders at <workspace-root>/.agents/skills/<skill-folder>/; no page documents a flat Markdown file in that directory, which is why this rule is recorded as unknown."
       }
     ]
   },

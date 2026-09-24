@@ -1,5 +1,5 @@
 {
-  "manifestVersion": 6,
+  "manifestVersion": 7,
   "fixtures": {
     "filesystem": {
       "kind": "deterministic-builder",
@@ -9,12 +9,12 @@
     "global-homes": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/global-homes/build-fixtures.ts",
-      "sha256": "8658cbc1557161efcfd95c6f2aed02ae66a5603d5d25161df7a36e80aa3d7847"
+      "sha256": "880d1d05daed51e5c459ba7026c388260bab14661bde3715a582a79a2a3f9f73"
     },
     "repositories": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/repositories/build-fixtures.ts",
-      "sha256": "12f4cd1ffd3cc8fbf75d8ae1123b4ee7183196fb426fd7d0ee263384ad11aa39"
+      "sha256": "40de96fefd86adf975f829c8a9c3c45bff92945acb10706ac31f6ac9a7ba1959"
     },
     "secrets": {
       "kind": "deterministic-builder",
@@ -44,7 +44,7 @@
     "tests/e2e/antigravity-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/antigravity-instructions-detail.spec.ts",
-      "sha256": "28177e08d46e61d2f78bb25b72874252cf7bd1e35ee5217d1cf1a3a4563ff773"
+      "sha256": "b3f4b4ccdce3da5363def501ce2173abef434ce227da9be587f5114230e3de9d"
     },
     "tests/e2e/antigravity-mcp-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -64,7 +64,7 @@
     "tests/e2e/antigravity-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/antigravity-skills-detail.spec.ts",
-      "sha256": "928d3f46b787747f561ffad086ae765bcec97f04914d1de513f346d45e7be2f4"
+      "sha256": "f33e756d53b0f1b1adfb8ba118e2acda2b63bcd691e0aa8e8c0acb01de8297ed"
     },
     "tests/e2e/claude-commands-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -284,7 +284,7 @@
     "tests/e2e/copilot-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-instructions-inventory.spec.ts",
-      "sha256": "d32f5befd5c71d71d4843a8a809a11ee2a93cf4d938ded8a3654a236a6ddcce9"
+      "sha256": "e7039a5383e2d449fe591573d1c3c414f9db6ae893a2823ec054a356903be268"
     },
     "tests/e2e/copilot-plugins-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -762,7 +762,7 @@
           "caseId": "sc003.shared-file.repository-root-gemini-md",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository-root `GEMINI.md` is attributed to GitHub Copilot and Antigravity CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows, while a `GEMINI.md` below the root reaches no row at all.",
+          "expectedOutcome": "The repository-root `GEMINI.md` is attributed to GitHub Copilot and Antigravity CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows, while a `GEMINI.md` below the root is attributed to Antigravity CLI alone.",
           "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
         },
         {

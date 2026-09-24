@@ -409,10 +409,10 @@ export const COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE = {
  * names the CLI and Cloud surfaces and not the editor's.
  *
  * The root file is one candidate with two products' recognitions: Antigravity
- * CLI reads the same filename at the repository root, through its own static
- * rule (`antigravity.repo.context.gemini-root`), so the row names both
- * products while this rule stays Copilot's own answer for the root
- * (specs/003-antigravity-cli-support/spec.md FR-002).
+ * CLI reads the same filename at every depth, through its own static rule
+ * (`antigravity.repo.context`), so the root row names both products while
+ * this rule stays Copilot's own answer for the root
+ * (specs/003-antigravity-cli-support/spec.md FR-002, FR-013).
  */
 export const COPILOT_REPO_INSTRUCTIONS_GEMINI_ROOT_RULE = {
   ruleId: 'copilot.repo.instructions.gemini-root',

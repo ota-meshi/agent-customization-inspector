@@ -27,13 +27,10 @@ import type { AntigravityBehaviorId } from '../identifier-types';
 import type { VendorBehaviorStatement } from '../behavior-types';
 
 /**
- * Antigravity CLI workspace context: the `GEMINI.md` and `AGENTS.md` of the
- * active directory, parsed and enforced alongside the global context file.
- *
- * `partially-documented`: the page names the two files of the active directory
- * and the global one by its exact path, and states neither a depth below the
- * workspace root nor an order between them
- * (§ Known uncertainties item 1).
+ * Antigravity CLI workspace context: the `GEMINI.md` and `AGENTS.md` of every
+ * directory from the folder of a file the terminal reads or edits up to the
+ * workspace root, each directory's `.agents/` spelling included, parsed and
+ * enforced alongside the global context files.
  */
 export const ANTIGRAVITY_REPO_CONTEXT_BEHAVIOR = {
   behaviorId: 'antigravity.behavior.repo.context',
@@ -42,15 +39,24 @@ export const ANTIGRAVITY_REPO_CONTEXT_BEHAVIOR = {
   locator: SHIPS_MAINTENANCE_DATA
     ? {
         vendorScope: 'repository',
-        lookupBase: 'repository-root',
-        relativeSelector: 'GEMINI.md; AGENTS.md',
-        traversal: 'exact',
+        lookupBase: 'target-path-chain',
+        relativeSelector: 'GEMINI.md; AGENTS.md; .agents/GEMINI.md; .agents/AGENTS.md',
+        traversal: 'ancestor-chain-to-repository-root',
       }
     : null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
+        {
+          sourceId: 'google.antigravity.rules',
+          url: 'https://antigravity.google/docs/rules/',
+          officialHost: 'antigravity.google',
+          sections: ['Directory-scoped rules', 'Managing rules in Antigravity CLI'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'The CLI evaluates AGENTS.md and GEMINI.md at the repository root and in subdirectories: whenever it reads or edits a file it walks up from that file’s folder to the workspace root, loading <dir>/AGENTS.md or <dir>/GEMINI.md and <dir>/.agents/AGENTS.md or <dir>/.agents/GEMINI.md at each level; neither file uses frontmatter and each is always active for its directory scope.',
+        },
         {
           sourceId: 'google.antigravity.cli-migration',
           url: 'https://antigravity.google/docs/cli/gcli-migration/',
@@ -65,19 +71,11 @@ export const ANTIGRAVITY_REPO_CONTEXT_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
- * Antigravity CLI workspace skills below `.agents/skills/`, named by their
+ * Antigravity CLI workspace skills: skill folders holding a `SKILL.md` below
+ * `.agents/skills/`, with `.agent/skills` still supported, named by their
  * frontmatter and compiled into slash commands when the CLI runs in that
- * directory. Two shapes are admitted: a skill folder holding a `SKILL.md`,
- * whose row unit is the directory, and a flat Markdown file, whose row unit is
- * the file and which therefore has no companion census (research.md § 2).
- *
- * `partially-documented`: the shared Agent Skills page gives the terminal's
- * workspace skills as folders holding a `SKILL.md`, with `.agent/skills` still
- * supported, and the published binary discovers only the folder; no page
- * documents the flat `.md` file this locator also names, which is admitted for
- * the reason the flat rule states (`rules.ts`, `ANTIGRAVITY_REPO_SKILL_FILE_RULE`;
- * § Known uncertainties item 6). What happens when a workspace and a global
- * skill declare one name is not stated (§ Known uncertainties item 2).
+ * directory. What happens when a workspace and a global skill declare one name
+ * is not stated (§ Known uncertainties item 2).
  */
 export const ANTIGRAVITY_REPO_SKILLS_BEHAVIOR = {
   behaviorId: 'antigravity.behavior.repo.skills',
@@ -87,12 +85,11 @@ export const ANTIGRAVITY_REPO_SKILLS_BEHAVIOR = {
     ? {
         vendorScope: 'repository',
         lookupBase: 'repository-root',
-        relativeSelector:
-          '.agents/skills/<name>.md, .agents/skills/<name>/SKILL.md, .agent/skills/<name>/SKILL.md',
+        relativeSelector: '.agents/skills/<name>/SKILL.md, .agent/skills/<name>/SKILL.md',
         traversal: 'exact',
       }
     : null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -125,17 +122,16 @@ export const ANTIGRAVITY_REPO_SKILLS_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
- * Antigravity CLI workspace rules: one Markdown file per rule below the
- * workspace's or git root's `.agents/rules/`, with `.agent/rules/` still
+ * Antigravity CLI workspace rules: one Markdown file per rule directly below
+ * the `.agents/rules/` of every directory from the folder of a file the
+ * terminal reads or edits up to the workspace root, with `.agent/rules/` still
  * supported as the earlier spelling.
  *
- * `partially-documented`: the shared Rules page gives the terminal's rule
- * locations, the four triggers, the per-file size limit, and that rules are
- * cumulative with the more specific directory rule taking priority in a
- * conflict, and the terminal's migration page states that workspace rules keep
- * their support. Neither states the order the rules of one directory compose
- * in, and the page's subdirectory rules directories are not in this locator
- * (contracts/vendors/antigravity-cli.md § Known uncertainties item 10).
+ * The shared Rules page gives the terminal's rule locations, the four
+ * triggers, the per-file size limit, and that rules are cumulative with the
+ * more specific directory rule taking priority in a conflict; the order the
+ * rules of one directory compose in is the composition strategy's to leave
+ * open (contracts/vendors/antigravity-cli.md § Known uncertainties item 10).
  */
 export const ANTIGRAVITY_REPO_RULES_BEHAVIOR = {
   behaviorId: 'antigravity.behavior.repo.rules',
@@ -144,12 +140,12 @@ export const ANTIGRAVITY_REPO_RULES_BEHAVIOR = {
   locator: SHIPS_MAINTENANCE_DATA
     ? {
         vendorScope: 'repository',
-        lookupBase: 'repository-root',
+        lookupBase: 'target-path-chain',
         relativeSelector: '.agents/rules/<name>.md, .agent/rules/<name>.md',
-        traversal: 'exact',
+        traversal: 'ancestor-chain-to-repository-root',
       }
     : null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -366,7 +362,8 @@ export const ANTIGRAVITY_USER_HOME_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
- * Antigravity CLI global developer context: the `GEMINI.md` of the user tier,
+ * Antigravity CLI global developer context: the standalone `GEMINI.md` and
+ * `AGENTS.md` of the user tier and of its `config/`, always active and
  * consulted alongside the workspace context files.
  */
 export const ANTIGRAVITY_USER_CONTEXT_BEHAVIOR = {
@@ -377,14 +374,23 @@ export const ANTIGRAVITY_USER_CONTEXT_BEHAVIOR = {
     ? {
         vendorScope: 'user',
         lookupBase: 'tool-home',
-        relativeSelector: 'GEMINI.md',
+        relativeSelector: 'GEMINI.md; AGENTS.md; config/GEMINI.md; config/AGENTS.md',
         traversal: 'exact',
       }
     : null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
+        {
+          sourceId: 'google.antigravity.rules',
+          url: 'https://antigravity.google/docs/rules/',
+          officialHost: 'antigravity.google',
+          sections: ['Global rules', 'Managing rules in Antigravity CLI'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'The standalone global files ~/.gemini/AGENTS.md, ~/.gemini/GEMINI.md, ~/.gemini/config/AGENTS.md, and ~/.gemini/config/GEMINI.md apply across all projects, need no frontmatter, and are always active, and the CLI section names the first two among its global rules.',
+        },
         {
           sourceId: 'google.antigravity.cli-migration',
           url: 'https://antigravity.google/docs/cli/gcli-migration/',
@@ -393,6 +399,40 @@ export const ANTIGRAVITY_USER_CONTEXT_BEHAVIOR = {
           reviewedOn: '2026-09-10',
           establishes:
             'The agent automatically consults and enforces the global developer constraints located at ~/.gemini/GEMINI.md.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Antigravity CLI global modular rules: one Markdown file per rule directly
+ * below the user tier's `config/rules/` or the terminal's own
+ * `antigravity-cli/rules/`, each activated as its frontmatter declares.
+ */
+export const ANTIGRAVITY_USER_RULES_BEHAVIOR = {
+  behaviorId: 'antigravity.behavior.user.rules',
+  tool: 'antigravity',
+  surfaces: ['antigravity-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'config/rules/<name>.md, antigravity-cli/rules/<name>.md',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'google.antigravity.rules',
+          url: 'https://antigravity.google/docs/rules/',
+          officialHost: 'antigravity.google',
+          sections: ['Global rules', 'Activation modes', 'Managing rules in Antigravity CLI'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Modular global rules live in ~/.gemini/config/rules/*.md and need YAML frontmatter declaring a trigger, the CLI also evaluates ~/.gemini/antigravity-cli/rules/*.md, and only a rules directory’s immediate .md children are scanned.',
         },
       ]
     : [],
@@ -475,17 +515,14 @@ export const ANTIGRAVITY_USER_AGENTS_BEHAVIOR = {
 
 /**
  * Antigravity CLI global shared skills, imported as slash commands whenever
- * the CLI launches in any directory. Two roots and two shapes, as the
- * workspace behavior has two shapes: a skill folder's `SKILL.md` below the
- * user tier's `antigravity-cli/skills/` or its `config/skills/`, and a flat
- * Markdown file under `antigravity-cli/skills/`.
+ * the CLI launches in any directory: a skill folder's `SKILL.md` below the
+ * user tier's `antigravity-cli/skills/` or its `config/skills/`.
  *
  * `partially-documented`: the shared Agent Skills page gives the terminal's
  * global skills as folders below `antigravity-cli/skills/`, and gives
  * `config/skills/` to the desktop application and the editor extensions
  * rather than to the terminal, which walks it all the same (observed against
- * `agy` 1.2.0); no page documents the flat file this locator also names
- * (§ Known uncertainties item 6).
+ * `agy` 1.2.0; § Known uncertainties item 6).
  */
 export const ANTIGRAVITY_USER_SKILLS_BEHAVIOR = {
   behaviorId: 'antigravity.behavior.user.skills',
@@ -495,8 +532,7 @@ export const ANTIGRAVITY_USER_SKILLS_BEHAVIOR = {
     ? {
         vendorScope: 'user',
         lookupBase: 'tool-home',
-        relativeSelector:
-          'antigravity-cli/skills/<name>/SKILL.md, config/skills/<name>/SKILL.md, antigravity-cli/skills/<name>.md',
+        relativeSelector: 'antigravity-cli/skills/<name>/SKILL.md, config/skills/<name>/SKILL.md',
         traversal: 'exact',
       }
     : null,
@@ -713,6 +749,7 @@ export const ANTIGRAVITY_BEHAVIOR_STATEMENTS: Readonly<
   [ANTIGRAVITY_USER_MCP_BEHAVIOR.behaviorId]: ANTIGRAVITY_USER_MCP_BEHAVIOR,
   [ANTIGRAVITY_USER_PERMISSIONS_BEHAVIOR.behaviorId]: ANTIGRAVITY_USER_PERMISSIONS_BEHAVIOR,
   [ANTIGRAVITY_USER_PLUGINS_BEHAVIOR.behaviorId]: ANTIGRAVITY_USER_PLUGINS_BEHAVIOR,
+  [ANTIGRAVITY_USER_RULES_BEHAVIOR.behaviorId]: ANTIGRAVITY_USER_RULES_BEHAVIOR,
   [ANTIGRAVITY_USER_SETTINGS_BEHAVIOR.behaviorId]: ANTIGRAVITY_USER_SETTINGS_BEHAVIOR,
   [ANTIGRAVITY_USER_SKILLS_BEHAVIOR.behaviorId]: ANTIGRAVITY_USER_SKILLS_BEHAVIOR,
 };

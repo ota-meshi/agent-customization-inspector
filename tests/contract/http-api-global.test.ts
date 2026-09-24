@@ -198,8 +198,8 @@ describe('create-global-consent-preview', () => {
     // later enable request is refused when either no longer matches — so a
     // version that changed without anyone deciding to change it is the failure
     // this freezes.
-    expect(preview.allowlistVersion).toBe('2026-09-10');
-    expect(preview.traversalPlanVersion).toBe('2026-09-10');
+    expect(preview.allowlistVersion).toBe('2026-09-24');
+    expect(preview.traversalPlanVersion).toBe('2026-09-24');
   });
 
   it('shows an unusable override as itself rather than falling back', () => {

@@ -410,24 +410,15 @@ function projectSkillInventory(
       surfaces: surfacesOf(recognition),
       parseStatus: recognition.parseStatus,
       diagnosticIds: recognition.diagnosticIds,
-      // A directory-shaped skill's own directory: the entry point's path is
-      // where the files it ships are. A flat one ships none — its siblings are
-      // other skills rather than its companions — so it publishes an empty
-      // list rather than the folder above it (spec.md § FR-004). Which shape
-      // this is comes from the recognition, which carried it from the
-      // admitting rule; deriving it from the path here would be a second
-      // answer that could disagree with the rule's own.
-      rowUnit: recognition.details.rowUnit,
-      companionFiles:
-        recognition.details.rowUnit === 'file'
-          ? []
-          : directoryFilesOf(
-              recognition.sourceId,
-              path.slice(0, path.lastIndexOf('/') + 1),
-              files,
-              recognized,
-              censusEscapedRoots,
-            ),
+      // The skill's own directory: the entry point's path is where the files
+      // it ships are (spec.md § FR-004).
+      companionFiles: directoryFilesOf(
+        recognition.sourceId,
+        path.slice(0, path.lastIndexOf('/') + 1),
+        files,
+        recognized,
+        censusEscapedRoots,
+      ),
     });
   }
   // One collision gate per recognizing tool over the whole generation's

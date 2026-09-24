@@ -73,9 +73,8 @@ describe('same-name skill resolution', () => {
     // rules name one strategy whose only operation is `unknown-order`: its
     // pages state that a workspace skill and a global one are both available
     // and say nothing about which answers a slash command when they share a
-    // name, nor which of the two admitted shapes the terminal takes when one
-    // name is spelled in both (contracts/vendors/antigravity-cli.md § Known
-    // uncertainties items 2 and 6). Deriving a winner there would invent one,
+    // name (contracts/vendors/antigravity-cli.md § Known uncertainties item
+    // 2). Deriving a winner there would invent one,
     // so the row states nothing for that product and the projection drops the
     // statement (`session.ts`, `sameNameSkillResolutionFor` returning null).
     //
@@ -639,13 +638,11 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
     // Both of this vendor's skill rules name `antigravity.skills.selection`,
     // whose only operation is `unknown-order`: the pages state that a
     // workspace skill and a global one are both available and say nothing
-    // about which answers a slash command when they share a name — nor which
-    // of the two admitted shapes the terminal takes when one name is spelled
-    // in both. A pipeline recording neither a selection nor a retention
-    // establishes nothing, so the row says nothing rather than inventing a
-    // winner (`skill-resolution.ts`; specs/003-antigravity-cli-support/spec.md
-    // § FR-004; contracts/vendors/antigravity-cli.md § Known uncertainties
-    // items 2 and 6).
+    // about which answers a slash command when they share a name. A pipeline
+    // recording neither a selection nor a retention establishes nothing, so
+    // the row says nothing rather than inventing a winner
+    // (`skill-resolution.ts`; contracts/vendors/antigravity-cli.md § Known
+    // uncertainties item 2).
     //
     // T004: this expectation failed against the previous registry, whose
     // fourth vendor's skills strategy documented a first-found winner.
@@ -716,21 +713,14 @@ describe('the unified SKILL selector matrix (T179)', () => {
   // integration suite's (tests/integration/repository-scan.test.ts).
   const skillRules = rules.filter((rule) => rule.kind === 'skill');
 
-  it('ships exactly the eleven read-authorizing skill rules', () => {
-    // T004: Antigravity CLI contributes four of the eleven, and contributes no
-    // shared-agent-home rule — its global skills live below `~/.gemini`, and no
-    // cited page has it read `~/.agents` (FR-045) — and contributes a second
-    // rule at each boundary instead, because it admits two skill shapes at one
-    // location whose row units differ (spec.md § FR-004). The two shapes are
-    // two rules at the consented home for the same reason they are two in the
-    // workspace: a rule's selectors admit paths for one row unit, so a flat
-    // skill sharing the folder rule would take the folder's unit and publish
-    // every file beside it as its own companion census.
+  it('ships exactly the nine read-authorizing skill rules', () => {
+    // T004, T084: Antigravity CLI contributes two of the nine, one at each
+    // boundary, and contributes no shared-agent-home rule — its global skills
+    // live below `~/.gemini`, and no cited page has it read `~/.agents`
+    // (FR-045).
     expect(skillRules.map((rule) => rule.ruleId).sort()).toEqual([
-      'antigravity.global.skill.directory',
-      'antigravity.global.skill.file',
-      'antigravity.repo.skill.directory',
-      'antigravity.repo.skill.file',
+      'antigravity.global.skill',
+      'antigravity.repo.skill',
       'claude.global.skill',
       'claude.repo.skill',
       'codex.global.agents-home.skill',
@@ -753,10 +743,10 @@ describe('the unified SKILL selector matrix (T179)', () => {
   const RECOGNITION_MATRIX: readonly (readonly [string, readonly string[]])[] = [
     ['.github/skills/ship/SKILL.md', ['copilot']],
     ['.agents/skills/orbit/SKILL.md', ['antigravity', 'codex', 'copilot']],
-    // The flat shape at the same location is this vendor's alone: no page
-    // documents it, which the rule keeps admitted and the contract records
+    // A flat Markdown file at the same location is no product's: no page
+    // documents it and the terminal filters it out
     // (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
-    ['.agents/skills/deploy.md', ['antigravity']],
+    ['.agents/skills/deploy.md', []],
     // The superseded spelling reaches the folder shape the page that states
     // the backward support shows there, and the flat shape nowhere.
     ['.agent/skills/orbit/SKILL.md', ['antigravity']],
@@ -772,12 +762,8 @@ describe('the unified SKILL selector matrix (T179)', () => {
     ['packages/api/.github/skills/nested-ship/SKILL.md', []],
     // Configured-root shapes stay condition facts rather than selectors.
     ['.copilot/skills/tool/SKILL.md', []],
-    // No skill-name segment, one level too deep, and a sibling companion. The
-    // first is a near miss for every directory-shaped rule and a hit for the
-    // one flat rule: a Markdown file directly below `.agents/skills/` is what
-    // that rule admits, whatever it is named, so this path is a skill named
-    // `SKILL` for the vendor whose own page documents the flat shape.
-    ['.agents/skills/SKILL.md', ['antigravity']],
+    // No skill-name segment, one level too deep, and a sibling companion.
+    ['.agents/skills/SKILL.md', []],
     ['.agents/skills/orbit/nested/SKILL.md', []],
     ['.agents/skills/orbit/README.md', []],
   ];
@@ -801,22 +787,21 @@ describe('the unified instruction selector matrix (T269)', () => {
     (rule) => rule.discoveryClass === 'static-candidate',
   );
 
-  it('ships exactly the sixteen static instruction selectors of the four vendors', () => {
+  it('ships exactly the fifteen static instruction selectors of the four vendors', () => {
     // Nine Repository selectors plus the five Global selectors consent
     // authorizes. They are in this list rather than a Global one of their own
     // because the matrix is about the instruction kind: a selector's base is a
     // field of it, and the Global-scope assertions below are what separate the
     // two.
     //
-    // T004: sixteen, of which Antigravity CLI contributes three — the
-    // repository root's `GEMINI.md` and `AGENTS.md`, and the consented home's
-    // `GEMINI.md` — all of them static, because no cited page documents a
-    // terminal setting that renames a context file, so this vendor ships no
-    // derived rule at all.
+    // T004, T083: fifteen, of which Antigravity CLI contributes two — the
+    // repository's `GEMINI.md` and `AGENTS.md` at every depth, and the
+    // consented home's four context files — both static, because no cited
+    // page documents a terminal setting that renames a context file, so this
+    // vendor ships no derived rule at all.
     expect(staticInstructionRules.map((rule) => rule.ruleId).sort()).toEqual([
       'antigravity.global.context',
-      'antigravity.repo.context.agents-root',
-      'antigravity.repo.context.gemini-root',
+      'antigravity.repo.context',
       'claude.global.instructions',
       'claude.repo.instructions',
       'codex.global.instructions',
@@ -910,11 +895,14 @@ describe('the unified instruction selector matrix (T269)', () => {
   const RECOGNITION_MATRIX: readonly (readonly [string, readonly string[]])[] = [
     ['AGENTS.md', ['antigravity', 'claude', 'codex', 'copilot']],
     ['AGENTS.override.md', ['codex']],
-    ['docs/AGENTS.md', ['claude', 'copilot']],
-    // Claude reads a directory's `.claude/AGENTS.md` beside its `AGENTS.md`;
-    // to Copilot it is one more `AGENTS.md` at some depth. `AGENTS.local.md`
-    // is no product's.
-    ['.claude/AGENTS.md', ['claude', 'copilot']],
+    ['docs/AGENTS.md', ['antigravity', 'claude', 'copilot']],
+    // Claude reads a directory's `.claude/AGENTS.md` beside its `AGENTS.md`,
+    // and Antigravity CLI a directory's `.agents/AGENTS.md`; to Copilot each is
+    // one more `AGENTS.md` at some depth, and to the other of the two it is a
+    // file in some directory it walks through. `AGENTS.local.md` is no
+    // product's.
+    ['.claude/AGENTS.md', ['antigravity', 'claude', 'copilot']],
+    ['docs/.agents/AGENTS.md', ['antigravity', 'claude', 'copilot']],
     ['AGENTS.local.md', []],
     ['CLAUDE.md', ['claude', 'copilot']],
     ['packages/api/CLAUDE.md', ['claude']],
@@ -924,12 +912,13 @@ describe('the unified instruction selector matrix (T269)', () => {
     // The root file is two products': Copilot's static rule, which FR-013
     // leaves exactly as it was, and Antigravity CLI's — a static selector of
     // its own, because this vendor derives no context filename. Below the root
-    // it is nobody's: the migration page states the workspace context files as
-    // the active directory's and states no depth
-    // (contracts/vendors/antigravity-cli.md § Known uncertainties item 1).
+    // it is Antigravity CLI's alone: the terminal loads the pair of every
+    // directory it walks up through from a file it reads or edits
+    // (specs/003-antigravity-cli-support/spec.md § FR-007).
     ['GEMINI.md', ['antigravity', 'copilot']],
-    ['packages/api/GEMINI.md', []],
-    ['packages/api/AGENTS.md', ['claude', 'copilot']],
+    ['packages/api/GEMINI.md', ['antigravity']],
+    ['docs/.agents/GEMINI.md', ['antigravity']],
+    ['packages/api/AGENTS.md', ['antigravity', 'claude', 'copilot']],
     ['.github/copilot-instructions.md', ['copilot']],
     ['packages/api/.github/copilot-instructions.md', ['copilot']],
     ['.github/instructions/frontend.instructions.md', ['copilot']],
@@ -1251,26 +1240,26 @@ describe('structure-only projection vocabulary', () => {
 });
 
 describe('the registry this release owns (T913)', () => {
-  it('ships one hundred and three rules: fifty-nine Repository and forty-four Global (T992)', () => {
+  it('ships one hundred and one rules: fifty-seven Repository and forty-four Global (T992)', () => {
     // The phase gate: not a per-family list — each family's own case above
     // owns that — but the total this release is allowed to read by, split by
     // the scope each rule reads at. A rule added without a phase that owns it
     // fails here, which is the point of freezing the numbers rather than
     // deriving them.
     //
-    // T004: every literal in this case was written only after it was watched
-    // failing against the shipped registry. Antigravity CLI ships twenty-three
-    // rules, and where they fall follows from its own pages — no derived rule,
+    // T004, T083–T084: every literal in this case was written only after it
+    // was watched failing against the shipped registry. Antigravity CLI ships
+    // twenty-one rules, and where they fall follows from its own pages — no derived rule,
     // because none documents a terminal setting that renames a customization;
     // one Repository exclusion for the workspace plugin directory, which needs
     // a reason the installed-copy exclusion does not give; and no
     // shared-agent-home rule at all.
-    expect(rules).toHaveLength(103);
+    expect(rules).toHaveLength(101);
     const repository = rules.filter((rule) => rule.sourceKinds.includes('repository'));
     const global = rules.filter((rule) => rule.sourceKinds.includes('global'));
-    expect(repository).toHaveLength(59);
+    expect(repository).toHaveLength(57);
     expect(repository.filter((rule) => rule.discoveryClass === 'static-candidate')).toHaveLength(
-      50,
+      48,
     );
     expect(
       repository.filter((rule) => rule.discoveryClass === 'bounded-derived-candidate'),
@@ -1291,9 +1280,9 @@ describe('the registry this release owns (T913)', () => {
       'antigravity.global.hooks.inline',
       'antigravity.global.mcp',
       'antigravity.global.permissions',
+      'antigravity.global.rule',
       'antigravity.global.settings',
-      'antigravity.global.skill.directory',
-      'antigravity.global.skill.file',
+      'antigravity.global.skill',
       'claude.excluded.user-runtime',
       'claude.global.agent',
       'claude.global.command',

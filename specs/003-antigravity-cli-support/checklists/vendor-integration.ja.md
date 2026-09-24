@@ -17,7 +17,7 @@
 - [x] CHK003 このツールが publish する kind が行の単位 — ファイル、宣言された名前、宣言された server 名 — とともに名指され、publish しない kind が触れられないままではなく列挙されているか [Completeness, Spec §FR-004–FR-006, §FR-011, §FR-012; Data Model §Compiled unit]
 - [x] CHK004 FR-014 が、このリリースがサポートしない製品を名指してはならない artifact の種類 — vendor module、contract、registry record、fixture、文書の節、label、mark、evidence record — をすべて名指し、凍結された件数にも届いているか [Completeness, Spec §FR-014; Plan §Implementation Boundaries]
 - [x] CHK006 FR-001 が変わる親仕様の条項を列挙し、research § 11 が同じ集合を挙げ、片方にしか名指されない artifact がないか [Completeness, Spec §FR-001; Research §11]
-- [x] CHK007 ファイルの形の skill の detail の要件 — file panel を出さない、tab strip を出さない、見出しは変えない — が、要件の裏付けのない表示上の判断のままではなく述べられているか [Completeness, Spec §FR-004, §Clarifications; Data Model §skill の行と detail]
+- [x] CHK007 ファイルの形の skill の detail の要件 — file panel を出さない、tab strip を出さない、見出しは変えない — が、要件の裏付けのない表示上の判断のままではなく述べられているか [Completeness, Spec §FR-004, §Clarifications; Data Model §skill の行と detail] — 2026-09-24 に置き換え: ファイルの形の skill を admit する rule は無い (Spec §FR-004, § Clarifications Session 2026-09-24) ので、file panel を欠く skill の detail は無い。
 - [x] CHK008 contract が名指す各 strategy が operation と引用済みの根拠を持ち、ページが解決を述べないものも含めて記録されているか [Completeness, Contract §Canonical evidence-assessment index, §文書化済み Repository behavior]
 
 ## 要件の明確さ
@@ -25,10 +25,10 @@
 - [x] CHK009 「このリリースがサポートしない製品をどの surface も名指さない」が確認可能に書かれているか。SC-006 が探索対象 — 識別子、label、mark、contract、凍結件数 — を定義し、「痕跡なし」を判断に委ねていないか [Clarity, Spec §FR-001, §FR-014, §SC-006]
 - [x] CHK010 member の label が1つの綴りに固定され、隣に表示される root パスとは別のものとして述べられ、2つが1つの field と読まれないか [Clarity, Spec §FR-008, §Clarifications]
 - [x] CHK011 member に環境プロパティがないことが、読み手が推し量るべき欠落ではなく、理由を伴う要件として書かれているか [Clarity, Spec §FR-008; Research §4]
-- [x] CHK012 ファイルの形の skill の命名規則が正確か。frontmatter の `name`、なければファイル自身の名前、そして拡張子が名前に含まれるかどうかを含む — 2026-09-10 に、代替の名前が拡張子を除いたファイル自身の名前であることを FR-004 に述べて充足した [Clarity, Spec §FR-004]
+- [x] CHK012 ファイルの形の skill の命名規則が正確か。frontmatter の `name`、なければファイル自身の名前、そして拡張子が名前に含まれるかどうかを含む — 2026-09-10 に、代替の名前が拡張子を除いたファイル自身の名前であることを FR-004 に述べて充足した [Clarity, Spec §FR-004] — 2026-09-24 に置き換え: ファイルの形を admit する rule は無い (Spec §FR-004) ので、フォルダの fallback だけが残る。
 - [x] CHK013 home の settings ファイルについて「1つの carrier が3回 recognize される」ことが述べられ、ファイルとしては1度だけ現れ、重複行なしに3つの kind に届くと読み手が分かるか [Clarity, Spec §FR-011]
 - [x] CHK014 `Antigravity CLI` がどの surface でも唯一の表示綴りとして固定され、ユーザー向けテキストの要件に別の綴りが現れないか [Clarity, Spec §FR-001]
-- [x] CHK015 ルートのみの context の規則が、ネストした `GEMINI.md` や `AGENTS.md` を admit すると読めない形で書かれ、深さが確定した vendor の事実ではなく既知の不確実性として記録されているか [Clarity, Spec §FR-007; Contract §既知の不確実性 項目 1]
+- [x] CHK015 ルートのみの context の規則が、ネストした `GEMINI.md` や `AGENTS.md` を admit すると読めない形で書かれ、深さが確定した vendor の事実ではなく既知の不確実性として記録されているか [Clarity, Spec §FR-007; Contract §既知の不確実性 項目 1] — 2026-09-24 に置き換え: Rules ページが階層を文書化しているので、FR-007 はすべての深さで2つを admit する (§ Clarifications Session 2026-09-24)。
 - [x] CHK016 legacy の MCP key の扱いが、製品が行わない検証としてではなく、書かれたものを分類せずに示すこととして述べられているか [Clarity, Spec §FR-005]
 
 ## 要件の一貫性

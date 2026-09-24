@@ -23,7 +23,7 @@
       "consumesBehaviors": ["antigravity.behavior.user.permissions"]
     },
     "antigravity.rules.activation": {
-      "consumesBehaviors": ["antigravity.behavior.repo.rules"]
+      "consumesBehaviors": ["antigravity.behavior.repo.rules", "antigravity.behavior.user.rules"]
     },
     "antigravity.skills.selection": {
       "consumesBehaviors": ["antigravity.behavior.repo.skills", "antigravity.behavior.user.skills"]
@@ -292,15 +292,15 @@
       ],
       "explainedByStrategies": ["antigravity.permissions.precedence"]
     },
+    "antigravity.global.rule": {
+      "basedOnBehaviors": ["antigravity.behavior.user.rules"],
+      "explainedByStrategies": ["antigravity.rules.activation"]
+    },
     "antigravity.global.settings": {
       "basedOnBehaviors": ["antigravity.behavior.user.settings"],
       "explainedByStrategies": []
     },
-    "antigravity.global.skill.directory": {
-      "basedOnBehaviors": ["antigravity.behavior.user.skills"],
-      "explainedByStrategies": ["antigravity.skills.selection"]
-    },
-    "antigravity.global.skill.file": {
+    "antigravity.global.skill": {
       "basedOnBehaviors": ["antigravity.behavior.user.skills"],
       "explainedByStrategies": ["antigravity.skills.selection"]
     },
@@ -312,11 +312,7 @@
       "basedOnBehaviors": ["antigravity.behavior.repo.agents"],
       "explainedByStrategies": ["antigravity.agents.selection"]
     },
-    "antigravity.repo.context.agents-root": {
-      "basedOnBehaviors": ["antigravity.behavior.repo.context"],
-      "explainedByStrategies": ["antigravity.context.layering"]
-    },
-    "antigravity.repo.context.gemini-root": {
+    "antigravity.repo.context": {
       "basedOnBehaviors": ["antigravity.behavior.repo.context"],
       "explainedByStrategies": ["antigravity.context.layering"]
     },
@@ -332,11 +328,7 @@
       "basedOnBehaviors": ["antigravity.behavior.repo.rules"],
       "explainedByStrategies": ["antigravity.rules.activation"]
     },
-    "antigravity.repo.skill.directory": {
-      "basedOnBehaviors": ["antigravity.behavior.repo.skills"],
-      "explainedByStrategies": ["antigravity.skills.selection"]
-    },
-    "antigravity.repo.skill.file": {
+    "antigravity.repo.skill": {
       "basedOnBehaviors": ["antigravity.behavior.repo.skills"],
       "explainedByStrategies": ["antigravity.skills.selection"]
     },

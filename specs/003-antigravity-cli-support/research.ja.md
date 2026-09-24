@@ -5,18 +5,20 @@
 **対象機能**: [spec.ja.md](spec.ja.md) | **日付**: 2026-09-10
 
 各節は、この機能の設計が立つ決定を1つずつ、その理由と却下した案とともに記録する。以下の vendor
-の事実はすべて 2026-09-10 に `https://antigravity.google/docs/` から読んだ。
+の事実はすべて 2026-09-10 に `https://antigravity.google/docs/` から読み、Rules と skills の
+ページの事実は 2026-09-24 にもう一度読んだ。
 
 ## 1. Antigravity CLI がカスタマイズを読む場所
 
-**Decision**: リポジトリの location は、ルートの `GEMINI.md` と `AGENTS.md`、
-`.agents/skills/<name>.md` と `.agents/skills/<name>/SKILL.md`、`.agents/rules/<name>.md`、
+**Decision**: リポジトリの location は、任意のディレクトリ（`.agents/` を含む）の `GEMINI.md` と
+`AGENTS.md`、`.agents/skills/<name>/SKILL.md`、すべての深さの `<dir>/.agents/rules/<name>.md`、
 `.agents/hooks.json`、`.agents/agents/<name>.md` と `.agents/agents/<name>/agent.md`、
 `.agents/mcp_config.json`、そして旧綴りの `.agent/skills/<name>/SKILL.md` と
-`.agent/rules/<name>.md` である。`~/.gemini` 配下の home の location は `GEMINI.md`、
-`config/mcp_config.json`、`config/hooks.json`、`config/agents/`、
-`antigravity-cli/skills/<name>/SKILL.md`、`config/skills/<name>/SKILL.md`、
-`antigravity-cli/skills/<name>.md`、`antigravity-cli/settings.json` である。
+`<dir>/.agent/rules/<name>.md` である。`~/.gemini` 配下の home の location は `GEMINI.md`、
+`AGENTS.md`、`config/GEMINI.md`、`config/AGENTS.md`、`config/rules/<name>.md`、
+`antigravity-cli/rules/<name>.md`、`config/mcp_config.json`、`config/hooks.json`、
+`config/agents/`、`antigravity-cli/skills/<name>/SKILL.md`、`config/skills/<name>/SKILL.md`、
+`antigravity-cli/settings.json` である。
 
 **Rationale**: vendor の文書は、2つの共有カスタマイズ root の上に立つ3つの製品ツリー
 — Antigravity 2.0、Antigravity CLI、Antigravity for IDEs — である。workspace の `.agents/` と
@@ -25,7 +27,13 @@ home の `~/.gemini/config/` は3つのツリーが同じファイルについ�
 `antigravity-cli` である。したがって共有部分のページは共有 root に何があるかを確立し、他の製品
 ツリーのページはその製品の専用ディレクトリだけを確立する。
 
-その構造に照らすと: migration のページは workspace の context file を作業ディレクトリの
+その構造に照らすと: 共有の Rules ページは、端末がファイルを読むか編集するたびに、そのファイルの
+フォルダから workspace root まで上へ歩き、各階層で `<dir>/AGENTS.md` または `<dir>/GEMINI.md` と、
+`<dir>/.agents/AGENTS.md` または `<dir>/.agents/GEMINI.md` を読み込み、各階層の
+`.agents/rules/*.md` についても同様で、その直下の子だけを走査すると述べる。global のファイルを
+`~/.gemini/AGENTS.md`、`~/.gemini/GEMINI.md`、および `~/.gemini/config/` 配下の同じ2つとして、
+global の rule を `~/.gemini/config/rules/*.md` と `~/.gemini/antigravity-cli/rules/*.md` として
+与える。migration のページは workspace の context file を作業ディレクトリの
 `GEMINI.md` と `AGENTS.md` として、global のそれを `~/.gemini/GEMINI.md` として述べる。その
 skills の表は workspace のパスを `.agents/skills/`、global のパスを
 `~/.gemini/antigravity-cli/skills/` と述べる。MCP の節は2つの `mcp_config.json` の location を
@@ -39,96 +47,65 @@ global のディレクトリを `~/.gemini/config/agents/` として与える。
 `~/.gemini/config/`）」に置きつつ、`~/.gemini/antigravity-cli` を端末自身のアプリケーション
 データディレクトリとして名指す。それがこのページを端末についてのページにもしている。
 
-**Alternatives considered**: 端末自身のページだけを読む案は、共有ページと突き合わせた時点で
-却下した。その読みは `.agents/skills/deploy.md` を admit して `.agents/skills/deploy/SKILL.md`
-を却下し、このリポジトリ自身の `.agents/skills/` が満たしているファイルを、2製品には挙げて3つ目
-には挙げない状態を残す。`.agents/plugins/` の admit は逆方向の理由で却下した。それはアプリと
+**Alternatives considered**: `.agents/plugins/` の admit は却下した。それはアプリと
 拡張のツリーにしか文書化されておらず、どの端末のページも名指さず、端末自身のページは plugin を
 `agy` が home へ配置する bundle としてのみ述べる。workspace の settings ファイルの admit は、
 どのツリーのページもそれを文書化していないので却下した。
 
-## 2. ここでは skill はディレクトリでもファイルでもあるので、ファイルの形を自身の compiled unit にする
+## 2. skill はそのフォルダであり、`skills/` 直下のフラットな Markdown ファイルはどこでも admit しない
 
-**Decision**: skill kind は、行の単位が1つの Markdown ファイルである2つ目の compiled な形を得る。
-それはディレクトリの形を広げたものではなく自身の unit であり、2つは recognizer が判別する閉じた
-union をなす。ファイルの形の skill は companion の census を publish しない。companion を抱える
-ディレクトリを持たないからである。この vendor は workspace と global の双方の skill location で
-両方の形を admit する。これは2つの rule が2つの unit を名指す形であって、1つの rule が広げた
-unit を名指す形ではない。2つの custom-agent の形が既にその配置である。
+**Decision**: この vendor の skill はフォルダの形 — 自身のフォルダの中の `SKILL.md` — だけで、
+workspace の location、旧綴りの下、そして両方の global root で admit する。`skills/` ディレクトリの
+直下にある Markdown ファイルはどこでも near miss である。したがって skill kind はすべての vendor が
+共有する1つのフォルダの形の compiled unit を保ち、ファイルの形の skill とフォルダの形の skill を
+見分ける field は持たない。名前無しの skill はそのフォルダで名付ける。2つの global skill root は
+順位づけずに両方 admit する。
 
-**Rationale**: このリポジトリ自身の規則は、一覧の行の単位は挙げられる対象のものであり、片方の形を
-optional な field で広げてもう片方に合わせると、どちらの不変条件も成り立たない型ができる、と
-いうものである。ディレクトリの形の skill の record はディレクトリについてのものである。entry
-point、その隣の companion ファイル、detail が見出しにする escape 済みのディレクトリパスである。
-ファイルの形の skill はそのどれも持たず、パスと parse を持つ。2つの unit と1つの union が、その
-方針が求める形である。
+**Rationale**: 端末の skill の location を示すページはどれもフォルダを示している。端末自身の
+skills ページも共有の Agent Skills ページも同様である。出荷された端末も一致する。公開されている
+`agy` 1.2.0 の Linux x64 バイナリの静的解析 — 文字列からではなく、端末自身の `GetSkills` から
+共通の探索処理までたどったもの — は、skill の customization 種別が file 種別ではなく
+subdirectory 種別であることを示した。したがって `skills/` 直下の通常ファイルは名前を読む前に
+除外される。フラットな形の rule は、どのページも文書化せず端末も検出しないファイルを admit する
+ことになる。
 
-**Alternatives considered**: ディレクトリの record に optional な `companionFiles` と optional
-なディレクトリパスを持たせる案は、上の方針により却下した。ファイルの形の skill を instruction
-file として扱う案は却下した。vendor はそれを slash command になる skill として文書化しており、
-行が属する kind は形ではなく vendor の主張だからである。2つの形を selector 2本の1つの rule に
-畳む案も却下した。rule の selector は1つの行の単位についてパスを admit するものであり、この2つの
-unit は異なる。片方はファイルを名指し、もう片方は entry point が `SKILL.md` であるディレクトリを
-名指す。
+ファイルの形を admit する rule が無いので、2つの形を見分ける field には区別するものが無い。1つの
+値しか取れない discriminant は「どの skill もそのフォルダである」という事実についての2つ目の
+state であり、simplicity の方針はそれを残さず削除する。
 
-## 2a. 出荷バイナリはフォルダ形しか検出しないが、フラットな rule は残す
-
-**Decision**: フラットな rule は残す。それが立つ文書の conflict は、計測対象のビルドとともに
-vendor contract に記録し、ページか後のビルドが決着させた時点で落とす。ページではなく計測に従う
-ものは1つ、文書化された2つの global skill root を順位づけずに両方 admit することである。
-命名は従わない。名前無しのフォルダはそのフォルダ名で、名前無しのフラットファイルはそのファイル
-自身の名前で名付ける。
-
-**Rationale**: 公開されている `agy` 1.2.0 の Linux x64 バイナリの静的解析 — 文字列からではなく、
-端末自身の `GetSkills` から共通の探索処理までたどったもの — は、skill の customization 種別が
-file 種別ではなく subdirectory 種別であることを示した。したがって `skills/` 直下の通常ファイルは
-名前を読む前に除外され、`GetSkillsCreatePath` は
-`{workspace}/.agents/skills/{skill_name}/SKILL.md` を組み立てる。そうでないと述べる出典は端末
-自身の plugins and skills ページだけであり、他の5つと、この端末向けに書かれた Google の codelab は
-バイナリと一致する。
-
-フラットな rule を残すのは、2つの誤りが対称でないからである。vendor 自身の指示に従った読み手は
-そのファイルを持っている。admit しなければその存在について何も示せず、それはこの製品が防ぐために
-ある失敗である。admit する費用は、vendor 自身のページが支える行1つである。解析の範囲は1つの
-プラットフォームの 1.2.0 ビルドの標準ディレクトリ設定なので、「そこで自動検出されない」は
-「決して読まれない」ではない。
-
-global root は逆の向きに決まる。これはそもそもどのページが正しいかの問題ではないからである。
-端末はアプリケーションデータディレクトリと設定ディレクトリの両方を加えたうえで重複ルートを
-除去するので、2つのページの異なる global ディレクトリは両方 admit される。
-
-名付けは従わない。静的に読むと、`name` が無い場合はファイル自身の名前から `.md` を除いて
+名付けはフォルダに従う。静的に読むと、`name` が無い場合はファイル自身の名前から `.md` を除いて
 補われ、`SKILL.md` では `SKILL` になる。しかし同じバイナリの `GetSkillsCreatePath` は
 `{workspace}/.agents/skills/{skill_name}/SKILL.md` を組み立てる。つまり端末自身がフォルダを
 名前の持ち手として扱っており、`SKILL` の fallback は端末が作った名前無し skill をすべて互いに
 衝突させることになる。ページと、同じファイルを読む2製品と、その path builder はフォルダで
 一致している。`SKILL` という行の名前は著者が誰も書いていない名前でもあり、publish すれば1つの
 ファイルが2つの名前で2行に乗る。それは vendor 側の事実ではなくこの製品の欠陥として読まれる。
-したがって fallback はフォルダ形ならフォルダ、フラット形ならファイル名であり、食い違いのほうを
-contract に記録する (§ 既知の不確実性 項目 7)。
+食い違いのほうを contract に記録する (§ 既知の不確実性 項目 7)。
 
-**Alternatives considered**: フラットな rule を落とす案は上記の非対称性により却下した。
+global root はバイナリに従う。これはそもそもどのページが正しいかの問題ではないからである。
+端末はアプリケーションデータディレクトリと設定ディレクトリの両方を加えたうえで重複ルートを
+除去するので、2つのページの異なる global ディレクトリは両方 admit される。
+
+**Alternatives considered**: フラットファイルを書いた読み手がそれを見られるようにフラットな
+rule を残す案は却下した。その行は、どのページもそう述べず端末も読まないのに、端末をそのファイルの
+読み手として名指すことになる。それはこの製品が述べないためにある偽りの記述である。
 バイナリ自身が読む fallback である `SKILL` で名前無しの skill を名付ける案は、上記の衝突により
-却下した。端末が作る名前無し skill がすべて、著者が書いたものではなくファイル名に由来する1つの
-行に集まり、同じ `SKILL.md` が、フォルダ名で解決する2製品については別の名前の行にも乗ることに
-なるからである。観測を `EvidenceCitation` として記録する案も
-却下した。evidence の record は文書のものであり、Codex contract の `plugin@marketplace` の綴りが、
-観測された挙動をバージョンとともに contract の散文へ置く先例である。
+却下した。観測を `EvidenceCitation` として記録する案も却下した。evidence の record は文書の
+ものであり、Codex contract の `plugin@marketplace` の綴りが、観測された挙動をバージョンとともに
+contract の散文へ置く先例である。
 
-## 3. 名前が同じなら2つの形は1行を共有する
+## 3. 共有された skill フォルダは3つの読み手を持つ1行である
 
-**Decision**: `.agents/skills/deploy.md` と `.agents/skills/deploy/SKILL.md` は1つの inventory
-行である。行の定義はファイルごと・認識する製品ごとに1 entry を持ち、形の間の優先順位は述べない。
+**Decision**: `.agents/skills/deploy/SKILL.md` は1つの inventory 行であり、その定義は認識する
+製品ごと — OpenAI Codex、GitHub Copilot、Antigravity CLI — に1 entry を持つ。
 
 **Rationale**: skill の行は既に「1つの名前を各製品がどう解決するか」であり、それが今日
 `.agents/skills/x/SKILL.md` と `.claude/skills/x/SKILL.md` を1行に置いている。既存の grouping が
-新しい仕組みなしにこれに答える。優先順位は述べられない。この製品は runtime を観測しないからで
-あり、ここでは vendor も述べていない。端末のページはファイルの形を、共有のページはディレクトリの
-形を文書化し、名前が両方の形で綴られたときに端末がどちらを採るかはどちらも述べない。その沈黙は
-rule で解決せず、既知の不確実性として記録する。
+新しい仕組みなしにこれに答え、フォルダの fallback が名前無しのフォルダを3製品すべてについて1行に
+保つ。
 
-**Alternatives considered**: 行に形ごとの badge を足す案は却下した。パスが既に目に見えて異なり、
-badge は読み手が何の行動も取らない区別に印を付けることになる。
+**Alternatives considered**: 行に製品ごとの badge を足す案は却下した。行の製品 mark が既に誰が
+読むかを述べている。
 
 ## 4. member の root は home ディレクトリから導出するので、記述子の表は field を1つ失う
 
@@ -215,34 +192,34 @@ presentation が既に運ぶものである。
 
 **Alternatives considered**: なし。vendor は1つの形式を文書化している。
 
-## 7a. workspace の rule は rule kind であり、その activation は評価せず示す
+## 7a. rule は rule kind であり、その activation は評価せず示す
 
-**Decision**: `.agents/rules/<name>.md` と `.agent/rules/<name>.md` を `rule` kind の下で
+**Decision**: すべての深さの `<dir>/.agents/rules/<name>.md` と `<dir>/.agent/rules/<name>.md`、
+および home の `config/rules/<name>.md` と `antigravity-cli/rules/<name>.md` を `rule` kind の下で
 admit する。rules ディレクトリの直下の Markdown ファイルごとに1行である。ファイルが宣言する
 activation — manual、always on、model decision、glob — は書かれたとおりに示す。composition は
-1つの strategy `antigravity.rules.activation` として記録し、その operation は `filter` 1つで
-ある。
+1つの strategy `antigravity.rules.activation` として記録し、その operation は `filter`、
+`concatenate`、`select-closest` である。
 
-**Rationale**: 共有の Rules ページは、workspace の rule が workspace または git root の
-`.agents/rules` フォルダにあると述べ、global の対応物として `~/.gemini/GEMINI.md` を述べ — これ
-はこのリリースが2つ目の rule ではなく home の context file として既に admit している — 4つの
-activation mode とファイルあたり 12,000 文字の上限を述べる。端末自身の migration ページは、
+**Rationale**: 共有の Rules ページは、端末が `.agents/rules/*.md` をリポジトリルートと
+サブディレクトリで評価し、読むか編集する各ファイルから上へ歩くこと、legacy の `.agent/rules/*.md`
+もなお読み込まれること、rules ディレクトリの直下の `.md` の子だけが走査されることを述べる。
+`~/.gemini/config/rules/` と `~/.gemini/antigravity-cli/rules/` 配下のモジュール化された global
+rule、4つの activation mode、ファイルあたり 12,000 文字の上限も述べる。端末自身の migration ページは、
 workspace の skill・rule・MCP server のサポートが維持されると述べることで location を裏づける。
 これがこれをアプリだけのものではなく端末の behavior にしている。
 
-`filter` はページが確立する唯一の operation である。glob が rule の適用先ファイルを決め、
-description がモデルの適用可否を決める。どちらも集合を絞る。ページは2つの rule の間の順序も
-context file に対する優先も述べないので、strategy は `partially-documented` とし、順序は
-`append` を捏造せず既知の不確実性とする。
+glob が rule の適用先ファイルを決め、description がモデルの適用可否を決める。どちらも集合を
+絞る (`filter`)。ページは、rule は互いを置き換えるのではなく累積すること (`concatenate`)、
+そして衝突したときはより具体的なディレクトリのものが優先すること (`select-closest`) を述べる。
+1つのディレクトリの rule の間の順序は述べないので、strategy は `partially-documented` とし、
+その順序は `append` を捏造せず既知の不確実性とする。
 
 **Alternatives considered**: rules ファイルを `instructions` として publish する案は却下した。
 行が属する kind は vendor の主張であり、vendor はこれを rule と呼び、context file が持たない
-activation モデルを与えている。リポジトリルートより下の `.agents/rules/` の admit も却下した。
-ページは workspace または git root を名指しており、それはこの製品が推論の基準にする選択済み
-root である。深さを admit するのは推論に立つ。これは § 1 の context file がルートで止まる理由と
-同じである。rules ディレクトリの中の `rules/` サブディレクトリの admit も同じ理由で却下した。
-ページは深さを示しておらず、Claude の再帰的な rules ディレクトリは再帰的だと文書化されているが、
-こちらはされていない。
+activation モデルを与えている。rules ディレクトリの中の `rules/` サブディレクトリの admit は
+却下した。ページは直下の `.md` の子だけが走査されると述べており、Claude の再帰的な rules
+ディレクトリは再帰的だと文書化されているが、こちらはされていない。
 
 ## 8. mark は bundle 済みの collection から取り、どの glyph かは計測で決める
 

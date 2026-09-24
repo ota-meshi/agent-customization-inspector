@@ -453,7 +453,6 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
           diagnosticIds: [],
           // All three read this file as its folder's entry point, so all
           // three publish the folder's census (spec.md § FR-004).
-          rowUnit: 'directory',
           companionFiles,
         },
         {
@@ -463,7 +462,6 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
           surfaces: ['codex-local-clients'],
           parseStatus: 'parsed',
           diagnosticIds: [],
-          rowUnit: 'directory',
           companionFiles,
         },
         {
@@ -473,7 +471,6 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
           surfaces: ['antigravity-cli'],
           parseStatus: 'parsed',
           diagnosticIds: [],
-          rowUnit: 'directory',
           companionFiles,
         },
       ],
@@ -831,13 +828,6 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
       'companionFiles',
       'diagnosticIds',
       'parseStatus',
-      // Whether this definition's row unit is its directory or the file
-      // itself, carried from the admitting rule: one vendor admits a skill in
-      // both shapes at one location, and what follows from the shape — the
-      // companion census, and whether the detail has a file panel at all — is
-      // read from this rather than re-derived from the path
-      // (spec.md § FR-004).
-      'rowUnit',
       // The Source holding the file — the other half of its identity, now
       // that a consented member can hold this kind too (FR-030).
       'sourceId',
@@ -1276,7 +1266,7 @@ describe('the Copilot recognition matrix (T156)', () => {
     ).toEqual([
       { tool: 'copilot', ruleIds: ['copilot.repo.skill'] },
       { tool: 'codex', ruleIds: ['codex.repo.skill'] },
-      { tool: 'antigravity', ruleIds: ['antigravity.repo.skill.directory'] },
+      { tool: 'antigravity', ruleIds: ['antigravity.repo.skill'] },
     ]);
   });
 
@@ -2082,7 +2072,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [
           {
             sourceRelativePath: 'docs/AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, ANTIGRAVITY_ONLY],
           },
         ],
       },
@@ -3135,7 +3125,7 @@ describe('the committed Claude instructions inventory (T229)', () => {
           },
           {
             sourceRelativePath: 'packages/api/AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, ANTIGRAVITY_ONLY],
           },
           {
             sourceRelativePath: 'packages/api/CLAUDE.md',
@@ -3286,13 +3276,14 @@ describe('the committed Copilot instructions inventory (T248)', () => {
           },
           {
             sourceRelativePath: 'packages/api/AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, ANTIGRAVITY_ONLY],
           },
           { sourceRelativePath: 'packages/api/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
-          // The nested `GEMINI.md` is nobody's: Copilot documents the root
-          // alternative only, and Antigravity CLI's rule is anchored at the
-          // repository root because the migration page names the active
-          // directory's file and states no depth (spec.md § FR-007).
+          // The nested `GEMINI.md` is Antigravity CLI's alone: Copilot
+          // documents the root alternative only, and the terminal loads the
+          // pair of every directory it walks up through
+          // (specs/003-antigravity-cli-support/spec.md § FR-007).
+          { sourceRelativePath: 'packages/api/GEMINI.md', recognitions: [ANTIGRAVITY_ONLY] },
         ],
       },
       {
@@ -4019,7 +4010,7 @@ describe('the unified instructions inventory (T270)', () => {
         files: [
           {
             sourceRelativePath: 'docs/AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, ANTIGRAVITY_ONLY],
           },
           // The malformed file keeps its row: what failed is reading its
           // declarations, and a path-derived range comes from where the file
@@ -4037,14 +4028,16 @@ describe('the unified instructions inventory (T270)', () => {
           },
           {
             sourceRelativePath: 'packages/api/AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, ANTIGRAVITY_ONLY],
           },
           // The nested `CLAUDE.md` the configuration does not name: Claude's
           // alone, with zero Codex recognition — a configured fallback is an
           // entry name matched at the Repository root, and no filename
           // inference promotes a nested file (Phase 21).
           { sourceRelativePath: 'packages/api/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
-          // The nested `GEMINI.md` is nobody's, for the reason above.
+          // The nested `GEMINI.md` is Antigravity CLI's alone, for the reason
+          // above.
+          { sourceRelativePath: 'packages/api/GEMINI.md', recognitions: [ANTIGRAVITY_ONLY] },
         ],
       },
       {
@@ -5292,8 +5285,8 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
     }
 
     // A skill folder in the shared `.agents/skills/` carries all three
-    // products that read the shape, and the flat file beside it carries this
-    // vendor alone (spec.md § FR-004).
+    // products that read the shape, and a flat Markdown file beside it is no
+    // product's skill (spec.md § FR-004).
     expect(
       snapshot.skills
         .find((entry) => entry.name === 'changelog')!
@@ -5302,33 +5295,8 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
         )
         .map((definition) => definition.tool),
     ).toEqual(['copilot', 'codex', 'antigravity']);
-    expect(
-      snapshot.skills
-        .find((entry) => entry.name === 'x')!
-        .definitions.map((definition) => definition.tool),
-    ).toEqual(['antigravity']);
-
-    // A name spelled in both shapes is one row carrying both definitions —
-    // one per file per recognizing product — and states no precedence between
-    // them, because no cited page says which the terminal prefers
-    // (spec.md § FR-004; contracts/vendors/antigravity-cli.md § Known
-    // uncertainties item 6). The row unit travels with each definition, so the
-    // two shapes stay distinguishable inside the one row (T053, T055).
-    const deploy = snapshot.skills.find((entry) => entry.name === 'deploy')!;
-    expect(
-      deploy.definitions.map((definition) => [
-        definition.sourceRelativePath,
-        definition.tool,
-        definition.rowUnit,
-      ]),
-    ).toEqual([
-      ['.agents/skills/deploy.md', 'antigravity', 'file'],
-      ['.agents/skills/deploy/SKILL.md', 'copilot', 'directory'],
-      ['.agents/skills/deploy/SKILL.md', 'codex', 'directory'],
-      ['.agents/skills/deploy/SKILL.md', 'antigravity', 'directory'],
-    ]);
-    expect(deploy.sameNameResolutions.map((resolution) => resolution.tool)).not.toContain(
-      'antigravity',
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).not.toContain(
+      '.agents/skills/deploy.md',
     );
 
     // And both custom-agent shapes.
@@ -5339,22 +5307,29 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
       ).toContain('antigravity');
     }
 
-    // A context file below the root is not this vendor's: the migration page
-    // states the workspace pair at the active directory and no depth under it,
-    // so `packages/api/AGENTS.md` reaches the inventory as Copilot's and Claude
-    // Code's alone and `packages/api/GEMINI.md`, which no other product
-    // documents there, reaches it not at all
-    // (contracts/vendors/antigravity-cli.md § Known uncertainties item 1).
-    const nestedAgents = snapshot.instructions
-      .flatMap((entry) => entry.files)
-      .find((file) => file.sourceRelativePath === 'packages/api/AGENTS.md');
-    expect(nestedAgents?.recognitions.map((recognition) => recognition.tool)).toEqual([
-      'copilot',
-      'claude',
-    ]);
+    // A context file below the root is this vendor's too, governing the
+    // directory holding it: the terminal loads the pair of every level it
+    // walks up through (specs/003-antigravity-cli-support/spec.md § FR-007).
+    // `packages/api/AGENTS.md` carries it beside Copilot's and Claude Code's,
+    // and `packages/api/GEMINI.md`, which no other product documents there,
+    // carries it alone.
+    const nestedFiles = snapshot.instructions.flatMap((entry) => entry.files);
+    for (const [path, tools] of [
+      ['packages/api/AGENTS.md', ['copilot', 'claude', 'antigravity']],
+      ['packages/api/GEMINI.md', ['antigravity']],
+    ] as const) {
+      expect(
+        nestedFiles
+          .find((file) => file.sourceRelativePath === path)
+          ?.recognitions.map((recognition) => recognition.tool),
+        path,
+      ).toEqual(tools);
+    }
     expect(
-      snapshot.files.some((file) => file.sourceRelativePath === 'packages/api/GEMINI.md'),
-    ).toBe(false);
+      snapshot.instructions.find((entry) =>
+        entry.files.some((file) => file.sourceRelativePath === 'packages/api/GEMINI.md'),
+      )?.applicabilityRange,
+    ).toBe('packages/api/**');
   });
 });
 

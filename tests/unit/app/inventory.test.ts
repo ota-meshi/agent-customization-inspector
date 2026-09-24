@@ -79,7 +79,6 @@ function skillWithCompanions(
       sourceId: 'src-repo',
       sourceRelativePath: path,
       tool: 'codex' as const,
-      rowUnit: 'directory' as const,
       surfaces: [],
       parseStatus: 'parsed' as const,
       diagnosticIds: [],
@@ -863,7 +862,6 @@ describe('settings and configuration rows in the filtered view (T588)', () => {
         parseStatus: 'parsed',
         diagnosticIds: [],
         companionFiles: [],
-        rowUnit: 'directory',
       },
     ],
     sameNameResolutions: [],
@@ -978,7 +976,6 @@ describe('same-name resolutions in the filtered view', () => {
         parseStatus: 'parsed' as const,
         diagnosticIds: [],
         companionFiles: [],
-        rowUnit: 'directory',
       })),
       sameNameResolutions: [{ tool: 'claude', resolution: 'all-remain-context-selected' }],
     };
@@ -1017,7 +1014,6 @@ describe('same-name resolutions in the filtered view', () => {
           parseStatus: 'parsed' as const,
           diagnosticIds: [],
           companionFiles: [],
-          rowUnit: 'directory',
         },
       ],
       sameNameResolutions: [{ tool: 'claude', resolution: 'all-remain-context-selected' }],
@@ -1249,7 +1245,6 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
       parseStatus: 'parsed',
       diagnosticIds: [],
       companionFiles: [],
-      rowUnit: 'directory',
     });
     return [
       {
@@ -1340,14 +1335,14 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     expect(claudeRows[0]!.sameNameResolutions).toEqual([]);
   });
 
-  it("states nothing for Antigravity CLI's two-shape collision while both definitions show", () => {
-    // This vendor admits two skill shapes at one location, so a name spelled
-    // in both is one row with two of its definitions — and the row states no
-    // winner, because the pages state none: its one skills strategy carries
-    // `unknown-order` alone, and a group establishing only unresolved
-    // selection states no rule (`skill-resolution.ts`;
-    // specs/003-antigravity-cli-support/spec.md § FR-004;
-    // contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
+  it("states nothing for Antigravity CLI's same-name collision while both definitions show", () => {
+    // This vendor reads a skill folder under both the current `.agents` and
+    // the superseded `.agent` spelling, so a name spelled in both is one row
+    // with two of its definitions — and the row states no winner, because the
+    // pages state none: its one skills strategy carries `unknown-order` alone,
+    // and a group establishing only unresolved selection states no rule
+    // (`skill-resolution.ts`; contracts/vendors/antigravity-cli.md § Known
+    // uncertainties item 2).
     //
     // T004: this case was watched failing against a registry that derives a
     // statement here, which is what the empty array proves — the derivation
@@ -1360,19 +1355,18 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
       parseStatus: 'parsed',
       diagnosticIds: [],
       companionFiles: [],
-      rowUnit: 'directory',
     });
     const entry: SkillInventoryEntryDto = {
       name: 'deploy',
       definitions: [
-        definition('.agents/skills/deploy.md'),
+        definition('.agent/skills/deploy/SKILL.md'),
         definition('.agents/skills/deploy/SKILL.md'),
       ],
       sameNameResolutions: [],
     };
     const snapshot = shallowRef<SessionSnapshot | null>(
       snapshotWith(
-        [file('.agents/skills/deploy.md'), file('.agents/skills/deploy/SKILL.md')],
+        [file('.agent/skills/deploy/SKILL.md'), file('.agents/skills/deploy/SKILL.md')],
         [entry],
       ),
     );
@@ -1382,9 +1376,9 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     const [row] = filters.view.skillRows.value;
     expect(row!.definitions).toHaveLength(2);
     expect(row!.sameNameResolutions).toEqual([]);
-    // Narrowing to one shape leaves one definition, and the row still states
-    // nothing: there was never a statement to lose.
-    filters.searchQuery.value = 'deploy/SKILL.md';
+    // Narrowing to one spelling leaves one definition, and the row still
+    // states nothing: there was never a statement to lose.
+    filters.searchQuery.value = '.agents/';
     expect(filters.view.skillRows.value[0]!.definitions).toHaveLength(1);
     expect(filters.view.skillRows.value[0]!.sameNameResolutions).toEqual([]);
   });
@@ -1482,10 +1476,6 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
           'companionFiles',
           'diagnosticIds',
           'parseStatus',
-          // The definition's row unit — its directory or the file itself —
-          // which is a fact about the admitting rule's shape, not authored
-          // content (spec.md § FR-004).
-          'rowUnit',
           'sourceId',
           'sourceRelativePath',
           'surfaces',

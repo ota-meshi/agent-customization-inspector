@@ -2,8 +2,8 @@
 
 [English](antigravity-cli.md)
 
-**Contract version**: 2026-09-10
-**Official-source review**: 2026-09-10
+**Contract version**: 2026-09-24
+**Official-source review**: 2026-09-24
 
 この contract は、文書化された Antigravity CLI の lookup behavior と、Inspector の read
 allowlist を分離する。共通の matcher 文法と source boundary の規則は
@@ -34,7 +34,7 @@ record がそう述べる場合である (§ 既知の不確実性 項目 6)。
 
 端末の中で異なるのは surface ではなく tier である。選択された root
 配下の workspace tier と、`~/.gemini` 配下の user tier があり、後者は共有の設定ディレクトリ
-`config/`、端末自身のディレクトリ `antigravity-cli/`、global の context file を持つ。Inspector は
+`config/`、端末自身のディレクトリ `antigravity-cli/`、global の context file 群を持つ。Inspector は
 workspace tier を Repository Source として、user tier を Antigravity home の Global member として
 読む。user tier の中のインストール済み plugin コピーは記録して除外する。
 
@@ -48,26 +48,19 @@ lifecycle の主張をせず、`stable` を意味しない。
 
 | Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
 |---|---|---|---|
-| `antigravity.behavior.repo.context` | `partially-documented` | `[]` | migration のページは workspace の context file を作業ディレクトリのものとして、global のものを正確なパスで名指すが、深さも2つの名前の間の precedence も述べない (§ 既知の不確実性 項目 1) |
-| `antigravity.behavior.user.context` | `partially-documented` | `[]` | workspace の行と同様。パスは正確だが、workspace のファイルとの layering は述べられない |
-| `antigravity.behavior.repo.skills` | `partially-documented` | `[]` | `SKILL.md` を持つフォルダと `.agent/` の後方互換は正確だが、locator が併せて名指すフラットな `.md` を文書化するページはなく、workspace と global の skill が1つの名前を宣言したときのことも述べられない (§ 既知の不確実性 項目 2、項目 6) |
-| `antigravity.behavior.user.skills` | `partially-documented` | `[]` | 端末の `antigravity-cli/skills/` のフォルダは正確。ページは `config/skills/` を他の2製品に与えており、バイナリによれば端末もそこを歩く。フラットな `.md` を文書化するページはない (§ 既知の不確実性 項目 6) |
-| `antigravity.repo.skill.file` | `unknown` | `[]` | そのディレクトリのフラットな `.md` を文書化するページはなく、端末の skill の location を与えるページはどれもフォルダを与える (§ 既知の不確実性 項目 6) |
-| `antigravity.repo.skill.directory` | `partially-documented` | `[]` | 形と `.agent/` の後方互換は正確。同名のフラットファイルとの解決順は述べられない (§ 既知の不確実性 項目 6) |
-| `antigravity.global.skill.file` | `unknown` | `[]` | 端末の global root における `antigravity.repo.skill.file` と同じ |
-| `antigravity.global.skill.directory` | `partially-documented` | `[]` | 端末の root とフォルダ形は厳密。`config/skills/` は他の2製品のものとして文書化され、端末の探索でも観測される。同名のフラットファイルとの解決は述べられていない (§ 既知の不確実性 項目 6) |
+| `antigravity.behavior.user.skills` | `partially-documented` | `[]` | 端末の `antigravity-cli/skills/` のフォルダは正確。ページは `config/skills/` を他の2製品に与えており、バイナリによれば端末もそこを歩く (§ 既知の不確実性 項目 6) |
+| `antigravity.global.skill` | `partially-documented` | `[]` | 端末の root とフォルダ形は厳密。`config/skills/` は他の2製品のものとして文書化され、端末の探索でも観測される (§ 既知の不確実性 項目 6) |
 | `antigravity.behavior.repo.mcp` | `partially-documented` | `[]` | 2つの設定パスと server の schema は正確だが、同名の workspace server と global server がどう合成されるかは述べられない (§ 既知の不確実性 項目 3) |
 | `antigravity.behavior.user.mcp` | `partially-documented` | `[]` | workspace の行と同じ理由 |
 | `antigravity.behavior.user.hooks` | `partially-documented` | `[]` | 共有の Hooks ページは端末が hook を定義するすべての場所を名指し、standalone なファイルの schema を与えるが、settings ファイル側の schema は述べない (§ 既知の不確実性 項目 4) |
-| `antigravity.behavior.repo.rules` | `partially-documented` | `[]` | 共有の Rules ページは端末の rule の location、4つの trigger、ファイルあたりのサイズ上限、衝突時はより具体的なディレクトリの rule が優先することを与える。1つのディレクトリの rule の間の順序は述べず、サブディレクトリの rules ディレクトリはこの locator の外にある (§ 既知の不確実性 項目 10) |
 
 ## 文書化済み Repository behavior
 
 | Behavior ID | Surface | Lookup base | Relative selector | Traversal or activation | Strategy | Status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `antigravity.behavior.repo.context` | CLI | プロジェクトルート | `GEMINI.md`、`AGENTS.md` | 作業ディレクトリのものが parse され適用される。global の context file が併せて参照される | `antigravity.context.layering` | Partially documented | `google.antigravity.cli-migration` |
-| `antigravity.behavior.repo.skills` | CLI | プロジェクトルート | `.agents/skills/<name>/SKILL.md`、`.agent/skills/<name>/SKILL.md`、`.agents/skills/<name>.md` | frontmatter に `description` を必須とする `SKILL.md` を持つフォルダで、slash command になる。共有の Agent Skills ページはそれを端末の workspace skill として与え、`.agent/skills` をそのディレクトリの旧綴りとしてなお支えると記録する。フラットなファイルを文書化するページはない (§ 既知の不確実性 項目 6) | `antigravity.skills.selection` | Partially documented | `google.antigravity.cli-migration`、`google.antigravity.skills` |
-| `antigravity.behavior.repo.rules` | CLI | プロジェクトルート | `.agents/rules/<name>.md`、`.agent/rules/<name>.md` | リポジトリルートの rules フォルダ直下の Markdown ファイル。frontmatter で trigger — `always_on`、`model_decision`、`glob`、`manual` — を宣言し、24,000 バイトを超えると切り詰められる。ページはサブディレクトリにも rules フォルダを置く (§ 既知の不確実性 項目 10) | `antigravity.rules.activation` | Partially documented | `google.antigravity.rules`、`google.antigravity.cli-migration` |
+| `antigravity.behavior.repo.context` | CLI | 端末が読む・編集する各ファイルのフォルダ | `GEMINI.md`、`AGENTS.md`、`.agents/GEMINI.md`、`.agents/AGENTS.md` | workspace root まで上へたどり、各階層の組を読み込む。すべての階層のファイルが組み合わされ、衝突時はより具体的なディレクトリのものが優先する | `antigravity.context.layering` | Documented | `google.antigravity.rules`、`google.antigravity.cli-migration` |
+| `antigravity.behavior.repo.skills` | CLI | プロジェクトルート | `.agents/skills/<name>/SKILL.md`、`.agent/skills/<name>/SKILL.md` | frontmatter に `description` を必須とする `SKILL.md` を持つフォルダで、slash command になる。共有の Agent Skills ページはそれを端末の workspace skill として与え、`.agent/skills` をそのディレクトリの旧綴りとしてなお支えると記録する | `antigravity.skills.selection` | Documented | `google.antigravity.cli-migration`、`google.antigravity.skills` |
+| `antigravity.behavior.repo.rules` | CLI | 端末が読む・編集する各ファイルのフォルダ | `.agents/rules/<name>.md`、`.agent/rules/<name>.md` | workspace root まで上へたどる。各階層の rules フォルダ直下の Markdown ファイルで、frontmatter で trigger — `always_on`、`model_decision`、`glob`、`manual` — を宣言し、24,000 バイトを超えると切り詰められる | `antigravity.rules.activation` | Documented | `google.antigravity.rules`、`google.antigravity.cli-migration` |
 | `antigravity.behavior.repo.hooks` | CLI | プロジェクトルート | `.agents/hooks.json` | hook 名から event 設定への map。各 event は command handler の matcher group を持ち、hook ごとに optional な `enabled` フラグを持つ | `antigravity.hooks.merge` | Documented | `google.antigravity.hooks` |
 | `antigravity.behavior.repo.agents` | CLI | プロジェクトルート | `.agents/agents/<name>.md`、`.agents/agents/<name>/agent.md` | YAML frontmatter を持つ Markdown。自動的に discover される。frontmatter の表は `name` を必須と記し、`subagent: true` を持つものは primary agent から呼べる | `antigravity.agents.selection` | Documented | `google.antigravity.cli-subagents`、`google.antigravity.subagents` |
 | `antigravity.behavior.repo.mcp` | CLI | プロジェクトルート | `.agents/mcp_config.json` | standalone な JSON profile。その `mcpServers` object が名前を configuration へ対応づける。リモート server は `serverUrl` を使う | `antigravity.mcp.configuration` | Partially documented | `google.antigravity.cli-mcp`、`google.antigravity.cli-migration` |
@@ -75,23 +68,24 @@ lifecycle の主張をせず、`stable` を意味しない。
 ## Inspector Repository rule
 
 この表の base はすべて Inspector の Repository boundary そのもの、すなわち選択された Repository
-root であり、`Repository` と綴る。`.agents/` の location はすべて選択された root 自身の
-ディレクトリである。vendor は workspace の `.agents` ディレクトリをプロジェクトルートに文書化し、
-ネストしたものは文書化しないので、`packages/api/.agents/` はどの深さでも near miss である。
+root であり、`Repository` と綴る。2つの family はどの深さにも届く。端末は読む・編集する各ファイル
+から上へたどり、各階層にあるものを読み込むからである。すなわち、ディレクトリとそのディレクトリの
+`.agents/` にある context の組と、rules フォルダである。それ以外の `.agents/` の location は
+すべて選択された root 自身のディレクトリである。vendor はそれをプロジェクトルートに文書化し、
+ネストしたものは文書化しないので、`packages/api/.agents/skills/` は near miss である。
 
 2つの location は旧綴りの `.agent` 用に2本目の selector を持つ。その location を述べるページが
 後方互換を述べているからである。互換はディレクトリについて述べられているので、旧綴りが admit
 するのはそのページがそこで示す形そのものである。すなわち skill フォルダの中の `SKILL.md` と、
-rules フォルダ配下の Markdown ファイルである。フラットな skill の形はどちらの綴りでも文書化する
-ページがないので、`.agent/skills/<name>.md` は near miss である (§ 既知の不確実性 項目 6)。
+rules フォルダ直下の Markdown ファイルである。フラットな skill はどちらの綴りでも文書化する
+ページがないので、`.agents/skills/<name>.md` と `.agent/skills/<name>.md` は near miss である
+(§ 既知の不確実性 項目 6)。
 
 | Rule ID | Base | Selector | Traversal | Class | Behavior refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `antigravity.repo.context.gemini-root` | Repository | `['GEMINI.md']` | `exact` | `static-candidate` | `antigravity.behavior.repo.context` | Partially documented | `google.antigravity.cli-migration` |
-| `antigravity.repo.context.agents-root` | Repository | `['AGENTS.md']` | `exact` | `static-candidate` | `antigravity.behavior.repo.context` | Partially documented | `google.antigravity.cli-migration` |
-| `antigravity.repo.skill.file` | Repository | `['.agents', 'skills', /\.md$/u]` | root の `.agents/skills/` 直下の `direct-child`。行の単位はファイル | `static-candidate` | `antigravity.behavior.repo.skills` | Unknown | `google.antigravity.skills` |
-| `antigravity.repo.skill.directory` | Repository | `['.agents', 'skills', ANY_NAME, 'SKILL.md']`、`['.agent', 'skills', ANY_NAME, 'SKILL.md']` | `exact`。名前 segment は1つ。行の単位はディレクトリ | `static-candidate` | `antigravity.behavior.repo.skills` | Partially documented | `google.antigravity.skills` |
-| `antigravity.repo.rule` | Repository | `['.agents', 'rules', /\.md$/u]`、`['.agent', 'rules', /\.md$/u]` | root の rules ディレクトリ直下の `direct-child` | `static-candidate` | `antigravity.behavior.repo.rules` | Partially documented | `google.antigravity.rules` |
+| `antigravity.repo.context` | Repository | `[ANY_DIRECTORIES, 'GEMINI.md']`、`[ANY_DIRECTORIES, 'AGENTS.md']` | `descendant-inventory`（root とすべての子孫を含み、`ANY_DIRECTORIES` は0 segment も含む）。適用範囲はファイルを持つディレクトリ、またはその `.agents/` を持つディレクトリ | `static-candidate` | `antigravity.behavior.repo.context` | Documented | `google.antigravity.rules` |
+| `antigravity.repo.skill` | Repository | `['.agents', 'skills', ANY_NAME, 'SKILL.md']`、`['.agent', 'skills', ANY_NAME, 'SKILL.md']` | `exact`。名前 segment は1つ。行の単位はディレクトリ | `static-candidate` | `antigravity.behavior.repo.skills` | Documented | `google.antigravity.skills` |
+| `antigravity.repo.rule` | Repository | `[ANY_DIRECTORIES, '.agents', 'rules', /\.md$/u]`、`[ANY_DIRECTORIES, '.agent', 'rules', /\.md$/u]` | 各 rules フォルダまでは `descendant-inventory`、その先は `direct-child` | `static-candidate` | `antigravity.behavior.repo.rules` | Documented | `google.antigravity.rules` |
 | `antigravity.repo.hooks` | Repository | `['.agents', 'hooks.json']` | `exact` | `static-candidate` | `antigravity.behavior.repo.hooks` | Documented | `google.antigravity.hooks` |
 | `antigravity.repo.agent.file` | Repository | `['.agents', 'agents', /\.md$/u]` | `direct-child` | `static-candidate` | `antigravity.behavior.repo.agents` | Documented | `google.antigravity.cli-subagents` |
 | `antigravity.repo.agent.directory` | Repository | `['.agents', 'agents', ANY_NAME, 'agent.md']` | `exact`。名前 segment は1つ | `static-candidate` | `antigravity.behavior.repo.agents` | Documented | `google.antigravity.cli-subagents` |
@@ -109,10 +103,11 @@ rules フォルダ配下の Markdown ファイルである。フラットな ski
 | Behavior ID | Subject | Location | Strategy | Inspector treatment | Evidence |
 |---|---|---|---|---|---|
 | `antigravity.behavior.user.home` | user tier | `~/.gemini` | — | Antigravity home の Global member | `google.antigravity.cli-migration`、`google.antigravity.cli-settings` |
-| `antigravity.behavior.user.context` | global の developer context | `<user tier>/GEMINI.md` | `antigravity.context.layering` | `antigravity.global.context` が accept | `google.antigravity.cli-migration` |
+| `antigravity.behavior.user.context` | global の developer context | `<user tier>/GEMINI.md`、`<user tier>/AGENTS.md`、`<user tier>/config/GEMINI.md`、`<user tier>/config/AGENTS.md` | `antigravity.context.layering` | `antigravity.global.context` が accept | `google.antigravity.rules`、`google.antigravity.cli-migration` |
+| `antigravity.behavior.user.rules` | モジュール化された global の rule | `<user tier>/config/rules/<name>.md`、`<user tier>/antigravity-cli/rules/<name>.md` | `antigravity.rules.activation` | `antigravity.global.rule` が accept | `google.antigravity.rules` |
 | `antigravity.behavior.user.mcp` | global の MCP server | `<user tier>/config/mcp_config.json` | `antigravity.mcp.configuration` | `antigravity.global.mcp` が accept | `google.antigravity.cli-mcp` |
 | `antigravity.behavior.user.agents` | global の custom agent、文書化された両方の形 | `<user tier>/config/agents/<name>.md`、`<user tier>/config/agents/<name>/agent.md` | `antigravity.agents.selection` | `antigravity.global.agent.file` と `antigravity.global.agent.directory` が accept | `google.antigravity.cli-subagents`、`google.antigravity.subagents` |
-| `antigravity.behavior.user.skills` | global の共有 skill | `<user tier>/antigravity-cli/skills/`、`<user tier>/config/skills/` | `antigravity.skills.selection` | `antigravity.global.skill.directory` と `antigravity.global.skill.file` が accept | `google.antigravity.cli-migration`、`google.antigravity.skills` |
+| `antigravity.behavior.user.skills` | global の共有 skill | `<user tier>/antigravity-cli/skills/`、`<user tier>/config/skills/` | `antigravity.skills.selection` | `antigravity.global.skill` が accept | `google.antigravity.cli-migration`、`google.antigravity.skills` |
 | `antigravity.behavior.user.settings` | user の preference | `<user tier>/antigravity-cli/settings.json` | — | `antigravity.global.settings` が accept | `google.antigravity.cli-settings`、`google.antigravity.cli-features` |
 | `antigravity.behavior.user.permissions` | allow・ask・deny の一覧 | `<user tier>/antigravity-cli/settings.json` | `antigravity.permissions.precedence` | `antigravity.global.permissions` が accept | `google.antigravity.cli-permissions` |
 | `antigravity.behavior.user.hooks` | hook 宣言 | `<user tier>/config/hooks.json`、`<user tier>/antigravity-cli/settings.json`、および plugin の `hooks.json` | `antigravity.hooks.merge` | standalone なファイルは `antigravity.global.hooks` が、settings の形は `antigravity.global.hooks.inline` が accept。plugin の形はその plugin とともに除外 | `google.antigravity.hooks` |
@@ -125,19 +120,19 @@ base は consent 済みの Antigravity home boundary、すなわち capture さ�
 であり、origin は常に default home である。
 
 その boundary の配下で、`config/` は vendor の共有設定ディレクトリ、`antigravity-cli/` は端末
-自身のものであり、skill の rule はそれぞれの配下の `skills/` ディレクトリに届く。共有の Agent
+自身のものであり、skill と rule の各 rule は、両方の配下にあるディレクトリにそれぞれ届く。共有の Agent
 Skills ページは端末の global skill を `antigravity-cli/skills/` に与え、`config/skills/` をアプリと
 拡張に与える。端末は両方を歩く (§ 既知の不確実性 項目 6)。拡張の旧来の `antigravity/skills/` は
 対象外である。これはこのリリースがサポートしない製品のものだからである (§ Surface boundary)。
 
 | Rule ID | Base | Selector | Traversal | Class | Behavior refs | Status | Serves | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `antigravity.global.context` | consent 済み Antigravity home | `['GEMINI.md']` | `exact` | `static-candidate` | `antigravity.behavior.user.context` | Partially documented | global の context file | `google.antigravity.cli-migration` |
+| `antigravity.global.context` | consent 済み Antigravity home | `['GEMINI.md']`、`['AGENTS.md']`、`['config', 'GEMINI.md']`、`['config', 'AGENTS.md']` | `exact`。適用範囲は boundary 全体 | `static-candidate` | `antigravity.behavior.user.context` | Documented | global の context file 群 | `google.antigravity.rules` |
+| `antigravity.global.rule` | 同じ boundary | `['config', 'rules', /\.md$/u]`、`['antigravity-cli', 'rules', /\.md$/u]` | `direct-child` | `static-candidate` | `antigravity.behavior.user.rules` | Documented | モジュール化された global の rule | `google.antigravity.rules` |
 | `antigravity.global.mcp` | 同じ boundary | `['config', 'mcp_config.json']` | `exact` | `static-candidate` | `antigravity.behavior.user.mcp` | Partially documented | global の MCP server | `google.antigravity.cli-mcp` |
 | `antigravity.global.agent.file` | 同じ boundary | `['config', 'agents', /\.md$/u]` | `direct-child` | `static-candidate` | `antigravity.behavior.user.agents` | Documented | ファイル形の global custom agent | `google.antigravity.cli-subagents`、`google.antigravity.subagents` |
 | `antigravity.global.agent.directory` | 同じ boundary | `['config', 'agents', ANY_NAME, 'agent.md']` | `exact`、name segment は1つ | `static-candidate` | `antigravity.behavior.user.agents` | Documented | フォルダ形の global custom agent | `google.antigravity.subagents` |
-| `antigravity.global.skill.directory` | 同じ boundary | `['antigravity-cli', 'skills', ANY_NAME, 'SKILL.md']`、`['config', 'skills', ANY_NAME, 'SKILL.md']` | `exact`。行の単位はその program が名指す skill フォルダ | `static-candidate` | `antigravity.behavior.user.skills` | Partially documented | 端末が歩く両方の root にあるフォルダ形の global 共有 skill | `google.antigravity.skills` |
-| `antigravity.global.skill.file` | 同じ boundary | `['antigravity-cli', 'skills', /\.md$/u]` | `direct-child`。行の単位はファイル自身であり、ディレクトリを占めないので companion の census も publish しない | `static-candidate` | `antigravity.behavior.user.skills` | Unknown | 端末自身の root にあるフラット形の global 共有 skill | `google.antigravity.skills` |
+| `antigravity.global.skill` | 同じ boundary | `['antigravity-cli', 'skills', ANY_NAME, 'SKILL.md']`、`['config', 'skills', ANY_NAME, 'SKILL.md']` | `exact`。行の単位はその program が名指す skill フォルダ | `static-candidate` | `antigravity.behavior.user.skills` | Partially documented | 端末が歩く両方の root にある global 共有 skill | `google.antigravity.skills` |
 | `antigravity.global.settings` | 同じ boundary | `['antigravity-cli', 'settings.json']` | `exact` | `static-candidate` | `antigravity.behavior.user.settings` | Documented | settings document | `google.antigravity.cli-settings` |
 | `antigravity.global.permissions` | 同じ boundary | `['antigravity-cli', 'settings.json']` | 同じ selector に対する `exact`。carrier の permission の一覧がその `permissions` recognition | `static-candidate` | `antigravity.behavior.user.permissions` | Documented | user の permission policy | `google.antigravity.cli-permissions` |
 | `antigravity.global.hooks` | 同じ boundary | `['config', 'hooks.json']` | `exact` | `static-candidate` | `antigravity.behavior.user.hooks` | Documented | user tier の standalone な hook carrier | `google.antigravity.hooks` |
@@ -161,8 +156,8 @@ relationship-only な `ruleId` の定義は
 | Kind | Presentation source | Admitted occurrences |
 |---|---|---|
 | `instructions` | `frontmatter`<br>`body` | context file が frontmatter block を持つ場合はそれと、その body |
-| `skill` | `frontmatter`<br>`body` | skill の frontmatter block とその指示。フラットなファイルでも skill フォルダの `SKILL.md` でも同じ。フラットなファイルの行の単位はファイルなので companion の census は publish せず、フォルダのものは他のディレクトリ形の skill と同じく publish する。`name` を宣言しない skill の行は、そのファイルを読むどの製品も使う同じ fallback であるフォルダ名で名付け、フォルダを持たないフラットなファイルは拡張子を除いた自身の名前で名付ける (§ 既知の不確実性 項目 7) |
-| `rule` | `frontmatter`<br>`body` | workspace の rule の frontmatter block（宣言された activation を含む）とその下の制約。それぞれ書かれたとおりに示し、評価はしない |
+| `skill` | `frontmatter`<br>`body` | skill フォルダの `SKILL.md` の frontmatter block とその指示。companion の census は他のディレクトリ形の skill と同じく publish する。`name` を宣言しない skill の行は、そのファイルを読むどの製品も使う同じ fallback であるフォルダ名で名付ける (§ 既知の不確実性 項目 7) |
+| `rule` | `frontmatter`<br>`body` | rule の frontmatter block（宣言された activation を含む）とその下の制約。それぞれ書かれたとおりに示し、評価はしない |
 | `agent` | `metadata`<br>`instructions` | custom agent の frontmatter block とその下の body |
 | `MCP` | `runtime-reference` | carrier の `mcpServers` object の下で宣言された server 名と、各 server が宣言するすべての field。`serverUrl` と legacy の `url`・`httpUrl` を含む |
 | `hook` | `runtime-reference` | standalone な `hooks.json` の下でも settings carrier の hook 宣言の下でも同じく、event map の key、matcher の値、handler の葉。この vendor の carrier は各 hook に名前を付け、その中に event を入れ子にするので、宣言は carrier が書いた名前と、carrier が書いていればその hook 自身の `enabled` キーも publish する。どちらもファイル自身のキーとしてであり、解釈はしない。hook が走るかどうかはこの製品が観測しない実行時の事柄なので、どの行も「無効」「停止中」とは述べず、読み手にはファイルが `enabled: false` と書いていることを示す |
@@ -171,11 +166,12 @@ relationship-only な `ruleId` の定義は
 
 ## 既知の不確実性と必須 condition fact
 
-1. migration のページは workspace の context file を作業ディレクトリの `GEMINI.md` と
-   `AGENTS.md` として、global のものを `~/.gemini/GEMINI.md` として述べる。workspace root より
-   下の深さも、2つの workspace の名前の間の precedence も、それらと global のファイルとの間の
-   precedence も述べない。Inspector はリポジトリルートの2つだけを admit する。それより深くへ
-   届かせるのは推論に立つからである。vendor が階層を文書化した時点で rule を広げる。
+1. Rules ページは、上へたどる各階層で端末が `<dir>/AGENTS.md` または `<dir>/GEMINI.md` と、
+   `<dir>/.agents/AGENTS.md` または `<dir>/.agents/GEMINI.md` を読み込むと述べる。この「または」が、
+   両方の名前を持つディレクトリ — あるいは組とその `.agents/` の組の両方を持つディレクトリ — では
+   一方が読み込まれ他方が無視されることを意味するのか、そうだとすればどちらなのかは述べない。
+   Inspector はそうしたファイルをすべて admit し、1つのディレクトリのファイルの間の precedence は
+   述べない。Inspector が述べる順序は階層の間のものであり、それはページ自身の順序である。
 2. skill のページは両方のパスを述べ、global の skill がどの workspace でも使えると述べるが、
    workspace の skill と global の skill が1つの名前を宣言したときのことは述べない。Inspector は
    引用できない解決を述べない。
@@ -191,9 +187,8 @@ relationship-only な `ruleId` の定義は
 6. 端末の skill の location を与えるページはどれも、`SKILL.md` を持つ skill フォルダを与える。
    共有の Agent Skills ページの端末の節は `<workspace-root>/.agents/skills/<skill-folder>/` と
    `~/.gemini/antigravity-cli/skills/<skill-folder>/` を与え、Plugins ページは plugin の中に同じ
-   フォルダを示す。どちらの `skills/` ディレクトリについても、直下のフラットな Markdown ファイルを
-   文書化するページはない。よって2つのフラットな rule は `unknown` であり、locator がフォルダと
-   並べてフラットなファイルを名指す2つの skill behavior は `partially-documented` である。同じ
+   フォルダを示す。`skills/` ディレクトリ直下のフラットな Markdown ファイルを文書化するページは
+   ないので、どちらの綴りでも、どちらの global root でも、それを admit する rule はない。同じ
    ページは `~/.gemini/config/skills/<skill-folder>/` を、端末ではなくアプリと拡張の global の
    location として与える。
 
@@ -209,21 +204,13 @@ relationship-only な `ruleId` の定義は
    admit しているのはそのためである（当該バイナリに対する観測であり、引用したどのページも確立
    していない。Codex contract の `plugin@marketplace` の綴りと同じ位置づけ）。
 
-   それでもフラットな形は admit する。引用したどのページも文書化しておらず、観測した実装も検出
-   しないが、読み手がそうしたファイルを持っていることはありえ、admit しなければその存在について
-   何も示せない。解析の範囲は1つのプラットフォームの 1.2.0 ビルドの標準ディレクトリ設定なので、
-   「そこで自動検出されない」は「決して読まれない」ではない。
-
-   1つの名前が両方の形で綴られたときに端末がどちらを採るかを述べるページはないので、precedence
-   は publish せず、そうした名前は両方の定義を抱える1行になる。`.agent/` の後方互換は形ではなく
-   ディレクトリについて述べられているので、旧綴りが admit するのはそのページがそこで示すものだけ
-   である。すなわち `.agent/skills/<name>/SKILL.md` と `.agent/rules/<name>.md` である。
-   `.agent/skills/<name>.md` は admit しない。
+   `.agent/` の後方互換は形ではなくディレクトリについて述べられているので、旧綴りが admit する
+   のはそのページがそこで示すものだけである。すなわち `.agent/skills/<name>/SKILL.md` と
+   `<dir>/.agent/rules/<name>.md` である。
 7. 共有の Agent Skills ページは skill の `name` を任意とし、省略時はフォルダ名が既定だと述べる。
    上記のバイナリはそうしない。静的に読むと、`name` が無いか空の場合はファイル自身の名前から
    末尾の `.md` を除いたもので補われ、skill フォルダの `SKILL.md` では `SKILL` になる。
-   Inspector はその行をフォルダ名で名付け、フォルダを持たないフラットな形はそのファイル名で
-   名付ける。
+   Inspector はその行をフォルダ名で名付ける。
 
    この観測には従わない。理由は同じバイナリの中にある。`GetSkillsCreatePath` は
    `{workspace}/.agents/skills/{skill_name}/SKILL.md` を組み立てる。つまり端末自身が
@@ -254,11 +241,11 @@ relationship-only な `ruleId` の定義は
    既にある。1つの event の section が2つの宣言を抱えるなら、同じ見出しの下に宣言1つにつき1
    ブロックを描く。他3 vendor の行も detail も動かない。
 10. 共有の Rules ページは端末の rule の location — リポジトリルートまたはサブディレクトリの
-   `AGENTS.md`、`GEMINI.md`、`.agents/rules/*.md`（agent が読む・編集するファイルのフォルダから
-   上へたどる）と `~/.gemini` 配下の global rule — 4つの trigger、ファイルあたり 24,000 バイトの
-   上限を与え、端末の migration ページは workspace の rule のサポートが維持されると述べる。
-   Rules ページは rule が累積的であり、衝突時はより具体的なディレクトリの rule が優先することも
-   述べるが、`antigravity.rules.activation` はそれを持たない。その record の operation は `filter`
-   だけである。1つのディレクトリの rule の間の順序は述べない。ページは rules ディレクトリの直下の
-   `.md` だけが走査されると述べるので、rule はリポジトリルートの直下の子を admit し、ページが
-   サブディレクトリに置く rules ディレクトリは admit しない。
+   `.agents/rules/*.md`（agent が読む・編集するファイルのフォルダから上へたどる）と、user tier の
+   `~/.gemini/config/rules/*.md` および `~/.gemini/antigravity-cli/rules/*.md` — 4つの trigger、
+   ファイルあたり 24,000 バイトの上限、rule が累積的であること、衝突時はより具体的なディレクトリの
+   ものが優先することを与える。端末の migration ページは workspace の rule のサポートが維持されると
+   述べる。1つのディレクトリの rule の間の順序は述べず、`antigravity.rules.activation` が
+   `partially-documented` であるのはそのためである。ページは rules ディレクトリの直下の `.md`
+   だけが走査されると述べるので、各 rule は rules フォルダの直下の子を admit し、その下のものは
+   admit しない。
