@@ -32,7 +32,7 @@ import type { VendorBehaviorStatement } from '../behavior-types';
  * The `.claude/CLAUDE.md` form is documented here and for the ancestor walk,
  * whose `AGENTS.md` section counts a `.claude/CLAUDE.md` in any directory
  * above; the lazy descendant discovery below names the bare filenames only,
- * which is what makes that statement `partially-documented`.
+ * which is why its locator names no `.claude` form.
  */
 export const CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR = {
   behaviorId: 'claude.behavior.repo.instructions.launch',
@@ -71,7 +71,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR = {
           sections: ['2.1.277'],
           reviewedOn: '2026-09-24',
           establishes:
-            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config — the version gate for the AGENTS.md half of this lookup (QR-005).',
+            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
@@ -133,7 +133,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR = {
           sections: ['2.1.277'],
           reviewedOn: '2026-09-24',
           establishes:
-            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config — the version gate for the AGENTS.md half of this lookup (QR-005).',
+            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
@@ -155,8 +155,12 @@ export const CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR = {
  *
  * This on-demand half is why the Inspector's rule expands to descendant
  * inventory: a file under any subdirectory is one Claude can genuinely load.
- * `partially-documented` for the same reason as the ancestor walk — the
- * descendant form is stated for the bare filenames only.
+ *
+ * `documented`: the page states the on-demand read for exactly the three
+ * bare filenames this locator names. It names no `.claude/CLAUDE.md` or
+ * `.claude/AGENTS.md` for a subdirectory, and the locator claims neither, so
+ * that silence is a boundary of the statement rather than a gap in it
+ * (contracts/vendors/claude-code.md § Documented Repository lookup).
  */
 export const CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR = {
   behaviorId: 'claude.behavior.repo.instructions.descendant',
@@ -170,7 +174,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR = {
         traversal: 'lazy-descendant',
       }
     : null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -194,7 +198,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR = {
           sections: ['2.1.277'],
           reviewedOn: '2026-09-24',
           establishes:
-            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config — the version gate for the AGENTS.md half of this lookup (QR-005).',
+            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',

@@ -34,13 +34,13 @@ the task would have built.
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
 | FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
-| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219 |
+| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078, T1215–T1216 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
 | FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
 | FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
-| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
+| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220 |
 | FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
 | FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137, T1164 |
 | FR-014 | T930, T944–T947, T950–T951, T956–T959, T963–T964, T967–T968, T974–T975, T977–T978, T981–T982, T988–T989, T991, T993–T995, T997–T998, T1000–T1005, T1029, T1041, T1058, T1061–T1062, T1137, T1140 |
@@ -76,7 +76,7 @@ the task would have built.
 | QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062, T1208 |
 | QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201, T1204 |
-| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062, T1216, T1219 |
+| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062, T1216, T1219, T1220 |
 | SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202, T1218, T1219 |
 | SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203, T1211, T1217 |
 | SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194, T1203, T1211 |
@@ -9547,8 +9547,9 @@ and drops `AGENTS.override.md`.
 ### The rule's answer
 
 - [X] T1215 [US1] Add `[ANY_DIRECTORIES, 'AGENTS.md']` to `claude.repo.instructions` in
-  `src/shared/registries/claude/rules.ts`, add `AGENTS.md` and `.claude/AGENTS.md` to the launch,
-  ancestor, and descendant lookups in `src/shared/registries/claude/behaviors.ts`, record the
+  `src/shared/registries/claude/rules.ts`, add `AGENTS.md` and `.claude/AGENTS.md` to the launch
+  and ancestor lookups and `AGENTS.md` alone to the descendant lookup in
+  `src/shared/registries/claude/behaviors.ts`, record the
   Project instructions filter and the repeat an import makes as `filter`, `append`, `deduplicate`
   on `claude.instructions.layering` in `src/shared/registries/claude/strategies.ts`, and drop a
   trailing `.claude` for `AGENTS.md` as for `CLAUDE.md` in
@@ -9608,6 +9609,20 @@ and drops `AGENTS.override.md`.
   `validation.ja.md`, and state in `tests/usability/sc001-sc006-study-kit.md` and its Japanese
   companion that an apparatus defect supersedes an attempt and how the SC-006 screen is handed
   over (SC-001, SC-006).
+- [X] T1220 [US1] Resolve the second review of this phase. State every product that reads a
+  compared file, gathered from every row that lists it, in
+  `src/app/pages/instructions/compare/[family].vue`, covering the `.claude/AGENTS.md` and
+  `.claude/CLAUDE.local.md` pair in `tests/e2e/instructions-comparison.spec.ts`, and replace the
+  one-range premise in `src/app/composables/instruction-comparison.ts` and `data-model.md` §
+  comparison routes. Record `claude.repo.instructions` as `partially-documented`, because its
+  `.agents/` admission rests on an observation the memory page contradicts, and
+  `claude.behavior.repo.instructions.descendant` as `documented`, in
+  `src/shared/registries/claude/` and `contracts/vendors/claude-code.md`; state the `AGENTS.md`
+  gate's provider and session conditions — not yet on Bedrock, Vertex, or Foundry at 2.1.277, and
+  before 2.1.281 not in some sessions — in the registry's evidence, the vendor contract, and
+  `contracts/official-sources.md`; correct T1215's descendant lookup to `AGENTS.md` alone; and
+  name the recognizer case in `tests/unit/inspection/recognizers.test.ts` for what it tests
+  (FR-004, FR-011, QR-005).
 
 ## Story Coverage Matrix
 

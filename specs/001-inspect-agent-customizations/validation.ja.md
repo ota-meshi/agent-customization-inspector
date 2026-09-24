@@ -173,7 +173,11 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 すべてpassし、`pnpm run format:check`、`pnpm run lint`、`pnpm run typecheck`はcleanだった。browser側は
 Outcome manifestによる基準に記録している。`pnpm run docs:images`でこのtreeに対してreadmeの
 screenshotを2枚とも撮り直し、byte単位で同一の画像を得た。どちらにもnestedなcontext fileも平置きの
-skillも写っていない。
+skillも写っていない。Claude Codeによる`AGENTS.md`のreadの2回目のreview（T1220）は、同じvitest gateをこのhost上で
+再実行して2023 testがpassし、instructionの比較に届く3つのspec — `instructions-comparison`、
+`claude-instructions-inventory`、`instructions-inventory` — に対するChromium projectで19 testがすべてpassした。
+`instructions-comparison`に加えたcaseは、まずside boxが所属行だけを読む変更前の比較に対して実行し、
+そこで失敗することを確かめた。
 
 **Claude Codeによる`AGENTS.md`のreadは2026-09-24にgateを実行した**（T1215〜T1219、reviewの修正後に再実行）。
 `pnpm run test:docs` 42、`pnpm run test:unit` 1288、`pnpm run test:contract` 411、

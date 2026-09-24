@@ -18,8 +18,11 @@
 // `/instructions/compare/<family>?leftSource=…&left=…&rightSource=…&right=…` —
 // the two files named by their whole identity, each its own Source and
 // Source-relative Path (FR-030), inside the family they are both of. The owning
-// range is derived from them, because a file governs exactly one range within
-// its Source.
+// range is derived from them: it is the range whose block lists both files. A
+// file can sit in more than one range, because each product states its own —
+// `.claude/AGENTS.md` governs `**` for Claude Code and `.claude/**` for
+// Copilot — so the block is found by holding both sides, never by looking one
+// file's range up.
 //
 // The family is the boundary, not one Source: a family can hold two consented
 // homes, and comparing what each of them says is the point of grouping them
@@ -72,6 +75,7 @@ import {
   escapeControlCharacters,
   FILE_ENCODING_TEXT,
   isReadableFile,
+  SUPPORTED_TOOL_ORDER,
 } from '../../../../shared/entities';
 import { FILE_DETAIL_KIND_TEXT } from '../../../../shared/api-text';
 import type {
@@ -453,22 +457,28 @@ const readyView = computed(() => {
   if (!isReadableFile(left.file) || !isReadableFile(right.file)) {
     return null;
   }
-  // The inventory's recognitions of one compared file, resolved from the
-  // owning row the pair already stands on: the row is where the facts live
-  // (FR-030), so no second per-path lookup is built beside it.
-  const recognitionsOf = (file: FileDetailDto['file']): readonly FileRecognitionDto[] => {
-    for (const entry of owningBlock.value) {
-      if (entry.sourceId !== file.sourceId) {
-        continue;
-      }
-      for (const listed of entry.files) {
-        if (listed.sourceRelativePath === file.sourceRelativePath) {
-          return listed.recognitions;
-        }
-      }
-    }
-    return [];
-  };
+  // The inventory's recognitions of one compared file, gathered from every
+  // row that lists it rather than from the owning block alone. A row carries
+  // only the recognitions that give the file that row's range, and one file
+  // can sit in two ranges — `.claude/AGENTS.md` governs `**` for Claude Code
+  // and `.claude/**` for Copilot — so the owning block alone would state
+  // "Not recognized" for a product that reads the file. The pair still
+  // stands on its owning block; what a side box states is a fact about the
+  // file. Each product gives a file one range, so the rows hold no product
+  // twice, and the union is put back in the closed tool order the rows use
+  // (data-model.md § ToolRecognition).
+  const recognitionsOf = (file: FileDetailDto['file']): readonly FileRecognitionDto[] =>
+    (snapshot.value?.instructions ?? [])
+      .filter((entry) => entry.sourceId === file.sourceId)
+      .flatMap((entry) =>
+        entry.files.flatMap((listed) =>
+          listed.sourceRelativePath === file.sourceRelativePath ? listed.recognitions : [],
+        ),
+      )
+      .toSorted(
+        (left, right) =>
+          SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool),
+      );
   // Read once and used twice — beside each side's path, and as the
   // recognition comparison's side input — so the products a side box names
   // and the products its rows compare cannot disagree (AGENTS.md

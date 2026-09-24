@@ -40,7 +40,8 @@ import type { InspectionRule } from '../rule-types';
  * any other readable candidate — and the User scope the same layering
  * composes lies outside this Source.
  *
- * `AGENTS.md` is admitted beside `CLAUDE.md` because Claude Code 2.1.277+
+ * `AGENTS.md` is admitted beside `CLAUDE.md` because Claude Code 2.1.277+ —
+ * outside the sessions the 2.1.277 release and the memory page exclude —
  * looks for it in the same places: at and above the working directory at
  * session start, and in a subdirectory once it reads a file there. Whether a
  * session reads it instead of the `CLAUDE.md` files, beside them, or not at
@@ -75,7 +76,10 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
    * directory name, and Claude Code 2.1.280 does load such a file once it
    * reads a file beside it, so the admission matches what the product does
    * rather than what that sentence says (contracts/vendors/claude-code.md
-   * § Known ambiguities and version-sensitive facts).
+   * § Known ambiguities and version-sensitive facts item 14). That admission
+   * is an observation, not a citation, which is why this record is
+   * `partially-documented`: the cited sections establish every admission but
+   * that one, and state the opposite of it.
    *
    * The descendant reach is what the vendor documents rather than an Inspector
    * widening: Claude loads the launch directory's files at session start, walks
@@ -98,7 +102,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
   precedenceGroup: null,
-  documentationStatus: 'documented',
+  documentationStatus: 'partially-documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -111,10 +115,11 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
             'How CLAUDE.md files load',
             'AGENTS.md',
             'When Claude Code reads AGENTS.md',
+            'When AGENTS.md support is unavailable',
           ],
           reviewedOn: '2026-09-24',
           establishes:
-            'Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; both filenames are discovered on demand in subdirectories as Claude reads files there — the documented descendant reach that is why this rule admits them at every depth — while the ancestor walk above the working directory contributes only the selected root, the one member every session shares. Claude Code also reads AGENTS.md and .claude/AGENTS.md in the working directory and the directories above it, and a subdirectory’s AGENTS.md once it opens a file there, which is why a third program admits that filename at every depth.',
+            'Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; both filenames are discovered on demand in subdirectories as Claude reads files there — the documented descendant reach that is why this rule admits them at every depth — while the ancestor walk above the working directory contributes only the selected root, the one member every session shares. Claude Code also reads AGENTS.md and .claude/AGENTS.md in the working directory and the directories above it, and a subdirectory’s AGENTS.md once it opens a file there, which is why a third program admits that filename at every depth. The same page lists anything under a .agents/ directory as not read, and states that before 2.1.281 some sessions, those on Amazon Bedrock or with telemetry disabled among them, read CLAUDE.md files only.',
         },
         {
           sourceId: 'anthropic.claude-code.changelog.agents-md',
@@ -123,7 +128,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
           sections: ['2.1.277'],
           reviewedOn: '2026-09-24',
           establishes:
-            'Release 2.1.277 added AGENTS.md support, which is the version from which the third program admits a file Claude Code reads (QR-005).',
+            'Release 2.1.277 added AGENTS.md support, not yet on Bedrock, Vertex, or Foundry, which is the version and provider gate from which the third program admits a file Claude Code reads (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',

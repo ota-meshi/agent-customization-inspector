@@ -209,6 +209,12 @@ proposed. The task set is not superseded by this review.
 `pnpm run lint`, and `pnpm run typecheck` clean. The browser half is recorded under
 Outcome-manifest criteria. `pnpm run docs:images` retook both readme screenshots against this
 tree and produced byte-identical images: neither shows a nested context file or a flat skill.
+The second review of Claude Code's `AGENTS.md` reading (T1220) ran the same vitest gates again
+on this host, 2023 tests passing, and the Chromium project over the three specs that reach an
+instruction comparison — `instructions-comparison`, `claude-instructions-inventory`, and
+`instructions-inventory`, 19 tests, all passing. The new case in `instructions-comparison` was
+first run against the comparison as it stood, whose side boxes read the owning row alone, and
+failed there.
 
 **Claude Code's `AGENTS.md` reading ran the gates on 2026-09-24** (T1215–T1219, run again after
 the review's fixes):

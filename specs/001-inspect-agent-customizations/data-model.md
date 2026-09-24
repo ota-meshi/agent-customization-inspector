@@ -1883,7 +1883,8 @@ This state is not authoritative and is never persisted.
   Source family it leads with and, per side, a Source and a `sourceRelativePath`
   identity (FR-030). The pair's owner is the block one applicability range holds for
   that family — the block the skill precedent's row becomes here, its range derived
-  from the identities because a file governs exactly one range — so a pair may hold
+  from the identities as the one whose block lists both files, since a file can sit in
+  more than one range when its products state different ones — so a pair may hold
   two consented homes' files and never spans two families. It resolves into zero or
   two readable files: an instruction file is complete in itself, so no side can be a
   stated absence, and a pair the owning block does not hold is reported rather than

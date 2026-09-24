@@ -1,4 +1,4 @@
-// T277: browser acceptance for the instruction comparison (Phase 22).
+// T277, T1220: browser acceptance for the instruction comparison (Phase 22).
 // Launches the packaged CLI against an instruction-bearing fixture, enters
 // the comparison from an inventory row and from a detail page, and verifies
 // what can only be claimed against a rendered page: the complete literal
@@ -318,4 +318,48 @@ test('enters from the detail page and returns to the instructions tab', async ({
   // Back to the inventory's instructions tab, not the kind order's default.
   await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.getByRole('tab', { selected: true })).toContainText('Instructions');
+});
+
+test.describe('a pair whose file sits in two ranges', () => {
+  let twoRangeFixture: string;
+  let twoRangeHost: LaunchedHost;
+
+  test.beforeEach(async () => {
+    // `.claude/AGENTS.md` governs `**` for Claude Code, which reads it as the
+    // root directory's own, and `.claude/**` for Copilot, which reads it as
+    // one more `AGENTS.md` at some depth. `.claude/CLAUDE.local.md` governs
+    // `.claude/**` for Claude Code, so the two are a pair of the `.claude/**`
+    // row — the row where the first file's Claude Code recognition is not.
+    twoRangeFixture = await mkdtemp(join(tmpdir(), 'aci-instructions-two-ranges-'));
+    await mkdir(join(twoRangeFixture, '.claude'), { recursive: true });
+    await writeFile(join(twoRangeFixture, '.claude/AGENTS.md'), '# agents\n', 'utf8');
+    await writeFile(join(twoRangeFixture, '.claude/CLAUDE.local.md'), '# local\n', 'utf8');
+    twoRangeHost = await launchHost(twoRangeFixture);
+  });
+
+  test.afterEach(async () => {
+    await stopHost(twoRangeHost);
+    await rm(twoRangeFixture, { recursive: true, force: true });
+  });
+
+  test('states every product that reads each file, not only the owning row’s', async ({ page }) => {
+    // The pair stands on the `.claude/**` row, while what each side states
+    // is a fact about the file: Claude Code reads `.claude/AGENTS.md`, even
+    // though that recognition gives it the `**` range rather than this one.
+    await page.goto(
+      new URL(
+        `/instructions/compare/repository?leftSource=repository&left=${encodeURIComponent(
+          '.claude/AGENTS.md',
+        )}&rightSource=repository&right=${encodeURIComponent('.claude/CLAUDE.local.md')}`,
+        twoRangeHost.origin,
+      ).toString(),
+    );
+    const metadata = page.locator('.aci-instruction-recognition-comparison');
+    const claudeRow = metadata.locator('tr', { hasText: 'Claude Code' });
+    await expect(claudeRow.locator('td').first()).not.toHaveText('Not recognized');
+    await expect(claudeRow.locator('td').nth(1)).not.toHaveText('Not recognized');
+    const copilotRow = metadata.locator('tr', { hasText: 'GitHub Copilot' });
+    await expect(copilotRow.locator('td').first()).not.toHaveText('Not recognized');
+    await expect(copilotRow.locator('td').nth(1)).toHaveText('Not recognized');
+  });
 });

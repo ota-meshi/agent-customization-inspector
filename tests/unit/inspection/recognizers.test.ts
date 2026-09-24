@@ -2344,11 +2344,12 @@ describe('Claude instruction recognition (T228)', () => {
     expect(directories).toEqual([]);
   });
 
-  it('produces no Claude recognition for a filename-only AGENTS.md', async () => {
-    // Claude Code reads `CLAUDE.md`, not `AGENTS.md`
-    // (anthropic.claude-code.memory.locations-load § AGENTS.md): dispatching
-    // the Codex admission to Claude must yield nothing rather than a
-    // recognition invented from the filename.
+  it('infers no Claude recognition from another vendor’s admission', async () => {
+    // A recognition rests on a rule of the recognizing vendor's own. Claude
+    // Code does read `AGENTS.md`, through `claude.repo.instructions`, but an
+    // `AGENTS.md` admitted by Codex's rule alone is Codex's admission:
+    // dispatching it to Claude must yield nothing rather than a recognition
+    // inferred from the filename.
     const { recognitions } = await recognizeWith('claude', 'AGENTS.md', [codexInstructionsRule]);
     expect(recognitions).toEqual([]);
   });

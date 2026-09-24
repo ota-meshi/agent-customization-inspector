@@ -164,7 +164,7 @@ const VACANT_TASK_RANGES: readonly (readonly [number, number])[] = [
 ];
 
 /** Every task ID the current task set declares, in numeric order. */
-const DECLARED_TASK_IDS: readonly string[] = Array.from({ length: 1219 }, (_, index) => index + 1)
+const DECLARED_TASK_IDS: readonly string[] = Array.from({ length: 1220 }, (_, index) => index + 1)
   .filter((number) => !VACANT_TASK_RANGES.some(([from, to]) => number >= from && number <= to))
   .map((number) => `T${String(number).padStart(3, '0')}`);
 
@@ -478,8 +478,8 @@ describe('task set', () => {
     // a count nobody intended to change must not change unnoticed, so the
     // literals are written here and a phase or task added without deciding to
     // add one fails (AGENTS.md § Implementation simplicity policy; T1049).
-    expect(englishTasks.size).toBe(1131);
-    expect(japaneseTasks.size).toBe(1131);
+    expect(englishTasks.size).toBe(1132);
+    expect(japaneseTasks.size).toBe(1132);
     expect(tasksEnglish.match(/^## Phase /gmu)).toHaveLength(120);
     expect(tasksJapanese.match(/^## フェーズ /gmu)).toHaveLength(120);
   });

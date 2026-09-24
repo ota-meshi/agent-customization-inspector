@@ -284,7 +284,7 @@
         "officialHost": "code.claude.com",
         "sections": ["2.1.277"],
         "reviewedOn": "2026-09-24",
-        "establishes": "Release 2.1.277 added AGENTS.md support: in a project with no CLAUDE.md Claude Code reads AGENTS.md instead, and the choice is changed under Project instructions in /config — the version gate for the filter step (QR-005)."
+        "establishes": "Release 2.1.277 added AGENTS.md support: in a project with no CLAUDE.md Claude Code reads AGENTS.md instead, and the choice is changed under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the filter step (QR-005)."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",

@@ -641,7 +641,7 @@
         "officialHost": "code.claude.com",
         "sections": ["2.1.277"],
         "reviewedOn": "2026-09-24",
-        "establishes": "Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config — the version gate for the AGENTS.md half of this lookup (QR-005)."
+        "establishes": "Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005)."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",
@@ -663,7 +663,7 @@
       "relativeSelector": "CLAUDE.md; CLAUDE.local.md; AGENTS.md",
       "traversal": "lazy-descendant"
     },
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
@@ -684,7 +684,7 @@
         "officialHost": "code.claude.com",
         "sections": ["2.1.277"],
         "reviewedOn": "2026-09-24",
-        "establishes": "Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config — the version gate for the AGENTS.md half of this lookup (QR-005)."
+        "establishes": "Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005)."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",
@@ -727,7 +727,7 @@
         "officialHost": "code.claude.com",
         "sections": ["2.1.277"],
         "reviewedOn": "2026-09-24",
-        "establishes": "Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config — the version gate for the AGENTS.md half of this lookup (QR-005)."
+        "establishes": "Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005)."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",

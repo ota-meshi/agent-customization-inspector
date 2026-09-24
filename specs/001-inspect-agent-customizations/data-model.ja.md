@@ -1444,8 +1444,9 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   行の定義であり、読み手が開いた行が比較される行のままで、その3つ目のcopyはroute自身のswitcherに
   残る。導出した行はgenerationが先に公開した方になり、それを取り落とす。Instruction routeは、先頭に立つSource familyと、side
   ごとのSourceと`sourceRelativePath` identityを名指す（FR-030）。ペアの所有者は、1つのapplicability
-  rangeがそのfamilyに対して保持するblockである — skillの前例の行がここではblockになり、fileはちょうど
-  1つのrangeを統治するため、そのrangeは2つのidentityから導出される — 。したがってペアはconsentされた
+  rangeがそのfamilyに対して保持するblockである — skillの前例の行がここではblockになり、そのrangeは
+  2つのidentityから、両方のfileを載せるblockのrangeとして導出される。fileを読む製品がそれぞれ異なる
+  rangeを述べると、1つのfileは複数のrangeに属しうるためである — 。したがってペアはconsentされた
   2つのhomeのfileを持ちうるが、2つのfamilyにまたがることはない。0件またはreadableなfile 2つへ解決される:
   instruction fileはそれ自体で完結するため、どちらの側も明示された不在にはならず、所有するblockが
   保持しないペアは比較されずに報告される。MCP routeは
