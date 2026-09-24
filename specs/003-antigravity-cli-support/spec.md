@@ -224,8 +224,10 @@ on no row.
   every reader gives it the same range it is one row with several readers, and a
   `.agents/AGENTS.md` is two, `**` for this tool and `.agents/**` for Copilot and Claude Code.
   Each governs the directory holding it, and one inside a directory's
-  `.agents/` governs that directory: the terminal loads the pair from both places at each level
-  it walks up through from a file it reads or edits (§ Clarifications).
+  `.agents/` governs that directory: at each level it walks up through from a file it reads or
+  edits, the terminal looks for the pair in both places. Whether a directory holding both names
+  has both loaded the page does not say, so every one is admitted and no precedence is stated
+  (§ Clarifications; contracts/vendors/antigravity-cli.md § Known uncertainties item 1).
 - **FR-008**: The fifth Global member MUST stay the `~/.gemini` directory, in its current
   position after the three other tool homes and before the shared agent home, admitted and
   consented exactly as it is today. No environment property relocates it: no cited page

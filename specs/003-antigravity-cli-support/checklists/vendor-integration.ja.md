@@ -38,8 +38,8 @@
 - [x] CHK019 FR-012 が挙げる「このツールが1つも publish しない kind」が、contract の presentation allowlist が持つ kind と整合するか [Consistency, Spec §FR-012; Contract §Initial release の規範的 presentation allowlist]
 - [x] CHK020 member の記述が FR-008、data model の tuple、quickstart の consent の手順で5つに揃っているか [Consistency, Spec §FR-008; Data Model §GlobalMemberId と member の tuple; Quickstart §5つ目の member を見る]
 - [x] CHK021 FR-013 が Copilot の root の recognition を変わらないものとして述べ、この機能が Copilot の record を編集すると示唆していないか [Consistency, Spec §FR-013]
-- [x] CHK022 skill の行の決定が FR-004、User Story 3、data model で一致しているか。1つの名前に1行、両方の定義、優先順位なし [Consistency, Spec §FR-004, §US3; Data Model §skill の行と detail]
-- [x] CHK023 member id と label が動くことを踏まえて、plan の「DTO の形は変わらない」という主張が data model と整合するか [Consistency, Plan §Constitution Check; Data Model §GlobalMemberId と member の tuple]
+- [x] CHK022 skill の行の決定が FR-004、User Story 3、data model で一致しているか。1つの名前に1行、両方の定義、優先順位なし [Consistency, Spec §FR-004, §US3; Data Model §skill の行と detail] — 2026-09-24 に置き換え: フラットな skill を admit しないので2つの形で綴られる名前は無く、1つの名前の1行は認識する製品ごとに1つの定義を持つ (Spec §FR-004, §US3)。
+- [x] CHK023 member id と label が動くことを踏まえて、plan の「DTO の形は変わらない」という主張が data model と整合するか [Consistency, Plan §Constitution Check; Data Model §GlobalMemberId と member の tuple] — 2026-09-24 に置き換え: DTO からは skill の定義の行の単位の field も消える (Plan §Constitution Check)。
 
 ## 受け入れ基準の品質
 

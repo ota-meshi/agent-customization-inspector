@@ -55,11 +55,14 @@ const GLOBAL_POLICY_REFS = ['FR-013', 'FR-014', 'FR-018', 'QR-001', 'QR-003', 'Q
  * The workspace context files: every `GEMINI.md` and `AGENTS.md` in the
  * repository, at the root and in any subdirectory, and the `.agents/` spelling
  * of each directory's pair. Whenever the terminal reads or edits a file it
- * walks up from that file's folder to the workspace root and loads the pair at
- * each level, so a file at any depth is one the terminal can genuinely load.
- * The root `GEMINI.md` is GitHub Copilot's too, and every `AGENTS.md` is read
- * by Copilot, Claude Code, and at the root by Codex: one file with several
- * recognitions, not several rows (spec.md FR-007).
+ * walks up from that file's folder to the workspace root and looks for the
+ * pair at each level, so a file at any depth is one the terminal can genuinely
+ * load; whether a directory holding both names has both loaded is not stated
+ * (contracts/vendors/antigravity-cli.md § Known uncertainties item 1). The
+ * root `GEMINI.md` is GitHub Copilot's too, and every `AGENTS.md` is read by
+ * Copilot, Claude Code, and at the root by Codex: one file carries each
+ * reader's recognition, on one row per range those readers give it
+ * (spec.md FR-007).
  */
 export const ANTIGRAVITY_REPO_CONTEXT_RULE = {
   ruleId: 'antigravity.repo.context',

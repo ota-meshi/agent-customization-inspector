@@ -22,7 +22,7 @@
     "tool": "antigravity",
     "surfaces": ["antigravity-cli"],
     "operations": ["concatenate", "select-closest"],
-    "documentationStatus": "documented",
+    "documentationStatus": "partially-documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {

@@ -218,7 +218,9 @@ Antigravity CLI はそろって、そこにある skill フォルダの `SKILL.m
   ファイルは複数の読み手を持つ1行であり、`.agents/AGENTS.md` はこのツールの `**` と、Copilot と
   Claude Code の `.agents/**` の2行である。それぞれはそれを置くディレクトリを govern し、あるディレクトリの
   `.agents/` の中のものはそのディレクトリを govern する。端末は、読むか編集するファイルから上へ
-  歩く各階層で、両方の場所からその2つを読み込むからである (§ Clarifications)。
+  歩く各階層で、両方の場所でその組を探すからである。両方の名前を持つディレクトリで両方が読み込まれるかは
+  ページが述べないので、どれも admit し、優先順位は述べない (§ Clarifications、
+  contracts/vendors/antigravity-cli.md § Known uncertainties 項目1)。
 - **FR-008**: 5つ目の Global member は `~/.gemini` ディレクトリのままでなければならず (MUST)、
   他の3つの tool home の後、共有 agent home の前という現在の位置で、今日とまったく同じように
   admit・consent されなければならない (MUST)。それを移動させる環境プロパティはない。Antigravity

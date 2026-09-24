@@ -38,8 +38,8 @@
 - [x] CHK019 Does FR-012's list of kinds this tool publishes none of agree with the kinds the contract's presentation allowlist carries? [Consistency, Spec §FR-012; Contract §Normative initial-release presentation allowlist]
 - [x] CHK020 Do the member statements agree at five across FR-008, the data model's tuple, and the quickstart's consent walkthrough? [Consistency, Spec §FR-008; Data Model §GlobalMemberId and the member tuple; Quickstart §See the fifth member]
 - [x] CHK021 Does FR-013 describe Copilot's root recognition as unchanged, without implying that this feature edits a Copilot record? [Consistency, Spec §FR-013]
-- [x] CHK022 Do the skill row decisions agree across FR-004, User Story 3, and the data model — one row per name, both definitions, no precedence? [Consistency, Spec §FR-004, §US3; Data Model §Skill row and detail]
-- [x] CHK023 Does the plan's claim that no DTO shape changes agree with the data model, given that a member id and a label move? [Consistency, Plan §Constitution Check; Data Model §GlobalMemberId and the member tuple]
+- [x] CHK022 Do the skill row decisions agree across FR-004, User Story 3, and the data model — one row per name, both definitions, no precedence? [Consistency, Spec §FR-004, §US3; Data Model §Skill row and detail] — superseded 2026-09-24: no name is spelled in two shapes, because no flat skill is admitted; one row per name holds one definition per recognizing product (Spec §FR-004, §US3).
+- [x] CHK023 Does the plan's claim that no DTO shape changes agree with the data model, given that a member id and a label move? [Consistency, Plan §Constitution Check; Data Model §GlobalMemberId and the member tuple] — superseded 2026-09-24: the DTOs also lose the skill definition's row-unit field (Plan §Constitution Check).
 
 ## Acceptance Criteria Quality
 

@@ -22,13 +22,19 @@ import type { RuntimeCompositionStrategy } from '../strategy-types';
  * of the file being worked on — are combined into one context rather than
  * replacing each other (`concatenate`), and where two conflict the more
  * specific directory's takes priority (`select-closest`).
+ *
+ * `partially-documented`: the page words each level as `AGENTS.md` or
+ * `GEMINI.md`, and `.agents/AGENTS.md` or `.agents/GEMINI.md`, and does not
+ * say whether a directory holding both has both loaded
+ * (contracts/vendors/antigravity-cli.md § Known uncertainties item 1). What is
+ * not stated is not invented here, in either direction.
  */
 export const ANTIGRAVITY_CONTEXT_LAYERING_STRATEGY = {
   strategyId: 'antigravity.context.layering',
   tool: 'antigravity',
   surfaces: ['antigravity-cli'],
   operations: ['concatenate', 'select-closest'],
-  documentationStatus: 'documented',
+  documentationStatus: 'partially-documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
