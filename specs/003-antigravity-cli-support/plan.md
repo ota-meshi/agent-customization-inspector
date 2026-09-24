@@ -81,19 +81,20 @@ the closed kind set are the parent's and are unchanged. No kind is added.
       inputs, and `validation.md`.
 - [x] **Safe boundaries**: The home is a consented member under the same preview, admission,
       retry, and disable rules; credentials, session and history state, and installed plugin
-      copies below it are never read (spec.md QR-005). No DTO shape changes: the member enum
-      holds five values, one of them this member's, and the bundled browser is the only client.
+      copies below it are never read (spec.md QR-005). The DTOs change in one place: a skill
+      definition carries no row-unit field, because every skill is its folder (research.md § 2).
+      The member enum holds five values, one of them this member's, and the bundled browser is
+      the only client.
 - [x] **Welcoming participation**: The fixture launcher gains `antigravity-*` rows so a
       contributor can see each surface; the legend names the product; the mark carries its
       accessible name; a diagnostic for an unparsable carrier names the file.
 
 ### Post-design re-check
 
-All six gates hold after Phase 1. The one design cost that could be read as complexity — a
-second compiled shape for one kind — is what the row-unit rule requires rather than an
-addition of the author's choosing, and it removes more than it adds: the descriptor field and
-the environment property it existed for both go, because this member's root has no property to
-describe. Complexity Tracking is therefore empty.
+All six gates hold after Phase 1. The design adds no mechanism and removes two: the skill kind
+keeps its one compiled shape, so the row-unit field goes from the skill definition, and the
+descriptor field and the environment property it existed for go too, because this member's root
+has no property to describe. Complexity Tracking is therefore empty.
 
 ## Project Structure
 

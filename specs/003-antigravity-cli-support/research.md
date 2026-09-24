@@ -155,10 +155,12 @@ inline one, named the way Codex's already are — `antigravity.repo.hooks` and
 `antigravity.global.hooks` for the files, `antigravity.global.hooks.inline` for the carrier
 that is a settings document first.
 
-**Rationale**: The shared Hooks page places a `hooks.json` "in your customization directory
-(e.g., `.agents/` in your workspace or `~/.gemini/config/`)" and gives the file's own shape: a
-map from a hook name to its event configurations, each event holding matcher groups of
-handlers, with an optional `enabled` flag per hook. That is the event-map reading the shared
+**Rationale**: The shared Hooks page's terminal section names where the terminal defines hooks —
+`.agents/hooks.json` at the project root, `~/.gemini/config/hooks.json`, and inside the primary
+`~/.gemini/antigravity-cli/settings.json` — and gives the file's own shape: a map from a hook
+name to its event configurations, the tool events `PreToolUse` and `PostToolUse` holding matcher
+groups of handlers and `PreInvocation`, `PostInvocation`, and `Stop` a list of handlers directly,
+with an optional `enabled` flag per hook. That is the event-map reading the shared
 hook unit already performs. The page is a page about the terminal as well as the application:
 its transcript field names `~/.gemini/antigravity-cli` as the terminal's application data
 directory beside `~/.gemini/antigravity` for the application.
@@ -170,9 +172,9 @@ hook rules can read this one's.
 
 **Alternatives considered**: One rule with both standalone selectors was rejected because the
 two sit at different boundaries — one Repository, one Global — and a rule's `sourceKinds` is
-not a place to blur that. Publishing the shared page's `hooks.json` as `documented` was
-rejected: the page gives the location as an example rather than as the terminal's stated
-lookup, so both standalone rules are `partially-documented`.
+not a place to blur that. The two standalone rules are `documented`, because the page names
+both locations as the terminal's own; the inline rule is `partially-documented`, because the page
+gives no schema for the settings-file form.
 
 ## 6. MCP is a standalone strict-JSON carrier
 
@@ -213,7 +215,7 @@ operations are `filter`, `concatenate`, and `select-closest`.
 the repository root and in subdirectories, walking up from each file it reads or edits, with
 the legacy `.agent/rules/*.md` still loaded and only a rules directory's immediate `.md`
 children scanned; it states the modular global rules below `~/.gemini/config/rules/` and
-`~/.gemini/antigravity-cli/rules/`, and the four activation modes and a 12,000-character limit
+`~/.gemini/antigravity-cli/rules/`, and the four activation modes and a 24,000-byte limit
 per file. The terminal's own
 migration page corroborates the location by stating that workspace skills, rules, and MCP
 servers keep their support, which is what makes this a terminal behavior rather than the
@@ -284,7 +286,7 @@ from the black, the orange, and the teal beside it. Nothing on screen competes w
 **Decision**: The rule, behavior, strategy, and relationship counts, the Global rule-ID list, the
 presentation-allowlist digests, the outcome manifest, and the release gate's task and phase
 counts are all re-recorded against what ships. The parent specification's first-use evaluation
-is run again, because the designated file's recognizing tools move from two to three.
+is run again, because this tool reads the designated file and so adds a recognizing tool to it.
 
 **Rationale**: Those freezes exist so a count nobody intended to change cannot change unnoticed,
 which means the change that intends it re-records it in the same commit. The evaluation's

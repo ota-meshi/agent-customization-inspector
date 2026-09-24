@@ -79,18 +79,19 @@ Vue 3.5.39。
       `validation.md`。
 - [x] **Safe boundaries**: home は同じ preview・admission・retry・disable のルールの下の consent
       済み member である。その配下の credential、session と history の state、インストール済み
-      plugin コピーは決して読まない (spec.ja.md QR-005)。DTO の形は変わらない。member enum は5つの
-      値を保ち、そのうち1つの名前が変わるだけであり、同梱ブラウザが唯一の client である。
+      plugin コピーは決して読まない (spec.ja.md QR-005)。DTO が変わるのは1か所で、skill の定義は
+      行の単位の field を持たない。どの skill もそのフォルダだからである (research.ja.md § 2)。member
+      enum は5つの値を保ち、そのうち1つの名前が変わるだけであり、同梱ブラウザが唯一の client である。
 - [x] **Welcoming participation**: fixture launcher は `antigravity-*` の行を得るので、貢献者は
       各 surface を見られる。legend はプロダクトを名指し、mark は accessible name を持ち、parse
       できない carrier の diagnostic はそのファイルを名指しする。
 
 ### Post-design re-check
 
-Phase 1 の後も6つの gate はすべて成り立つ。複雑さと読めたかもしれない1つの設計コスト — 1つの
-kind に2つ目の compiled な形 — は、著者が選んだ追加ではなく行の単位の規則が求めるものであり、
-足すより多くを取り除く。記述子の field と、それが存在する理由だった環境プロパティが消える。この
-member の root には記述すべきプロパティが無いからである。したがって Complexity Tracking は空である。
+Phase 1 の後も6つの gate はすべて成り立つ。この設計は仕組みを1つも足さず、2つを取り除く。skill
+kind は compiled な形を1つに保つので skill の定義から行の単位の field が消え、記述子の field と、
+それが存在する理由だった環境プロパティも消える。この member の root には記述すべきプロパティが
+無いからである。したがって Complexity Tracking は空である。
 
 ## Project Structure
 

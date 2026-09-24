@@ -204,8 +204,10 @@ Antigravity CLI はそろって、そこにある skill フォルダの `SKILL.m
   identity として文書化しており、パスによる fallback は製品が持たない agent 名を報告することに
   なるからである。
 - **FR-007**: リポジトリ内のすべての `GEMINI.md` と `AGENTS.md` は、既に持つ recognition に
-  加えて Antigravity CLI の recognition を持たなければならない (MUST)。1つのファイルは複数の
-  読み手を持つ1行のままである。それぞれはそれを置くディレクトリを govern し、あるディレクトリの
+  加えて Antigravity CLI の recognition を持たなければならない (MUST)。親仕様の instruction の行の
+  key のとおり、各ファイルは読み手が与える範囲ごとに1回ずつ載る。すべての読み手が同じ範囲を与える
+  ファイルは複数の読み手を持つ1行であり、`.agents/AGENTS.md` はこのツールの `**` と、Copilot と
+  Claude Code の `.agents/**` の2行である。それぞれはそれを置くディレクトリを govern し、あるディレクトリの
   `.agents/` の中のものはそのディレクトリを govern する。端末は、読むか編集するファイルから上へ
   歩く各階層で、両方の場所からその2つを読み込むからである (§ Clarifications)。
 - **FR-008**: 5つ目の Global member は `~/.gemini` ディレクトリのままでなければならず (MUST)、
@@ -310,8 +312,8 @@ Antigravity CLI はそろって、そこにある skill フォルダの `SKILL.m
   type, admitted source form)` ごとに1 case を持たなければならず (MUST)、それは manifest version
   を増やし新しい測定集合を開始する。End-to-end のブラウザ検証は legend、tool filter、Antigravity
   CLI の detail に届かなければならない (MUST)。親仕様の初回利用評価はこの変更に対してやり直さ
-  なければならない (MUST)。このツールがリポジトリルートの `AGENTS.md` を読むことで指定ファイルの
-  読み手が2つから3つに変わるためである。study input はこのリリースがサポートするツールを名指し、
+  なければならない (MUST)。このツールが指定ファイルであるリポジトリルートの `AGENTS.md` を
+  読み、その ground truth の読み手を1つ増やすためである。study input はこのリリースがサポートするツールを名指し、
   FR-008 が取り除く環境プロパティを落とさなければならず (MUST)、20セッションのエージェント駆動
   実行を行わなければならず (MUST)、`validation.md` は両言語でその実行を記録しなければならない
   (MUST) (§ Clarifications)。

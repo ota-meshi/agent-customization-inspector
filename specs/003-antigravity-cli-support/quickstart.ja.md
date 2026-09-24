@@ -122,7 +122,7 @@ outcome manifest は、このツールが加える `(tool, customization file ty
 manifest version を増やし canonical digest を記録し直し、その実行を `validation.md` に両言語で
 記録する。
 
-親の初回利用評価はこの変更に対してやり直す。指定ファイルの読み手が2つから3つへ動くためである。
+親の初回利用評価はこの変更に対してやり直す。このツールが指定ファイルを読み、その読み手を1つ増やすためである。
 `tests/usability/sc001-sc006-study-inputs/` 配下の input はこのリリースがサポートするツールを
 名指し、なくなる環境プロパティを落とす。そして `validation.md` がその実行を記録する。
 

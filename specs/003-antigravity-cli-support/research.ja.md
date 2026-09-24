@@ -148,10 +148,11 @@ standalone の2つは inline のものとは別の rule とし、Codex が既に
 ファイルは `antigravity.repo.hooks` と `antigravity.global.hooks`、まず settings 文書である
 carrier は `antigravity.global.hooks.inline` である。
 
-**Rationale**: 共有の Hooks ページは `hooks.json` を「あなたのカスタマイズディレクトリ（例:
-workspace の `.agents/` または `~/.gemini/config/`）」に置き、そのファイル自身の形も与える。
-hook 名から event の設定への map であり、各 event は handler の matcher group を持ち、hook ごと
-に optional な `enabled` フラグを持つ。それは共有の hook unit が既に行う event-map の読みである。
+**Rationale**: 共有の Hooks ページの端末の節は、端末が hook を定義する場所 — プロジェクトルートの
+`.agents/hooks.json`、`~/.gemini/config/hooks.json`、主たる `~/.gemini/antigravity-cli/settings.json`
+の中 — を名指し、そのファイル自身の形も与える。hook 名から event の設定への map であり、tool の
+event である `PreToolUse` と `PostToolUse` は handler の matcher group を持ち、`PreInvocation`、
+`PostInvocation`、`Stop` は handler のリストを直接持ち、hook ごとに optional な `enabled` フラグを持つ。それは共有の hook unit が既に行う event-map の読みである。
 このページはアプリだけでなく端末についてのページでもある。その transcript の field が、アプリの
 `~/.gemini/antigravity` と並べて `~/.gemini/antigravity-cli` を端末のアプリケーションデータ
 ディレクトリとして名指している。
@@ -162,9 +163,9 @@ hook 名から event の設定への map であり、各 event は handler の m
 
 **Alternatives considered**: standalone の selector 2本を1つの rule にまとめる案は却下した。2つは
 異なる境界にあり — 片方は Repository、もう片方は Global — rule の `sourceKinds` はそれを曖昧に
-する場所ではない。共有ページの `hooks.json` を `documented` として publish する案も却下した。
-ページはその location を端末が述べる lookup ではなく例として与えているので、standalone の2つの
-rule はどちらも `partially-documented` である。
+する場所ではない。standalone の2つの rule は、ページが両方の場所を端末自身のものとして名指すので
+`documented` である。inline の rule は、ページが settings ファイルの形の schema を与えないので
+`partially-documented` である。
 
 ## 6. MCP は strict JSON の standalone carrier である
 
@@ -205,7 +206,7 @@ activation — manual、always on、model decision、glob — は書かれたと
 サブディレクトリで評価し、読むか編集する各ファイルから上へ歩くこと、legacy の `.agent/rules/*.md`
 もなお読み込まれること、rules ディレクトリの直下の `.md` の子だけが走査されることを述べる。
 `~/.gemini/config/rules/` と `~/.gemini/antigravity-cli/rules/` 配下のモジュール化された global
-rule、4つの activation mode、ファイルあたり 12,000 文字の上限も述べる。端末自身の migration ページは、
+rule、4つの activation mode、ファイルあたり 24,000 バイトの上限も述べる。端末自身の migration ページは、
 workspace の skill・rule・MCP server のサポートが維持されると述べることで location を裏づける。
 これがこれをアプリだけのものではなく端末の behavior にしている。
 
@@ -266,8 +267,8 @@ muted な行の中で明るいまま残る。mark を手で描く案は icon の
 
 **Decision**: rule・behavior・strategy・relationship の件数、Global rule-ID の一覧、presentation
 allowlist の digest、outcome manifest、リリース gate の task と phase の件数を、すべて出荷される
-ものに対して記録し直す。親仕様の初回利用評価はやり直す。指定ファイルの読み手が2つから3つへ動く
-からである。
+ものに対して記録し直す。親仕様の初回利用評価はやり直す。このツールが指定ファイルを読み、その読み手を1つ
+増やすからである。
 
 **Rationale**: これらの凍結は、誰も変えるつもりのなかった件数が気づかれずに変わらないために
 存在する。つまり、変えるつもりの変更が同じ commit でそれを記録し直す。評価の条件は親が定めた

@@ -210,8 +210,11 @@ on no row.
   documents `name` as the agent's identity, as the two other declared-name products do, and a
   path fallback would report an agent name the product does not have.
 - **FR-007**: Every `GEMINI.md` and `AGENTS.md` in the repository MUST carry an Antigravity CLI
-  recognition beside the recognitions it already carries, so one file stays one row with more
-  than one reader. Each governs the directory holding it, and one inside a directory's
+  recognition beside the recognitions it already carries. Each file is listed once under each
+  range its readers give it, as the parent specification's instruction rows are keyed: where
+  every reader gives it the same range it is one row with several readers, and a
+  `.agents/AGENTS.md` is two, `**` for this tool and `.agents/**` for Copilot and Claude Code.
+  Each governs the directory holding it, and one inside a directory's
   `.agents/` governs that directory: the terminal loads the pair from both places at each level
   it walks up through from a file it reads or edits (§ Clarifications).
 - **FR-008**: The fifth Global member MUST stay the `~/.gemini` directory, in its current
@@ -316,9 +319,9 @@ on no row.
   MUST hold one case per `(tool, customization file type, admitted source form)` this tool
   contributes, which increments the manifest version and starts a new measurement set. End-to-
   end browser coverage MUST reach the legend, the tool filter, and an Antigravity CLI detail.
-  The parent specification's first-use evaluation MUST be run again for this change: its
-  designated file's recognizing tools move from two to three because this tool reads the
-  repository root `AGENTS.md`, so the study inputs MUST name the tools this release supports and
+  The parent specification's first-use evaluation MUST be run again for this change: this tool
+  reads the repository root `AGENTS.md`, the designated file, and so adds a recognizing tool to
+  its ground truth, so the study inputs MUST name the tools this release supports and
   drop the environment property FR-008 removes, the twenty agent-driven sessions MUST be run,
   and `validation.md` MUST record the run in both languages (§ Clarifications).
 - **QR-004**: No gate may keep a frozen count, a fixture, or a digest for a product this release

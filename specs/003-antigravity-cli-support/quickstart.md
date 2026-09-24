@@ -125,8 +125,8 @@ this tool contributes, which is a denominator change:
 the manifest version increments and the canonical digest is re-recorded, with the run recorded in
 `validation.md` in both languages.
 
-The parent's first-use evaluation is run again for this change, because the designated file's
-recognizing tools move from two to three. Its inputs under
+The parent's first-use evaluation is run again for this change, because this tool reads the
+designated file and so adds a recognizing tool to it. Its inputs under
 `tests/usability/sc001-sc006-study-inputs/` name the tools this release supports and drop the
 environment property that goes, and `validation.md` records the run.
 
