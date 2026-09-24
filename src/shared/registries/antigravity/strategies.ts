@@ -70,22 +70,17 @@ export const ANTIGRAVITY_SKILLS_SELECTION_STRATEGY = {
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
         {
-          sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
-          officialHost: 'antigravity.google',
-          sections: ['Creating local workspace skills', 'Sharing global skills'],
-          reviewedOn: '2026-09-10',
-          establishes:
-            'A workspace skill placed in .agents/skills/ is compiled into a slash command when the CLI runs in that directory, and any markdown skill in ~/.gemini/antigravity-cli/skills/ is imported as a global slash command in any directory.',
-        },
-        {
           sourceId: 'google.antigravity.skills',
           url: 'https://antigravity.google/docs/skills/',
           officialHost: 'antigravity.google',
-          sections: ['Where skills live', 'How the agent uses skills'],
-          reviewedOn: '2026-09-10',
+          sections: [
+            'How the agent uses skills',
+            'CLI skill locations',
+            'Slash command conversion',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Workspace-specific and global skills are both available, the agent is shown every available skill with its name and description and reads the full instructions of whichever looks relevant, and no order between the two scopes is stated.',
+            'The terminal loads workspace skill folders below .agents/skills/, global ones below ~/.gemini/antigravity-cli/skills/, and the skills an installed plugin provides, and turns every skill into a slash command; the agent is shown every available skill with its name and description and reads the full instructions of whichever looks relevant, and no order between the scopes is stated.',
         },
       ]
     : [],
@@ -107,10 +102,10 @@ export const ANTIGRAVITY_AGENTS_SELECTION_STRATEGY = {
     ? [
         {
           sourceId: 'google.antigravity.cli-subagents',
-          url: 'https://antigravity.google/docs/cli/subagents/',
+          url: 'https://antigravity.google/docs/subagents/',
           officialHost: 'antigravity.google',
           sections: ['Custom Agents (Markdown Format)'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'The CLI automatically discovers custom agents defined in Markdown with YAML frontmatter at .agents/agents/<name>.md or .agents/agents/<name>/agent.md in the workspace and in ~/.gemini/config/agents/ globally.',
         },
@@ -138,10 +133,10 @@ export const ANTIGRAVITY_MCP_CONFIGURATION_STRATEGY = {
     ? [
         {
           sourceId: 'google.antigravity.cli-mcp',
-          url: 'https://antigravity.google/docs/cli/mcp/',
+          url: 'https://antigravity.google/docs/mcp/',
           officialHost: 'antigravity.google',
           sections: ['Global and Workspace Server Configs', 'MCP Configuration Structure'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'Antigravity CLI separates MCP definitions into a global ~/.gemini/config/mcp_config.json and a workspace .agents/mcp_config.json, each a single mcpServers object mapping a server name to its configuration.',
         },
@@ -150,13 +145,13 @@ export const ANTIGRAVITY_MCP_CONFIGURATION_STRATEGY = {
 } as const satisfies RuntimeCompositionStrategy;
 
 /**
- * Antigravity CLI hook merging: hooks reach a session from a plugin's own
- * `hooks.json` and from the user settings file, so the loaded set is the two
- * appended (`append`).
+ * Antigravity CLI hook merging: hooks reach a session from the workspace and
+ * global `hooks.json` files, the user settings file, and a plugin's own
+ * `hooks.json`, so the loaded set is those appended (`append`).
  *
- * `partially-documented`: the page states the two places hooks are configured
- * and gives no schema for the settings-file form
- * (§ Known uncertainties item 4).
+ * `partially-documented`: the Hooks page states every place the terminal
+ * defines hooks, gives no schema for the settings-file form, and states no
+ * order among them (§ Known uncertainties items 4 and 8).
  */
 export const ANTIGRAVITY_HOOKS_MERGE_STRATEGY = {
   strategyId: 'antigravity.hooks.merge',
@@ -168,13 +163,13 @@ export const ANTIGRAVITY_HOOKS_MERGE_STRATEGY = {
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
         {
-          sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
+          sourceId: 'google.antigravity.hooks',
+          url: 'https://antigravity.google/docs/hooks/',
           officialHost: 'antigravity.google',
-          sections: ['Managing hooks'],
-          reviewedOn: '2026-09-10',
+          sections: ['Managing hooks in Antigravity CLI'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Hooks intercept agent actions before or after execution and are defined inside a plugin’s hooks.json or configured inside the primary settings.json file.',
+            'Hooks intercept agent actions before or after execution and can be defined in any of the workspace .agents/hooks.json, the global ~/.gemini/config/hooks.json or the primary ~/.gemini/antigravity-cli/settings.json file, and an installed plugin’s hooks.json.',
         },
       ]
     : [],
@@ -196,10 +191,10 @@ export const ANTIGRAVITY_PERMISSIONS_PRECEDENCE_STRATEGY = {
     ? [
         {
           sourceId: 'google.antigravity.cli-permissions',
-          url: 'https://antigravity.google/docs/cli/permissions/',
+          url: 'https://antigravity.google/docs/permissions/',
           officialHost: 'antigravity.google',
-          sections: ['Fine-grained permissions'],
-          reviewedOn: '2026-09-10',
+          sections: ['CLI fine-grained permissions'],
+          reviewedOn: '2026-09-24',
           establishes:
             'Permissions are evaluated across the deny, ask, and allow lists configured in ~/.gemini/antigravity-cli/settings.json, and conflicting rules are strictly evaluated in the priority order deny, then ask, then allow.',
         },
@@ -211,12 +206,14 @@ export const ANTIGRAVITY_PERMISSIONS_PRECEDENCE_STRATEGY = {
  * Antigravity CLI rule activation: a workspace rule narrows the set of files
  * or turns it reaches (`filter`).
  *
- * `partially-documented`: the Rules page states the four activation modes —
- * manual, always on, model decision, and a glob the rule declares — each of
- * which decides *whether* a rule applies rather than *when* it composes with
- * another. No page states the order two rules compose in, nor their precedence
- * against the context files, so no ordering operation is recorded
- * (contracts/vendors/antigravity-cli.md § Known uncertainties item 10).
+ * `partially-documented`: the Rules page states the four triggers — manual,
+ * always on, model decision, and a glob the rule declares — each of which
+ * decides *whether* a rule applies rather than *when* it composes with
+ * another. The same page states that rules are cumulative and that the more
+ * specific directory rule takes priority in a conflict, which this record's
+ * operations do not carry, and states no order among the rules of one
+ * directory (contracts/vendors/antigravity-cli.md § Known uncertainties
+ * item 10).
  */
 export const ANTIGRAVITY_RULES_ACTIVATION_STRATEGY = {
   strategyId: 'antigravity.rules.activation',
@@ -229,12 +226,16 @@ export const ANTIGRAVITY_RULES_ACTIVATION_STRATEGY = {
     ? [
         {
           sourceId: 'google.antigravity.rules',
-          url: 'https://antigravity.google/docs/rules-workflows/',
+          url: 'https://antigravity.google/docs/rules/',
           officialHost: 'antigravity.google',
-          sections: ['Rules', 'Workspace Rules'],
-          reviewedOn: '2026-09-10',
+          sections: [
+            'Where rules are stored',
+            'YAML frontmatter and activation modes',
+            'Activation modes',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'A rule declares how it is activated: manually by an at-mention, always on, by the model deciding from a natural-language description, or by a glob pattern that applies the rule to every file the pattern matches.',
+            'Every Markdown file in a rules directory declares a trigger: manual for an explicit at-mention, always_on for every turn, model_decision for the agent to read the rule when the task matches its description, or glob to activate when the agent works on a file matching the declared patterns, and a missing or unrecognized trigger discards the rule. Rules are cumulative, and the more specific directory rule takes priority when two conflict.',
         },
       ]
     : [],

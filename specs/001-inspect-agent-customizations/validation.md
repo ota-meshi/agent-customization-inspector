@@ -15,9 +15,9 @@ every build, start, test, and CI chain, and it refuses to run without the explic
 `--network` opt-in, because it is the only command in this repository that makes an
 outbound request.
 
-**What the command decides.** For each of the registry's 52 records it retrieves the
+**What the command decides.** For each of the registry's 63 records it retrieves the
 recorded URL completely, requires a direct `200` from the record's own `officialHost` with
-no redirect followed, and resolves each of the 193 cited sections against the served bytes:
+no redirect followed, and resolves each of the 240 cited sections against the served bytes:
 as exactly one served `<h1>`–`<h4>`, or — when no served heading carries it — as the one
 served fragment every table-of-contents link bearing its text points at. Anything else is
 reported as observed: `missing`, `ambiguous-heading`, or `ambiguous-anchor`. A request that
@@ -44,17 +44,31 @@ other, where `claude.behavior.user.rules` and `claude.rules.layering` said proje
 the higher priority. Two citations were moved to the section that carries their claim —
 `claude.excluded.user-runtime`'s auto-memory location to `Auto memory`, and the memory-page
 half of `claude.agent-context.composition` to what `How CLAUDE.md files load` and `Auto memory`
-state. Every citation of the page advanced to 2026-09-24. The run reported eleven records with
-drift, none of them this page's and none touched by this change:
-`anthropic.claude-code.skills.locations-discovery`, unchanged since the runs below;
-`vscode.copilot.instructions` (`Instruction priority`) and `vscode.copilot.hooks` (five
-sections); and eight `google.antigravity.*` records whose cited headings are no longer served.
-They are left for the review that owns them. The same four Claude Code changelog anchors were
-established through a served table of contents. The review of this change added a sixty-fourth
-record, `anthropic.claude-code.changelog.agents-md`, whose `2.1.277` entry — the release that
-added `AGENTS.md` reading — is the version gate the instruction records now cite (QR-005); a run
-over all 64 records the same day established that entry through the table of contents too, and
-reported the same eleven records with drift.
+state. Every citation of the page advanced to 2026-09-24. The review of this change added a
+sixty-fourth record, `anthropic.claude-code.changelog.agents-md`, whose `2.1.277` entry — the
+release that added `AGENTS.md` reading — is the version gate the instruction records now cite
+(QR-005), established through the served table of contents.
+
+The same day's review of the other pages began from the run's report of 11 records with drift:
+`anthropic.claude-code.skills.locations-discovery`, `vscode.copilot.instructions`,
+`vscode.copilot.hooks`, and eight `google.antigravity.*` records — `cli-mcp`,
+`cli-plugins-skills`, `cli-settings`, `cli-subagents`, `cli-permissions`, `skills`, `rules`,
+and `hooks`. What each meant was read from the pages. The Claude Code skills page renamed its two
+sections (`Choose where skills load`, `Load skills in monorepos and subdirectories`) and moved
+the skill-over-command precedence into `Resolve skills that share a name`. The VS Code
+custom-instructions page replaced `Instruction priority` with `Resolve conflicting instructions`,
+which documents instruction sources as additive with no precedence among them. The VS Code hooks
+page was rewritten around the Local harness and no longer states that workspace hooks take
+precedence over user hooks, so `copilot.vscode.hooks.composition` is recorded partially documented.
+The terminal's `/docs/cli/` addresses for MCP, plugins, settings, subagents, and permissions
+answer `200` with a meta-refresh to shared pages with a section per product, and `rules-workflows`
+does the same to `/docs/rules/`; each row moved to the shared page, keeping its ID. On those pages
+the flat Markdown skill no page documents any longer is recorded `unknown`, the terminal's hook
+locations are now stated, and the Rules page documents directory-scoped and global rules and a
+24,000-byte limit. Every citation of the eleven pages was re-read against the record carrying it
+and dated 2026-09-24; which rules follow the pages is left to the rules themselves. The final run
+reported 63 sources checked, 0 with drift, and the same four Claude Code changelog anchors
+established through a served table of contents.
 
 2026-09-11, over all 63 records, the eleven `google.antigravity.*` records
 included (specs/003-antigravity-cli-support T077) — the eleventh being

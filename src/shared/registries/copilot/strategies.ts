@@ -28,13 +28,13 @@ import type { RuntimeCompositionStrategy } from '../strategy-types';
 
 /**
  * Copilot VS Code instruction layering: filter the enabled and applicable
- * personal, Repository, and organization inputs, then combine all of them in
- * the documented personal-before-Repository-before-organization layer order.
+ * personal, Repository, and organization inputs, then combine all of them.
  *
- * `append` with `unknown-order` is the whole point: every applicable file is
- * still given to the model, and the order *within* one layer is not
- * documented, so no file in a layer outranks its neighbours. `[experimental]`
- * records that the nested `AGENTS.md` half of the layer is model-decided
+ * `append` with `unknown-order` is the whole point: every applicable source is
+ * additive, and the page warns against relying on any order or precedence
+ * among them, so no file outranks another. `[experimental]` rests on the
+ * settings reference, which marks the nested `AGENTS.md` setting experimental;
+ * that half of the layer is also model-decided
  * (contracts/runtime-composition.md § copilot.vscode.instructions.layering).
  */
 export const COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY = {
@@ -52,12 +52,13 @@ export const COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY = {
           officialHost: 'code.visualstudio.com',
           sections: [
             'Types of instruction files',
-            'Instruction priority',
             'Use multiple AGENTS.md files',
+            'Share custom instructions across teams',
+            'Resolve conflicting instructions',
           ],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
-            'VS Code combines every applicable instruction file into the chat context with no specific order guaranteed; when conflicts occur the documented priority is personal, then repository, then organization instructions, with every applicable set still provided; and nested AGENTS.md selection is an experimental setting that leaves the choice to the model.',
+            'Applicable instruction sources are additive — organization instructions among them, added to user and repository ones — and the page warns against depending on any file order or precedence rule, because discovery and merge behavior differ by harness; for the Local agent, nested AGENTS.md files are listed with their folders under a disabled-by-default setting and the agent loads the ones relevant to its task.',
         },
         {
           sourceId: 'vscode.copilot.settings',
@@ -66,7 +67,7 @@ export const COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY = {
           sections: ['Custom instructions settings'],
           reviewedOn: '2026-08-19',
           establishes:
-            'Enablement and location settings decide which instruction inputs participate at all, which is the filtering step ahead of the layer order.',
+            'Enablement and location settings decide which instruction inputs participate at all, which is the filtering step ahead of combining them, and the setting for nested AGENTS.md files is marked experimental.',
         },
       ]
     : [],
@@ -763,14 +764,20 @@ export const COPILOT_CLOUD_PLUGINS_ACTIVATION_STRATEGY = {
  * resolved against the User ones with the workspace taking precedence
  * (`select-first`), and the applicable agent and plugin hooks then run in
  * addition to whatever that resolution kept (`append`). Which sources
- * participate at all is the `filter`: the feature is preview, agent-scoped
- * hooks need their own setting, parent-repository discovery is opt-in, and a
+ * participate at all is the `filter`: the feature is preview, hooks need
+ * `chat.useHooks` and a trusted workspace, the Claude-format files need
+ * `chat.useClaudeHooks`, parent-repository discovery is opt-in, and a
  * location can be switched off through the locations setting.
  *
+ * `partially-documented`: the page describes the Local harness and states the
+ * `filter` and `append` steps, but no precedence or order between the
+ * workspace and User hooks of one event, so the `select-first` step rests on
+ * no reviewed section (contracts/runtime-composition.md § Canonical
+ * evidence-assessment index).
+ *
  * Matcher values are not part of the composition here, and the page is
- * explicit about why: the editor parses the Claude matcher syntax and ignores
- * the values, so a hook of a Claude-format document runs on every tool
- * invocation. That is a runtime outcome no surface projects (FR-009) — a
+ * explicit about why: the Local parser ignores the matcher values of a
+ * Claude-format file, so every command for the event runs. That is a runtime outcome no surface projects (FR-009) — a
  * detail publishes the matcher its author wrote (FR-007).
  */
 export const COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY = {
@@ -778,7 +785,7 @@ export const COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY = {
   tool: 'copilot',
   surfaces: ['copilot-vscode'],
   operations: ['filter', 'select-first', 'append'],
-  documentationStatus: 'documented',
+  documentationStatus: 'partially-documented',
   lifecycleQualifiers: ['preview'],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -787,13 +794,13 @@ export const COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY = {
           url: 'https://code.visualstudio.com/docs/agent-customization/hooks',
           officialHost: 'code.visualstudio.com',
           sections: [
-            'Hook file locations',
-            'Agent-scoped hooks',
-            'How does VS Code handle Claude Code hook configurations?',
+            'Local hook file locations',
+            'Local hook configuration formats',
+            'Agent-scoped hooks for Local',
           ],
-          reviewedOn: '2026-08-26',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Workspace hooks take precedence over user hooks for the same event type, agent-scoped hooks run in addition to any workspace or user-level hooks configured for the same event and require the chat.useCustomAgentHooks setting, and a plugin contributes its own hooks.json or hooks/hooks.json. A hook location can be disabled by setting it to false in chat.hookFilesLocations, discovery from a parent repository root is opt-in through chat.useCustomizationsInParentRepositories, and VS Code currently ignores the matcher values of a Claude-format hook configuration so those hooks run on all tool invocations.',
+            'Agent-scoped hooks run in addition to the applicable user, workspace, and plugin hooks and need chat.useHooks and a trusted workspace, and a plugin contributes its hooks.json or hooks/hooks.json. Local hook execution is on by default under chat.useHooks with workspace files subject to Workspace Trust, the Claude-format files need chat.useClaudeHooks, a built-in location can be disabled by setting it to false in chat.hookFilesLocations, discovery from a parent repository root is opt-in through chat.useCustomizationsInParentRepositories, and the Local parser ignores the matcher values of a Claude-format file so every command for the event runs. No precedence or order between workspace and user hooks for one event is stated.',
         },
       ]
     : [],

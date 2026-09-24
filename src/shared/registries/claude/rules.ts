@@ -215,13 +215,13 @@ export const CLAUDE_REPO_COMMAND_RULE = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: [
-            'Where skills live',
-            'Discovery from parent and nested directories',
+            'Choose where skills load',
+            'Load skills in monorepos and subdirectories',
             'How a skill gets its command name',
           ],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Existing .claude/commands/ files keep working and create the same commands skills do, a command file carries the same frontmatter as a skill except name and paths, and it is invoked by its file name without the extension — the exact shape this rule admits. The page states no ancestor or lazy-descendant reach for the command directory, which is why this rule is anchored at the selected root. It documents no .claude/prompts directory at all.',
+            'A command file in .claude/commands/ is the older format of a skill and still works, it carries the same frontmatter as a skill except name and paths, and it is invoked by its file name without the extension — the exact shape this rule admits. The page states ancestor and lazy-descendant reach for .claude/skills/ alone, none for the command directory, which is why this rule is anchored at the selected root. It documents no .claude/prompts directory at all.',
         },
         {
           sourceId: 'anthropic.claude-code.changelog.legacy-command-nesting',
@@ -297,8 +297,8 @@ export const CLAUDE_REPO_SKILL_RULE = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live', 'Discovery from parent and nested directories'],
-          reviewedOn: '2026-08-27',
+          sections: ['Choose where skills load', 'Load skills in monorepos and subdirectories'],
+          reviewedOn: '2026-09-24',
           establishes:
             'Repository skills live at .claude/skills/<skill-name>/SKILL.md, and skills also load from nested .claude/skills directories on demand when Claude reads or edits a file in their subtree — the documented descendant reach that is why this rule admits that shape at every depth, while the ancestor startup walk that also loads every parent directory up to the repository root contributes only the selected root, the one layer every session shares.',
         },
@@ -1191,8 +1191,8 @@ export const CLAUDE_GLOBAL_SKILL_RULE = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live'],
-          reviewedOn: '2026-08-27',
+          sections: ['Choose where skills load'],
+          reviewedOn: '2026-09-24',
           establishes:
             'Personal skills live under the configuration directory as skills/<name>/SKILL.md, available across every project the reader works in.',
         },
@@ -1241,8 +1241,8 @@ export const CLAUDE_GLOBAL_COMMAND_RULE = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live', 'How a skill gets its command name'],
-          reviewedOn: '2026-08-27',
+          sections: ['Choose where skills load', 'How a skill gets its command name'],
+          reviewedOn: '2026-09-24',
           establishes:
             'The user command scope lives under the configuration directory beside the personal skills, invoked by slash-command names derived from each file\u2019s path.',
         },

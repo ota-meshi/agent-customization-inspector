@@ -24,17 +24,15 @@ application and editor extensions, which read customizations of their own — wo
 workspace plugin directory among them — and those are outside this release: no row here
 describes them, and no rule admits a location only they read.
 
-What a page is *about* is not settled by which product tree it sits in. The vendor's
-documentation is three product trees over two shared customization roots: the workspace's
-`.agents/` and the user tier's `config/` are named by all three trees for the same files, while
-each product's own directory below `~/.gemini` differs — `antigravity` for the application,
-`antigravity-ide` for the extensions, `antigravity-cli` for the terminal. A page in the shared
-part of that documentation therefore establishes what lives at a shared root and is cited here
-for it; a page in another product's tree establishes only that product's private directory and
-is never cited for a location this contract admits. Where a shared page and the terminal's own
-page describe one location differently — the two workspace skill shapes — both are admitted,
-because both are documented for that directory and neither page states a precedence
-(§ Known uncertainties item 6).
+What a page is *about* is settled by its sections, not by its address. Most of the vendor's
+customization pages are shared by all three products, with a section per product, over two
+shared customization roots: the workspace's `.agents/` and the user tier's `config/` are named
+for the same files across products, while each product's own directory below `~/.gemini` differs —
+`antigravity` for the application, `antigravity-ide` for the extensions, `antigravity-cli` for
+the terminal. A shared page is therefore cited for its terminal section and for what it states of
+every product alike; a section about another product establishes only that product's locations
+and is never the sole citation for a location this contract admits, except where the terminal is
+observed to read it too and the citing record says so (§ Known uncertainties item 6).
 
 What differs within the terminal is not a surface but a tier: a workspace tier under the selected root, and a user tier below `~/.gemini`
 holding the shared configuration directory `config/`, the terminal's own directory
@@ -54,26 +52,25 @@ lifecycle claim and never mean `stable`.
 |---|---|---|---|
 | `antigravity.behavior.repo.context` | `partially-documented` | `[]` | The migration page names the workspace context files as the ones in the active directory and the global one by its exact path; it states no depth and no precedence between the two names (§ Known uncertainties item 1) |
 | `antigravity.behavior.user.context` | `partially-documented` | `[]` | As the workspace row: the path is exact, the layering with the workspace files is not stated |
-| `antigravity.behavior.repo.skills` | `conflict` | `[]` | The pages make incompatible statements about the shape of a skill in one directory — a flat `.md` on the terminal's own page, a folder holding a `SKILL.md` on five others — and the published binary discovers only the folder (§ Known uncertainties item 6). What happens when a workspace and a global skill declare one name is separately not stated (item 2) |
-| `antigravity.behavior.user.skills` | `conflict` | `[]` | The same shape conflict, plus two pages giving different global directories for one scope — which the binary shows is not a disagreement, because the terminal walks both (§ Known uncertainties item 6) |
-| `antigravity.repo.skill.file` | `conflict` | `[]` | As `antigravity.behavior.repo.skills`: this rule admits the shape one page gives and five contradict |
+| `antigravity.behavior.repo.skills` | `partially-documented` | `[]` | The folder holding a `SKILL.md` and the `.agent/` backward support are exact; no page documents the flat `.md` the locator also names, and what happens when a workspace and a global skill declare one name is not stated (§ Known uncertainties items 2 and 6) |
+| `antigravity.behavior.user.skills` | `partially-documented` | `[]` | The terminal's `antigravity-cli/skills/` folders are exact; the page gives `config/skills/` to the other two products, which the binary shows the terminal walks too, and no page documents the flat `.md` (§ Known uncertainties item 6) |
+| `antigravity.repo.skill.file` | `unknown` | `[]` | No page documents a flat `.md` in that directory; every page that gives the terminal's skill location gives the folder (§ Known uncertainties item 6) |
 | `antigravity.repo.skill.directory` | `partially-documented` | `[]` | The shape and the `.agent/` backward support are exact; the resolution against a same-named flat file is not stated (§ Known uncertainties item 6) |
-| `antigravity.global.skill.file` | `conflict` | `[]` | As `antigravity.behavior.user.skills`: this rule admits the flat shape one page gives and five contradict |
-| `antigravity.global.skill.directory` | `partially-documented` | `[]` | The two global roots and the folder shape are exact; the resolution against a same-named flat file is not stated (§ Known uncertainties item 6) |
+| `antigravity.global.skill.file` | `unknown` | `[]` | As `antigravity.repo.skill.file`, at the terminal's global root |
+| `antigravity.global.skill.directory` | `partially-documented` | `[]` | The terminal's root and the folder shape are exact; `config/skills/` is documented for the other two products and observed in the terminal's walk, and the resolution against a same-named flat file is not stated (§ Known uncertainties item 6) |
 | `antigravity.behavior.repo.mcp` | `partially-documented` | `[]` | Both configuration paths and the server schema are exact; how a workspace server and a global server of one name compose is not stated (§ Known uncertainties item 3) |
 | `antigravity.behavior.user.mcp` | `partially-documented` | `[]` | As the workspace row, for the same reason |
-| `antigravity.behavior.user.hooks` | `partially-documented` | `[]` | The plugins and skills page states that hooks are configured in a plugin's `hooks.json` or in the settings file and states no schema for the settings-file form; the shared Hooks page gives the standalone file's schema and gives its location as an example rather than as the terminal's stated lookup (§ Known uncertainties items 4 and 8) |
-| `antigravity.behavior.repo.hooks` | `partially-documented` | `[]` | As the user row: the schema is exact, the workspace location is given as an example of a customization directory (§ Known uncertainties item 8) |
-| `antigravity.behavior.repo.rules` | `partially-documented` | `[]` | The shared Rules page gives the directory, the four activation modes, and the per-file character limit, and the terminal's migration page states that workspace rules keep their support; no page states the order two rules compose in, or their precedence against the context files (§ Known uncertainties item 10) |
+| `antigravity.behavior.user.hooks` | `partially-documented` | `[]` | The shared Hooks page names every place the terminal defines hooks and gives the standalone file's schema, and states no schema for the settings-file form (§ Known uncertainties item 4) |
+| `antigravity.behavior.repo.rules` | `partially-documented` | `[]` | The shared Rules page gives the terminal's rule locations, the four triggers, the per-file size limit, and that the more specific directory rule wins a conflict; it states no order among the rules of one directory, and its subdirectory rules directories are outside this locator (§ Known uncertainties item 10) |
 
 ## Documented Repository behavior
 
 | Behavior ID | Surface | Lookup base | Relative selector | Traversal or activation | Strategy | Status | Evidence |
 |---|---|---|---|---|---|---|---|
 | `antigravity.behavior.repo.context` | CLI | Project root | `GEMINI.md`, `AGENTS.md` | Parsed and enforced from the active directory; the global context file is consulted alongside them | `antigravity.context.layering` | Partially documented | `google.antigravity.cli-migration` |
-| `antigravity.behavior.repo.skills` | CLI | Project root | `.agents/skills/<name>/SKILL.md`, `.agent/skills/<name>/SKILL.md`, `.agents/skills/<name>.md` | Markdown with `name` and `description` frontmatter, compiled into a slash command when the CLI runs in that directory; the shared Agent Skills page gives the folder holding a `SKILL.md` and records `.agent/skills` as the still-supported earlier spelling of the directory, while the terminal's own page gives a flat file instead (§ Known uncertainties item 6) | `antigravity.skills.selection` | Conflict | `google.antigravity.cli-plugins-skills`, `google.antigravity.cli-migration`, `google.antigravity.skills` |
-| `antigravity.behavior.repo.rules` | CLI | Project root | `.agents/rules/<name>.md`, `.agent/rules/<name>.md` | A Markdown file below the workspace's or git root's rules folder, activated manually, always, by model decision, or by a glob it declares, and limited to 12,000 characters | `antigravity.rules.activation` | Partially documented | `google.antigravity.rules`, `google.antigravity.cli-migration` |
-| `antigravity.behavior.repo.hooks` | CLI | Project root | `.agents/hooks.json` | A map from a hook name to its event configurations, each event holding matcher groups of command handlers, with an optional per-hook `enabled` flag | `antigravity.hooks.merge` | Partially documented | `google.antigravity.hooks` |
+| `antigravity.behavior.repo.skills` | CLI | Project root | `.agents/skills/<name>/SKILL.md`, `.agent/skills/<name>/SKILL.md`, `.agents/skills/<name>.md` | A folder holding a `SKILL.md` whose frontmatter requires a `description`, turned into a slash command; the shared Agent Skills page gives it as the terminal's workspace skill and records `.agent/skills` as the still-supported earlier spelling of the directory, and no page documents the flat file (§ Known uncertainties item 6) | `antigravity.skills.selection` | Partially documented | `google.antigravity.cli-migration`, `google.antigravity.skills` |
+| `antigravity.behavior.repo.rules` | CLI | Project root | `.agents/rules/<name>.md`, `.agent/rules/<name>.md` | A Markdown file directly below the repository root's rules folder, whose frontmatter declares a trigger — `always_on`, `model_decision`, `glob`, or `manual` — and which is truncated beyond 24,000 bytes; the page also places rules folders in subdirectories (§ Known uncertainties item 10) | `antigravity.rules.activation` | Partially documented | `google.antigravity.rules`, `google.antigravity.cli-migration` |
+| `antigravity.behavior.repo.hooks` | CLI | Project root | `.agents/hooks.json` | A map from a hook name to its event configurations, each event holding matcher groups of command handlers, with an optional per-hook `enabled` flag | `antigravity.hooks.merge` | Documented | `google.antigravity.hooks` |
 | `antigravity.behavior.repo.agents` | CLI | Project root | `.agents/agents/<name>.md`, `.agents/agents/<name>/agent.md` | Markdown with YAML frontmatter, discovered automatically; the frontmatter table marks `name` required, and `subagent: true` makes it invocable by the primary agent | `antigravity.agents.selection` | Documented | `google.antigravity.cli-subagents`, `google.antigravity.subagents` |
 | `antigravity.behavior.repo.mcp` | CLI | Project root | `.agents/mcp_config.json` | A standalone JSON profile whose `mcpServers` object maps a name to a configuration; remote servers use `serverUrl` | `antigravity.mcp.configuration` | Partially documented | `google.antigravity.cli-mcp`, `google.antigravity.cli-migration` |
 
@@ -87,18 +84,18 @@ vendor documents the workspace's `.agents` directory at the project root and no 
 Two locations carry a second selector for the superseded `.agent` spelling, because the page
 that states each location states backward support for it. The support is stated about the
 directory, so the deprecated spelling admits exactly the shape that page shows there: a
-`SKILL.md` inside a skill folder, and a Markdown file below the rules folder. The flat skill
-shape belongs to the terminal's own page, which names `.agents` alone, so
-`.agent/skills/<name>.md` is a near miss (§ Known uncertainties item 6).
+`SKILL.md` inside a skill folder, and a Markdown file below the rules folder. No page documents
+the flat skill shape at either spelling, so `.agent/skills/<name>.md` is a near miss
+(§ Known uncertainties item 6).
 
 | Rule ID | Base | Selector | Traversal | Class | Behavior refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|
 | `antigravity.repo.context.gemini-root` | Repository | `['GEMINI.md']` | `exact` | `static-candidate` | `antigravity.behavior.repo.context` | Partially documented | `google.antigravity.cli-migration` |
 | `antigravity.repo.context.agents-root` | Repository | `['AGENTS.md']` | `exact` | `static-candidate` | `antigravity.behavior.repo.context` | Partially documented | `google.antigravity.cli-migration` |
-| `antigravity.repo.skill.file` | Repository | `['.agents', 'skills', /\.md$/u]` | `direct-child` below the root's `.agents/skills/`; the row's unit is the file | `static-candidate` | `antigravity.behavior.repo.skills` | Conflict | `google.antigravity.cli-plugins-skills`, `google.antigravity.skills` |
+| `antigravity.repo.skill.file` | Repository | `['.agents', 'skills', /\.md$/u]` | `direct-child` below the root's `.agents/skills/`; the row's unit is the file | `static-candidate` | `antigravity.behavior.repo.skills` | Unknown | `google.antigravity.skills` |
 | `antigravity.repo.skill.directory` | Repository | `['.agents', 'skills', ANY_NAME, 'SKILL.md']`, `['.agent', 'skills', ANY_NAME, 'SKILL.md']` | `exact`, one name segment; the row's unit is the directory | `static-candidate` | `antigravity.behavior.repo.skills` | Partially documented | `google.antigravity.skills` |
 | `antigravity.repo.rule` | Repository | `['.agents', 'rules', /\.md$/u]`, `['.agent', 'rules', /\.md$/u]` | `direct-child` below the root's rules directory | `static-candidate` | `antigravity.behavior.repo.rules` | Partially documented | `google.antigravity.rules` |
-| `antigravity.repo.hooks` | Repository | `['.agents', 'hooks.json']` | `exact` | `static-candidate` | `antigravity.behavior.repo.hooks` | Partially documented | `google.antigravity.hooks` |
+| `antigravity.repo.hooks` | Repository | `['.agents', 'hooks.json']` | `exact` | `static-candidate` | `antigravity.behavior.repo.hooks` | Documented | `google.antigravity.hooks` |
 | `antigravity.repo.agent.file` | Repository | `['.agents', 'agents', /\.md$/u]` | `direct-child` | `static-candidate` | `antigravity.behavior.repo.agents` | Documented | `google.antigravity.cli-subagents` |
 | `antigravity.repo.agent.directory` | Repository | `['.agents', 'agents', ANY_NAME, 'agent.md']` | `exact`, one name segment | `static-candidate` | `antigravity.behavior.repo.agents` | Documented | `google.antigravity.cli-subagents` |
 | `antigravity.repo.mcp` | Repository | `['.agents', 'mcp_config.json']` | `exact` | `static-candidate` | `antigravity.behavior.repo.mcp` | Partially documented | `google.antigravity.cli-mcp` |
@@ -118,10 +115,10 @@ literal on every page that states them.
 | `antigravity.behavior.user.context` | Global developer context | `<user tier>/GEMINI.md` | `antigravity.context.layering` | Accepted by `antigravity.global.context` | `google.antigravity.cli-migration` |
 | `antigravity.behavior.user.mcp` | Global MCP servers | `<user tier>/config/mcp_config.json` | `antigravity.mcp.configuration` | Accepted by `antigravity.global.mcp` | `google.antigravity.cli-mcp` |
 | `antigravity.behavior.user.agents` | Global custom agents, in both documented shapes | `<user tier>/config/agents/<name>.md`, `<user tier>/config/agents/<name>/agent.md` | `antigravity.agents.selection` | Accepted by `antigravity.global.agent.file` and `antigravity.global.agent.directory` | `google.antigravity.cli-subagents`, `google.antigravity.subagents` |
-| `antigravity.behavior.user.skills` | Global shared skills | `<user tier>/antigravity-cli/skills/`, `<user tier>/config/skills/` | `antigravity.skills.selection` | Accepted by `antigravity.global.skill.directory` and `antigravity.global.skill.file` | `google.antigravity.cli-plugins-skills`, `google.antigravity.cli-migration`, `google.antigravity.skills` |
+| `antigravity.behavior.user.skills` | Global shared skills | `<user tier>/antigravity-cli/skills/`, `<user tier>/config/skills/` | `antigravity.skills.selection` | Accepted by `antigravity.global.skill.directory` and `antigravity.global.skill.file` | `google.antigravity.cli-migration`, `google.antigravity.skills` |
 | `antigravity.behavior.user.settings` | User preferences | `<user tier>/antigravity-cli/settings.json` | — | Accepted by `antigravity.global.settings` | `google.antigravity.cli-settings`, `google.antigravity.cli-features` |
 | `antigravity.behavior.user.permissions` | Allow, ask, and deny lists | `<user tier>/antigravity-cli/settings.json` | `antigravity.permissions.precedence` | Accepted by `antigravity.global.permissions` | `google.antigravity.cli-permissions` |
-| `antigravity.behavior.user.hooks` | Hook declarations | `<user tier>/config/hooks.json`, `<user tier>/antigravity-cli/settings.json`, and a plugin's `hooks.json` | `antigravity.hooks.merge` | The standalone file is accepted by `antigravity.global.hooks` and the settings form by `antigravity.global.hooks.inline`; the plugin form is excluded with its plugin | `google.antigravity.cli-plugins-skills`, `google.antigravity.hooks` |
+| `antigravity.behavior.user.hooks` | Hook declarations | `<user tier>/config/hooks.json`, `<user tier>/antigravity-cli/settings.json`, and a plugin's `hooks.json` | `antigravity.hooks.merge` | The standalone file is accepted by `antigravity.global.hooks` and the settings form by `antigravity.global.hooks.inline`; the plugin form is excluded with its plugin | `google.antigravity.hooks` |
 | `antigravity.behavior.user.plugins` | Installed plugin copies | `<user tier>/antigravity-cli/plugins/<name>/`, with `import_manifest.json` beside them | — | Excluded by `antigravity.excluded.plugins` | `google.antigravity.cli-plugins-skills`, `google.antigravity.cli-features` |
 
 ## Inspector Global rule
@@ -132,10 +129,10 @@ case and its origin is always the default home.
 
 Below that boundary, `config/` is the vendor's shared configuration directory and
 `antigravity-cli/` is the terminal's own, and the skill rule reaches a `skills/` directory below
-each. The two pages that name a global skill directory name different ones, and that is not a
-disagreement to rank: the terminal walks both (§ Known uncertainties item 6). The editor
-extensions' own `antigravity/skills/` stays out, because it belongs to a product this release
-does not support (§ Surface boundary).
+each. The shared Agent Skills page gives the terminal's global skills at `antigravity-cli/skills/`
+and gives `config/skills/` to the application and the extensions; the terminal walks both
+(§ Known uncertainties item 6). The extensions' legacy `antigravity/skills/` stays out, because it
+belongs to a product this release does not support (§ Surface boundary).
 
 | Rule ID | Base | Selector | Traversal | Class | Behavior refs | Status | Serves | Evidence |
 |---|---|---|---|---|---|---|---|---|
@@ -143,12 +140,12 @@ does not support (§ Surface boundary).
 | `antigravity.global.mcp` | The same boundary | `['config', 'mcp_config.json']` | `exact` | `static-candidate` | `antigravity.behavior.user.mcp` | Partially documented | The global MCP servers | `google.antigravity.cli-mcp` |
 | `antigravity.global.agent.file` | The same boundary | `['config', 'agents', /\.md$/u]` | `direct-child` | `static-candidate` | `antigravity.behavior.user.agents` | Documented | The file-shaped global custom agents | `google.antigravity.cli-subagents`, `google.antigravity.subagents` |
 | `antigravity.global.agent.directory` | The same boundary | `['config', 'agents', ANY_NAME, 'agent.md']` | `exact`, one name segment | `static-candidate` | `antigravity.behavior.user.agents` | Documented | The folder-shaped global custom agents | `google.antigravity.subagents` |
-| `antigravity.global.skill.directory` | The same boundary | `['antigravity-cli', 'skills', ANY_NAME, 'SKILL.md']`, `['config', 'skills', ANY_NAME, 'SKILL.md']` | `exact`; the row's unit is the skill folder the program names | `static-candidate` | `antigravity.behavior.user.skills` | Partially documented | The folder-shaped global shared skills at both documented roots | `google.antigravity.skills`, `google.antigravity.cli-plugins-skills` |
-| `antigravity.global.skill.file` | The same boundary | `['antigravity-cli', 'skills', /\.md$/u]` | `direct-child`; the row's unit is the file itself, which occupies no directory and publishes no companion census | `static-candidate` | `antigravity.behavior.user.skills` | Conflict | The flat global shared skills at the terminal's own root | `google.antigravity.cli-plugins-skills`, `google.antigravity.skills` |
+| `antigravity.global.skill.directory` | The same boundary | `['antigravity-cli', 'skills', ANY_NAME, 'SKILL.md']`, `['config', 'skills', ANY_NAME, 'SKILL.md']` | `exact`; the row's unit is the skill folder the program names | `static-candidate` | `antigravity.behavior.user.skills` | Partially documented | The folder-shaped global shared skills at both roots the terminal walks | `google.antigravity.skills` |
+| `antigravity.global.skill.file` | The same boundary | `['antigravity-cli', 'skills', /\.md$/u]` | `direct-child`; the row's unit is the file itself, which occupies no directory and publishes no companion census | `static-candidate` | `antigravity.behavior.user.skills` | Unknown | The flat global shared skills at the terminal's own root | `google.antigravity.skills` |
 | `antigravity.global.settings` | The same boundary | `['antigravity-cli', 'settings.json']` | `exact` | `static-candidate` | `antigravity.behavior.user.settings` | Documented | The settings document | `google.antigravity.cli-settings` |
 | `antigravity.global.permissions` | The same boundary | `['antigravity-cli', 'settings.json']` | `exact`, over the same selector; the carrier's permission lists are its `permissions` recognition | `static-candidate` | `antigravity.behavior.user.permissions` | Documented | The user permission policy | `google.antigravity.cli-permissions` |
-| `antigravity.global.hooks` | The same boundary | `['config', 'hooks.json']` | `exact` | `static-candidate` | `antigravity.behavior.user.hooks` | Partially documented | The user tier's standalone hook carrier | `google.antigravity.hooks` |
-| `antigravity.global.hooks.inline` | The same boundary | `['antigravity-cli', 'settings.json']` | `exact`, over the settings rule's selector; the carrier's hook declarations are its `hook` recognition | `static-candidate` | `antigravity.behavior.user.hooks` | Partially documented | The hooks the settings document declares | `google.antigravity.cli-plugins-skills` |
+| `antigravity.global.hooks` | The same boundary | `['config', 'hooks.json']` | `exact` | `static-candidate` | `antigravity.behavior.user.hooks` | Documented | The user tier's standalone hook carrier | `google.antigravity.hooks` |
+| `antigravity.global.hooks.inline` | The same boundary | `['antigravity-cli', 'settings.json']` | `exact`, over the settings rule's selector; the carrier's hook declarations are its `hook` recognition | `static-candidate` | `antigravity.behavior.user.hooks` | Partially documented | The hooks the settings document declares | `google.antigravity.hooks` |
 
 ## Relationship-only and excluded groups
 
@@ -160,7 +157,7 @@ authorize a target read.
 | Rule ID | Class | Excluded group | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|
 | `antigravity.excluded.plugins` | `excluded` | Installed plugin copies below the user tier's `antigravity-cli/plugins/`, the `import_manifest.json` that tracks them, and the skills, agents, rules, MCP definitions, and hooks inside them: an installed copy is reproduced from its source rather than authored, which is what the parent specification's FR-018 already excludes for every vendor | `antigravity.behavior.user.plugins`, `antigravity.behavior.user.hooks` | FR-013, FR-014, FR-018 | — | `documented` | `google.antigravity.cli-plugins-skills`, `google.antigravity.cli-features` |
-| `antigravity.excluded.workspace-plugins` | `excluded` | The workspace plugin directory and everything below it — `.agents/plugins/` and the `_agents/plugins/` spelling beside it — with the skills, rules, MCP definitions, and hooks inside them. The reason is not the installed-copy reason above, which does not reach a plugin authored in a repository: no terminal page names a workspace plugin directory at all. The vendor documents it in the application's and the extensions' trees, while the terminal's own pages describe a plugin only as a bundle `agy` stages into the user tier, so nothing cited here establishes that the terminal loads one from a workspace (§ Surface boundary) | `antigravity.behavior.user.plugins` | FR-003, FR-013, FR-018 | — | `documented` | `google.antigravity.cli-plugins-skills`, `google.antigravity.cli-features` |
+| `antigravity.excluded.workspace-plugins` | `excluded` | The workspace plugin directory and everything below it — `.agents/plugins/` and the `_agents/plugins/` spelling beside it — with the skills, rules, MCP definitions, and hooks inside them. The reason is not the installed-copy reason above, which does not reach a plugin authored in a repository: no page names a workspace plugin directory for the terminal. The Plugins page gives `.agents/plugins/` in its application and extension sections, while its terminal section and the terminal's own pages describe a plugin only as a bundle `agy` stages into the user tier, so nothing cited here establishes that the terminal loads one from a workspace (§ Surface boundary) | `antigravity.behavior.user.plugins` | FR-003, FR-013, FR-018 | — | `documented` | `google.antigravity.cli-plugins-skills`, `google.antigravity.cli-features` |
 | `antigravity.excluded.user-runtime` | `excluded` | The user-tier state no Global rule admits: credentials and the keyring material the first-launch onboarding stores, session and conversation history, caches, and logs; and the private directories of the vendor's desktop application and editor extensions, `antigravity/` and `antigravity-ide/`, which this release does not recognize | `antigravity.behavior.user.home` | FR-013, FR-018, QR-003 | — | `documented` | `google.antigravity.cli-migration`, `google.antigravity.cli-settings` |
 
 ## Normative initial-release presentation allowlist
@@ -189,21 +186,23 @@ authorize a target read.
 3. The MCP pages state both configuration paths without stating how a workspace server and a
    global server of one name compose. The Inspector lists each declaration under the carrier
    that declares it and states no precedence.
-4. The plugins and skills page states that hooks are configured in a plugin's `hooks.json` or in
-   the settings file, without giving the settings-file schema. The Inspector publishes whatever
+4. The Hooks page states that the terminal also defines hooks inside its settings file, without
+   giving the settings-file schema. The Inspector publishes whatever
    that file declares under its hook object, in the file's own order, and classifies nothing.
 5. No cited page documents an environment property that relocates the user tier: every page
    writes it literally as `~/.gemini`. The member's root is therefore the home-directory join in
    every case, and no capture reads a property for it.
-6. The vendor's own pages disagree about the shape of a workspace skill, and the disagreement
-   is one-against-many. The terminal's plugins and skills page shows a flat Markdown file below
-   `.agents/skills/`. The shared Agent Skills page shows that same directory holding a skill
-   folder with a `SKILL.md`; so do the editor extensions' skills page, both plugin pages, and a
-   Google codelab written for this terminal. The two skill subjects are therefore `conflict`
-   rather than `partially-documented`: these are incompatible official assertions about one
-   directory, which is what that status retains.
+6. Every page that gives the terminal's skill locations gives a skill folder holding a
+   `SKILL.md`: the shared Agent Skills page's terminal section gives
+   `<workspace-root>/.agents/skills/<skill-folder>/` and
+   `~/.gemini/antigravity-cli/skills/<skill-folder>/`, and the Plugins page shows the same folder
+   inside a plugin. No page documents a flat Markdown file below either `skills/` directory, so
+   the two flat rules are `unknown` and the two skill behaviors, whose locators name the flat
+   file beside the folder, are `partially-documented`. The same page gives
+   `~/.gemini/config/skills/<skill-folder>/` as the global location of the application and the
+   extensions rather than of the terminal.
 
-   The implementation agrees with the majority. A static analysis of the published `agy` 1.2.0
+   The implementation agrees with the pages. A static analysis of the published `agy` 1.2.0
    Linux x64 binary — the one the official installer's `linux_amd64` manifest names, whose
    extracted executable is SHA-256
    `195bf11b249deebe67028305a9b7b1d19ac38e9ab281b786a163a7d2fc8ff428` — traced the terminal's
@@ -212,25 +211,22 @@ authorize a target read.
    directly below `skills/` is filtered out before any name is read, and `GetSkillsCreatePath`
    builds `{workspace}/.agents/skills/{skill_name}/SKILL.md`. The same analysis found the global
    walk to append both the terminal's application data directory and the configuration
-   directory, then remove duplicate roots — which is why the two pages' different global
-   directories are admitted together above rather than ranked (observed against that binary, not
-   established by any cited page; the same standing the Codex contract's `plugin@marketplace`
-   spelling has).
+   directory, then remove duplicate roots — which is why `config/skills/` is admitted beside the
+   terminal's own root although the page gives it to the other two products (observed against
+   that binary, not established by any cited page; the same standing the Codex contract's
+   `plugin@marketplace` spelling has).
 
-   The flat shape is admitted anyway. The two errors are not symmetric: a reader who followed
-   the vendor's own instructions has that file, and declining it would show them nothing at all
-   about it, while admitting it lists the file with a recognition the vendor's own page
-   supports. The analysis covers the default directory configuration of one platform's 1.2.0
-   build, so "not auto-discovered there" is not "never read". The flat rules go when a page or a
-   later build settles it.
+   The flat shape is admitted anyway, although no cited page documents it and the observed
+   implementation does not discover it: a reader may hold such a file, and declining it would show
+   them nothing at all about it, while the analysis covers the default directory configuration of
+   one platform's 1.2.0 build, so "not auto-discovered there" is not "never read".
 
    Because no page states which shape the terminal prefers when one name is spelled in both, no
    precedence is published, and such a name is one row carrying both definitions. The backward
    support for `.agent/` is stated about the directory rather than about a shape, so the
    deprecated spelling admits only what its own page shows there:
    `.agent/skills/<name>/SKILL.md` and `.agent/rules/<name>.md`. `.agent/skills/<name>.md` is
-   not admitted, and it becomes admitted only if a page documents the flat shape at that
-   spelling.
+   not admitted.
 7. The shared Agent Skills page states that a skill's `name` is optional and defaults to the
    folder name. The binary's fill does not: read statically, an absent or empty `name` is
    filled from the file's own name with the trailing `.md` removed, which for a skill folder's
@@ -249,15 +245,13 @@ authorize a target read.
 
    The divergence is recorded rather than resolved: if a later build or a page settles that the
    terminal really does resolve `SKILL`, the fallback moves and this item says so.
-8. The shared Hooks page gives a `hooks.json` schema exactly and gives its location as an
-   example — "in your customization directory (e.g., `.agents/` in your workspace or
-   `~/.gemini/config/`)" — rather than as a lookup the terminal states. It is a page about the
-   terminal as well as the application, because its transcript field names
-   `~/.gemini/antigravity-cli` as the terminal's application data directory beside
-   `~/.gemini/antigravity` for the application. Both standalone carriers are therefore admitted
-   and both are recorded partially documented. No page states how the two standalone files and
-   the settings file's inline declarations compose, so the Inspector lists each under the
-   carrier that declares it and states no precedence.
+8. The shared Hooks page gives a `hooks.json` schema exactly, and its terminal section names
+   where the terminal defines hooks: `.agents/hooks.json` at the project root,
+   `~/.gemini/config/hooks.json` or the primary `~/.gemini/antigravity-cli/settings.json`, and an
+   installed plugin's `hooks.json`. Both standalone carriers are therefore admitted and
+   documented. No page states how the two standalone files and the settings file's inline
+   declarations compose, so the Inspector lists each under the carrier that declares it and
+   states no precedence.
 9. A hook declaration of this vendor carries a name, which the other three vendors' do not, and
    the inventory needs it. A hook row's unit is one declared event and its lines are one per
    `(carrier, tool)`, which holds for a format whose carrier declares an event at most once.
@@ -273,9 +267,13 @@ authorize a target read.
    key are already inside the JSON a reader sees, and an event section holding two declarations
    draws one block per declaration under the same heading. Nothing about the other three
    vendors' rows or details moves.
-10. The shared Rules page gives the rules directory, the four activation modes, and the 12,000
-   character limit, and the terminal's migration page states that workspace rules keep their
-   support. Neither states the order two rules compose in, nor their precedence against the
-   context files, so `antigravity.rules.activation` records `filter` alone. The page names the
-   workspace or git root, which is the selected root this product reasons in, and shows no depth
-   inside the rules directory, so the rule admits its direct children alone.
+10. The shared Rules page gives the terminal's rule locations — `AGENTS.md`, `GEMINI.md`, and
+   `.agents/rules/*.md` at the repository root or in subdirectories, walked up from the folder of a
+   file the agent reads or edits, and global rules below `~/.gemini` — the four triggers, and a
+   24,000-byte per-file limit, and the terminal's migration page states that workspace rules keep
+   their support. It also states that rules are cumulative and that the more specific directory
+   rule takes priority in a conflict, which `antigravity.rules.activation` does not carry: that
+   record's operation is `filter` alone. It states no order among the rules of one directory. The
+   page states that only a rules directory's immediate `.md` children are scanned, so the rule
+   admits the repository root's direct children, and it does not admit the rules directories the
+   page places in subdirectories.

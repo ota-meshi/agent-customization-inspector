@@ -78,9 +78,9 @@ export const COPILOT_REPO_INSTRUCTIONS_REPOSITORY_RULE = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use a .github/copilot-instructions.md file'],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
-            'VS Code reads exactly one repository-wide instruction file at the workspace root, which is the exact path this rule admits at the selected root.',
+            'VS Code takes the one repository-wide instruction file from the .github folder at the repository root — for Copilot sessions, and for the Local agent while its setting is on — which is the exact path this rule admits at the selected root.',
         },
         {
           sourceId: 'github.copilot.cloud.instructions',
@@ -196,7 +196,7 @@ export const COPILOT_REPO_INSTRUCTIONS_PATH_RULE = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use .instructions.md files', 'Instructions file locations'],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
             'VS Code searches the workspace .github/instructions folder recursively for files carrying this filename suffix, subdirectories included, which is the subtree this rule admits below the selected root.',
         },
@@ -314,9 +314,9 @@ export const COPILOT_REPO_INSTRUCTIONS_AGENTS_RULE = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use an AGENTS.md file', 'Use multiple AGENTS.md files'],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
-            'VS Code applies the workspace-root AGENTS.md always-on and, under an experimental setting, searches every subfolder and leaves the choice among nested files to the model; the settings defaults live on the behavior record this rule rests on.',
+            'VS Code takes the primary AGENTS.md at the repository root, and for the Local agent a disabled-by-default setting lists nested AGENTS.md files with their folders so the agent loads the ones relevant to its task; the settings defaults live on the behavior record this rule rests on.',
         },
         {
           sourceId: 'github.copilot.cli.instructions',
@@ -376,9 +376,9 @@ export const COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use a CLAUDE.md file'],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
-            'With Claude compatibility enabled, VS Code applies CLAUDE.md as always-on instructions; the workspace root is one of its documented locations, and the others are left out of this release rather than denied.',
+            'VS Code uses CLAUDE.md at the repository root for project-wide guidance, and the Local agent searches the documented CLAUDE.md locations, the workspace root among them, while chat.useClaudeMdFile is enabled; the others are left out of this release rather than denied.',
         },
         {
           sourceId: 'github.copilot.cli.instructions',
@@ -499,7 +499,7 @@ export const COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use a CLAUDE.md file', 'Instructions file locations'],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
             'VS Code documents the .claude folder spelling of CLAUDE.md, the local CLAUDE.local.md variant, and the Claude-format .claude/rules folder as instruction locations — the locations this release leaves out while keeping the behavior on record.',
         },
@@ -1545,10 +1545,10 @@ export const COPILOT_REPO_HOOKS_RULE = {
           sourceId: 'vscode.copilot.hooks',
           url: 'https://code.visualstudio.com/docs/agent-customization/hooks',
           officialHost: 'code.visualstudio.com',
-          sections: ['Hook file locations'],
-          reviewedOn: '2026-08-26',
+          sections: ['Local hook file locations'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'The workspace scope of the hook-locations table is .github/hooks/*.json, and the default chat.hookFilesLocations value loads every *.json file of that folder.',
+            'The workspace scope of the Local harness hook-locations table is .github/hooks/*.json, the exact location this rule admits.',
         },
       ]
     : [],
@@ -1696,13 +1696,10 @@ export const COPILOT_REPO_CLAUDE_SETTINGS_HOOKS_RULE = {
           sourceId: 'vscode.copilot.hooks',
           url: 'https://code.visualstudio.com/docs/agent-customization/hooks',
           officialHost: 'code.visualstudio.com',
-          sections: [
-            'Hook file locations',
-            'How does VS Code handle Claude Code hook configurations?',
-          ],
-          reviewedOn: '2026-08-26',
+          sections: ['Local hook file locations', 'Local hook configuration formats'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'The workspace scope of the hook-locations table names .claude/settings.json and .claude/settings.local.json in the Claude format — the exact locations this rule admits — and VS Code parses the Claude Code hook configuration format found there.',
+            'The workspace scope of the Local harness hook-locations table names .claude/settings.json and .claude/settings.local.json in the Claude format — the exact locations this rule admits — behind the off-by-default chat.useClaudeHooks setting, and the Local parser reads the Claude hook configuration found there.',
         },
         {
           sourceId: 'github.copilot.hooks',
@@ -2142,7 +2139,7 @@ export const COPILOT_EXCLUDED_USER_RUNTIME_RULE = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use a CLAUDE.md file'],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
             'VS Code also reads Claude-compatible user paths such as ~/.claude/CLAUDE.md; a cross-home or profile read stays a recorded behavior with no Inspector recognition, and those paths stay excluded here.',
         },

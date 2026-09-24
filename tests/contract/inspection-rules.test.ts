@@ -753,9 +753,8 @@ describe('the unified SKILL selector matrix (T179)', () => {
   const RECOGNITION_MATRIX: readonly (readonly [string, readonly string[]])[] = [
     ['.github/skills/ship/SKILL.md', ['copilot']],
     ['.agents/skills/orbit/SKILL.md', ['antigravity', 'codex', 'copilot']],
-    // The flat shape at the same location is this vendor's alone: its own page
-    // documents it and five other sources contradict it, which the rule keeps
-    // admitted and the contract records
+    // The flat shape at the same location is this vendor's alone: no page
+    // documents it, which the rule keeps admitted and the contract records
     // (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
     ['.agents/skills/deploy.md', ['antigravity']],
     // The superseded spelling reaches the folder shape the page that states

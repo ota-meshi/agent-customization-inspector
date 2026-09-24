@@ -213,7 +213,7 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
   },
   /**
    * VS Code instruction layering composes the workspace locations and the
-   * personal ones documented above them in the layer order.
+   * personal ones, which the page documents as additive.
    */
   [COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: {
     consumesBehaviors: [

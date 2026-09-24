@@ -223,13 +223,13 @@ and does not admit an unregistered source repository or issue as substitute evid
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
-| `vscode.copilot.instructions` | <https://code.visualstudio.com/docs/agent-customization/custom-instructions> | `code.visualstudio.com` | `Types of instruction files`; `Use a .github/copilot-instructions.md file`; `Use .instructions.md files`; `Instructions file locations`; `Instructions file format`; `Use an AGENTS.md file`; `Use multiple AGENTS.md files`; `Use a CLAUDE.md file`; `Instruction priority` | `2026-09-04` |
+| `vscode.copilot.instructions` | <https://code.visualstudio.com/docs/agent-customization/custom-instructions> | `code.visualstudio.com` | `Types of instruction files`; `Choose a scope`; `Use a .github/copilot-instructions.md file`; `Use .instructions.md files`; `Instructions file locations`; `Instructions file format`; `Use an AGENTS.md file`; `Use multiple AGENTS.md files`; `Use a CLAUDE.md file`; `Share custom instructions across teams`; `Resolve conflicting instructions` | `2026-09-24` |
 | `vscode.copilot.customization` | <https://code.visualstudio.com/docs/agent-customization/overview> | `code.visualstudio.com` | `Use customizations in a monorepo` | `2026-08-19` |
 | `vscode.copilot.settings` | <https://code.visualstudio.com/docs/agents/reference/ai-settings> | `code.visualstudio.com` | `Chat settings`; `Custom instructions settings`; `Reusable prompt files settings`; `Custom agents settings`; `Agent skills settings`; `Agent plugins settings` | `2026-08-19` |
 | `vscode.copilot.prompts` | <https://code.visualstudio.com/docs/agent-customization/prompt-files> | `code.visualstudio.com` | `Prompt file locations`; `Prompt file format`; `Create a prompt file`; `Use a prompt file in chat` | `2026-08-22` |
 | `vscode.copilot.custom-agents` | <https://code.visualstudio.com/docs/agent-customization/custom-agents> | `code.visualstudio.com` | `Handoffs`; `Custom agent file locations`; `Custom agent file structure`; `Tool list priority`; `Share custom agents across teams` | `2026-07-15` |
 | `vscode.copilot.skills` | <https://code.visualstudio.com/docs/agent-customization/agent-skills> | `code.visualstudio.com` | `Create a skill`; `SKILL.md file format`; `How Copilot uses skills`; `Use shared skills` | `2026-07-15` |
-| `vscode.copilot.hooks` | <https://code.visualstudio.com/docs/agent-customization/hooks> | `code.visualstudio.com` | `Configure hooks`; `Hook file locations`; `Hook configuration format`; `Agent-scoped hooks`; `How does VS Code handle Claude Code hook configurations?`; `Security considerations` | `2026-08-26` |
+| `vscode.copilot.hooks` | <https://code.visualstudio.com/docs/agent-customization/hooks> | `code.visualstudio.com` | `Local hook file locations`; `Local hook configuration formats`; `Agent-scoped hooks for Local`; `Security considerations` | `2026-09-24` |
 | `vscode.copilot.mcp` | <https://code.visualstudio.com/docs/agent-customization/mcp-servers> | `code.visualstudio.com` | `Add an MCP server`; `Configure the mcp.json file`; `MCP server trust`; `Synchronize MCP configuration across devices` | `2026-08-20` |
 | `vscode.copilot.mcp.workspace-root-release` | <https://code.visualstudio.com/updates/v1_118> | `code.visualstudio.com` | `Workspace .mcp.json files and server deduplication` | `2026-08-20` |
 | `vscode.copilot.plugins` | <https://code.visualstudio.com/docs/agent-customization/agent-plugins> | `code.visualstudio.com` | `What plugins provide`; `Plugin manifest (plugin.json)`; `Plugin formats`; `Configure plugin marketplaces`; `Use local plugins`; `Workspace plugin recommendations` | `2026-08-25` |
@@ -246,7 +246,7 @@ and does not admit an unregistered source repository or issue as substitute evid
 | `anthropic.claude-code.sdk.setting-sources` | <https://code.claude.com/docs/en/agent-sdk/claude-code-features> | `code.claude.com` | `Control filesystem settings with settingSources`; `CLAUDE.md load locations` | `2026-08-18` |
 | `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Settings files and who they affect`; `Compare the scope of each settings file`; `Where Claude Code keeps the local file in a git repository`; `Settings precedence`; `Lists merge instead of overriding` | `2026-08-27` |
 | `anthropic.claude-code.permissions.rule-syntax` | <https://code.claude.com/docs/en/permissions> | `code.claude.com` | `Permission rule syntax`; `Wildcard patterns` | `2026-08-22` |
-| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`; `Discovery from parent and nested directories`; `How a skill gets its command name` | `2026-08-27` |
+| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Choose where skills load`; `Load skills in monorepos and subdirectories`; `Resolve skills that share a name`; `How a skill gets its command name` | `2026-09-24` |
 | `anthropic.claude-code.subagents.scope-context` | <https://code.claude.com/docs/en/sub-agents> | `code.claude.com` | `Choose the subagent scope`; `Available tools`; `Scope MCP servers to a subagent`; `Preload skills into subagents`; `Enable persistent memory`; `What loads at startup`; `Let subagents spawn their own subagents` | `2026-08-27` |
 | `anthropic.claude-code.hooks.locations-resolution` | <https://code.claude.com/docs/en/hooks> | `code.claude.com` | `Hook locations`; `Hooks in skills and agents`; `The /hooks menu`; `PreToolUse` | `2026-08-25` |
 | `anthropic.claude-code.mcp.scopes-precedence` | <https://code.claude.com/docs/en/mcp> | `code.claude.com` | `MCP installation scopes`; `Scope hierarchy and precedence`; `Plugin-provided MCP servers` | `2026-08-27` |
@@ -293,33 +293,35 @@ moves then whether or not the reading changed an assertion.
 ## Google official sources
 
 The Google rows cite the Antigravity documentation site, whose pages are served with a trailing
-slash and answer directly without redirecting. That site is three product trees — the terminal
-under `/docs/cli/`, the editor extensions under `/docs/ide/`, and the desktop application at the
-top level — over two shared customization roots, the workspace's `.agents/` and the home's
-`~/.gemini/config/`. The rows split along that line rather than along the URL prefix: the
-`cli-` rows are the terminal's own pages, and the three rows without that prefix are the shared
-pages that establish what lives at a shared root, which the terminal reads together with the
-other two products. No row cites a page for another product's private directory
-(contracts/vendors/antigravity-cli.md § Surface boundary), which is why the desktop
-application's and the extensions' own global skill directories appear nowhere here. Several
-assertions the records maintain rest on what a cited page does not say rather than on what it
-does — the depth a context file may sit at, the schema of a hook declared in the settings file,
-which workspace skill shape the terminal prefers, and the order two workspace rules compose in —
-and each is recorded as a known uncertainty on the subject that carries it, not as something
-this table establishes.
+slash and answer directly without redirecting. The site documents three products — the terminal,
+the desktop application, and the editor extensions — and most of its customization pages are
+shared among them, with a section per product; only the migration and features pages under
+`/docs/cli/` are the terminal's alone. A shared page is cited for its terminal section and for
+what it states of every product alike, such as a file's schema. Where it gives another product a
+location the terminal also reads, the citing record says whose location the page names, and no
+row cites a page for another product's private directory
+(contracts/vendors/antigravity-cli.md § Surface boundary). A row's ID is the page's identity rather
+than its address: the `cli-mcp`, `cli-plugins-skills`, `cli-settings`, `cli-subagents`, and
+`cli-permissions` rows cite the shared pages the terminal's addresses under `/docs/cli/` redirect
+to, and `google.antigravity.cli-subagents` and `google.antigravity.subagents` cite two sections of
+one page. Several assertions the records maintain rest on what a cited page does not say rather
+than on what it does — the schema of a hook declared in the settings file, the order the rules of
+one directory compose in, and what happens when a workspace and a global skill or MCP server share
+a name — and each is recorded as a known uncertainty on the subject that carries it, not as
+something this table establishes.
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
 | `google.antigravity.cli-migration` | <https://antigravity.google/docs/cli/gcli-migration/> | `antigravity.google` | `First-launch onboarding`; `Context files and workspace rules`; `Updated skills paths`; `MCP config formatting changes`; `Directory mapping`; `Required schema updates` | `2026-09-10` |
-| `google.antigravity.cli-mcp` | <https://antigravity.google/docs/cli/mcp/> | `antigravity.google` | `Antigravity CLI`; `Global and Workspace Server Configs`; `MCP Configuration Structure`; `MCP Configuration Properties` | `2026-09-10` |
-| `google.antigravity.cli-plugins-skills` | <https://antigravity.google/docs/cli/plugins/> | `antigravity.google` | `Antigravity plugins`; `Plugin filesystem structure`; `Agent skills`; `Creating local workspace skills`; `Sharing global skills`; `Managing hooks` | `2026-09-10` |
-| `google.antigravity.cli-settings` | <https://antigravity.google/docs/cli/settings/> | `antigravity.google` | `Setting up preferences`; `Configuration file location` | `2026-09-10` |
-| `google.antigravity.cli-subagents` | <https://antigravity.google/docs/cli/subagents/> | `antigravity.google` | `Custom Agents (Markdown Format)` | `2026-09-10` |
-| `google.antigravity.cli-permissions` | <https://antigravity.google/docs/cli/permissions/> | `antigravity.google` | `Fine-grained permissions`; `Supported actions & matching rules` | `2026-09-10` |
+| `google.antigravity.cli-mcp` | <https://antigravity.google/docs/mcp/> | `antigravity.google` | `Getting started by surface`; `Global and Workspace Server Configs`; `MCP Configuration Structure`; `MCP Configuration Properties` | `2026-09-24` |
+| `google.antigravity.cli-plugins-skills` | <https://antigravity.google/docs/plugins/> | `antigravity.google` | `Directory structure`; `Manual plugin installation`; `CLI plugin management`; `CLI filesystem location`; `Standalone IDE plugin installation` | `2026-09-24` |
+| `google.antigravity.cli-settings` | <https://antigravity.google/docs/settings/> | `antigravity.google` | `Setting up preferences`; `Configuration file location` | `2026-09-24` |
+| `google.antigravity.cli-subagents` | <https://antigravity.google/docs/subagents/> | `antigravity.google` | `Custom Agents (Markdown Format)` | `2026-09-24` |
+| `google.antigravity.cli-permissions` | <https://antigravity.google/docs/permissions/> | `antigravity.google` | `CLI fine-grained permissions`; `Supported CLI actions and matching rules` | `2026-09-24` |
 | `google.antigravity.cli-features` | <https://antigravity.google/docs/cli/features/> | `antigravity.google` | `Plugins`; `Advanced Customization via settings.json` | `2026-09-10` |
-| `google.antigravity.skills` | <https://antigravity.google/docs/skills/> | `antigravity.google` | `Agent Skills`; `Where skills live`; `Creating a skill`; `Frontmatter fields`; `Skill folder structure`; `How the agent uses skills` | `2026-09-10` |
-| `google.antigravity.rules` | <https://antigravity.google/docs/rules-workflows/> | `antigravity.google` | `Rules`; `Global Rules`; `Workspace Rules` | `2026-09-10` |
-| `google.antigravity.hooks` | <https://antigravity.google/docs/hooks/> | `antigravity.google` | `Hooks`; `Configuration`; `Schema and File Format`; `Hook Handler Configuration`; `Common Input Fields` | `2026-09-10` |
+| `google.antigravity.skills` | <https://antigravity.google/docs/skills/> | `antigravity.google` | `Agent skills`; `What are skills?`; `Anatomy of a skill`; `Frontmatter fields`; `How the agent uses skills`; `Antigravity 2.0 skill locations`; `CLI skill locations`; `Slash command conversion`; `Antigravity IDE skill locations` | `2026-09-24` |
+| `google.antigravity.rules` | <https://antigravity.google/docs/rules/> | `antigravity.google` | `Where rules are stored`; `Directory-scoped rules`; `Global rules`; `YAML frontmatter and activation modes`; `Activation modes`; `Size limits and token budgets`; `Managing rules in Antigravity CLI` | `2026-09-24` |
+| `google.antigravity.hooks` | <https://antigravity.google/docs/hooks/> | `antigravity.google` | `Hooks`; `Managing hooks in Antigravity CLI`; `Schema and File Format`; `Hook Definition Fields`; `Hook Handler Configuration`; `Common Input Fields` | `2026-09-24` |
 | `google.antigravity.subagents` | <https://antigravity.google/docs/subagents/> | `antigravity.google` | `Agent Location and Discovery`; `Frontmatter Configuration (YAML)` | `2026-09-11` |
 
 ## Offline validation and explicit drift review

@@ -238,10 +238,10 @@ export const CLAUDE_USER_COMMANDS_BEHAVIOR = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live', 'How a skill gets its command name'],
-          reviewedOn: '2026-08-27',
+          sections: ['Choose where skills load', 'How a skill gets its command name'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'The personal scope is the home configuration directory — the page places personal skills at ~/.claude/skills/<skill-name>/SKILL.md and says they apply to all your projects — and the same page says command files in .claude/commands/ work the way skills do and are invoked by their file name. That pairing is what makes <claude-config-dir>/commands/ the personal command directory; the page states no traversal for it, which the changelog entry beside this one supplies.',
+            'The personal scope is the home configuration directory — the page places personal skills at ~/.claude/skills/<skill-name>/SKILL.md, loaded in all your projects on this machine — and the same section says a command file in .claude/commands/ is the older format of a skill and still works, while the command-name table names one by its file name. That pairing is what makes <claude-config-dir>/commands/ the personal command directory; the page states no traversal for it, which the changelog entry beside this one supplies.',
         },
         {
           sourceId: 'anthropic.claude-code.changelog.legacy-command-nesting',
@@ -407,13 +407,14 @@ export const CLAUDE_REPO_COMMANDS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: [
-            'Where skills live',
-            'Discovery from parent and nested directories',
+            'Choose where skills load',
+            'Load skills in monorepos and subdirectories',
+            'Resolve skills that share a name',
             'How a skill gets its command name',
           ],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Custom commands are merged into skills: a .claude/commands/deploy.md and a .claude/skills/deploy/SKILL.md both create /deploy, existing .claude/commands/ files keep working, and a skill outranks a command of the same name. A command file supports the same frontmatter as a skill except name and paths, which Claude Code ignores in one, and is invoked by its file name without the extension. The page says command files work the way skills do but writes its nested-directory sentence about .claude/skills/ alone, so no skill-equivalent ancestor or lazy-descendant command traversal is stated independently.',
+            'A command file in .claude/commands/ is the older format of a skill and still works, and when a skill and a command file share a name the skill runs. A command file supports the same frontmatter as a skill except name and paths, and is invoked by its file name without the extension. The page writes its parent and nested discovery about .claude/skills/ alone, so no skill-equivalent ancestor or lazy-descendant command traversal is stated independently.',
         },
         {
           sourceId: 'anthropic.claude-code.changelog.legacy-command-nesting',
@@ -708,8 +709,8 @@ export const CLAUDE_REPO_SKILLS_BEHAVIOR = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live', 'Discovery from parent and nested directories'],
-          reviewedOn: '2026-08-27',
+          sections: ['Choose where skills load', 'Load skills in monorepos and subdirectories'],
+          reviewedOn: '2026-09-24',
           establishes:
             'Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, loading them from the start directory and every parent up to the repository root, while a nested descendant skill directory loads the first time Claude reads or edits a file inside it.',
         },
@@ -864,8 +865,8 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live'],
-          reviewedOn: '2026-08-27',
+          sections: ['Choose where skills load'],
+          reviewedOn: '2026-09-24',
           establishes:
             'Claude Code additionally discovers user skills at ~/.claude/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across.',
         },

@@ -452,23 +452,23 @@ export type GoogleSourceId =
   | 'google.antigravity.cli-migration'
   /** The MCP page: both configuration locations, the server schema, and the remote key. */
   | 'google.antigravity.cli-mcp'
-  /** The plugins and skills page: the plugin layout, both skill locations, and where hooks are configured. */
+  /** The shared Plugins page: the plugin layout, where the terminal stages an installed plugin, and the workspace plugin folder only the other products name. */
   | 'google.antigravity.cli-plugins-skills'
   /** The settings page: the user settings file and its location. */
   | 'google.antigravity.cli-settings'
-  /** The background tasks and subagents page: the custom-agent format and both locations. */
+  /** The terminal's custom-agents section of the shared Custom subagents page: the custom-agent format and both locations. */
   | 'google.antigravity.cli-subagents'
   /** The permissions page: the three lists and their precedence. */
   | 'google.antigravity.cli-permissions'
   /** The features page: the plugin staging layout and the settings-file customizations. */
   | 'google.antigravity.cli-features'
-  /** The vendor's shared Agent Skills page, which documents the skill folder holding a `SKILL.md` at the workspace's `.agents/skills/` and records `.agent/skills` as the still-supported earlier spelling. */
+  /** The vendor's shared Agent Skills page, which documents the skill folder holding a `SKILL.md`, gives each product's skill locations — the terminal's `.agents/skills/` and `~/.gemini/antigravity-cli/skills/` among them — and records `.agent/skills` as the still-supported earlier spelling. */
   | 'google.antigravity.skills'
-  /** The vendor's shared Rules page, which documents workspace rules at `.agents/rules`, the four activation modes, and the global `~/.gemini/GEMINI.md`. */
+  /** The vendor's shared Rules page, which documents each product's directory-scoped and global rule locations, the four triggers, the size limits, and how rules combine. */
   | 'google.antigravity.rules'
   /** The vendor's shared Subagents page, which gives the custom-agent discovery locations and states both spellings — `<name>.md` and `<name>/agent.md` — for the workspace's `.agents/agents/` and for the user tier's `config/agents/`. */
   | 'google.antigravity.subagents'
-  /** The vendor's shared Hooks page, which documents the `hooks.json` schema and places the file in the workspace's `.agents/` or the user tier's `config/`. */
+  /** The vendor's shared Hooks page, which documents the `hooks.json` schema and each product's hook locations, the terminal's settings file among them. */
   | 'google.antigravity.hooks';
 
 /**
@@ -565,7 +565,7 @@ export type CopilotStrategyId =
   | 'copilot.vscode.plugins.activation'
   /** Copilot VS Code MCP selection with the 1.118/current-guide location conflict and unknown total order. */
   | 'copilot.vscode.mcp.selection'
-  /** Copilot VS Code instruction layering, personal before Repository before organization. */
+  /** Copilot VS Code instruction layering: personal, Repository, and organization inputs combined additively in no documented order. */
   | 'copilot.vscode.instructions.layering'
   /** Copilot VS Code settings precedence: workspace scopes above User, with the other documented scopes retained. */
   | 'copilot.vscode.settings.precedence'

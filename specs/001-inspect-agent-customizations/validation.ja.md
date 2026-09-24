@@ -12,8 +12,8 @@
 を照合するmaintainer専用commandである。build/start/test/CIのどのchainにも登録されておらず、明示的な
 `--network` opt-inなしには実行しない。このrepositoryで唯一outbound requestを行うcommandだからである。
 
-**commandが判定すること。** registryの52 recordそれぞれについて、記録URLを完全に取得し、record自身の
-`officialHost`からredirectなしの直接`200`を要求し、引用された193 sectionを配信bytesに対して解決する。
+**commandが判定すること。** registryの63 recordそれぞれについて、記録URLを完全に取得し、record自身の
+`officialHost`からredirectなしの直接`200`を要求し、引用された240 sectionを配信bytesに対して解決する。
 配信された`<h1>`–`<h4>`のちょうど1件として、あるいはそれを担うheadingが配信されていないときは、
 その本文を持つ目次linkがすべて指す、配信されている1つのfragmentとして。それ以外は観測どおり`missing`、`ambiguous-heading`、
 `ambiguous-anchor`として報告する。requestがthrowした場合は「完了しなかったrequest」として報告する。
@@ -35,15 +35,28 @@ user-level ruleはproject ruleより先にloadされ、どちらも他方を上�
 `claude.behavior.user.rules`と`claude.rules.layering`はproject ruleのほうが優先度が高いと述べていた。
 2つのcitationを、その主張を担うsectionへ移した — `claude.excluded.user-runtime`のauto memoryの場所は
 `Auto memory`へ、`claude.agent-context.composition`のmemory page側は`How CLAUDE.md files load`と
-`Auto memory`が述べる内容へ。このpageのcitationはすべて2026-09-24へ進めた。runはdriftを持つ11 recordを
-報告したが、どれもこのpageのものではなく、この変更が触れたものでもない。下のrun以来変化のない
-`anthropic.claude-code.skills.locations-discovery`、`vscode.copilot.instructions`（`Instruction priority`）と
-`vscode.copilot.hooks`（5 section）、そして引用したheadingがもはや配信されていない8件の
-`google.antigravity.*` recordである。これらはそれを所有するreviewに残す。同じ4件のClaude Code changelog
-anchorが、配信されたtable of contents経由で解決した。この変更のreviewが64件目のrecord
+`Auto memory`が述べる内容へ。このpageのcitationはすべて2026-09-24へ進めた。この変更のreviewが64件目のrecord
 `anthropic.claude-code.changelog.agents-md`を加えた。その`2.1.277` entry — `AGENTS.md`のreadを加えたrelease —
-が、instruction recordが今引用するversion gateである（QR-005）。同日の64 record全件に対するrunは、このentryも
-table of contents経由で解決し、driftを持つ同じ11 recordを報告した。
+が、instruction recordが今引用するversion gateであり（QR-005）、配信されたtable of contents経由で解決した。
+
+同日の他のpageのreviewは、runが報告したdriftを持つ11 recordから始めた。
+`anthropic.claude-code.skills.locations-discovery`、`vscode.copilot.instructions`、
+`vscode.copilot.hooks`、および8件の`google.antigravity.*` record — `cli-mcp`、`cli-plugins-skills`、
+`cli-settings`、`cli-subagents`、`cli-permissions`、`skills`、`rules`、`hooks` — である。それぞれの
+意味はページを読んで判断した。Claude Codeのskillsページは2つのsectionの名前を変え（`Choose where skills
+load`、`Load skills in monorepos and subdirectories`）、skillがcommandに優先することを
+`Resolve skills that share a name`へ移した。VS Codeのcustom-instructionsページは`Instruction
+priority`を`Resolve conflicting instructions`に置き換え、instruction sourceを加算的で互いの間に
+precedenceを持たないものとして文書化する。VS Codeのhooksページは Local harness を中心に書き直され、
+workspace hookがuser hookに優先するとはもう述べないので、`copilot.vscode.hooks.composition`は
+partially documentedとして記録する。端末のMCP、plugins、settings、subagents、permissionsの
+`/docs/cli/`配下のアドレスは`200`とmeta-refreshで製品ごとの節を持つ共通ページへ移り、
+`rules-workflows`も同様に`/docs/rules/`へ移る。各行はIDを保ったまま共通ページへ移した。それらの
+ページでは、もはやどのページも文書化しないフラットなMarkdown skillを`unknown`として記録し、端末の
+hookのlocationは明記されるようになり、Rulesページはdirectory-scopedとglobalのruleと24,000バイトの
+上限を文書化する。11ページの引用はすべて、それを持つrecordに対して読み直し、2026-09-24とした。
+どのruleがページに従うかはrule自体の判断に委ねた。最終runは63 sources checked、0 with driftを報告し、
+同じ4件のClaude Code changelog anchorを配信されたtable of contents経由で確認したものとして挙げた。
 
 2026-09-11、63 record全件 — 11件の`google.antigravity.*` recordを含む — に対して
 実行した（specs/003-antigravity-cli-support T077）。11件目は`google.antigravity.subagents`で、user

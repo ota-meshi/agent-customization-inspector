@@ -9,10 +9,10 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.cli-subagents",
-        "url": "https://antigravity.google/docs/cli/subagents/",
+        "url": "https://antigravity.google/docs/subagents/",
         "officialHost": "antigravity.google",
         "sections": ["Custom Agents (Markdown Format)"],
-        "reviewedOn": "2026-09-10",
+        "reviewedOn": "2026-09-24",
         "establishes": "The CLI automatically discovers custom agents defined in Markdown with YAML frontmatter at .agents/agents/<name>.md or .agents/agents/<name>/agent.md in the workspace and in ~/.gemini/config/agents/ globally."
       }
     ]
@@ -44,12 +44,12 @@
     "lifecycleQualifiers": [],
     "evidence": [
       {
-        "sourceId": "google.antigravity.cli-plugins-skills",
-        "url": "https://antigravity.google/docs/cli/plugins/",
+        "sourceId": "google.antigravity.hooks",
+        "url": "https://antigravity.google/docs/hooks/",
         "officialHost": "antigravity.google",
-        "sections": ["Managing hooks"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "Hooks intercept agent actions before or after execution and are defined inside a plugin’s hooks.json or configured inside the primary settings.json file."
+        "sections": ["Managing hooks in Antigravity CLI"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Hooks intercept agent actions before or after execution and can be defined in any of the workspace .agents/hooks.json, the global ~/.gemini/config/hooks.json or the primary ~/.gemini/antigravity-cli/settings.json file, and an installed plugin’s hooks.json."
       }
     ]
   },
@@ -63,10 +63,10 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.cli-mcp",
-        "url": "https://antigravity.google/docs/cli/mcp/",
+        "url": "https://antigravity.google/docs/mcp/",
         "officialHost": "antigravity.google",
         "sections": ["Global and Workspace Server Configs", "MCP Configuration Structure"],
-        "reviewedOn": "2026-09-10",
+        "reviewedOn": "2026-09-24",
         "establishes": "Antigravity CLI separates MCP definitions into a global ~/.gemini/config/mcp_config.json and a workspace .agents/mcp_config.json, each a single mcpServers object mapping a server name to its configuration."
       }
     ]
@@ -81,10 +81,10 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.cli-permissions",
-        "url": "https://antigravity.google/docs/cli/permissions/",
+        "url": "https://antigravity.google/docs/permissions/",
         "officialHost": "antigravity.google",
-        "sections": ["Fine-grained permissions"],
-        "reviewedOn": "2026-09-10",
+        "sections": ["CLI fine-grained permissions"],
+        "reviewedOn": "2026-09-24",
         "establishes": "Permissions are evaluated across the deny, ask, and allow lists configured in ~/.gemini/antigravity-cli/settings.json, and conflicting rules are strictly evaluated in the priority order deny, then ask, then allow."
       }
     ]
@@ -99,11 +99,15 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.rules",
-        "url": "https://antigravity.google/docs/rules-workflows/",
+        "url": "https://antigravity.google/docs/rules/",
         "officialHost": "antigravity.google",
-        "sections": ["Rules", "Workspace Rules"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "A rule declares how it is activated: manually by an at-mention, always on, by the model deciding from a natural-language description, or by a glob pattern that applies the rule to every file the pattern matches."
+        "sections": [
+          "Where rules are stored",
+          "YAML frontmatter and activation modes",
+          "Activation modes"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Every Markdown file in a rules directory declares a trigger: manual for an explicit at-mention, always_on for every turn, model_decision for the agent to read the rule when the task matches its description, or glob to activate when the agent works on a file matching the declared patterns, and a missing or unrecognized trigger discards the rule. Rules are cumulative, and the more specific directory rule takes priority when two conflict."
       }
     ]
   },
@@ -116,20 +120,16 @@
     "lifecycleQualifiers": [],
     "evidence": [
       {
-        "sourceId": "google.antigravity.cli-plugins-skills",
-        "url": "https://antigravity.google/docs/cli/plugins/",
-        "officialHost": "antigravity.google",
-        "sections": ["Creating local workspace skills", "Sharing global skills"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "A workspace skill placed in .agents/skills/ is compiled into a slash command when the CLI runs in that directory, and any markdown skill in ~/.gemini/antigravity-cli/skills/ is imported as a global slash command in any directory."
-      },
-      {
         "sourceId": "google.antigravity.skills",
         "url": "https://antigravity.google/docs/skills/",
         "officialHost": "antigravity.google",
-        "sections": ["Where skills live", "How the agent uses skills"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "Workspace-specific and global skills are both available, the agent is shown every available skill with its name and description and reads the full instructions of whichever looks relevant, and no order between the two scopes is stated."
+        "sections": [
+          "How the agent uses skills",
+          "CLI skill locations",
+          "Slash command conversion"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The terminal loads workspace skill folders below .agents/skills/, global ones below ~/.gemini/antigravity-cli/skills/, and the skills an installed plugin provides, and turns every skill into a slash command; the agent is shown every available skill with its name and description and reads the full instructions of whichever looks relevant, and no order between the scopes is stated."
       }
     ]
   },
@@ -205,12 +205,13 @@
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
         "sections": [
-          "Where skills live",
-          "Discovery from parent and nested directories",
+          "Choose where skills load",
+          "Load skills in monorepos and subdirectories",
+          "Resolve skills that share a name",
           "How a skill gets its command name"
         ],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Command files in .claude/commands/ share the skill command namespace and work the same way, and when a skill and a command share a name the skill takes precedence — with both .claude/commands/deploy.md and .claude/skills/deploy/SKILL.md present, /deploy runs the skill. A command is invoked by its file name without the extension. The nested-directory discovery sentence is written about .claude/skills/ alone, so which layers contribute commands is not stated independently."
+        "reviewedOn": "2026-09-24",
+        "establishes": "A command file in .claude/commands/ is the older format of a skill and still works, and when a skill and a command file share a name the skill runs. A command is invoked by its file name without the extension. The parent and nested discovery is written about .claude/skills/ alone, so which layers contribute commands is not stated independently."
       }
     ]
   },
@@ -425,9 +426,13 @@
         "sourceId": "anthropic.claude-code.skills.locations-discovery",
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
-        "sections": ["Where skills live", "How a skill gets its command name"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Within one root, a nested skill sharing a name with another stays available under a directory-qualified command and Claude picks the variant matching the files it is working on; invoking the unqualified name loads the project-root skill and appends the directory-qualified variants with an instruction to also invoke any whose directory holds those files. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one."
+        "sections": [
+          "Load skills in monorepos and subdirectories",
+          "Resolve skills that share a name",
+          "How a skill gets its command name"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Within one root, a nested skill sharing a name with another stays available under a directory-qualified command: invoking the unqualified name runs the project-root skill while Claude Code lists the directory-qualified variants with an instruction to invoke the one whose directory holds the files Claude is working on, and the qualified command runs the nested skill on its own. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one."
       },
       {
         "sourceId": "anthropic.claude-code.changelog.nested-skill-discovery",
@@ -955,7 +960,7 @@
     "tool": "copilot",
     "surfaces": ["copilot-vscode"],
     "operations": ["filter", "select-first", "append"],
-    "documentationStatus": "documented",
+    "documentationStatus": "partially-documented",
     "lifecycleQualifiers": ["preview"],
     "evidence": [
       {
@@ -963,12 +968,12 @@
         "url": "https://code.visualstudio.com/docs/agent-customization/hooks",
         "officialHost": "code.visualstudio.com",
         "sections": [
-          "Hook file locations",
-          "Agent-scoped hooks",
-          "How does VS Code handle Claude Code hook configurations?"
+          "Local hook file locations",
+          "Local hook configuration formats",
+          "Agent-scoped hooks for Local"
         ],
-        "reviewedOn": "2026-08-26",
-        "establishes": "Workspace hooks take precedence over user hooks for the same event type, agent-scoped hooks run in addition to any workspace or user-level hooks configured for the same event and require the chat.useCustomAgentHooks setting, and a plugin contributes its own hooks.json or hooks/hooks.json. A hook location can be disabled by setting it to false in chat.hookFilesLocations, discovery from a parent repository root is opt-in through chat.useCustomizationsInParentRepositories, and VS Code currently ignores the matcher values of a Claude-format hook configuration so those hooks run on all tool invocations."
+        "reviewedOn": "2026-09-24",
+        "establishes": "Agent-scoped hooks run in addition to the applicable user, workspace, and plugin hooks and need chat.useHooks and a trusted workspace, and a plugin contributes its hooks.json or hooks/hooks.json. Local hook execution is on by default under chat.useHooks with workspace files subject to Workspace Trust, the Claude-format files need chat.useClaudeHooks, a built-in location can be disabled by setting it to false in chat.hookFilesLocations, discovery from a parent repository root is opt-in through chat.useCustomizationsInParentRepositories, and the Local parser ignores the matcher values of a Claude-format file so every command for the event runs. No precedence or order between workspace and user hooks for one event is stated."
       }
     ]
   },
@@ -986,11 +991,12 @@
         "officialHost": "code.visualstudio.com",
         "sections": [
           "Types of instruction files",
-          "Instruction priority",
-          "Use multiple AGENTS.md files"
+          "Use multiple AGENTS.md files",
+          "Share custom instructions across teams",
+          "Resolve conflicting instructions"
         ],
-        "reviewedOn": "2026-09-04",
-        "establishes": "VS Code combines every applicable instruction file into the chat context with no specific order guaranteed; when conflicts occur the documented priority is personal, then repository, then organization instructions, with every applicable set still provided; and nested AGENTS.md selection is an experimental setting that leaves the choice to the model."
+        "reviewedOn": "2026-09-24",
+        "establishes": "Applicable instruction sources are additive — organization instructions among them, added to user and repository ones — and the page warns against depending on any file order or precedence rule, because discovery and merge behavior differ by harness; for the Local agent, nested AGENTS.md files are listed with their folders under a disabled-by-default setting and the agent loads the ones relevant to its task."
       },
       {
         "sourceId": "vscode.copilot.settings",
@@ -998,7 +1004,7 @@
         "officialHost": "code.visualstudio.com",
         "sections": ["Custom instructions settings"],
         "reviewedOn": "2026-08-19",
-        "establishes": "Enablement and location settings decide which instruction inputs participate at all, which is the filtering step ahead of the layer order."
+        "establishes": "Enablement and location settings decide which instruction inputs participate at all, which is the filtering step ahead of combining them, and the setting for nested AGENTS.md files is marked experimental."
       }
     ]
   },

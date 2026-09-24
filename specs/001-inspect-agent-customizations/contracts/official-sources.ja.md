@@ -197,13 +197,13 @@ conflictとして保持し、未登録のsource repositoryやissueを代替evide
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
-| `vscode.copilot.instructions` | <https://code.visualstudio.com/docs/agent-customization/custom-instructions> | `code.visualstudio.com` | `Types of instruction files`; `Use a .github/copilot-instructions.md file`; `Use .instructions.md files`; `Instructions file locations`; `Instructions file format`; `Use an AGENTS.md file`; `Use multiple AGENTS.md files`; `Use a CLAUDE.md file`; `Instruction priority` | `2026-09-04` |
+| `vscode.copilot.instructions` | <https://code.visualstudio.com/docs/agent-customization/custom-instructions> | `code.visualstudio.com` | `Types of instruction files`; `Choose a scope`; `Use a .github/copilot-instructions.md file`; `Use .instructions.md files`; `Instructions file locations`; `Instructions file format`; `Use an AGENTS.md file`; `Use multiple AGENTS.md files`; `Use a CLAUDE.md file`; `Share custom instructions across teams`; `Resolve conflicting instructions` | `2026-09-24` |
 | `vscode.copilot.customization` | <https://code.visualstudio.com/docs/agent-customization/overview> | `code.visualstudio.com` | `Use customizations in a monorepo` | `2026-08-19` |
 | `vscode.copilot.settings` | <https://code.visualstudio.com/docs/agents/reference/ai-settings> | `code.visualstudio.com` | `Chat settings`; `Custom instructions settings`; `Reusable prompt files settings`; `Custom agents settings`; `Agent skills settings`; `Agent plugins settings` | `2026-08-19` |
 | `vscode.copilot.prompts` | <https://code.visualstudio.com/docs/agent-customization/prompt-files> | `code.visualstudio.com` | `Prompt file locations`; `Prompt file format`; `Create a prompt file`; `Use a prompt file in chat` | `2026-08-22` |
 | `vscode.copilot.custom-agents` | <https://code.visualstudio.com/docs/agent-customization/custom-agents> | `code.visualstudio.com` | `Handoffs`; `Custom agent file locations`; `Custom agent file structure`; `Tool list priority`; `Share custom agents across teams` | `2026-07-15` |
 | `vscode.copilot.skills` | <https://code.visualstudio.com/docs/agent-customization/agent-skills> | `code.visualstudio.com` | `Create a skill`; `SKILL.md file format`; `How Copilot uses skills`; `Use shared skills` | `2026-07-15` |
-| `vscode.copilot.hooks` | <https://code.visualstudio.com/docs/agent-customization/hooks> | `code.visualstudio.com` | `Configure hooks`; `Hook file locations`; `Hook configuration format`; `Agent-scoped hooks`; `How does VS Code handle Claude Code hook configurations?`; `Security considerations` | `2026-08-26` |
+| `vscode.copilot.hooks` | <https://code.visualstudio.com/docs/agent-customization/hooks> | `code.visualstudio.com` | `Local hook file locations`; `Local hook configuration formats`; `Agent-scoped hooks for Local`; `Security considerations` | `2026-09-24` |
 | `vscode.copilot.mcp` | <https://code.visualstudio.com/docs/agent-customization/mcp-servers> | `code.visualstudio.com` | `Add an MCP server`; `Configure the mcp.json file`; `MCP server trust`; `Synchronize MCP configuration across devices` | `2026-08-20` |
 | `vscode.copilot.mcp.workspace-root-release` | <https://code.visualstudio.com/updates/v1_118> | `code.visualstudio.com` | `Workspace .mcp.json files and server deduplication` | `2026-08-20` |
 | `vscode.copilot.plugins` | <https://code.visualstudio.com/docs/agent-customization/agent-plugins> | `code.visualstudio.com` | `What plugins provide`; `Plugin manifest (plugin.json)`; `Plugin formats`; `Configure plugin marketplaces`; `Use local plugins`; `Workspace plugin recommendations` | `2026-08-25` |
@@ -220,7 +220,7 @@ conflictとして保持し、未登録のsource repositoryやissueを代替evide
 | `anthropic.claude-code.sdk.setting-sources` | <https://code.claude.com/docs/en/agent-sdk/claude-code-features> | `code.claude.com` | `Control filesystem settings with settingSources`; `CLAUDE.md load locations` | `2026-08-18` |
 | `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Settings files and who they affect`、`Compare the scope of each settings file`、`Where Claude Code keeps the local file in a git repository`、`Settings precedence`、`Lists merge instead of overriding` | `2026-08-27` |
 | `anthropic.claude-code.permissions.rule-syntax` | <https://code.claude.com/docs/en/permissions> | `code.claude.com` | `Permission rule syntax`、`Wildcard patterns` | `2026-08-22` |
-| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Where skills live`、`Discovery from parent and nested directories`、`How a skill gets its command name` | `2026-08-27` |
+| `anthropic.claude-code.skills.locations-discovery` | <https://code.claude.com/docs/en/skills> | `code.claude.com` | `Choose where skills load`; `Load skills in monorepos and subdirectories`; `Resolve skills that share a name`; `How a skill gets its command name` | `2026-09-24` |
 | `anthropic.claude-code.subagents.scope-context` | <https://code.claude.com/docs/en/sub-agents> | `code.claude.com` | `Choose the subagent scope`; `Available tools`; `Scope MCP servers to a subagent`; `Preload skills into subagents`; `Enable persistent memory`; `What loads at startup`; `Let subagents spawn their own subagents` | `2026-08-27` |
 | `anthropic.claude-code.hooks.locations-resolution` | <https://code.claude.com/docs/en/hooks> | `code.claude.com` | `Hook locations`; `Hooks in skills and agents`; `The /hooks menu`; `PreToolUse` | `2026-08-25` |
 | `anthropic.claude-code.mcp.scopes-precedence` | <https://code.claude.com/docs/en/mcp> | `code.claude.com` | `MCP installation scopes`; `Scope hierarchy and precedence`; `Plugin-provided MCP servers` | `2026-08-27` |
@@ -264,30 +264,33 @@ filesystemまたはdecode方針をencodeしてはならない。このreconcilia
 ## Google公式ソース
 
 Google の行は Antigravity の文書サイトを引用する。そのページは末尾スラッシュ付きで配信され、
-redirect なしに直接応答する。そのサイトは3つの製品ツリー — `/docs/cli/` 配下の端末、`/docs/ide/`
-配下の editor 拡張、トップレベルの desktop アプリ — が2つの共有カスタマイズ root、すなわち
-workspace の `.agents/` と home の `~/.gemini/config/` の上に立つ構造である。行の分かれ方は URL の
-接頭辞ではなくその線に沿う。`cli-` の行は端末自身のページであり、その接頭辞を持たない3行は、
-端末が他の2製品とともに読む共有 root に何があるかを確立する共有ページである。他の製品の専用
-ディレクトリについてのページを引用する行はない (contracts/vendors/antigravity-cli.ja.md
-§ Surface boundary)。desktop アプリと editor 拡張それぞれの global skill ディレクトリがここに
-1つも現れないのはそのためである。record が維持する主張のいくつか — context file が置かれうる
-深さ、settings ファイルに宣言される hook の schema、端末がどちらの workspace skill の形を採るか、
-2つの workspace rule が合成される順序 — は、引用したページが述べることではなく述べないことに依る。
+redirect なしに直接応答する。そのサイトは3つの製品 — 端末、desktop アプリ、editor 拡張 — を
+文書化しており、カスタマイズのページの多くは3製品に共通で、製品ごとの節を持つ。端末だけの
+ページは `/docs/cli/` 配下の migration と features のページのみである。共通ページは、その端末の
+節と、ファイルの schema のように全製品に等しく述べる内容について引用する。共通ページが端末も
+読む場所を別の製品の場所として示す場合、引用する record はそのページが誰の場所として示すかを
+述べる。他の製品の専用ディレクトリについてページを引用する行はない
+(contracts/vendors/antigravity-cli.ja.md § Surface boundary)。行の ID はページの所在ではなく
+ページの同一性である。`cli-mcp`、`cli-plugins-skills`、`cli-settings`、`cli-subagents`、
+`cli-permissions` の行は、端末の `/docs/cli/` 配下のアドレスが redirect する先の共通ページを
+引用し、`google.antigravity.cli-subagents` と `google.antigravity.subagents` は1つのページの
+2つの節を引用する。record が維持する主張のいくつか — settings ファイルに宣言される hook の
+schema、1つのディレクトリの rule が合成される順序、workspace と global の skill または MCP server
+が同じ名前を持つときに何が起きるか — は、引用したページが述べることではなく述べないことに依る。
 それぞれはそれを持つ subject の既知の不確実性として記録され、この表が確立するものではない。
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
 | `google.antigravity.cli-migration` | <https://antigravity.google/docs/cli/gcli-migration/> | `antigravity.google` | `First-launch onboarding`; `Context files and workspace rules`; `Updated skills paths`; `MCP config formatting changes`; `Directory mapping`; `Required schema updates` | `2026-09-10` |
-| `google.antigravity.cli-mcp` | <https://antigravity.google/docs/cli/mcp/> | `antigravity.google` | `Antigravity CLI`; `Global and Workspace Server Configs`; `MCP Configuration Structure`; `MCP Configuration Properties` | `2026-09-10` |
-| `google.antigravity.cli-plugins-skills` | <https://antigravity.google/docs/cli/plugins/> | `antigravity.google` | `Antigravity plugins`; `Plugin filesystem structure`; `Agent skills`; `Creating local workspace skills`; `Sharing global skills`; `Managing hooks` | `2026-09-10` |
-| `google.antigravity.cli-settings` | <https://antigravity.google/docs/cli/settings/> | `antigravity.google` | `Setting up preferences`; `Configuration file location` | `2026-09-10` |
-| `google.antigravity.cli-subagents` | <https://antigravity.google/docs/cli/subagents/> | `antigravity.google` | `Custom Agents (Markdown Format)` | `2026-09-10` |
-| `google.antigravity.cli-permissions` | <https://antigravity.google/docs/cli/permissions/> | `antigravity.google` | `Fine-grained permissions`; `Supported actions & matching rules` | `2026-09-10` |
+| `google.antigravity.cli-mcp` | <https://antigravity.google/docs/mcp/> | `antigravity.google` | `Getting started by surface`; `Global and Workspace Server Configs`; `MCP Configuration Structure`; `MCP Configuration Properties` | `2026-09-24` |
+| `google.antigravity.cli-plugins-skills` | <https://antigravity.google/docs/plugins/> | `antigravity.google` | `Directory structure`; `Manual plugin installation`; `CLI plugin management`; `CLI filesystem location`; `Standalone IDE plugin installation` | `2026-09-24` |
+| `google.antigravity.cli-settings` | <https://antigravity.google/docs/settings/> | `antigravity.google` | `Setting up preferences`; `Configuration file location` | `2026-09-24` |
+| `google.antigravity.cli-subagents` | <https://antigravity.google/docs/subagents/> | `antigravity.google` | `Custom Agents (Markdown Format)` | `2026-09-24` |
+| `google.antigravity.cli-permissions` | <https://antigravity.google/docs/permissions/> | `antigravity.google` | `CLI fine-grained permissions`; `Supported CLI actions and matching rules` | `2026-09-24` |
 | `google.antigravity.cli-features` | <https://antigravity.google/docs/cli/features/> | `antigravity.google` | `Plugins`; `Advanced Customization via settings.json` | `2026-09-10` |
-| `google.antigravity.skills` | <https://antigravity.google/docs/skills/> | `antigravity.google` | `Agent Skills`; `Where skills live`; `Creating a skill`; `Frontmatter fields`; `Skill folder structure`; `How the agent uses skills` | `2026-09-10` |
-| `google.antigravity.rules` | <https://antigravity.google/docs/rules-workflows/> | `antigravity.google` | `Rules`; `Global Rules`; `Workspace Rules` | `2026-09-10` |
-| `google.antigravity.hooks` | <https://antigravity.google/docs/hooks/> | `antigravity.google` | `Hooks`; `Configuration`; `Schema and File Format`; `Hook Handler Configuration`; `Common Input Fields` | `2026-09-10` |
+| `google.antigravity.skills` | <https://antigravity.google/docs/skills/> | `antigravity.google` | `Agent skills`; `What are skills?`; `Anatomy of a skill`; `Frontmatter fields`; `How the agent uses skills`; `Antigravity 2.0 skill locations`; `CLI skill locations`; `Slash command conversion`; `Antigravity IDE skill locations` | `2026-09-24` |
+| `google.antigravity.rules` | <https://antigravity.google/docs/rules/> | `antigravity.google` | `Where rules are stored`; `Directory-scoped rules`; `Global rules`; `YAML frontmatter and activation modes`; `Activation modes`; `Size limits and token budgets`; `Managing rules in Antigravity CLI` | `2026-09-24` |
+| `google.antigravity.hooks` | <https://antigravity.google/docs/hooks/> | `antigravity.google` | `Hooks`; `Managing hooks in Antigravity CLI`; `Schema and File Format`; `Hook Definition Fields`; `Hook Handler Configuration`; `Common Input Fields` | `2026-09-24` |
 | `google.antigravity.subagents` | <https://antigravity.google/docs/subagents/> | `antigravity.google` | `Agent Location and Discovery`; `Frontmatter Configuration (YAML)` | `2026-09-11` |
 
 ## Offline validationと明示drift review

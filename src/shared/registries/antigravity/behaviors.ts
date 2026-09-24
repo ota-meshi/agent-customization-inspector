@@ -71,16 +71,13 @@ export const ANTIGRAVITY_REPO_CONTEXT_BEHAVIOR = {
  * whose row unit is the directory, and a flat Markdown file, whose row unit is
  * the file and which therefore has no companion census (research.md § 2).
  *
- * `conflict`: the vendor's pages make incompatible statements about the shape
- * of a skill in this one directory. The terminal's own plugins and skills page
- * gives a flat `.md` file; the shared Agent Skills page, the editor
- * extensions' page, both plugin pages, and a Google codelab written for this
- * terminal give a folder holding a `SKILL.md`, and the published binary
- * discovers only the folder. Both shapes are admitted anyway, for the reason
- * the flat rule states (`rules.ts`, `ANTIGRAVITY_REPO_SKILL_FILE_RULE`;
+ * `partially-documented`: the shared Agent Skills page gives the terminal's
+ * workspace skills as folders holding a `SKILL.md`, with `.agent/skills` still
+ * supported, and the published binary discovers only the folder; no page
+ * documents the flat `.md` file this locator also names, which is admitted for
+ * the reason the flat rule states (`rules.ts`, `ANTIGRAVITY_REPO_SKILL_FILE_RULE`;
  * § Known uncertainties item 6). What happens when a workspace and a global
- * skill declare one name is separately not stated (§ Known uncertainties
- * item 2).
+ * skill declare one name is not stated (§ Known uncertainties item 2).
  */
 export const ANTIGRAVITY_REPO_SKILLS_BEHAVIOR = {
   behaviorId: 'antigravity.behavior.repo.skills',
@@ -95,19 +92,10 @@ export const ANTIGRAVITY_REPO_SKILLS_BEHAVIOR = {
         traversal: 'exact',
       }
     : null,
-  documentationStatus: 'conflict',
+  documentationStatus: 'partially-documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
-        {
-          sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
-          officialHost: 'antigravity.google',
-          sections: ['Creating local workspace skills'],
-          reviewedOn: '2026-09-10',
-          establishes:
-            'To deploy workspace-specific skills, create a directory named .agents/skills/ at the project root and draft a markdown file with a .md extension whose frontmatter defines name and description; when you run agy in that directory the skill is compiled and becomes a slash command.',
-        },
         {
           sourceId: 'google.antigravity.cli-migration',
           url: 'https://antigravity.google/docs/cli/gcli-migration/',
@@ -121,10 +109,16 @@ export const ANTIGRAVITY_REPO_SKILLS_BEHAVIOR = {
           sourceId: 'google.antigravity.skills',
           url: 'https://antigravity.google/docs/skills/',
           officialHost: 'antigravity.google',
-          sections: ['Where skills live', 'Creating a skill', 'Skill folder structure'],
-          reviewedOn: '2026-09-10',
+          sections: [
+            'What are skills?',
+            'Anatomy of a skill',
+            'Frontmatter fields',
+            'CLI skill locations',
+            'Slash command conversion',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'A skill is a folder containing a SKILL.md file; a workspace-specific one lives at <workspace-root>/.agents/skills/<skill-folder>/, .agents/skills is the current default with backward support for .agent/skills, and SKILL.md is the only required file beside optional scripts, examples, and resources.',
+            'A skill is a folder containing a SKILL.md file, the only required file beside optional scripts, examples, and resources; the terminal’s workspace skills live at <workspace-root>/.agents/skills/<skill-folder>/, .agents/skills is the default with backward compatibility for .agent/skills, the frontmatter requires a description and defaults name to the folder name, and the CLI turns every skill into a slash command.',
         },
       ]
     : [],
@@ -135,12 +129,13 @@ export const ANTIGRAVITY_REPO_SKILLS_BEHAVIOR = {
  * workspace's or git root's `.agents/rules/`, with `.agent/rules/` still
  * supported as the earlier spelling.
  *
- * `partially-documented`: the shared Rules page gives the directory, the four
- * activation modes, and the per-file character limit, and the terminal's
- * migration page states that workspace rules keep their support. Neither
- * states the order two rules compose in, nor their precedence against the
- * context files (contracts/vendors/antigravity-cli.md § Known uncertainties
- * item 8).
+ * `partially-documented`: the shared Rules page gives the terminal's rule
+ * locations, the four triggers, the per-file size limit, and that rules are
+ * cumulative with the more specific directory rule taking priority in a
+ * conflict, and the terminal's migration page states that workspace rules keep
+ * their support. Neither states the order the rules of one directory compose
+ * in, and the page's subdirectory rules directories are not in this locator
+ * (contracts/vendors/antigravity-cli.md § Known uncertainties item 10).
  */
 export const ANTIGRAVITY_REPO_RULES_BEHAVIOR = {
   behaviorId: 'antigravity.behavior.repo.rules',
@@ -160,12 +155,19 @@ export const ANTIGRAVITY_REPO_RULES_BEHAVIOR = {
     ? [
         {
           sourceId: 'google.antigravity.rules',
-          url: 'https://antigravity.google/docs/rules-workflows/',
+          url: 'https://antigravity.google/docs/rules/',
           officialHost: 'antigravity.google',
-          sections: ['Rules', 'Workspace Rules', 'Global Rules'],
-          reviewedOn: '2026-09-10',
+          sections: [
+            'Where rules are stored',
+            'Directory-scoped rules',
+            'Global rules',
+            'Activation modes',
+            'Size limits and token budgets',
+            'Managing rules in Antigravity CLI',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'A rule is a Markdown file limited to 12,000 characters; workspace rules live in the .agents/rules folder of the workspace or git root with backward support for .agent/rules, global rules live in ~/.gemini/GEMINI.md, and each rule declares whether it activates manually, always, by model decision, or by a glob pattern.',
+            'The CLI evaluates AGENTS.md, GEMINI.md, and .agents/rules/*.md at the repository root and in subdirectories, walking up from the folder of a file it reads or edits to the workspace root, with the legacy .agent/rules/*.md still loaded and only a rules directory’s immediate .md children scanned; its global rules are ~/.gemini/AGENTS.md, ~/.gemini/GEMINI.md, ~/.gemini/config/rules/*.md, and ~/.gemini/antigravity-cli/rules/*.md. Each file in a rules directory declares a trigger — always_on, model_decision, glob, or manual — a rule file over 24,000 bytes is truncated, and rules are cumulative, with the more specific directory rule taking priority when two conflict.',
         },
         {
           sourceId: 'google.antigravity.cli-migration',
@@ -184,9 +186,8 @@ export const ANTIGRAVITY_REPO_RULES_BEHAVIOR = {
  * Antigravity CLI workspace hook declarations: the standalone
  * `.agents/hooks.json`.
  *
- * `partially-documented`: the shared Hooks page gives the file's schema
- * exactly and gives its location as an example of a customization directory
- * rather than as a lookup the terminal states
+ * The shared Hooks page names this file as the terminal's workspace hook
+ * location and gives its schema exactly
  * (contracts/vendors/antigravity-cli.md § Known uncertainties item 8).
  */
 export const ANTIGRAVITY_REPO_HOOKS_BEHAVIOR = {
@@ -201,7 +202,7 @@ export const ANTIGRAVITY_REPO_HOOKS_BEHAVIOR = {
         traversal: 'exact',
       }
     : null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -209,10 +210,15 @@ export const ANTIGRAVITY_REPO_HOOKS_BEHAVIOR = {
           sourceId: 'google.antigravity.hooks',
           url: 'https://antigravity.google/docs/hooks/',
           officialHost: 'antigravity.google',
-          sections: ['Configuration', 'Schema and File Format', 'Hook Handler Configuration'],
-          reviewedOn: '2026-09-10',
+          sections: [
+            'Managing hooks in Antigravity CLI',
+            'Schema and File Format',
+            'Hook Definition Fields',
+            'Hook Handler Configuration',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Hooks are configured in a hooks.json file located in the customization directory — .agents/ in the workspace or ~/.gemini/config/ — and that file maps a hook name to its event configurations, each event holding matcher groups whose handlers carry a command and an optional timeout, with an optional per-hook enabled flag.',
+            'The CLI defines workspace hooks in .agents/hooks.json at the project root, and that file maps a hook name to its event configurations — the tool events holding matcher groups, the others a list of handlers directly — whose handlers carry a command and an optional timeout, with an optional per-hook enabled flag.',
         },
       ]
     : [],
@@ -242,10 +248,10 @@ export const ANTIGRAVITY_REPO_AGENTS_BEHAVIOR = {
     ? [
         {
           sourceId: 'google.antigravity.cli-subagents',
-          url: 'https://antigravity.google/docs/cli/subagents/',
+          url: 'https://antigravity.google/docs/subagents/',
           officialHost: 'antigravity.google',
           sections: ['Custom Agents (Markdown Format)'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'The CLI automatically discovers custom agents defined in Markdown format with YAML frontmatter: workspace agents at .agents/agents/<name>.md or .agents/agents/<name>/agent.md, and global agents in ~/.gemini/config/agents/; an agent with subagent: true set in its frontmatter can be invoked by the primary agent.',
         },
@@ -290,14 +296,14 @@ export const ANTIGRAVITY_REPO_MCP_BEHAVIOR = {
     ? [
         {
           sourceId: 'google.antigravity.cli-mcp',
-          url: 'https://antigravity.google/docs/cli/mcp/',
+          url: 'https://antigravity.google/docs/mcp/',
           officialHost: 'antigravity.google',
           sections: [
             'Global and Workspace Server Configs',
             'MCP Configuration Structure',
             'MCP Configuration Properties',
           ],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'Antigravity CLI separates MCP definitions into dedicated configurations — global setups in ~/.gemini/config/mcp_config.json and workspace local setups in .agents/mcp_config.json — each a single mcpServers object whose entries declare command or serverUrl with optional args, env, cwd, and headers.',
         },
@@ -339,10 +345,10 @@ export const ANTIGRAVITY_USER_HOME_BEHAVIOR = {
     ? [
         {
           sourceId: 'google.antigravity.cli-settings',
-          url: 'https://antigravity.google/docs/cli/settings/',
+          url: 'https://antigravity.google/docs/settings/',
           officialHost: 'antigravity.google',
           sections: ['Configuration file location'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'Antigravity CLI stores user preferences in a plain JSON configuration profile at ~/.gemini/antigravity-cli/settings.json.',
         },
@@ -414,10 +420,10 @@ export const ANTIGRAVITY_USER_MCP_BEHAVIOR = {
     ? [
         {
           sourceId: 'google.antigravity.cli-mcp',
-          url: 'https://antigravity.google/docs/cli/mcp/',
+          url: 'https://antigravity.google/docs/mcp/',
           officialHost: 'antigravity.google',
           sections: ['Global and Workspace Server Configs'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'Global MCP server setups are configured in ~/.gemini/config/mcp_config.json, and workspace local setups in the active project under .agents/mcp_config.json.',
         },
@@ -448,10 +454,10 @@ export const ANTIGRAVITY_USER_AGENTS_BEHAVIOR = {
     ? [
         {
           sourceId: 'google.antigravity.cli-subagents',
-          url: 'https://antigravity.google/docs/cli/subagents/',
+          url: 'https://antigravity.google/docs/subagents/',
           officialHost: 'antigravity.google',
           sections: ['Custom Agents (Markdown Format)'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes: 'Global custom agents are discovered in ~/.gemini/config/agents/.',
         },
         {
@@ -471,14 +477,15 @@ export const ANTIGRAVITY_USER_AGENTS_BEHAVIOR = {
  * Antigravity CLI global shared skills, imported as slash commands whenever
  * the CLI launches in any directory. Two roots and two shapes, as the
  * workspace behavior has two shapes: a skill folder's `SKILL.md` below the
- * user tier's `antigravity-cli/skills/` or its `config/skills/`, and the flat
- * Markdown file the terminal's own page places under `antigravity-cli/skills/`.
+ * user tier's `antigravity-cli/skills/` or its `config/skills/`, and a flat
+ * Markdown file under `antigravity-cli/skills/`.
  *
- * `conflict`: the terminal's own page and the shared Agent Skills page give
- * different directories and different shapes for the same scope. The two
- * directories are not in fact a disagreement — the terminal walks both — but
- * the two shapes are, and the conflict is the same one the workspace behavior
- * carries (§ Known uncertainties item 6).
+ * `partially-documented`: the shared Agent Skills page gives the terminal's
+ * global skills as folders below `antigravity-cli/skills/`, and gives
+ * `config/skills/` to the desktop application and the editor extensions
+ * rather than to the terminal, which walks it all the same (observed against
+ * `agy` 1.2.0); no page documents the flat file this locator also names
+ * (§ Known uncertainties item 6).
  */
 export const ANTIGRAVITY_USER_SKILLS_BEHAVIOR = {
   behaviorId: 'antigravity.behavior.user.skills',
@@ -493,27 +500,23 @@ export const ANTIGRAVITY_USER_SKILLS_BEHAVIOR = {
         traversal: 'exact',
       }
     : null,
-  documentationStatus: 'conflict',
+  documentationStatus: 'partially-documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
         {
-          sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
-          officialHost: 'antigravity.google',
-          sections: ['Sharing global skills'],
-          reviewedOn: '2026-09-10',
-          establishes:
-            'To share skills across all workspaces, place the target markdown files inside the global configuration path ~/.gemini/antigravity-cli/skills/; any markdown skill there is automatically imported as a global slash command whenever agy launches in any directory.',
-        },
-        {
           sourceId: 'google.antigravity.skills',
           url: 'https://antigravity.google/docs/skills/',
           officialHost: 'antigravity.google',
-          sections: ['Where skills live'],
-          reviewedOn: '2026-09-10',
+          sections: [
+            'CLI skill locations',
+            'Slash command conversion',
+            'Antigravity 2.0 skill locations',
+            'Antigravity IDE skill locations',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'A global skill, available across all workspaces, is a skill folder holding a SKILL.md at ~/.gemini/config/skills/<skill-folder>/ — a different directory and a different shape from the one the terminal page gives for the same scope.',
+            'The CLI skill locations table gives the terminal’s global skills, available in all workspaces, as skill folders at ~/.gemini/antigravity-cli/skills/<skill-folder>/ beside plugin-provided skills, and the CLI turns every skill into a slash command; ~/.gemini/config/skills/<skill-folder>/ is the global location the page gives Antigravity 2.0 and the standalone IDE.',
         },
       ]
     : [],
@@ -543,10 +546,10 @@ export const ANTIGRAVITY_USER_SETTINGS_BEHAVIOR = {
     ? [
         {
           sourceId: 'google.antigravity.cli-settings',
-          url: 'https://antigravity.google/docs/cli/settings/',
+          url: 'https://antigravity.google/docs/settings/',
           officialHost: 'antigravity.google',
           sections: ['Setting up preferences', 'Configuration file location'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'The persistent settings are saved in plain JSON at ~/.gemini/antigravity-cli/settings.json, written sparsely so that only values differing from their defaults reach disk.',
         },
@@ -589,10 +592,10 @@ export const ANTIGRAVITY_USER_PERMISSIONS_BEHAVIOR = {
     ? [
         {
           sourceId: 'google.antigravity.cli-permissions',
-          url: 'https://antigravity.google/docs/cli/permissions/',
+          url: 'https://antigravity.google/docs/permissions/',
           officialHost: 'antigravity.google',
-          sections: ['Fine-grained permissions', 'Supported actions & matching rules'],
-          reviewedOn: '2026-09-10',
+          sections: ['CLI fine-grained permissions', 'Supported CLI actions and matching rules'],
+          reviewedOn: '2026-09-24',
           establishes:
             'Every sensitive operation is a permission resource formatted as action(target), evaluated across the deny, ask, and allow lists configured inside the global settings at ~/.gemini/antigravity-cli/settings.json, with conflicting rules resolved in the order deny, then ask, then allow.',
         },
@@ -601,15 +604,15 @@ export const ANTIGRAVITY_USER_PERMISSIONS_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
- * Antigravity CLI hook declarations: configured inside a plugin's own
- * `hooks.json` or inside the user settings file. The plugin form leaves with
- * the installed copies it belongs to; the settings form is what this product
- * publishes.
+ * Antigravity CLI user-tier hook declarations: the standalone
+ * `config/hooks.json`, the user settings file, and a plugin's own
+ * `hooks.json`. The plugin form leaves with the installed copies it belongs
+ * to; the other two are what this product publishes.
  *
- * `partially-documented`: the page names the two places hooks are configured
- * and gives no schema for the settings-file form
- * (§ Known uncertainties item 4). Recording the fact grants no execution
- * authority: inspection runs no declared command (FR-011).
+ * `partially-documented`: the Hooks page names every place the terminal
+ * defines hooks and gives the standalone file's schema, but none for the
+ * settings-file form (§ Known uncertainties item 4). Recording the fact grants
+ * no execution authority: inspection runs no declared command (FR-011).
  */
 export const ANTIGRAVITY_USER_HOOKS_BEHAVIOR = {
   behaviorId: 'antigravity.behavior.user.hooks',
@@ -628,22 +631,17 @@ export const ANTIGRAVITY_USER_HOOKS_BEHAVIOR = {
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
         {
-          sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
-          officialHost: 'antigravity.google',
-          sections: ['Managing hooks'],
-          reviewedOn: '2026-09-10',
-          establishes:
-            'Hooks intercept agent actions right before or immediately after execution and are defined inside a plugin hooks.json or configured inside the primary settings.json file.',
-        },
-        {
           sourceId: 'google.antigravity.hooks',
           url: 'https://antigravity.google/docs/hooks/',
           officialHost: 'antigravity.google',
-          sections: ['Configuration', 'Schema and File Format', 'Common Input Fields'],
-          reviewedOn: '2026-09-10',
+          sections: [
+            'Managing hooks in Antigravity CLI',
+            'Schema and File Format',
+            'Common Input Fields',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Hooks are configured in a hooks.json file located in the customization directory — .agents/ in the workspace or ~/.gemini/config/ — and the transcript a hook receives lives under ~/.gemini/antigravity-cli for the CLI, beside ~/.gemini/antigravity for Antigravity 2.0.',
+            'The CLI defines hooks in the workspace .agents/hooks.json, globally in ~/.gemini/config/hooks.json or inside the primary ~/.gemini/antigravity-cli/settings.json file, and inside an installed plugin’s hooks.json; the page gives the standalone file’s schema and none for the settings-file form, and the transcript a hook receives lives under ~/.gemini/antigravity-cli for the CLI.',
         },
       ]
     : [],
@@ -678,12 +676,12 @@ export const ANTIGRAVITY_USER_PLUGINS_BEHAVIOR = {
     ? [
         {
           sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
+          url: 'https://antigravity.google/docs/plugins/',
           officialHost: 'antigravity.google',
-          sections: ['Antigravity plugins', 'Plugin filesystem structure'],
-          reviewedOn: '2026-09-10',
+          sections: ['Directory structure', 'CLI filesystem location'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'When you install or import a plugin the CLI stages the bundle files within the global configuration path ~/.gemini/antigravity-cli/plugins/<plugin_name>/, whose documented layout holds plugin.json, and optionally mcp_config.json, hooks.json, skills/, agents/, and rules/.',
+            'When you install a plugin the CLI stages its assets within the global configuration directory at ~/.gemini/antigravity-cli/plugins/<plugin_name>/, and a plugin directory holds a required plugin.json and optionally mcp_config.json, hooks.json, skills/, agents/, and rules/.',
         },
         {
           sourceId: 'google.antigravity.cli-features',
