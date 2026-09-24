@@ -216,3 +216,91 @@ test.describe('a Claude instruction file whose declarations cannot be parsed', (
     );
   });
 });
+
+test.describe('a `.claude/AGENTS.md` two products give two ranges', () => {
+  let fixture: string;
+  let host: LaunchedHost;
+
+  test.beforeEach(async () => {
+    fixture = await mkdtemp(join(tmpdir(), 'aci-claude-instructions-two-ranges-'));
+    // Claude Code reads `.claude/AGENTS.md` as its directory's own file, so it
+    // governs `**`; GitHub Copilot reads any `AGENTS.md` where it sits, so the
+    // same file governs `.claude/**` there, beside a `.claude/CLAUDE.local.md`
+    // Claude keeps its directory for. One file, two rows.
+    await mkdir(join(fixture, '.claude'), { recursive: true });
+    await writeFile(join(fixture, '.claude/AGENTS.md'), '# Agents\n', 'utf8');
+    await writeFile(join(fixture, '.claude/CLAUDE.local.md'), '# Local\n', 'utf8');
+    host = await launchHost(fixture);
+  });
+
+  test.afterEach(async () => {
+    await stopHost(host);
+    await rm(fixture, { recursive: true, force: true });
+  });
+
+  test('compares the `.claude/**` row whose file also sits in `**`', async ({ page }) => {
+    await page.goto(host.origin);
+    await expect(page.getByRole('tabpanel').locator('.aci-row-head__name')).toHaveText([
+      '**',
+      '.claude/**',
+    ]);
+    // The comparison is found by the range holding both sides, not by the
+    // first row holding either — which is `**`, where the local file is not.
+    await page
+      .getByRole('tabpanel')
+      .getByRole('link', { name: "Compare this range's files: .claude/**" })
+      .click();
+    await expect(page.getByRole('heading', { name: 'Compare instruction files' })).toBeVisible();
+    const sides = page.locator('.aci-compare-sides');
+    await expect(sides).toContainText('.claude/AGENTS.md');
+    await expect(sides).toContainText('.claude/CLAUDE.local.md');
+  });
+
+  test('shows one box per range, each with the product that gives it', async ({ page }) => {
+    await page.goto(
+      new URL('/instructions/detail/repository/.claude/AGENTS.md', host.origin).toString(),
+    );
+    // One box per range, in the rows' order: the range heads it and the
+    // product that derived that range is the row inside it, so neither
+    // product is lost to the other's range and neither range is claimed by
+    // both.
+    const boxes = page.locator('.aci-instruction-detail__ranges > li');
+    await expect(boxes).toHaveCount(2);
+    const productsOf = (box: number) =>
+      boxes.nth(box).locator('.aci-instruction-detail__recognitions');
+    await expect(boxes.nth(0)).toContainText('Applies to **');
+    await expect(productsOf(0)).toContainText('Claude Code');
+    await expect(productsOf(0)).not.toContainText('GitHub Copilot');
+    await expect(boxes.nth(1)).toContainText('Applies to .claude/**');
+    await expect(productsOf(1)).toContainText('GitHub Copilot');
+    await expect(productsOf(1)).not.toContainText('Claude Code');
+    // Each range compares inside its own block: `**` holds no other file,
+    // `.claude/**` holds the local file.
+    await expect(
+      boxes.nth(0).getByRole('link', { name: /^Compare this instruction file/u }),
+    ).toHaveCount(0);
+    await expect(boxes.nth(1)).toContainText('.claude/CLAUDE.local.md');
+    await boxes
+      .nth(1)
+      .getByRole('link', { name: /^Compare this instruction file/u })
+      .click();
+    await expect(page.getByRole('heading', { name: 'Compare instruction files' })).toBeVisible();
+  });
+
+  test('steps from the row the reader followed', async ({ page }) => {
+    await page.goto(host.origin);
+    // Followed from the `.claude/**` row, the previous range is `**` and there
+    // is no next one; the page itself is the same whichever row it came from.
+    await page
+      .getByRole('tabpanel')
+      .locator('.aci-item')
+      .filter({ has: page.locator('.aci-row-head__name', { hasText: /^\.claude\/\*\*$/u }) })
+      .getByRole('link', { name: '.claude/AGENTS.md' })
+      .click();
+    await expect(page.locator('.aci-instruction-detail__ranges > li')).toHaveCount(2);
+    await expect(page.getByRole('link', { name: /^Previous .*, in Instructions$/u })).toHaveCount(
+      1,
+    );
+    await expect(page.getByRole('link', { name: /^Next .*, in Instructions$/u })).toHaveCount(0);
+  });
+});

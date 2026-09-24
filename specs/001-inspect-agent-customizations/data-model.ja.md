@@ -990,6 +990,10 @@ readする一方、local instructionは`./CLAUDE.local.md`だけを挙げる —
 `packages/api/.claude/CLAUDE.md`は`packages/api/**`を導出し、`.claude/CLAUDE.local.md`は自身の
 directoryを保って`.claude/**`を導出する。そうしたdirectoryが何を意味するかはその製品自身の
 事実であるため、共有の導出が読む一覧を宣言するのではなく、各製品が自身のruleについて答える。
+したがって範囲は認識ごとのものであり、1つのfileが2つの範囲を担当し得る。`.claude/AGENTS.md`は
+Claude Codeにとって`**`、GitHub Copilotにとって`.claude/**`である。そのfileは両方のrowに載り、各rowは
+それをそこに置いた認識だけを持つ。詳細は範囲ごとに1つの箱を示し、各箱がその範囲の製品、比較、
+他のfileを持つ。比較のblockは、両方のsideを含むrowの範囲である。
 
 導出した範囲はliteralから組み立てたpatternであるため、各directory名はglobがsyntaxとして読む
 箇所をescapeする — wildcard、character classとbraceの区切り、extended groupの括弧、先頭の

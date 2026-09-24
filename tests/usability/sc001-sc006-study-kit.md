@@ -23,6 +23,14 @@ Once a session is enrolled it stays in the results. There is no replacement and 
 — not for an environment fault, not for a product fault. Each of those counts as an
 unsuccessful result for the criterion it interrupted.
 
+What an apparatus defect voids is an attempt, not a session. When the runner's equipment does
+not put a criterion's premise in front of the sessions, or lets one session reach another's, the
+attempt as a whole measured something other than the criteria. It is superseded: every enrolled
+session's outcomes are still recorded, under that attempt and apart from the result, together
+with the defect that voided it, and the next attempt starts over with twenty new sessions. A
+fault inside an attempt that did measure the criteria — a session's environment, the product, a
+wrong answer — never supersedes anything; it is that session's unsuccessful result.
+
 ## What each session is given
 
 A folder of its own and the guide. The folder holds the all-kind fixture as `repository/`,
@@ -73,6 +81,12 @@ Two minutes. At least 19 of the 20 must succeed.
 
 Every session begins from the same designated file, whatever happened in SC-001. The timer
 starts when that state is ready and the prompt is presented.
+
+A person receives that screen without doing anything; a session's only eyes are the browser
+equipment, a command it must choose to run. The runner therefore hands the screen over with
+the prompt — that the screen has changed since the previous task, and the page's snapshot as it
+then stands, in the form the session's own snapshot command returns. It adds nothing that is
+not on the screen, so it is the criterion's premise rather than a hint.
 
 The session records three fields: the file's source, the tools that recognize it, and its
 file type. All three must be submitted within two minutes and all three must match

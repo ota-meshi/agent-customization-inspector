@@ -40,7 +40,10 @@ user-level ruleはproject ruleより先にloadされ、どちらも他方を上�
 `anthropic.claude-code.skills.locations-discovery`、`vscode.copilot.instructions`（`Instruction priority`）と
 `vscode.copilot.hooks`（5 section）、そして引用したheadingがもはや配信されていない8件の
 `google.antigravity.*` recordである。これらはそれを所有するreviewに残す。同じ4件のClaude Code changelog
-anchorが、配信されたtable of contents経由で解決した。
+anchorが、配信されたtable of contents経由で解決した。この変更のreviewが64件目のrecord
+`anthropic.claude-code.changelog.agents-md`を加えた。その`2.1.277` entry — `AGENTS.md`のreadを加えたrelease —
+が、instruction recordが今引用するversion gateである（QR-005）。同日の64 record全件に対するrunは、このentryも
+table of contents経由で解決し、driftを持つ同じ11 recordを報告した。
 
 2026-09-11、63 record全件 — 11件の`google.antigravity.*` recordを含む — に対して
 実行した（specs/003-antigravity-cli-support T077）。11件目は`google.antigravity.subagents`で、user
@@ -139,7 +142,7 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 
 ## Release gateの実行
 
-**Claude Codeによる`AGENTS.md`のreadは2026-09-24にgateを実行した**（T1215〜T1218）。
+**Claude Codeによる`AGENTS.md`のreadは2026-09-24にgateを実行した**（T1215〜T1219、reviewの修正後に再実行）。
 `pnpm run test:docs` 42、`pnpm run test:unit` 1288、`pnpm run test:contract` 411、
 `pnpm run test:integration` 277、`pnpm run test:security` 5、`pnpm run test:package` 53 testがこのhost上で
 すべてpassし、`pnpm run format:check`、`pnpm run lint`、`pnpm run typecheck`はcleanだった。browser側は
@@ -608,7 +611,7 @@ silhouetteを3つ見分けるのではなく色をたどって目的のものを
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 6**、canonical SHA-256
-`ddce9e482338d4f6a7d55561cabf47cde00e87459c2826e36d1fde8a96b9cd21`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 6は
+`44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 6は
 期待結果を1つ変える。`sc003.shared-file.repository-agents-md`が、Claude Codeが2.1.277以降readするroot
 `AGENTS.md`の認識toolにClaude Codeを挙げる（T1217）。期待結果の変更はdenominatorの変更であり、それが
 versionを5から進める理由である。118 caseとそのrequired classはそれ以外変わらない。遷移はこのsessionが
@@ -624,6 +627,12 @@ caseはRelease gateの実行に記録したgate scriptで、browserのcaseはそ
 passした。これらのfixtureが
 届かないbrowser specはこのsetのために再実行していない。contract suiteは同じrunでcanonical digestと73件の
 fixture digestすべてを再現した。
+
+この変更のreview（T1219）が、同じversionのまま参照suiteをさらに5つ動かした。`claude-instructions-inventory`は
+`.claude/AGENTS.md`が2つの範囲に載るtreeを加え、`claude-instructions-detail`、`codex-instructions-detail`、
+`antigravity-instructions-detail`、`codex-mcp-detail`はinstruction fileの認識を範囲の箱から読み、範囲を運ぶように
+なったrowのlinkをたどる。それらのdigestと上のcanonical digestを共に再記録し、2026-09-24に、instructionのrow、
+詳細、比較に届く37 specに対するChromium projectでcaseを再実行し、255 testすべてpassした。
 
 その前のsetは`tests/fixtures/outcomes/manifest.json`の**version 5**、canonical SHA-256
 `ee17cf94b381bdca0a4cdb93f1a1d727bf0e73824eaee029ff699878e48a7181`である。Version 5は
@@ -940,16 +949,6 @@ response formを表示する。
 promptと共に画面をsessionに渡す。これまでのrunが使った一文 — 前のtaskから画面が変わった — に続けて、
 その時点のpageのsnapshotを、session自身の`snapshot`が返すのと同じ形で渡す。画面に無いものは何も加えない。
 
-**同日の先行する2回の試行は結果として記録しない。** 1回目では、1つのsessionがproduct名をcommand lineに含む
-processをすべて停止し — 他のsessionとrunner自身の作業も含む — 5 sessionのうち4つがtaskの途中で終わった。
-runnerは今は各sessionに、他のsessionが並行して動いていること、自分が起動したものだけをそれ自身の手がかりで
-止めることを伝え、runはproduct名を含まないpathへ移した。2回目では、画面が変わったことは伝えたが画面そのものは
-渡しておらず、20 sessionのうち5つ（04、06、08、10、19）がSC-006に画面を見ずに5秒未満で答え、SC-001で
-自分が開いた`.claude/CLAUDE.md`を — 正しく — 説明したため基準を満たさなかった。その他の数値はSC-001が
-20中20、SC-006が20中15、comparisonとconsentがそれぞれ20中20だった。基準の前提をsessionの前に置かない
-apparatusは基準を測っておらず、これは2026-09-10のrunが記録しなかった試行について挙げる理由と同じである。
-下のrunは前提を届けた最初の試行であり、1回だけ実行した。
-
 **これはagent-drivenなrunであり、そのように記録する。** 20のagentが確立するのは、productが自ら表示・
 renderする案内だけで、起動し、fileに到達し、そのfileについてproductが述べることを述べ、2つのcopyを比較し、
 個人設定の手順が何かを読む前に何を提案するかを見るのに十分かどうかである。人が同じinterfaceをどう体験するかは
@@ -1002,6 +1001,64 @@ shellが展開したquoteなしのURL、古いsnapshot参照、tabを選ばな�
 **このrunが確立しないもの。** 人のfirst useについては何も述べない。capture bundleは持たない。依拠するのは
 runner自身のevent logと各sessionのtranscriptで、このrepositoryの外にあるrunのsession folderの横に置いている。
 そして1つのfixture treeである。
+
+**同日の先行する2回の試行は差し替え、両方の各sessionを結果とは分けてここに記録する**
+（tests/usability/sc001-sc006-study-kit.ja.md § 誰が参加するか）。Apparatusの欠陥が無効にするのはsessionではなく試行であり、
+どちらの欠陥もrunnerのものだった。
+
+1回目の試行では、1つのsessionが他のsessionに手を出せた。Session 04が`pkill -f
+agent-customization-inspector`で後片付けをし、command lineにproduct名を含むprocessをすべて停止した —
+並行して動いていた4 sessionすべて（1つは最後の回答の後、3つはtaskの途中）と、runner自身のtest processである。runnerは既に開始していた次の波の
+5 sessionを停止し、残る10 sessionは開始していない。以下のSC-006の回答はすべて4 toolのground truthと照合した。
+1 sessionは、2回目の試行の5 sessionと同じく記憶で答えた。runnerは今は各sessionに、他のsessionが並行して
+動いていること、自分が起動したものだけをそれ自身の手がかりで止めることを伝え、runはproduct名を含まない
+pathへ移した。
+
+| Session | Discovery | Inspection | Comparison | Consent | Safety | 終わり方 |
+|---:|---:|---:|---:|---:|---|---|
+| 01 | 17.8 s | 6.5 s | 16.0 s | 9.2 s | 提出 | 最後の回答の後に停止 |
+| 02 | 21.6 s | 10.3 s | 23.9 s | 13.7 s | — | session 04により停止 |
+| 03 | 22.1 s | 11.0 s | 18.8 s | 12.6 s | — | session 04により停止 |
+| 04 | 16.4 s | 7.6 s | 15.2 s | 10.1 s | 提出 | 完了。`pkill`を実行した |
+| 05 | 27.1 s | 10.6 s | 27.5 s | — | — | session 04により停止 |
+| 06 | 24.3 s | 16.8 s | — | — | — | runnerが停止 |
+| 07 | 15.8 s | 8.0 s | 19.3 s | — | — | runnerが停止 |
+| 08 | 15.1 s | 8.4 s | 14.1 s | — | — | runnerが停止 |
+| 09 | 19.1 s | 3.4 s (Claude Codeのみ) | 15.2 s | 10.8 s | — | runnerが停止 |
+| 10 | 24.9 s | — | — | — | — | runnerが停止 |
+
+2回目の試行では、SC-006の画面が変わったことは伝えたが画面そのものは渡さなかった。5 session — 04、06、08、
+10、19 — がSC-006に見ずに5秒未満で答え、SC-001で自分が開いた`.claude/CLAUDE.md`を説明した。正しい説明
+であり、だからこそ基準には誤りである。基準の前提をsessionの前に置かないapparatusは基準を測っておらず、
+これは2026-09-10のrunが記録しなかった試行について挙げる理由と同じである。集計はSC-001が20中20、SC-006が
+20中15、comparisonとconsentがそれぞれ20中20だった。2 sessionがsafety fieldの1つを`unknown`と答えた —
+09がcontent exposure、20がMCP connection — のは、それを示し得るものが無かったためで、`yes`と答えた
+sessionは無い。
+
+| Session | Discovery | Inspection | SC-006 field | Comparison | Consent | Safety |
+|---:|---:|---:|---|---:|---:|---|
+| 01 | 19.2 s | 12.6 s | 一致 | 16.2 s | 8.6 s | すべて`no` |
+| 02 | 20.0 s | 6.7 s | 一致 | 13.1 s | 8.9 s | すべて`no` |
+| 03 | 15.9 s | 19.3 s | 一致 | 13.4 s | 8.9 s | すべて`no` |
+| 04 | 19.3 s | 3.8 s | 不一致（Claude Codeのみ） | 13.4 s | 8.9 s | すべて`no` |
+| 05 | 18.9 s | 9.1 s | 一致 | 14.4 s | 9.1 s | すべて`no` |
+| 06 | 14.7 s | 2.9 s | 不一致（Claude Codeのみ） | 13.8 s | 8.8 s | すべて`no` |
+| 07 | 21.7 s | 10.7 s | 一致 | 15.2 s | 8.7 s | すべて`no` |
+| 08 | 24.3 s | 4.7 s | 不一致（Claude Codeのみ） | 17.5 s | 11.6 s | すべて`no` |
+| 09 | 28.4 s | 22.3 s | 一致 | 24.9 s | 17.9 s | 1つが`unknown` |
+| 10 | 20.5 s | 3.8 s | 不一致（Claude Codeのみ） | 14.1 s | 9.0 s | すべて`no` |
+| 11 | 22.6 s | 12.4 s | 一致 | 20.6 s | 15.4 s | すべて`no` |
+| 12 | 31.4 s | 13.1 s | 一致 | 22.1 s | 18.1 s | すべて`no` |
+| 13 | 43.2 s | 10.6 s | 一致 | 24.6 s | 17.4 s | すべて`no` |
+| 14 | 17.8 s | 7.3 s | 一致 | 12.5 s | 9.0 s | すべて`no` |
+| 15 | 23.7 s | 8.5 s | 一致 | 12.7 s | 10.4 s | すべて`no` |
+| 16 | 26.4 s | 16.9 s | 一致 | 20.7 s | 17.2 s | すべて`no` |
+| 17 | 16.9 s | 8.3 s | 一致 | 21.4 s | 8.8 s | すべて`no` |
+| 18 | 32.6 s | 14.4 s | 一致 | 23.1 s | 16.6 s | すべて`no` |
+| 19 | 23.5 s | 5.1 s | 不一致（Claude Codeのみ） | 28.7 s | 11.8 s | すべて`no` |
+| 20 | 17.3 s | 8.7 s | 一致 | 13.1 s | 10.0 s | 1つが`unknown` |
+
+上のrunは前提を届けた最初の試行であり、1回だけ実行した。
 
 **Antigravity CLIの変更に対してrunが必要であり、実施した。** 親の規則は、指定したSC-006 fileの
 ground truthが変わったときに20 sessionの評価を繰り返す、というものである。それが変わった。指定fileは

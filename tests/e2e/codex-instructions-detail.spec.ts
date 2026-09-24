@@ -104,7 +104,7 @@ test('opens complete inert static instruction detail from the inventory', async 
   // The page is headed by the file's path — the row's own identity — with
   // the recognizing product and the kind beside it.
   await expect(page.locator('.aci-instruction-detail h2')).toHaveText('AGENTS.md');
-  const attributes = page.locator('.aci-detail-attributes');
+  const attributes = page.locator('.aci-instruction-detail__ranges');
   await expect(attributes).toContainText('GitHub Copilot');
   await expect(attributes).toContainText('VS Code, CLI, Cloud agent');
   await expect(attributes).toContainText('OpenAI Codex');

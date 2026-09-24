@@ -525,19 +525,19 @@ test('follows a link between two Sources’ details at one path', async ({ page 
     await page.getByRole('tab', { name: /^Instructions/u }).click();
     const panel = page.getByRole('tabpanel');
     // The repository's row first, then the home's — both links read `AGENTS.md`.
-    await panel.locator('a[href="/instructions/detail/repository/AGENTS.md"]').click();
+    await panel.locator('a[href^="/instructions/detail/repository/AGENTS.md?"]').click();
     const main = page.locator('main');
     await expect(main).toContainText(REPOSITORY_AGENTS_MARKER);
 
     await page.goBack();
-    await panel.locator('a[href="/instructions/detail/global-codex/AGENTS.md"]').click();
+    await panel.locator('a[href^="/instructions/detail/global-codex/AGENTS.md?"]').click();
     await expect(main).toContainText('Do the thing.');
     await expect(main).not.toContainText(REPOSITORY_AGENTS_MARKER);
 
     // And the same step in the other direction, still without a page load:
     // the repository's file comes back rather than the home's staying put.
     await page.goBack();
-    await panel.locator('a[href="/instructions/detail/repository/AGENTS.md"]').click();
+    await panel.locator('a[href^="/instructions/detail/repository/AGENTS.md?"]').click();
     await expect(main).toContainText(REPOSITORY_AGENTS_MARKER);
     await expect(main).not.toContainText('Do the thing.');
   } finally {

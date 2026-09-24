@@ -533,6 +533,36 @@ export function originRowNameOf(parameter: unknown): string | null {
 }
 
 /**
+ * The `range` query a link into an instruction file's detail carries: which
+ * range's row the reader followed — the instructions counterpart of
+ * {@link originRowNameQuery}, for the one kind whose row unit is a range.
+ *
+ * One file can sit in two ranges when two products derive different ones for
+ * it — a `.claude/AGENTS.md` is Claude Code's `**` and GitHub Copilot's
+ * `.claude/**` — and it is then a file of both rows. The page is the file's
+ * either way and shows every range it sits in; this coordinate only decides
+ * which row the moves to the previous and next range step from, so they walk
+ * the list the reader was reading.
+ *
+ * No query for the row whose range is not known: its files have no range a
+ * second row could derive, so it names no choice, and the page falls back to
+ * the first row holding the file — as it does for a kept link naming a range
+ * the current generation no longer publishes.
+ */
+export function originRowRangeQuery(range: string | null): Readonly<Record<string, string>> {
+  return range === null ? {} : { range: toJsonStringBody(range) };
+}
+
+/**
+ * The range a detail route's `range` query states, or null when it states
+ * none — an absent query, and the repeated one the router hands over as an
+ * array, which no link this product builds produces.
+ */
+export function originRowRangeOf(parameter: unknown): string | null {
+  return typeof parameter === 'string' ? fromJsonStringBody(parameter) : null;
+}
+
+/**
  * The Source family one comparison address names, or null for a segment
  * outside the two this product issues. Every comparison route leads with the
  * family — `/<kind>/compare/<family>` (contracts/http-api.md § Host

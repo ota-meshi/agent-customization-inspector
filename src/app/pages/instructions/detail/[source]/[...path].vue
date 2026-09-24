@@ -42,15 +42,25 @@ import DetailPage from '../../../../components/inspection/DetailPage.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
-import { otherCopiesOf } from '../../../../components/inspection/file-strip';
+import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
+import ToolMark from '../../../../components/ToolMark.vue';
+import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
-import type { DeclaredEntryDto, SourceKind } from '../../../../../shared/api-types';
+import type {
+  DeclaredEntryDto,
+  FileRecognitionDto,
+  InstructionInventoryEntryDto,
+  SourceKind,
+} from '../../../../../shared/api-types';
+import type { RouteLocationRaw } from 'vue-router';
 import { LEADING_INSTRUCTION_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
 import {
   asSourceSelector,
   detailNeighbours,
   detailRoute,
   detailRoutePathOf,
+  originRowRangeOf,
+  originRowRangeQuery,
 } from '../../../../components/detail-route';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSubjectTabs } from '../../../../composables/subject-tabs';
@@ -65,8 +75,8 @@ import {
   fileIdentityKey,
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
+  SUPPORTED_TOOL_TEXT,
   accessiblePresentationLabel,
-  applicabilityRangePresentation,
   isReadableFile,
   inlinePresentationLabel,
   pathPresentationLabel,
@@ -95,62 +105,140 @@ const snapshot = sessionViewState.snapshot;
 const sessionSources = useSessionSources();
 
 /**
- * The instructions inventory row the URL's identity names, or null when the
- * committed inventory holds none there. Resolved from the snapshot rather
- * than from a fetched detail because the row has to be known before anything
- * is requested: it carries the recognizing products this page states, and a
- * path the inventory does not list is the same dead link the host would
- * answer, reportable without a doomed request.
+ * The instructions inventory rows the URL's identity names — every row of the
+ * addressed Source that lists this file, in the snapshot's own order — or
+ * empty when the committed inventory holds none there. Resolved from the
+ * snapshot rather than from a fetched detail because the rows have to be known
+ * before anything is requested: they carry the ranges and recognizing products
+ * this page states, and a path the inventory does not list is the same dead
+ * link the host would answer, reportable without a doomed request.
+ *
+ * More than one row when two products derive different ranges for the file —
+ * a `.claude/AGENTS.md` is Claude Code's `**` and GitHub Copilot's
+ * `.claude/**` (`session.ts` § projectInstructionInventory) — and the page
+ * shows every one of them, whichever the reader followed.
  *
  * Scoped to the addressed Source: the repository and a consented home can each
  * hold `AGENTS.md`, and the row of the other one describes a different file
  * (FR-030).
  */
-const owner = computed(
-  () =>
-    (snapshot.value?.instructions ?? [])
-      .filter((entry) => entry.sourceId === openSourceId.value)
-      .flatMap((entry) => entry.files)
-      .find((file) => file.sourceRelativePath === openPath.value) ?? null,
+const ownRows = computed(() =>
+  (snapshot.value?.instructions ?? []).filter(
+    (entry) =>
+      entry.sourceId === openSourceId.value &&
+      entry.files.some((file) => file.sourceRelativePath === openPath.value),
+  ),
 );
 
 /**
- * The published row this file belongs to: the range it governs, of its own
- * Source. It is what the range attribute and the strip of other files below it
- * are read from (FR-030).
+ * The row the reader followed: the one the link's `range` query names, or the
+ * first row holding the file where it names none or names a range this
+ * generation no longer publishes for it (`detail-route.ts` §
+ * originRowRangeQuery). It decides the moves to the previous and next range
+ * and nothing the page shows.
  */
-const ownerRow = computed(
-  () =>
-    (snapshot.value?.instructions ?? []).find(
-      (entry) =>
-        entry.sourceId === openSourceId.value &&
-        entry.files.some((file) => file.sourceRelativePath === openPath.value),
-    ) ?? null,
-);
+const enteredRow = computed(() => {
+  const range = originRowRangeOf(route.query['range']);
+  return (
+    ownRows.value.find((entry) => range !== null && entry.applicabilityRange === range) ??
+    ownRows.value[0] ??
+    null
+  );
+});
 
 /**
- * What this file governs, in the presentation form the inventory shows: a
- * range spanning lines cannot read as two, and the backslashes a range uses to
- * spell a literal directory name stay the glob syntax they are
- * ({@link applicabilityRangePresentation}). The no-range copy says none is
- * known rather than none is declared, because a file whose declarations could
- * not be read may well declare one (FR-028).
+ * One recognition as a range's box lists it: the product and the surfaces of
+ * the documented behaviors its admitting rules rest on (FR-009), spelled once
+ * here so the template draws them rather than composing them.
  */
-const rangeText = computed(() =>
-  ownerRow.value === null || ownerRow.value.applicabilityRange === null
-    ? 'No known applicability range'
-    : applicabilityRangePresentation(ownerRow.value.applicabilityRange),
+class InstructionRangeRecognition {
+  /** The recognizing product. */
+  public readonly tool: FileRecognitionDto['tool'];
+
+  /** The surfaces, in the closed surface order, joined for the row. */
+  public readonly surfacesText: string;
+
+  /** Takes one published recognition of the open file. */
+  public constructor(recognition: FileRecognitionDto) {
+    this.tool = recognition.tool;
+    this.surfacesText = recognition.surfaces
+      .map((surface) => VENDOR_SURFACE_TEXT[surface])
+      .join(', ');
+  }
+}
+
+/**
+ * One range this file governs, as its box on the page: the range, the
+ * products that give the file that range, the range's comparison entry, and
+ * the other files of the range. Everything is the row's own, because the
+ * range is what a product derived — a file two products give two ranges is on
+ * two rows, each carrying only the recognitions that put it there
+ * (`session.ts` § projectInstructionInventory).
+ */
+class InstructionRangeGroup {
+  /** The range, in the presentation form the row's own heading draws. */
+  public readonly range: ApplicabilityRange;
+
+  /** The open file's recognitions on this row, in the closed tool order. */
+  public readonly recognitions: readonly InstructionRangeRecognition[];
+
+  /** The other files of this range, for the box's closing strip. */
+  public readonly otherCopies: readonly FileStripEntry[];
+
+  /** This range's comparison, or null where its block holds no counterpart. */
+  public readonly compareRoute: RouteLocationRaw | null;
+
+  /** Reads the open file's own recognitions off the row that lists it. */
+  public constructor(
+    row: InstructionInventoryEntryDto,
+    openPath: string,
+    otherCopies: readonly FileStripEntry[],
+    compareRoute: RouteLocationRaw | null,
+  ) {
+    this.range = new ApplicabilityRange(row.applicabilityRange);
+    this.recognitions = (
+      row.files.find((file) => file.sourceRelativePath === openPath)?.recognitions ?? []
+    ).map((recognition) => new InstructionRangeRecognition(recognition));
+    this.otherCopies = otherCopies;
+    this.compareRoute = compareRoute;
+  }
+}
+
+/**
+ * One box per range this file governs, in the rows' own order, whether it
+ * governs one or two: a page whose shape changed with the count would leave a
+ * reader who learned one shape puzzled by the other. The range heads the box,
+ * the products that give the file that range are the rows inside it, and the
+ * other files of the range close it — the same order the skill detail gives a
+ * file two products invoke by two names, because the range is to an
+ * instruction file what the name is to a skill (FR-007).
+ */
+const rangeGroups = computed((): readonly InstructionRangeGroup[] =>
+  ownRows.value.map(
+    (row) =>
+      new InstructionRangeGroup(
+        row,
+        openPath.value,
+        otherCopiesOf(
+          copiesOfRange(row.applicabilityRange),
+          fileIdentityKey(openSourceId.value ?? '', openPath.value),
+        ),
+        comparePairRouteFor(row.applicabilityRange),
+      ),
+  ),
 );
 
 /**
- * The other files governing the same range, across every Source that governs
- * it: what the strip offers, so the next file of the range is one move rather
+ * Every file governing one range, across every Source that governs it: what
+ * that range's strip offers, so the next file of the range is one move rather
  * than a return to the list (FR-007). The one on screen is excluded by the
- * strip itself ({@link otherCopiesOf}).
+ * strip itself ({@link otherCopiesOf}). Each link carries the range, so the
+ * page it opens steps from this range's row
+ * (`detail-route.ts` § originRowRangeQuery).
  */
-const rangeCopies = computed(() =>
-  (snapshot.value?.instructions ?? [])
-    .filter((entry) => entry.applicabilityRange === ownerRow.value?.applicabilityRange)
+function copiesOfRange(range: string | null): readonly FileStripEntry[] {
+  return (snapshot.value?.instructions ?? [])
+    .filter((entry) => entry.applicabilityRange === range)
     .flatMap((entry) =>
       entry.files.map((file) => ({
         key: fileIdentityKey(entry.sourceId, file.sourceRelativePath),
@@ -161,28 +249,28 @@ const rangeCopies = computed(() =>
             accessiblePresentationLabel(file.sourceRelativePath),
             entry.sourceId,
           ),
-          route: detailRoute(
-            'instructions',
-            file.sourceRelativePath,
-            sessionSources.selectorOf(entry.sourceId),
-          ),
+          route: {
+            path: detailRoute(
+              'instructions',
+              file.sourceRelativePath,
+              sessionSources.selectorOf(entry.sourceId),
+            ),
+            query: originRowRangeQuery(range),
+          },
         },
         recognitions: file.recognitions,
         carrierText: null,
       })),
-    ),
-);
-
-/** The strip's own entries: every copy but the one this page shows. */
-const otherCopies = computed(() =>
-  otherCopiesOf(rangeCopies.value, fileIdentityKey(openSourceId.value ?? '', openPath.value)),
-);
+    );
+}
 
 /**
- * The ranges either side of this file's in the list's own order, so the next
- * range is one move rather than a return to the inventory (FR-007). The
- * neighbours are ranges rather than files, because a range is what the list's
- * rows are.
+ * The ranges either side of the row the reader followed, in the list's own
+ * order, so the next range is one move rather than a return to the inventory
+ * (FR-007). The neighbours are ranges rather than files, because a range is
+ * what the list's rows are, and each move carries the range it opens so a
+ * neighbour whose first file sits in two ranges lands on that range's row
+ * rather than walking the reader back up the list.
  */
 const listNeighbours = computed(() => {
   // Grouped by range across Sources, because that is what the list's rows are:
@@ -205,15 +293,18 @@ const listNeighbours = computed(() => {
     // as one move ({@link ApplicabilityRange}; `DetailNavigation.vue`).
     label: new ApplicabilityRange(applicabilityRange).text,
     accessibleLabel: new ApplicabilityRange(applicabilityRange).accessibleText,
-    route: detailRoute(
-      'instructions',
-      entries[0]?.files[0]?.sourceRelativePath ?? '',
-      sessionSources.selectorOf(entries[0]?.sourceId ?? ''),
-    ),
+    route: {
+      path: detailRoute(
+        'instructions',
+        entries[0]?.files[0]?.sourceRelativePath ?? '',
+        sessionSources.selectorOf(entries[0]?.sourceId ?? ''),
+      ),
+      query: originRowRangeQuery(applicabilityRange),
+    },
   }));
   return detailNeighbours(
     rows,
-    groups.findIndex(([, entries]) => entries.some((entry) => entry === ownerRow.value)),
+    groups.findIndex(([, entries]) => entries.some((entry) => entry === enteredRow.value)),
   );
 });
 
@@ -253,14 +344,6 @@ const openFamily = computed<SourceKind | null>(() => {
   return null;
 });
 
-/**
- * The products that recognize this file and the surfaces they recognize it
- * on, restated from the row so the page and the list agree (FR-007). The row's
- * recognitions are already in the closed tool order and each one's surfaces in
- * the closed surface order.
- */
-const recognitions = computed(() => owner.value?.recognitions ?? []);
-
 /** Which family one published Source belongs to, for the block below. */
 function familyOf(sourceId: string): SourceKind | null {
   for (const source of snapshot.value?.sources ?? []) {
@@ -299,43 +382,30 @@ const comparableIdentities = computed(() => {
 });
 
 /**
- * The comparison entry for this file (FR-011, T278): this file beside a
- * counterpart from the same applicability range of the same Source family — the
- * block that owns every pair this file can be part of, exactly as a skill's
- * entry link stays inside its name's row. Null when this file is not readable or
- * its block holds no readable counterpart; the compare route's own pickers take
- * over from there, so any other pair of the block is one pick away rather than
- * composed here.
+ * The comparison entry for this file in one of its ranges (FR-011, T278): this
+ * file beside a counterpart from the same applicability range of the same
+ * Source family — the block that owns every pair this file can be part of
+ * there, exactly as a skill's entry link stays inside its name's box. Null when
+ * this file is not readable or that block holds no readable counterpart; the
+ * compare route's own pickers take over from there, so any other pair of the
+ * block is one pick away rather than composed here.
  *
  * The counterpart may be in another Source of the family — a reader with two
  * consented homes compares what each of them says — while a pair spanning two
  * families is a pair no block holds (`filters.ts` § InstructionRangeGroup).
  */
-const comparePairRoute = computed(() => {
+function comparePairRouteFor(range: string | null): RouteLocationRaw | null {
   const source = routeSource.value;
   const kind = openFamily.value;
   if (
     source === null ||
     kind === null ||
-    owner.value === null ||
     !comparableIdentities.value.has(identityKey(openSourceId.value, openPath.value))
   ) {
     return null;
   }
-  // The block: every row of this family at the range this file's row governs.
-  const ownRow = (snapshot.value?.instructions ?? []).find(
-    (entry) =>
-      entry.sourceId === openSourceId.value &&
-      entry.files.some((file) => file.sourceRelativePath === openPath.value),
-  );
-  if (ownRow === undefined) {
-    return null;
-  }
   for (const entry of snapshot.value?.instructions ?? []) {
-    if (
-      entry.applicabilityRange !== ownRow.applicabilityRange ||
-      familyOf(entry.sourceId) !== kind
-    ) {
+    if (entry.applicabilityRange !== range || familyOf(entry.sourceId) !== kind) {
       continue;
     }
     for (const file of entry.files) {
@@ -356,7 +426,7 @@ const comparePairRoute = computed(() => {
     }
   }
   return null;
-});
+}
 
 /**
  * The open detail once it is this path's: the fetched entry whose file is the
@@ -448,7 +518,7 @@ const request = useDetailRequest({
   openPath,
   openSource,
   selection: null,
-  ready: () => owner.value !== null,
+  ready: () => ownRows.value.length > 0,
   perform: () => {
     void pageOwnership.openFileDetail(
       openPath.value,
@@ -533,7 +603,7 @@ const titleSubject = computed<string | null>(() => {
   if (detailState.value === 'loading') {
     return 'Loading an instruction file';
   }
-  if (detailState.value === 'stale' || owner.value === null) {
+  if (detailState.value === 'stale' || ownRows.value.length === 0) {
     return 'Link not in this scan';
   }
   if (detailFailure.value !== null) {
@@ -560,56 +630,75 @@ useReportedPageSubject(titleSubject);
     :open-path="openPath"
     :open-source="openSource"
     :selection="null"
-    :subject-resolved="owner !== null"
+    :subject-resolved="ownRows.length > 0"
     missing-text="Nothing in the current scan sits at this link's path."
     :failure-text="detailFailure"
     loading-text="Loading this instruction file…"
     :subject="openDetail"
     @retry="request.retryOpen()"
   >
-    <template #subject-comparison>
-      <!-- The comparison this file's range can make (FR-011), at the end of
-             the heading's own line — where every kind whose subject is the
-             heading puts its own (`agents/detail`, `mcp/detail`). On the tabs'
-             row it read as a control on what the tabs select, which is one half
-             of the file rather than the file this comparison is of. -->
-      <NuxtLink
-        v-if="comparePairRoute !== null"
-        :to="comparePairRoute"
-        class="aci-button aci-button--primary aci-detail-title-end"
-        >Compare this instruction file
-        <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
-      /></NuxtLink>
-    </template>
-
     <!-- eslint-disable-next-line vue/no-template-shadow -- same value, same name, never null -->
     <template #default="{ subject: openDetail }">
-      <!-- What this customization is, on one line: what the file governs, how
-           it read, which products recognize it and where they document reading
-           it, and the command that opens it. Restated from the row so the page
-           and the list agree (FR-007); no product is quoted for what it would
-           select or load, because existence is what an admission proves
-           (FR-009). -->
-      <DetailAttributes :file="openDetail.file" :recognitions="recognitions" :source="openSource">
-        <!-- The range this file applies to leads its own facts: it is what
-             puts the file in this kind's list, and the block the comparison
-             pairs inside. -->
-        <span
-          >Applies to <strong class="aci-path aci-authored-text">{{ rangeText }}</strong></span
-        >
-      </DetailAttributes>
+      <!-- The file's own facts, on the line under the heading: how it read, its
+           size, and the command that opens it. The ranges and the products are
+           not here: which range a file governs is each recognizing product's
+           own derivation, so they are a box apiece below rather than one value
+           on this line — the arrangement the skill detail gives a file two
+           products invoke by two names (FR-007). No product is quoted for what
+           it would select or load, because existence is what an admission
+           proves (FR-009). -->
+      <DetailAttributes :file="openDetail.file" :source="openSource" />
 
       <SourceRootNote :text="sourceRootText" />
 
-      <!-- The other files governing the same range, one line whatever the
-           count (`FileStrip.vue`). Nothing here states an order or a winner:
-           which file a session loads turns on runtime this tool does not
-           observe (FR-009). -->
-      <FileStrip
-        :open-source-id="openSourceId"
-        :entries="otherCopies"
-        :label="`Other files applying to ${rangeText}`"
-      />
+      <!-- One box per range this file governs, stacked: the range heads it
+           with the range's comparison at the end of that band, the products
+           that give the file this range are the rows inside, and the other
+           files of the range close it. One box when there is one range, so
+           the page keeps its shape whatever the count. -->
+      <ul class="aci-instruction-detail__ranges" role="list">
+        <li v-for="group in rangeGroups" :key="group.range.text">
+          <p class="aci-instruction-detail__range-head">
+            <span v-if="group.range.isDeclared"
+              >Applies to
+              <strong class="aci-path aci-authored-text">{{ group.range.text }}</strong></span
+            >
+            <span v-else>{{ group.range.text }}</span>
+            <!-- This range's comparison (FR-011). The accessible name carries
+                 the range, because a page listing two ranges offers the same
+                 phrase twice (WCAG 2.4.6; label-in-name keeps the visible
+                 phrase as the prefix). -->
+            <NuxtLink
+              v-if="group.compareRoute !== null"
+              :to="group.compareRoute"
+              class="aci-button aci-button--primary aci-instruction-detail__range-compare"
+              :aria-label="`Compare this instruction file: ${group.range.accessibleText}`"
+              >Compare this instruction file
+              <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+            /></NuxtLink>
+          </p>
+          <ul class="aci-instruction-detail__recognitions" role="list">
+            <li v-for="recognition in group.recognitions" :key="recognition.tool">
+              <span class="aci-instruction-detail__product">
+                <ToolMark :tool="recognition.tool" decorative />
+                {{ SUPPORTED_TOOL_TEXT[recognition.tool] }}</span
+              >
+              <span class="aci-instruction-detail__surfaces">{{ recognition.surfacesText }}</span>
+            </li>
+          </ul>
+          <!-- The other files governing this range, one line whatever the
+               count (`FileStrip.vue`), drawn as the box's last row. Nothing
+               here states an order or a winner: which file a session loads
+               turns on runtime this tool does not observe (FR-009). -->
+          <FileStrip
+            :open-source-id="openSourceId"
+            :entries="group.otherCopies"
+            box-row
+            :label="`Other files applying to ${group.range.text}`"
+            :accessible-label="`Other files applying to ${group.range.accessibleText}`"
+          />
+        </li>
+      </ul>
 
       <!-- Two subjects, two tabs: what the parse read out of the file, and
            the complete file itself. A real `tablist`, with the roving
@@ -699,6 +788,91 @@ useReportedPageSubject(titleSubject);
 </template>
 
 <style scoped>
+/* One box per range, stacked — the skill detail's box per invocation name,
+   because the range is to an instruction file what the name is to a skill
+   (`skills/detail` § aci-skill-detail__invocations). The range is the box's
+   heading and the products that give the file that range are the rows inside,
+   which is what makes the comparison and the strip the range's rather than
+   the page's. */
+.aci-instruction-detail__ranges {
+  display: grid;
+  gap: 0.375rem;
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+}
+
+.aci-instruction-detail__ranges > li {
+  background: var(--aci-surface-raised);
+  border: 1px solid var(--aci-line);
+  border-radius: 0.4375rem;
+  overflow: hidden;
+}
+
+/* The range heads its own box on a band of its own, with the comparison it
+   owns at the end of that band. It wraps rather than pushing the range off the
+   line (WCAG 1.4.10). */
+.aci-instruction-detail__range-head {
+  align-items: center;
+  background: var(--aci-surface-sunken);
+  border-block-end: 1px solid var(--aci-hairline);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  padding: 0.3125rem 0.625rem;
+}
+
+.aci-instruction-detail__range-compare {
+  margin-inline-start: auto;
+}
+
+/* One row per recognition: the product, and the surfaces its admitting rules
+   rest on (FR-009), in two columns so two products read down one. Below the
+   reflow width each row becomes a column of its own. */
+.aci-instruction-detail__recognitions {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.aci-instruction-detail__recognitions li {
+  align-items: center;
+  column-gap: 0.75rem;
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+  padding: 0.25rem 0.625rem;
+  row-gap: 0.15rem;
+}
+
+/* A hairline between recognitions, inside a box its border already
+   identifies (main.css § --aci-hairline). */
+.aci-instruction-detail__recognitions li + li {
+  border-block-start: 1px solid var(--aci-hairline);
+}
+
+@media (width < 40rem) {
+  .aci-instruction-detail__recognitions li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The product names the row, so it carries the row's weight. */
+.aci-instruction-detail__product {
+  align-items: center;
+  display: flex;
+  font-weight: 600;
+  gap: 0.3125rem;
+}
+
+/* The surfaces qualify the recognition beside them, as they do on a row. */
+.aci-instruction-detail__surfaces {
+  color: var(--aci-muted);
+  font-size: 0.65625rem;
+  letter-spacing: 0.01em;
+}
+
 /* The two halves of the parse, inside the tab that holds them. */
 .aci-instruction-detail__declarations,
 .aci-instruction-detail__instructions {

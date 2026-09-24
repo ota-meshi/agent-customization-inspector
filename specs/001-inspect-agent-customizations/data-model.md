@@ -1290,7 +1290,12 @@ instruction files in is stripped from the tail. Claude Code keeps one at `.claud
 `packages/api/.claude/CLAUDE.md` derives `packages/api/**`, and a
 `.claude/CLAUDE.local.md` keeps its directory and derives `.claude/**`. What such a
 directory means is that product's own fact, so each product answers for its own rules
-rather than declaring a list some shared derivation reads.
+rather than declaring a list some shared derivation reads. A range is therefore each
+recognition's own, and one file can govern two: `.claude/AGENTS.md` is Claude Code's `**` and
+GitHub Copilot's `.claude/**`. It is then a file of both rows, each carrying only the
+recognitions that put it there; its detail shows one box per range, each with that range's
+products, comparison, and other files; and a comparison's block is the range whose rows hold
+both sides.
 
 A derived range is a pattern built from literals, so each directory name is escaped where
 a glob would read it as syntax — the wildcards, the class and brace delimiters, the

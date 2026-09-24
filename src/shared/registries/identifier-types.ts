@@ -347,7 +347,12 @@ export type AnthropicSourceId =
    * introduced nested `.claude/skills` discovery, and 2.1.178 the
    * directory-qualified retention of a nested name clash (QR-005).
    */
-  | 'anthropic.claude-code.changelog.nested-skill-discovery';
+  | 'anthropic.claude-code.changelog.nested-skill-discovery'
+  /**
+   * The changelog release that version-anchors Claude Code's `AGENTS.md`
+   * reading: 2.1.277 added it (QR-005).
+   */
+  | 'anthropic.claude-code.changelog.agents-md';
 
 /**
  * OpenAI official documentation pages cited by the shipped records

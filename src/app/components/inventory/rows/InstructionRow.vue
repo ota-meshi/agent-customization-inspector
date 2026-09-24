@@ -35,7 +35,7 @@ import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
 import SourceHomeBadge from '../SourceHomeBadge.vue';
-import { detailRoute, familyComparisonPairsOf } from '../../detail-route';
+import { detailRoute, familyComparisonPairsOf, originRowRangeQuery } from '../../detail-route';
 import { ApplicabilityRange } from '../../applicability-range';
 import { useSessionSources } from '../../../composables/session-sources';
 import { instructionComparisonRouteFor } from '../../../composables/instruction-comparison';
@@ -109,7 +109,13 @@ const rowFiles = computed(() =>
       // Both halves of the identity: the file's own Source leads the route, so
       // which of two identically-addressed files this link opens is part of the
       // address rather than left to whichever the session lists first (FR-030).
-      detailRoute: detailRoute('instructions', file.sourceRelativePath, selector),
+      // The range rides along, so a file this row shares with another range's
+      // row opens stepping from this one (`detail-route.ts` §
+      // originRowRangeQuery).
+      detailRoute: {
+        path: detailRoute('instructions', file.sourceRelativePath, selector),
+        query: originRowRangeQuery(props.group.applicabilityRange),
+      },
       /**
        * What a screen reader announces the path link as: every file of a range
        * offers one link, so the path is what tells them apart out of visual

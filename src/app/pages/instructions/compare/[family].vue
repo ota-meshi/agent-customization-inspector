@@ -226,9 +226,12 @@ function isComparable(side: ComparisonSide | null): boolean {
  * two ranges or two families, one file twice, or an identity the current scan
  * does not hold is not a comparison this model expresses (FR-011).
  *
- * A file governs exactly one range within its Source, so at most one range can
- * hold both sides — and the family narrows it to the one block a reader clicked
- * from.
+ * A file can sit in two ranges of its Source when two products derive
+ * different ones for it — a `.claude/AGENTS.md` is Claude Code's `**` and
+ * GitHub Copilot's `.claude/**` — so the block is found by the range whose rows
+ * hold both sides rather than by the first row holding either. At most one
+ * range does: only such a file carries two, and one directory holds one of
+ * it, so two files can share both of theirs only by being one file.
  */
 const owningBlock = computed<readonly InstructionInventoryEntryDto[]>(() => {
   const left = currentLeft.value;
@@ -244,27 +247,23 @@ const owningBlock = computed<readonly InstructionInventoryEntryDto[]>(() => {
   const holds = (entry: InstructionInventoryEntryDto, side: ComparisonSide): boolean =>
     sourceIdOf(snapshot.value?.sources ?? [], side.source) === entry.sourceId &&
     entry.files.some((file) => file.sourceRelativePath === side.sourceRelativePath);
-  for (const entry of snapshot.value?.instructions ?? []) {
-    if (familyBySourceId.value.get(entry.sourceId) !== family.value) {
-      // Another family's row. Its files may carry these very paths, and
-      // comparing them under this address would show one family's files under
-      // the other's (FR-030).
-      continue;
-    }
-    if (!holds(entry, left) && !holds(entry, right)) {
-      continue;
-    }
-    // The block is every row of this family at that range, because the pair may
-    // span two of its Sources.
-    const block = (snapshot.value?.instructions ?? []).filter(
-      (candidate) =>
-        candidate.applicabilityRange === entry.applicabilityRange &&
-        familyBySourceId.value.get(candidate.sourceId) === family.value,
-    );
-    return block.some((candidate) => holds(candidate, left)) &&
+  // Another family's rows are left out: their files may carry these very
+  // paths, and comparing them under this address would show one family's files
+  // under the other's (FR-030). A block is every row of this family at one
+  // range, because the pair may span two of its Sources.
+  const blocks = Map.groupBy(
+    (snapshot.value?.instructions ?? []).filter(
+      (entry) => familyBySourceId.value.get(entry.sourceId) === family.value,
+    ),
+    (entry) => entry.applicabilityRange,
+  );
+  for (const block of blocks.values()) {
+    if (
+      block.some((candidate) => holds(candidate, left)) &&
       block.some((candidate) => holds(candidate, right))
-      ? block
-      : [];
+    ) {
+      return block;
+    }
   }
   return [];
 });

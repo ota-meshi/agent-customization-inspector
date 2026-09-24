@@ -206,9 +206,9 @@ test.describe('a carrier a configured fallback also recognizes', () => {
     // instruction row's subject is the file, so it links to the file's own
     // detail exactly as the sibling AGENTS.md does.
     await expect(
-      panel.locator('a[href="/instructions/detail/repository/AGENTS.md"]').first(),
+      panel.locator('a[href^="/instructions/detail/repository/AGENTS.md?"]').first(),
     ).toBeVisible();
-    await panel.locator('a[href="/instructions/detail/repository/.mcp.json"]').first().click();
+    await panel.locator('a[href^="/instructions/detail/repository/.mcp.json?"]').first().click();
     await expect(page).toHaveURL(/\/instructions\/detail\/repository\//u);
     await expect(page.getByRole('heading', { name: '.mcp.json' })).toBeVisible();
     await expect(page.locator('main')).toContainText('"mcpServers"');

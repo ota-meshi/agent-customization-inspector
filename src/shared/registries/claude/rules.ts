@@ -117,6 +117,15 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
             'Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; both filenames are discovered on demand in subdirectories as Claude reads files there — the documented descendant reach that is why this rule admits them at every depth — while the ancestor walk above the working directory contributes only the selected root, the one member every session shares. Claude Code also reads AGENTS.md and .claude/AGENTS.md in the working directory and the directories above it, and a subdirectory’s AGENTS.md once it opens a file there, which is why a third program admits that filename at every depth.',
         },
         {
+          sourceId: 'anthropic.claude-code.changelog.agents-md',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['2.1.277'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Release 2.1.277 added AGENTS.md support, which is the version from which the third program admits a file Claude Code reads (QR-005).',
+        },
+        {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
           url: 'https://code.claude.com/docs/en/agent-sdk/claude-code-features',
           officialHost: 'code.claude.com',

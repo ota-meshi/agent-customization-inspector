@@ -256,6 +256,7 @@ and does not admit an unregistered source repository or issue as substitute evid
 | `anthropic.claude-code.ide.shared-differences` | <https://code.claude.com/docs/en/ide-integrations> | `code.claude.com` | `Configure settings`; `VS Code extension vs. Claude Code CLI`; `Manage marketplaces` | `2026-07-25` |
 | `anthropic.claude-code.changelog.legacy-command-nesting` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `1.0.45`; `1.0.51` | `2026-09-04` |
 | `anthropic.claude-code.changelog.nested-skill-discovery` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `2.1.6`; `2.1.178` | `2026-09-04` |
+| `anthropic.claude-code.changelog.agents-md` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `2.1.277` | `2026-09-24` |
 
 ## OpenAI official sources
 

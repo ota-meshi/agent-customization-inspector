@@ -61,7 +61,7 @@ test('lists the root pair once each, with every product that reads it', async ({
 test('shows a context file whole, resolving no reference it spells', async ({ page }) => {
   await page.goto(new URL('/instructions/detail/repository/GEMINI.md', host.origin).toString());
   const main = page.locator('main');
-  await expect(page.locator('.aci-detail-attributes')).toContainText('Antigravity CLI');
+  await expect(page.locator('.aci-instruction-detail__ranges')).toContainText('Antigravity CLI');
   await expect(main).toContainText('Artifacts land under');
   await expect(main).toContainText(ENVIRONMENT_REFERENCE);
 });
@@ -70,8 +70,10 @@ test('does not make a nested context file this vendor’s', async ({ page }) => 
   await page.goto(
     new URL('/instructions/detail/repository/packages/api/AGENTS.md', host.origin).toString(),
   );
-  // Copilot reads a nested `AGENTS.md` and this vendor does not, so the file
-  // is listed with Copilot's mark alone.
-  await expect(page.locator('.aci-detail-attributes')).toContainText('GitHub Copilot');
-  await expect(page.locator('.aci-detail-attributes')).not.toContainText('Antigravity CLI');
+  // Copilot and Claude Code read a nested `AGENTS.md` and this vendor does
+  // not, so the file is listed with their marks and without this one.
+  await expect(page.locator('.aci-instruction-detail__ranges')).toContainText('GitHub Copilot');
+  await expect(page.locator('.aci-instruction-detail__ranges')).not.toContainText(
+    'Antigravity CLI',
+  );
 });

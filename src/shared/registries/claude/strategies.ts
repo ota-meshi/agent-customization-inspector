@@ -245,7 +245,9 @@ export const CLAUDE_HOOKS_ADDITIVE_STRATEGY = {
  * `.claude/CLAUDE.md`, or `CLAUDE.local.md` sits at or above its working
  * directory — the user's own `~/.claude/CLAUDE.md` does not count — and a
  * subdirectory's only when that subdirectory has none of them, while other
- * values read both families, `CLAUDE.md` alone, or neither.
+ * values read both families, `CLAUDE.md` alone, or — `managed-only` — none of
+ * the project's or the user's at launch, a subdirectory's `CLAUDE.md` still
+ * loading once Claude reads a file there.
  * The value is a user-level setting and the condition is the session's own
  * path, neither of which this tool observes, so no row says which family a
  * session reads.
@@ -278,7 +280,16 @@ export const CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY = {
           ],
           reviewedOn: '2026-09-24',
           establishes:
-            'The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md. By default Claude reads AGENTS.md only when no CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md is in the working directory or above it; the Project instructions setting can instead read both files — each directory’s CLAUDE.md files first and its AGENTS.md after them, skipping an AGENTS.md already loaded — CLAUDE.md alone, or only the managed instructions.',
+            'The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md. By default Claude reads AGENTS.md only when no CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md is in the working directory or above it; the Project instructions setting can instead read both files — each directory’s CLAUDE.md files first and its AGENTS.md after them, skipping an AGENTS.md already loaded — CLAUDE.md alone, or at launch only the managed instructions, a subdirectory’s CLAUDE.md and .claude/rules/ files still loading when Claude reads a file there.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.agents-md',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['2.1.277'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Release 2.1.277 added AGENTS.md support: in a project with no CLAUDE.md Claude Code reads AGENTS.md instead, and the choice is changed under Project instructions in /config — the version gate for the filter step (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',

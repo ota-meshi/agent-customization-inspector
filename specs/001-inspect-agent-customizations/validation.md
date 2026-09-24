@@ -50,7 +50,11 @@ drift, none of them this page's and none touched by this change:
 `vscode.copilot.instructions` (`Instruction priority`) and `vscode.copilot.hooks` (five
 sections); and eight `google.antigravity.*` records whose cited headings are no longer served.
 They are left for the review that owns them. The same four Claude Code changelog anchors were
-established through a served table of contents.
+established through a served table of contents. The review of this change added a sixty-fourth
+record, `anthropic.claude-code.changelog.agents-md`, whose `2.1.277` entry — the release that
+added `AGENTS.md` reading — is the version gate the instruction records now cite (QR-005); a run
+over all 64 records the same day established that entry through the table of contents too, and
+reported the same eleven records with drift.
 
 2026-09-11, over all 63 records, the eleven `google.antigravity.*` records
 included (specs/003-antigravity-cli-support T077) — the eleventh being
@@ -169,7 +173,8 @@ proposed. The task set is not superseded by this review.
 
 ## Release gate execution
 
-**Claude Code's `AGENTS.md` reading ran the gates on 2026-09-24** (T1215–T1218):
+**Claude Code's `AGENTS.md` reading ran the gates on 2026-09-24** (T1215–T1219, run again after
+the review's fixes):
 `pnpm run test:docs` 42, `pnpm run test:unit` 1288, `pnpm run test:contract` 411,
 `pnpm run test:integration` 277, `pnpm run test:security` 5, and `pnpm run test:package` 53
 tests, all passing on this host, with `pnpm run format:check`, `pnpm run lint`, and
@@ -731,7 +736,7 @@ the vendor's own glyph.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 6**, canonical
-SHA-256 `ddce9e482338d4f6a7d55561cabf47cde00e87459c2826e36d1fde8a96b9cd21`, recorded in
+SHA-256 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Version 6 changes one expected outcome:
 `sc003.shared-file.repository-agents-md` names Claude Code among the recognizing tools of the
 root `AGENTS.md`, which Claude Code reads from 2.1.277 (T1217). A changed expected outcome is a
@@ -751,6 +756,15 @@ execution, and the browser cases through the Chromium project over the specs the
 did not were in the four specs this change restated, which were run again and pass. The browser specs those fixtures cannot
 reach were not re-run for this set. The contract suite reproduced the canonical digest and all
 73 fixture digests in the same run.
+
+The review of this change (T1219) moved five more referenced suites' bytes at the same version:
+`claude-instructions-inventory` gained a tree whose `.claude/AGENTS.md` sits in two ranges, and
+`claude-instructions-detail`, `codex-instructions-detail`, `antigravity-instructions-detail`,
+and `codex-mcp-detail` read an instruction file's recognitions from its range boxes and follow a
+row link that now carries its range. Their digests and the canonical digest above were
+re-recorded together, and the cases were executed again on 2026-09-24 through the Chromium
+project over the 37 specs that reach an instruction row, detail, or comparison, 255 tests, all
+passing.
 
 The set before it was `tests/fixtures/outcomes/manifest.json` **version 5**, canonical
 SHA-256 `ee17cf94b381bdca0a4cdb93f1a1d727bf0e73824eaee029ff699878e48a7181`. Version 5 is the Antigravity CLI denominator
@@ -1101,19 +1115,6 @@ the session the screen with the prompt: the sentence the earlier runs used — t
 changed since the previous task — followed by the page's snapshot as it then stood, in the same
 form the session's own `snapshot` returns. It adds nothing that is not on the screen.
 
-**Two earlier attempts of the same day are not recorded as results.** In the first, one session
-stopped every process whose command line named the product — the other sessions and the
-runner's own work among them — so four of five sessions ended mid-task; the runner now tells
-each session that others run beside it and that it stops only what it started, by its own
-handle, and the run moved to a path that does not carry the product's name. In the second, the
-screen was announced but not delivered, and five of twenty sessions (04, 06, 08, 10, and 19)
-answered SC-006 in under five seconds without looking at it, describing instead the
-`.claude/CLAUDE.md` they had opened for SC-001 — correctly, and so failing the criterion. Its
-other numbers were SC-001 20 of 20, SC-006 15 of 20, comparison and consent 20 of 20 each. An
-apparatus that does not put the criterion's premise in front of the session is not measuring
-the criterion, which is the reason the 2026-09-10 run gives for the attempt it did not record;
-the run below is the first attempt that delivered it, and it was run once.
-
 **This is an agent-driven run and is recorded as one.** What twenty agents establish is
 whether the product's own printed and rendered guidance is sufficient to launch it, reach a
 file, state what the product says about that file, compare two copies, and see what the
@@ -1170,6 +1171,67 @@ specified.
 **What this run does not establish.** It says nothing about human first use. It carries no
 capture bundle: what it rests on is the runner's own event log and each session's transcript,
 kept beside the run's session folders outside this repository. And it is one fixture tree.
+
+**Two earlier attempts of the same day were superseded, and each session of both is recorded
+here, apart from the result** (tests/usability/sc001-sc006-study-kit.md § Who takes part). An
+apparatus defect voids an attempt rather than a session, and both defects were the runner's.
+
+The first attempt let one session reach the others. Session 04 cleaned up with `pkill -f
+agent-customization-inspector`, which stopped every process whose command line named the
+product — the four sessions running beside it, one after its last answer and three mid-task,
+and the runner's own test process.
+The runner stopped the five sessions of the next wave it had already started; the last ten were
+never started. Every SC-006 answer below was checked against the four-tool ground truth; one
+session answered from memory, as the second attempt's five did. The runner now tells each
+session that others run beside it and that it stops only what it started, by its own handle,
+and the run moved to a path that does not carry the product's name.
+
+| Session | Discovery | Inspection | Comparison | Consent | Safety | How it ended |
+|---:|---:|---:|---:|---:|---|---|
+| 01 | 17.8 s | 6.5 s | 16.0 s | 9.2 s | submitted | stopped after its last answer |
+| 02 | 21.6 s | 10.3 s | 23.9 s | 13.7 s | — | stopped by session 04 |
+| 03 | 22.1 s | 11.0 s | 18.8 s | 12.6 s | — | stopped by session 04 |
+| 04 | 16.4 s | 7.6 s | 15.2 s | 10.1 s | submitted | completed; ran the `pkill` |
+| 05 | 27.1 s | 10.6 s | 27.5 s | — | — | stopped by session 04 |
+| 06 | 24.3 s | 16.8 s | — | — | — | stopped by the runner |
+| 07 | 15.8 s | 8.0 s | 19.3 s | — | — | stopped by the runner |
+| 08 | 15.1 s | 8.4 s | 14.1 s | — | — | stopped by the runner |
+| 09 | 19.1 s | 3.4 s (Claude Code alone) | 15.2 s | 10.8 s | — | stopped by the runner |
+| 10 | 24.9 s | — | — | — | — | stopped by the runner |
+
+The second attempt announced the SC-006 screen without delivering it. Five sessions — 04, 06,
+08, 10, and 19 — answered SC-006 in under five seconds without looking, describing instead the
+`.claude/CLAUDE.md` they had opened for SC-001: correctly, and so wrongly for the criterion. An
+apparatus that does not put the criterion's premise in front of the session is not measuring
+the criterion, which is the reason the 2026-09-10 run gives for the attempt it did not record.
+Its tally was SC-001 20 of 20, SC-006 15 of 20, and comparison and consent 20 of 20 each; two
+sessions answered one safety field `unknown` — 09 for content exposure and 20 for an MCP
+connection — for want of anything that could show it, and none answered `yes`.
+
+| Session | Discovery | Inspection | SC-006 fields | Comparison | Consent | Safety |
+|---:|---:|---:|---|---:|---:|---|
+| 01 | 19.2 s | 12.6 s | matched | 16.2 s | 8.6 s | all `no` |
+| 02 | 20.0 s | 6.7 s | matched | 13.1 s | 8.9 s | all `no` |
+| 03 | 15.9 s | 19.3 s | matched | 13.4 s | 8.9 s | all `no` |
+| 04 | 19.3 s | 3.8 s | wrong (Claude Code alone) | 13.4 s | 8.9 s | all `no` |
+| 05 | 18.9 s | 9.1 s | matched | 14.4 s | 9.1 s | all `no` |
+| 06 | 14.7 s | 2.9 s | wrong (Claude Code alone) | 13.8 s | 8.8 s | all `no` |
+| 07 | 21.7 s | 10.7 s | matched | 15.2 s | 8.7 s | all `no` |
+| 08 | 24.3 s | 4.7 s | wrong (Claude Code alone) | 17.5 s | 11.6 s | all `no` |
+| 09 | 28.4 s | 22.3 s | matched | 24.9 s | 17.9 s | one `unknown` |
+| 10 | 20.5 s | 3.8 s | wrong (Claude Code alone) | 14.1 s | 9.0 s | all `no` |
+| 11 | 22.6 s | 12.4 s | matched | 20.6 s | 15.4 s | all `no` |
+| 12 | 31.4 s | 13.1 s | matched | 22.1 s | 18.1 s | all `no` |
+| 13 | 43.2 s | 10.6 s | matched | 24.6 s | 17.4 s | all `no` |
+| 14 | 17.8 s | 7.3 s | matched | 12.5 s | 9.0 s | all `no` |
+| 15 | 23.7 s | 8.5 s | matched | 12.7 s | 10.4 s | all `no` |
+| 16 | 26.4 s | 16.9 s | matched | 20.7 s | 17.2 s | all `no` |
+| 17 | 16.9 s | 8.3 s | matched | 21.4 s | 8.8 s | all `no` |
+| 18 | 32.6 s | 14.4 s | matched | 23.1 s | 16.6 s | all `no` |
+| 19 | 23.5 s | 5.1 s | wrong (Claude Code alone) | 28.7 s | 11.8 s | all `no` |
+| 20 | 17.3 s | 8.7 s | matched | 13.1 s | 10.0 s | one `unknown` |
+
+The run above is the first attempt that delivered the premise, and it was run once.
 
 **A run was owed for the Antigravity CLI change, and it was run.** The parent's rule is that
 the twenty-session evaluation is repeated when the designated SC-006 file's ground truth

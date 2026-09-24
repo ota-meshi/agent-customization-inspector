@@ -121,8 +121,9 @@ test('opens complete inert instruction detail from the inventory', async ({ page
   // Every product that recognizes the file, each with the surfaces its
   // admitting rules rest on: the root `CLAUDE.md` is Claude Code's project
   // instruction file and Copilot's documented agent-instruction alternative,
-  // so both stand here and neither is a claim that a session loaded it.
-  const attributes = page.locator('.aci-detail-attributes');
+  // so both stand in the range's box and neither is a claim that a session
+  // loaded it.
+  const attributes = page.locator('.aci-instruction-detail__ranges');
   await expect(attributes).toContainText('GitHub Copilot');
   await expect(attributes).toContainText('VS Code, CLI, Cloud agent');
   await expect(attributes).toContainText('Claude Code');
@@ -146,7 +147,7 @@ test('opens a subdirectory instruction file exactly as it opens the root one', a
   // `CLAUDE.md` are told apart by the only identity either of them has
   // (FR-030). Depth changes nothing else about the page.
   await expect(page.locator('.aci-instruction-detail h2')).toHaveText('packages/api/CLAUDE.md');
-  await expect(page.locator('.aci-detail-attributes')).toContainText('Claude Code');
+  await expect(page.locator('.aci-instruction-detail__ranges')).toContainText('Claude Code');
   await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(
     'This file declares none.',
   );

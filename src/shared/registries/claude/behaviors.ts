@@ -29,10 +29,10 @@ import type { VendorBehaviorStatement } from '../behavior-types';
  * instead of the `CLAUDE.md` files or beside them, which is the layering
  * strategy's to say rather than this lookup's.
  *
- * The `.claude/CLAUDE.md` form is documented for this scope alone — the
- * ancestor walk and the lazy descendant discovery below name the bare
- * filenames only — which is what makes those two statements
- * `partially-documented` rather than this one.
+ * The `.claude/CLAUDE.md` form is documented here and for the ancestor walk,
+ * whose `AGENTS.md` section counts a `.claude/CLAUDE.md` in any directory
+ * above; the lazy descendant discovery below names the bare filenames only,
+ * which is what makes that statement `partially-documented`.
  */
 export const CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR = {
   behaviorId: 'claude.behavior.repo.instructions.launch',
@@ -65,6 +65,15 @@ export const CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR = {
             'Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch. At session start Claude Code also reads every AGENTS.md and .claude/AGENTS.md in the working directory and the directories above it.',
         },
         {
+          sourceId: 'anthropic.claude-code.changelog.agents-md',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['2.1.277'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config — the version gate for the AGENTS.md half of this lookup (QR-005).',
+        },
+        {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
           url: 'https://code.claude.com/docs/en/agent-sdk/claude-code-features',
           officialHost: 'code.claude.com',
@@ -79,14 +88,14 @@ export const CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR = {
 
 /**
  * Claude instruction discovery above the runtime working directory: each
- * parent directory in turn is checked for `CLAUDE.md` and `CLAUDE.local.md`,
- * and for `AGENTS.md` and `.claude/AGENTS.md`, continuing toward the
- * filesystem root.
+ * parent directory in turn is checked for `CLAUDE.md`, `.claude/CLAUDE.md`,
+ * and `CLAUDE.local.md`, and for `AGENTS.md` and `.claude/AGENTS.md`,
+ * continuing toward the filesystem root.
  *
- * `partially-documented` because the `CLAUDE.md` walk is stated for the bare
- * filenames only: no cited section establishes a `.claude/CLAUDE.md` variant
- * on an ancestor directory (contracts/vendors/claude-code.md § Canonical
- * evidence-assessment index). The `AGENTS.md` walk names both forms.
+ * The load section names the bare `CLAUDE.md` filenames for the walk; the
+ * `AGENTS.md` section is what establishes the `.claude/CLAUDE.md` form on an
+ * ancestor, by counting one in any directory above the working directory as a
+ * file Claude reads instead of `AGENTS.md`.
  */
 export const CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR = {
   behaviorId: 'claude.behavior.repo.instructions.ancestor',
@@ -96,14 +105,15 @@ export const CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR = {
     ? {
         vendorScope: 'repository',
         lookupBase: 'runtime-cwd',
-        relativeSelector: 'CLAUDE.md; CLAUDE.local.md; AGENTS.md; .claude/AGENTS.md',
+        relativeSelector:
+          'CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md; AGENTS.md; .claude/AGENTS.md',
         // Upward and deliberately not repository-bounded: the page describes
         // walking up the directory tree without naming a repository root as
         // the stop, unlike the skill layers above (see `VendorTraversal`).
         traversal: 'ancestor-chain-to-filesystem-root',
       }
     : null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -114,7 +124,16 @@ export const CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR = {
           sections: ['How CLAUDE.md files load', 'When Claude Code reads AGENTS.md'],
           reviewedOn: '2026-09-24',
           establishes:
-            'Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md; the walk names no repository root as its stop, and it names no .claude/CLAUDE.md variant on an ancestor directory. The AGENTS.md read at session start covers every AGENTS.md and .claude/AGENTS.md in the directories above the working directory too.',
+            'Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md, and the walk names no repository root as its stop. A CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md in any directory above the working directory counts as a file Claude reads instead of AGENTS.md, and the AGENTS.md read at session start covers every AGENTS.md and .claude/AGENTS.md in those directories too.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.agents-md',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['2.1.277'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config — the version gate for the AGENTS.md half of this lookup (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
@@ -167,6 +186,15 @@ export const CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR = {
           reviewedOn: '2026-09-24',
           establishes:
             'Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case. A subdirectory’s AGENTS.md is read the same way, once Claude opens a file there with the Read tool.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.agents-md',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['2.1.277'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config — the version gate for the AGENTS.md half of this lookup (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
