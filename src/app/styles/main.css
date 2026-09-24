@@ -718,7 +718,15 @@ button[aria-disabled='true'] {
   border-block-start: 1px solid var(--aci-hairline);
   display: grid;
   gap: 0.625rem;
-  grid-template-columns: minmax(0, 1fr) max-content max-content;
+  /* The marks take their content's width where the row has it to give, and
+     wrap where it does not. A plain `max-content` track keeps the unwrapped
+     width whatever the box around it is: at 200% text a row naming several
+     products measured 917px inside a 654px row, and the page scrolled
+     sideways, which is content lost (WCAG 1.4.4, `accessibility.spec.ts`
+     § AUTO-1.4.4). The `minmax(0, …)` floor is what lets the track give way,
+     and it still takes max-content wherever that fits, so the column reads the
+     same at ordinary sizes. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) max-content;
   padding: 0.25rem 0.75rem 0.25rem 1.5rem;
 }
 

@@ -120,15 +120,16 @@ async function openInstruction(page: import('@playwright/test').Page, path: stri
 
 test('opens complete inert Copilot instruction detail from the inventory', async ({ page }) => {
   await openInstruction(page, '.github/copilot-instructions.md');
-  // The page is headed by the file's path — the row's own identity — with the
-  // recognizing product, the surfaces it documented reading the file on, and
-  // the kind beside it.
+  // The page is headed by the file's path — the row's own identity — and the
+  // recognizing product with the surfaces it documented reading the file on
+  // sits in the box for the range that put it there, one box per range
+  // (`instructions/detail` § aci-instruction-detail__ranges).
   await expect(page.locator('.aci-instruction-detail h2')).toHaveText(
     '.github/copilot-instructions.md',
   );
-  const attributes = page.locator('.aci-detail-attributes');
-  await expect(attributes).toContainText('GitHub Copilot');
-  await expect(attributes).toContainText('VS Code, CLI, Cloud agent');
+  const recognitions = page.locator('.aci-instruction-detail__recognitions');
+  await expect(recognitions).toContainText('GitHub Copilot');
+  await expect(recognitions).toContainText('VS Code, CLI, Cloud agent');
   // The declarations lead, in authored order — scope, endpoint, api_key is the
   // file's own order, not a sort — with the credential and the environment
   // reference exactly as written.
@@ -149,11 +150,16 @@ test('separates the surfaces one documented filename is read from', async ({ pag
   // surfaces documented reading it. Nothing on either page says one is active,
   // enabled, or selected — that turns on runtime this product never observes.
   await openInstruction(page, 'packages/api/.github/copilot-instructions.md');
-  await expect(page.locator('.aci-detail-attributes')).toContainText('CLI');
+  // Exactly, not as a substring: the root copy's surfaces contain this one's,
+  // so a containment check would pass on either page and see nothing of the
+  // difference this case exists for.
+  await expect(page.locator('.aci-instruction-detail__surfaces')).toHaveText(['CLI']);
   // `GEMINI.md` is the other asymmetry: VS Code documents no such file, so the
   // editor is absent rather than assumed from the alternative beside it.
   await openInstruction(page, 'GEMINI.md');
-  await expect(page.locator('.aci-detail-attributes')).toContainText('CLI, Cloud agent');
+  await expect(page.locator('.aci-instruction-detail__recognitions')).toContainText(
+    'CLI, Cloud agent',
+  );
   const text = await page.locator('main').innerText();
   for (const claim of ['enabled', 'disabled', 'selected', 'active', 'wins']) {
     expect(text.toLowerCase(), claim).not.toContain(claim);
