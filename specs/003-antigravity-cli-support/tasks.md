@@ -27,11 +27,11 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 |---|---|
 | FR-001 | T003, T006, T008, T018, T035, T048, T059–T060, T068–T070, T076, T078–T080 |
 | FR-002 | T011, T020–T021, T023, T025–T029, T036–T037, T082–T083 |
-| FR-003 | T011, T021, T023 |
+| FR-003 | T011, T021, T023, T088 |
 | FR-004 | T022, T026, T030–T031, T052–T056, T058, T082, T084 |
 | FR-005 | T021, T029, T042 |
 | FR-006 | T021, T028 |
-| FR-007 | T021, T023, T025, T082–T083 |
+| FR-007 | T021, T023, T025, T082–T083, T088 |
 | FR-008 | T005, T019, T039, T041, T048 |
 | FR-009 | T040–T041, T043–T046, T051, T082–T083 |
 | FR-010 | T040, T042, T047 |
@@ -268,3 +268,4 @@ Each story phase ends at a state the independent test above can measure. Phase 6
 - [X] T085 Move the fixtures and the suites to the widened allowlist and the folder shape: the Antigravity CLI trees in `tests/fixtures/repositories/build-fixtures.ts` and the home in `tests/fixtures/global-homes/`, and the unit, contract, integration, and end-to-end cases that asserted a flat skill or a root-only context pair — a nested pair and a directory's `.agents/` pair each carrying its range, a flat file rejected under both spellings and at both global roots — per QR-003, SC-001, SC-002.
 - [X] T086 Record the widened allowlist and the removed flat rules in the contracts and the user documentation, in both languages: `specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md`, `contracts/runtime-composition.md`, the Antigravity CLI row of `spec.md` and its home step in `quickstart.md`, and `docs/which-files-are-listed.md`; regenerate the conformance fixtures, re-record the frozen counts, the presentation-allowlist digests, the outcome manifest and its digests, and the `allowlistVersion` and `traversalPlanVersion` literals in `src/server/host/global-consent.ts`, and record the run in `specs/001-inspect-agent-customizations/validation.md`, per FR-015, QR-004, QR-006.
 - [X] T087 Add a `minor` changeset in `.changeset/` for the widened Antigravity CLI allowlist and the flat skills no longer listed, and run the gates the change reaches — `pnpm run test:docs`, `test:unit`, `test:contract`, `test:integration`, `test:security`, `lint`, `typecheck`, `format:check`, and the Antigravity CLI end-to-end specs on Chromium — per QR-006, QR-003.
+- [X] T088 State in FR-003 of `specs/003-antigravity-cli-support/spec.md` and `spec.ja.md`, in its edge case, and in the `antigravity.excluded.workspace-plugins` row of `specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md` and `.ja.md` that the `.gemini/` and workspace-plugin exclusions reach the customizations those directories hold and not a `GEMINI.md` or `AGENTS.md` inside them, which `antigravity.repo.context` admits as that directory's context file; pin both cases in `tests/contract/inspection-rules.test.ts`, per FR-003, FR-007.

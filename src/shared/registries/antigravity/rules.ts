@@ -75,9 +75,13 @@ export const ANTIGRAVITY_REPO_CONTEXT_RULE = {
    * directory name, so the two programs reach the root pair, every
    * subdirectory's pair, and the `<dir>/.agents/GEMINI.md` and
    * `<dir>/.agents/AGENTS.md` the page gives beside them; a program of their
-   * own would only admit those files a second time. Which of them a session
-   * loads depends on the files it reads, which this tool does not observe
-   * (FR-009).
+   * own would only admit those files a second time. The same reach includes a
+   * `.gemini/` directory and a workspace plugin directory, whose
+   * customizations this vendor's rules exclude: a context file there is still
+   * the directory's own, loaded as the walk passes through, and the grammar has
+   * no step that excludes one directory name (spec.md FR-003). Which of them
+   * a session loads depends on the files it reads, which this tool does not
+   * observe (FR-009).
    */
   matcher: {
     base: { kind: 'repository' },
@@ -926,9 +930,12 @@ export const ANTIGRAVITY_GLOBAL_HOOKS_INLINE_RULE = {
 } as const satisfies InspectionRule;
 
 /**
- * The workspace plugin directory and everything below it — `.agents/plugins/`
- * and the `_agents/plugins/` spelling beside it — with the skills, rules, MCP
- * definitions, and hooks inside them.
+ * The workspace plugin directory as a plugin — `.agents/plugins/` and the
+ * `_agents/plugins/` spelling beside it — with the skills, rules, MCP
+ * definitions, and hooks inside them. A `GEMINI.md` or `AGENTS.md` inside one
+ * is not excluded: it is the context file of the directory holding it, which
+ * `antigravity.repo.context` admits as at any other depth, because the
+ * terminal loads it while walking up through that directory.
  *
  * The reason is not the installed-copy reason the rule below gives, which does
  * not reach a plugin authored in a repository: it is that no page names a

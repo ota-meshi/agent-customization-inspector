@@ -1,4 +1,4 @@
-// T263: browser acceptance for the Copilot instruction detail (Phase 20).
+// T263, T1221: browser acceptance for the Copilot instruction detail (Phase 20).
 // Launches the packaged CLI against an instruction-bearing fixture, opens a
 // Copilot instruction from the inventory, and verifies the complete inert
 // detail screen: the declarations the file wrote in authored order, the
@@ -257,4 +257,40 @@ test('drops the content when the route leaves the file', async ({ page }) => {
   // The detail-state cleanup took the authored content with it: nothing on
   // the inventory carries a value the reader navigated away from (FR-027).
   expect(await page.locator('main').innerText()).not.toContain(FIXTURE_SECRET);
+});
+
+test.describe('a range declared as whitespace alone', () => {
+  let spaceFixture: string;
+  let spaceHost: LaunchedHost;
+
+  test.beforeEach(async () => {
+    // `applyTo: " "` is a declared range: not empty, so it keys a row of its
+    // own, and drawn through this product's spelling because a space alone
+    // would draw nothing (spec.md § Clarifications, the instructions row).
+    spaceFixture = await mkdtemp(join(tmpdir(), 'aci-copilot-space-range-'));
+    await mkdir(join(spaceFixture, '.github/instructions'), { recursive: true });
+    await writeFile(
+      join(spaceFixture, '.github/instructions/space.instructions.md'),
+      '---\napplyTo: " "\n---\n\n# Space\n',
+      'utf8',
+    );
+    spaceHost = await launchHost(spaceFixture);
+  });
+
+  test.afterEach(async () => {
+    await stopHost(spaceHost);
+    await rm(spaceFixture, { recursive: true, force: true });
+  });
+
+  test('keeps the range’s prefix on the detail', async ({ page }) => {
+    // Whether a range is known decides "Applies to"; whether it is drawn as
+    // its own characters decides only the styling (T1221).
+    await page.goto(
+      new URL(
+        '/instructions/detail/repository/.github/instructions/space.instructions.md',
+        spaceHost.origin,
+      ).toString(),
+    );
+    await expect(page.locator('.aci-instruction-detail__range-head')).toContainText('Applies to');
+  });
 });

@@ -657,7 +657,7 @@ silhouetteを3つ見分けるのではなく色をたどって目的のものを
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 7**、canonical SHA-256
-`7cf8c51216de88aeb7c20ddee322dc2da8318ccc88d3a4eae199d1c2817d58f5`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 7は
+`6ee79c3c2fa8acc85c2f8a348ad1604accb9723e3f4a446257ff1c4e5d15108c`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 7は
 期待結果を1つ変える。`sc003.shared-file.repository-root-gemini-md`が、root より下の`GEMINI.md`を、
 どの行にも届かなかったところから、Antigravity CLIだけのものとする。vendorのRulesページが、端末がたどって
 上る各階層のpairを文書化しているためである（specs/003-antigravity-cli-support T082〜T086）。期待結果の
@@ -673,7 +673,11 @@ caseは2026-09-24にこのhost上で実行した。vitestのcaseはRelease gate�
 browserのcaseは、Antigravity CLIのsurface、instructionまたはskillの行・detail・比較、あるいは同意済みの
 homeに届く36 specに対するChromium projectで、280 test、すべてpassした。それらのfixtureが届かない
 browser specはこのsetでは再実行していない。contract suiteは同じrunでcanonical digestと73件すべての
-fixture digestを再現した。
+fixture digestを再現した。Claude Codeによる`AGENTS.md`のreadの3回目のreview（T1221）は、同じversionの
+まま参照suite 1つのbyteを動かした。`copilot-instructions-detail`が、`applyTo`が空白だけのtreeを得た。その
+digestと上のcanonical digestを一緒に再記録し、そのspecをChromium projectで9 test、`accessibility`の
+AUTO-1.4のcaseを8 test実行して、すべてpassした。新しいassertionはそれぞれ、まず修正前のbuildに対して
+実行し、そこで失敗することを確かめた。
 
 その前のsetは**version 6**、canonical SHA-256
 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`である。Version 6は

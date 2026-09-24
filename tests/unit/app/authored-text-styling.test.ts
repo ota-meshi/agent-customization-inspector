@@ -1,4 +1,4 @@
-// T1156: which drawn label carries the authored-text styling (FR-025).
+// T1156, T1221: which drawn label carries the authored-text styling (FR-025).
 //
 // `.aci-authored-text` renders a run's own whitespace and isolates its own
 // bidi context (`main.css`). Escaping removes the directional controls but
@@ -39,5 +39,17 @@ describe('the authored-text styling follows the drawn label', () => {
   it('keeps it on a value neither rule changes', () => {
     expect(new ApplicabilityRange('src/**').isDeclared).toBe(true);
     expect(new AuthoredName('SKILL.md').isAuthored).toBe(true);
+  });
+});
+
+describe('whether a range is known is not whether it is drawn as authored', () => {
+  it('keeps a whitespace-only declared range known while it draws a substitute', () => {
+    // A detail heads a declared range with "Applies to"; deciding that from
+    // the styling question dropped the prefix for `applyTo: " "`, which is a
+    // declared range whose drawn spelling is this product's (T1221).
+    const whitespace = new ApplicabilityRange(' ');
+    expect(whitespace.isDeclared).toBe(false);
+    expect(whitespace.isKnown).toBe(true);
+    expect(new ApplicabilityRange(null).isKnown).toBe(false);
   });
 });

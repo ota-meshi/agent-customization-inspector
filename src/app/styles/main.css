@@ -725,8 +725,15 @@ button[aria-disabled='true'] {
      sideways, which is content lost (WCAG 1.4.4, `accessibility.spec.ts`
      § AUTO-1.4.4). The `minmax(0, …)` floor is what lets the track give way,
      and it still takes max-content wherever that fits, so the column reads the
-     same at ordinary sizes. */
-  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) max-content;
+     same at ordinary sizes.
+     The path keeps a floor of its own, because it is the column the row is
+     about and the only one that breaks anywhere: with a zero floor the marks
+     took their whole max-content first, and at 200% text on a 1280px viewport
+     a root `AGENTS.md` four products read was left 0px wide and drawn one
+     character per line. Twelve characters hold a context file's own name, and
+     `min(…, 100%)` keeps the floor from ever exceeding the row. At ordinary
+     sizes every path already has more, so nothing moves there. */
+  grid-template-columns: minmax(min(12ch, 100%), 1fr) minmax(0, max-content) max-content;
   padding: 0.25rem 0.75rem 0.25rem 1.5rem;
 }
 

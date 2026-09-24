@@ -659,9 +659,15 @@ useReportedPageSubject(titleSubject);
       <ul class="aci-instruction-detail__ranges" role="list">
         <li v-for="group in rangeGroups" :key="group.range.text">
           <p class="aci-instruction-detail__range-head">
-            <span v-if="group.range.isDeclared"
+            <!-- Whether a range is known decides the prefix; whether its drawn
+                 spelling is its own characters decides only the styling, so a
+                 declared whitespace-only range keeps its prefix
+                 (`applicability-range.ts` § isKnown). -->
+            <span v-if="group.range.isKnown"
               >Applies to
-              <strong class="aci-path aci-authored-text">{{ group.range.text }}</strong></span
+              <strong class="aci-path" :class="{ 'aci-authored-text': group.range.isDeclared }">{{
+                group.range.text
+              }}</strong></span
             >
             <span v-else>{{ group.range.text }}</span>
             <!-- This range's comparison (FR-011). The accessible name carries

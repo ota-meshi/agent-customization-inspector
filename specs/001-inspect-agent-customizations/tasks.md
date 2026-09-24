@@ -40,7 +40,7 @@ the task would have built.
 | FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
 | FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
-| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220 |
+| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220, T1221 |
 | FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
 | FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137, T1164 |
 | FR-014 | T930, T944–T947, T950–T951, T956–T959, T963–T964, T967–T968, T974–T975, T977–T978, T981–T982, T988–T989, T991, T993–T995, T997–T998, T1000–T1005, T1029, T1041, T1058, T1061–T1062, T1137, T1140 |
@@ -83,7 +83,7 @@ the task would have built.
 | SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194, T1203, T1211 |
 | SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202, T1218, T1219 |
 | SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194, T1203, T1211 |
-| SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
+| SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193, T1221 |
 | Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200, T1205 |
 
 ---
@@ -9623,6 +9623,15 @@ and drops `AGENTS.override.md`.
   `contracts/official-sources.md`; correct T1215's descendant lookup to `AGENTS.md` alone; and
   name the recognizer case in `tests/unit/inspection/recognizers.test.ts` for what it tests
   (FR-004, FR-011, QR-005).
+- [X] T1221 [US1] Resolve the third review of this phase. Give a file line's path a floor of its
+  own in `src/app/styles/main.css` § .aci-row-file, so a file four products read keeps a readable
+  path at 200% text on a 1280px viewport, and assert that no path is squeezed in
+  `tests/e2e/accessibility.spec.ts` § AUTO-1.4.4; decide the "Applies to" prefix of an
+  instruction detail's range from whether a range is known rather than from whether it is drawn
+  as its own characters, in `src/app/components/applicability-range.ts` and
+  `src/app/pages/instructions/detail/[source]/[...path].vue`, covering `applyTo: " "` in
+  `tests/unit/app/authored-text-styling.test.ts` and `tests/e2e/copilot-instructions-detail.spec.ts`
+  (FR-011, SC-008).
 
 ## Story Coverage Matrix
 

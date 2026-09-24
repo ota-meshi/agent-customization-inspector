@@ -152,8 +152,10 @@ on no row.
   admitted paths it holds.
 - A repository holding `.gemini/commands/`, `.gemini/agents/`, or `.gemini/skills/` lists none
   of them: no supported tool reads them in this release.
-- A repository holding `.agents/plugins/` or `_agents/plugins/` lists nothing below it: no
-  terminal page documents the terminal loading a workspace plugin directory.
+- A repository holding `.agents/plugins/` or `_agents/plugins/` lists no plugin, skill, rule,
+  MCP definition, or hook below it: no terminal page documents the terminal loading a workspace
+  plugin directory. A `GEMINI.md` or `AGENTS.md` there is listed as the context file of the
+  directory holding it, as at any other depth (FR-007).
 - A custom-agent directory holding files beside its `agent.md` lists the `agent.md` alone: no
   cited page documents a companion beside a custom agent, so nothing else in that directory is
   admitted.
@@ -186,10 +188,15 @@ on no row.
   backward support for it, in the shape each of those pages documents there —
   `.agent/skills/<name>/SKILL.md` and `<dir>/.agent/rules/<name>.md` — and nowhere else. No other
   repository location is admitted for this tool.
-- **FR-003**: The Repository inspection MUST NOT admit, for this tool, any `.gemini/` path, any
-  workspace settings file, or any workspace plugin directory including `.agents/plugins/` and
-  `_agents/plugins/`: no cited terminal page documents the terminal reading one, and a rule for
-  a location no page establishes would be this product's own invention. The vendor contract MUST
+- **FR-003**: The Repository inspection MUST NOT admit, for this tool, any customization a
+  `.gemini/` directory holds, any workspace settings file, or any workspace plugin directory
+  including `.agents/plugins/` and `_agents/plugins/` or the customizations such a directory
+  carries: no cited terminal page documents the terminal reading one, and a rule for a location
+  no page establishes would be this product's own invention. What these exclusions do not reach
+  is a context file: a `GEMINI.md` or `AGENTS.md` inside `.gemini/` or a plugin directory is the
+  context file of the directory holding it, which the terminal loads as it walks up through that
+  directory like any other (FR-007), and the selector grammar has no step that would exclude one
+  directory name from that walk. The vendor contract MUST
   state that reason for the workspace plugin directory separately from the installed-copy reason
   FR-010 gives, because a plugin authored in a repository is not a copy of anything
   (§ Clarifications).

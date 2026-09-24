@@ -756,7 +756,7 @@ describe('the unified SKILL selector matrix (T179)', () => {
     // program; no other vendor documents one (FR-003).
     ['packages/api/.claude/skills/deploy/SKILL.md', ['claude']],
     ['packages/api/.agents/skills/deploy/SKILL.md', []],
-    // No supported tool reads a `.gemini/` repository path in this release.
+    // No supported tool reads a `.gemini/` skill in this release.
     ['.gemini/skills/lander/SKILL.md', []],
     ['packages/api/.gemini/skills/deploy/SKILL.md', []],
     ['packages/api/.github/skills/nested-ship/SKILL.md', []],
@@ -918,6 +918,12 @@ describe('the unified instruction selector matrix (T269)', () => {
     ['GEMINI.md', ['antigravity', 'copilot']],
     ['packages/api/GEMINI.md', ['antigravity']],
     ['docs/.agents/GEMINI.md', ['antigravity']],
+    // A directory whose customizations this vendor excludes still has context
+    // files of its own: `.gemini/` and a workspace plugin directory are walked
+    // through like any other directory (specs/003-antigravity-cli-support
+    // FR-003, FR-007).
+    ['.gemini/GEMINI.md', ['antigravity']],
+    ['.agents/plugins/demo/AGENTS.md', ['antigravity', 'claude', 'copilot']],
     ['packages/api/AGENTS.md', ['antigravity', 'claude', 'copilot']],
     ['.github/copilot-instructions.md', ['copilot']],
     ['packages/api/.github/copilot-instructions.md', ['copilot']],

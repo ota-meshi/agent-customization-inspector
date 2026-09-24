@@ -279,7 +279,7 @@
     "tests/e2e/copilot-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-instructions-detail.spec.ts",
-      "sha256": "076164164f055ba909973e0102b612665a5f3bf134fb732f24d6dd5b762c8c0a"
+      "sha256": "15efdc0e857bc69b000c4a52818a700149894fe38a59bb60d0827895505333b5"
     },
     "tests/e2e/copilot-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",

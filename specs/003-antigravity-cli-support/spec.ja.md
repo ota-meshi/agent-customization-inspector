@@ -147,8 +147,10 @@ Antigravity CLI はそろって、そこにある skill フォルダの `SKILL.m
   持っているものを挙げる。
 - `.gemini/commands/`、`.gemini/agents/`、`.gemini/skills/` を持つリポジトリは、それらを1つも
   挙げない。このリリースではどのサポート対象ツールもそれらを読まない。
-- `.agents/plugins/` や `_agents/plugins/` を持つリポジトリは、その配下を1つも挙げない。端末が
-  workspace の plugin ディレクトリを読み込むと述べる端末のページがない。
+- `.agents/plugins/` や `_agents/plugins/` を持つリポジトリは、その配下の plugin・skill・rule・
+  MCP 定義・hook を1つも挙げない。端末が workspace の plugin ディレクトリを読み込むと述べる端末の
+  ページがない。そこにある `GEMINI.md` や `AGENTS.md` は、他の深さと同じく、それを置くディレクトリの
+  context file として挙げる (FR-007)。
 - `agent.md` の隣にファイルを持つ custom agent のディレクトリは、`agent.md` だけを挙げる。custom
   agent の隣の companion を文書化するページは引用先にないので、そのディレクトリの他のものは
   admit されない。
@@ -179,10 +181,14 @@ Antigravity CLI はそろって、そこにある skill フォルダの `SKILL.m
   location について、そのページがそこで文書化する形で admit しなければならない (MUST)。すなわち
   `.agent/skills/<name>/SKILL.md` と `<dir>/.agent/rules/<name>.md` であり、それ以外はない。このツール
   について他のリポジトリ location を admit してはならない (MUST NOT)。
-- **FR-003**: Repository inspection は、このツールについて、`.gemini/` 配下のパス、workspace の
-  settings ファイル、`.agents/plugins/` と `_agents/plugins/` を含む workspace の plugin
-  ディレクトリを admit してはならない (MUST NOT)。引用した端末のページで端末がそれらを読むと
-  文書化するものはなく、ページが確立しない location に対する rule はこの製品自身の創作になる。
+- **FR-003**: Repository inspection は、このツールについて、`.gemini/` ディレクトリが持つ
+  customization、workspace の settings ファイル、`.agents/plugins/` と `_agents/plugins/` を含む
+  workspace の plugin ディレクトリとそれが持つ customization を admit してはならない (MUST NOT)。
+  引用した端末のページで端末がそれらを読むと文書化するものはなく、ページが確立しない location に
+  対する rule はこの製品自身の創作になる。これらの除外が届かないのは context file である。
+  `.gemini/` や plugin ディレクトリの中の `GEMINI.md` や `AGENTS.md` は、それを置くディレクトリの
+  context file であり、端末は他のディレクトリと同じくそこを上へ歩くときにそれを読み込む (FR-007)。
+  selector の文法には、その歩みから1つのディレクトリ名を除外する step も無い。
   vendor contract は workspace の plugin ディレクトリについて、FR-010 が述べるインストール済み
   コピーの理由とは別にその理由を述べなければならない (MUST)。リポジトリで著述された plugin は
   何かのコピーではないからである (§ Clarifications)。

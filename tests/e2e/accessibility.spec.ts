@@ -256,6 +256,20 @@ test('AUTO-1.4.4 text stays readable and operable at 200% zoom', async ({ page }
       return offenders;
     });
     expect(clipped, presentation).toEqual([]);
+
+    // No path squeezed out by the marks beside it: a file line's path is the
+    // one column that breaks anywhere, so a row that gave the marks their
+    // whole width first drew a root `AGENTS.md` four products read one
+    // character per line (`main.css` § .aci-row-file). Six ems of its own font
+    // is a context file's name on one line.
+    const squeezed = await page.evaluate(() =>
+      [...document.querySelectorAll('.aci-row-file__path')].flatMap((path) => {
+        const width = path.getBoundingClientRect().width;
+        const em = Number.parseFloat(getComputedStyle(path).fontSize);
+        return width < 6 * em ? [`${path.textContent?.trim() ?? ''}: ${Math.round(width)}px`] : [];
+      }),
+    );
+    expect(squeezed, presentation).toEqual([]);
   }
 });
 

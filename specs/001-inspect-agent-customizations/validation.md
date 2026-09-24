@@ -790,7 +790,7 @@ the vendor's own glyph.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 7**, canonical
-SHA-256 `7cf8c51216de88aeb7c20ddee322dc2da8318ccc88d3a4eae199d1c2817d58f5`, recorded in
+SHA-256 `6ee79c3c2fa8acc85c2f8a348ad1604accb9723e3f4a446257ff1c4e5d15108c`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Version 7 changes one expected outcome:
 `sc003.shared-file.repository-root-gemini-md` attributes a `GEMINI.md` below the root to
 Antigravity CLI alone, where it had reached no row, because the vendor's Rules page documents
@@ -811,7 +811,12 @@ execution, and the browser cases through the Chromium project over the 36 specs 
 Antigravity CLI surface, an instruction or skill row, detail, or comparison, or a consented
 home — 280 tests, all passing. The browser specs those fixtures cannot reach were not re-run
 for this set. The contract suite reproduced the canonical digest and all 73 fixture digests in
-the same run.
+the same run. The third review of Claude Code's `AGENTS.md` reading (T1221) moved one
+referenced suite's bytes at the same version: `copilot-instructions-detail` gained a tree whose
+`applyTo` is whitespace alone. Its digest and the canonical digest above were re-recorded
+together, and the spec was run through the Chromium project, 9 tests, all passing, with
+`accessibility`'s AUTO-1.4 cases, 8 tests, all passing; each new assertion was first run against
+the build before its fix and failed there.
 
 The set before it was **version 6**, canonical SHA-256
 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`. Version 6 changes one expected outcome:
