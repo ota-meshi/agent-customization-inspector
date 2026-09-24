@@ -40,7 +40,7 @@
 | FR-013 | T023 |
 | FR-014 | T012–T013、T016、T063、T065 |
 | FR-015 | T002、T009、T073、T077、T086, T090 |
-| FR-016 | T011、T020–T021、T037–T038、T059、T082–T083, T089 |
+| FR-016 | T011、T020–T021、T037–T038、T059、T082–T083, T089, T091 |
 | FR-017 | T011、T020–T021、T036、T038、T051、T059 |
 | QR-001 | T007、T009–T014、T017、T032、T072 |
 | QR-002 | T026、T030、T053、T084 |
@@ -271,3 +271,4 @@ Phase 1・2・3 で、リポジトリの inventory が4つ目のツールを名�
 - [X] T088 `.gemini/` と workspace の plugin の除外が届くのはそれらのディレクトリが持つ customization であって、その中の `GEMINI.md` や `AGENTS.md` ではなく、それは `antigravity.repo.context` がそのディレクトリの context file として admit することを、`specs/003-antigravity-cli-support/spec.md` と `spec.ja.md` の FR-003 とその edge case、`specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md` と `.ja.md` の `antigravity.excluded.workspace-plugins` の行に記し、両方の case を `tests/contract/inspection-rules.test.ts` で固定する。FR-003、FR-007 に基づく。
 - [X] T089 `specs/003-antigravity-cli-support/spec.md` と `spec.ja.md` の FR-003 の記述、その edge case、vendor contract（両言語）の `antigravity.excluded.workspace-plugins` の行、`src/shared/registries/antigravity/rules.ts` を、`.gemini/` や plugin ディレクトリの中の `.agents/rules/` ディレクトリにも広げる。それは `antigravity.repo.rule` がそのディレクトリ自身のものとして admit する。`plan.md` と `plan.ja.md` の § Implementation Boundaries をそれに合わせ、case を `tests/contract/inspection-rules.test.ts` で固定し、指定ファイルの読み手を数えた Clarifications の回答に日付付きの注記を加える。FR-003、FR-016 に基づく。
 - [X] T090 後の task がその作業を取り除いた完了済みの task とチェック項目 — T020、T022、T023、T025〜T027、T030、T031、T033、T039、T043、T052〜T055、T057、T058、`specs/003-antigravity-cli-support/checklists/vendor-integration.md` の CHK007、CHK012、CHK015、CHK022、CHK023、そして `checklists/requirements.md` の注記 — を、それが今求めるものへ両言語で書き直し、それぞれに理由を短く述べる日付付きの注記を付ける (AGENTS.md § Documentation content policy)。Rules ページは両方の context の名前を持つディレクトリで両方が読み込まれるかを述べないので、`antigravity.context.layering` を `src/shared/registries/antigravity/strategies.ts` と両言語の `contracts/runtime-composition.md` で `partially-documented` とし、FR-007 も同じく述べる。FR-007、FR-015 に基づく。
+- [X] T091 rules の正例をすべて公式の frontmatter — `always_on`、`manual`、`model_decision`、または `globs` を伴う `glob` を値とする `trigger` — で書く。`tests/fixtures/repositories/build-fixtures.ts`、`tests/e2e/antigravity-rules-detail.spec.ts`、`tests/unit/inspection/antigravity-metadata.test.ts`、`scripts/readme-images/showcase-repository.ts`。`quickstart.md` と `quickstart.ja.md` でその key を名指す。端末は認識できる `trigger` の無い rule を捨てるからである。FR-016 に基づく。

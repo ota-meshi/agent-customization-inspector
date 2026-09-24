@@ -1,4 +1,4 @@
-// T230: browser acceptance for the Claude instructions inventory (Phase 17).
+// T230, T1223: browser acceptance for the Claude instructions inventory (Phase 17).
 // Launches the packaged CLI against an instruction-bearing fixture, opens the
 // printed loopback URL, and verifies the rendered rows, the filters, the
 // absence of every unsupported location, the file-confined diagnostic, and
@@ -302,5 +302,31 @@ test.describe('a `.claude/AGENTS.md` two products give two ranges', () => {
       1,
     );
     await expect(page.getByRole('link', { name: /^Next .*, in Instructions$/u })).toHaveCount(0);
+  });
+
+  test('keeps focus on the page when a move steps between the file’s two ranges', async ({
+    page,
+  }) => {
+    // Both moves stay on one path and change only the range, and each removes
+    // the link that made it: from `**` there is no next range after
+    // `.claude/**`, and from `.claude/**` no previous one before `**`. The
+    // step is a move to another place on the page, so focus goes to the
+    // heading as for any other step, rather than to the document body with the
+    // link that held it (T1223).
+    await page.goto(
+      new URL('/instructions/detail/repository/.claude/AGENTS.md', host.origin).toString(),
+    );
+    const next = page.getByRole('link', { name: /^Next .*, in Instructions$/u });
+    await next.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/[?&]range=/u);
+    await expect(next).toHaveCount(0);
+    await expect(page.locator(':focus')).toHaveRole('heading');
+
+    const previous = page.getByRole('link', { name: /^Previous .*, in Instructions$/u });
+    await previous.focus();
+    await page.keyboard.press('Enter');
+    await expect(previous).toHaveCount(0);
+    await expect(page.locator(':focus')).toHaveRole('heading');
   });
 });

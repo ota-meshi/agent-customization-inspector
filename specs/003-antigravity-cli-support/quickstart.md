@@ -48,8 +48,8 @@ pnpm run start:fixture antigravity-instructions --no-open --port 0
 ```
 
 - The rules inventory lists one row per Markdown file below `.agents/rules/`, each showing the
-  activation its frontmatter declares — always on, manual, model decision, or a glob — as
-  written, with no pattern matched against anything. The same tree's `.agent/rules/` file is
+  `trigger` its frontmatter declares — `always_on`, `manual`, `model_decision`, or `glob` with
+  its `globs` — as written, with no pattern matched against anything. The same tree's `.agent/rules/` file is
   listed under the superseded spelling, and `packages/api/.agents/rules/api.md` is listed beside
   them.
 - The hooks inventory lists `.agents/hooks.json` with its event map, matcher groups, and the

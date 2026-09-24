@@ -185,7 +185,7 @@ describe('the workspace rules file the catalog answers for (T037)', () => {
     const recognition = await recognize(
       compiled,
       '.agents/rules/typescript.md',
-      '---\nactivation: glob\nglob: "src/**/*.ts"\n---\n\nNo `any`.\n',
+      '---\ntrigger: glob\nglobs: src/**/*.ts\n---\n\nNo `any`.\n',
     );
     expect(recognition.details.kind).toBe('rule');
     expect(recognition.parseStatus).toBe('not-attempted');

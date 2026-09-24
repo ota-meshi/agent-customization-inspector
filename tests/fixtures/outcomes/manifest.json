@@ -14,7 +14,7 @@
     "repositories": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/repositories/build-fixtures.ts",
-      "sha256": "40de96fefd86adf975f829c8a9c3c45bff92945acb10706ac31f6ac9a7ba1959"
+      "sha256": "bb792009ada655fb22a4ba239bef2dde28a5456eb278f8779436d767db020ca0"
     },
     "secrets": {
       "kind": "deterministic-builder",
@@ -54,7 +54,7 @@
     "tests/e2e/antigravity-rules-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/antigravity-rules-detail.spec.ts",
-      "sha256": "610d7c002277f1071a3783b851e5e3d4395df0943a39de22d2ae2883d17eb45a"
+      "sha256": "872fe9e23297122ead15eff5999c90962bb59808ccf6674592eb53592b0c43af"
     },
     "tests/e2e/antigravity-settings-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -104,7 +104,7 @@
     "tests/e2e/claude-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-instructions-inventory.spec.ts",
-      "sha256": "f28614b5b34f154641a3a2ba5adcaa5e5a036961cdd3e03445c950b61f051f64"
+      "sha256": "436bcad32ea78a630e3c807f4fa40b2f898c625ad5827e36fe67ae4dc16931c5"
     },
     "tests/e2e/claude-mcp-files-detail.spec.ts": {
       "kind": "inline-fixture-suite",

@@ -164,7 +164,7 @@ const VACANT_TASK_RANGES: readonly (readonly [number, number])[] = [
 ];
 
 /** Every task ID the current task set declares, in numeric order. */
-const DECLARED_TASK_IDS: readonly string[] = Array.from({ length: 1222 }, (_, index) => index + 1)
+const DECLARED_TASK_IDS: readonly string[] = Array.from({ length: 1223 }, (_, index) => index + 1)
   .filter((number) => !VACANT_TASK_RANGES.some(([from, to]) => number >= from && number <= to))
   .map((number) => `T${String(number).padStart(3, '0')}`);
 
@@ -478,22 +478,22 @@ describe('task set', () => {
     // a count nobody intended to change must not change unnoticed, so the
     // literals are written here and a phase or task added without deciding to
     // add one fails (AGENTS.md § Implementation simplicity policy; T1049).
-    expect(englishTasks.size).toBe(1134);
-    expect(japaneseTasks.size).toBe(1134);
+    expect(englishTasks.size).toBe(1135);
+    expect(japaneseTasks.size).toBe(1135);
     expect(tasksEnglish.match(/^## Phase /gmu)).toHaveLength(120);
     expect(tasksJapanese.match(/^## フェーズ /gmu)).toHaveLength(120);
   });
 
   it('freezes the Antigravity CLI feature’s task and phase counts in both languages', () => {
-    // The same freeze for specs/003-antigravity-cli-support (its T065, grown by T082–T090):
-    // eighty-eight tasks in eight phases, spelled here and in the task files
+    // The same freeze for specs/003-antigravity-cli-support (its T065, grown by T082–T091):
+    // eighty-nine tasks in eight phases, spelled here and in the task files
     // both, so a task or phase added without deciding to add one fails. Two
     // IDs in that range are vacant, which the task file states; the freeze
     // counts tasks rather than the highest ID for that reason.
     const antigravityEnglish = readArtifact('specs/003-antigravity-cli-support/tasks.md');
     const antigravityJapanese = readArtifact('specs/003-antigravity-cli-support/tasks.ja.md');
-    expect(parseTasks(antigravityEnglish).size).toBe(88);
-    expect(parseTasks(antigravityJapanese).size).toBe(88);
+    expect(parseTasks(antigravityEnglish).size).toBe(89);
+    expect(parseTasks(antigravityJapanese).size).toBe(89);
     expect(antigravityEnglish.match(/^## Phase /gmu)).toHaveLength(8);
     expect(antigravityJapanese.match(/^## Phase /gmu)).toHaveLength(8);
   });

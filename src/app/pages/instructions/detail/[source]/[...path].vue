@@ -131,6 +131,14 @@ const ownRows = computed(() =>
 );
 
 /**
+ * The range the link's `range` query names, as the address's own coordinate:
+ * a move between two ranges of one file changes nothing but this, so it is
+ * also what tells the heading focus the reader stepped somewhere
+ * (`detail-heading-focus.ts` § DetailHeadingFocusOptions.selection).
+ */
+const enteredRange = computed(() => originRowRangeOf(route.query['range']));
+
+/**
  * The row the reader followed: the one the link's `range` query names, or the
  * first row holding the file where it names none or names a range this
  * generation no longer publishes for it (`detail-route.ts` §
@@ -138,7 +146,7 @@ const ownRows = computed(() =>
  * and nothing the page shows.
  */
 const enteredRow = computed(() => {
-  const range = originRowRangeOf(route.query['range']);
+  const range = enteredRange.value;
   return (
     ownRows.value.find((entry) => range !== null && entry.applicabilityRange === range) ??
     ownRows.value[0] ??
@@ -629,7 +637,7 @@ useReportedPageSubject(titleSubject);
     :accessible-text="headingAccessibleText"
     :open-path="openPath"
     :open-source="openSource"
-    :selection="null"
+    :selection="enteredRange"
     :subject-resolved="ownRows.length > 0"
     missing-text="Nothing in the current scan sits at this link's path."
     :failure-text="detailFailure"

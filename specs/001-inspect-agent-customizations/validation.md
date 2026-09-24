@@ -790,7 +790,7 @@ the vendor's own glyph.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 7**, canonical
-SHA-256 `6ee79c3c2fa8acc85c2f8a348ad1604accb9723e3f4a446257ff1c4e5d15108c`, recorded in
+SHA-256 `5ed1599f5f9d6587d19bbff17cee7493c6450fdb8271c021bdecb4a44aff38e7`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Version 7 changes one expected outcome:
 `sc003.shared-file.repository-root-gemini-md` attributes a `GEMINI.md` below the root to
 Antigravity CLI alone, where it had reached no row, because the vendor's Rules page documents
@@ -821,7 +821,15 @@ fixture: a file line now decides whether its three columns fit from the row's ow
 `accessibility`'s AUTO-1.4.4 runs text enlargement at 832px beside 1280px and asserts that no
 marks are clipped. That case failed against the build before the change — the marks measured 0px
 of 101px at 832px — and passes after it, with the eight inventory specs that render a
-file line, 78 tests, all passing.
+file line, 78 tests, all passing. The fifth review (T1223, and specs/003-antigravity-cli-support
+T091) moved three referenced fixtures' bytes at the same version: the repository builders and
+`antigravity-rules-detail` write each rule's official `trigger` key, and
+`claude-instructions-inventory` gained a case stepping between a file's two ranges from the
+keyboard, which failed against the build before its fix — no element held focus — and passes
+after it. Their digests and the canonical digest above were re-recorded together, and the 26
+specs that reach a detail move, a rules sample, or the accessibility cases were run through the
+Chromium project, 203 tests, all passing; `pnpm run docs:images` then produced byte-identical
+images.
 
 The set before it was **version 6**, canonical SHA-256
 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`. Version 6 changes one expected outcome:

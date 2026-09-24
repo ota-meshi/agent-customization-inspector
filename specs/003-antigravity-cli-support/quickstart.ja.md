@@ -47,7 +47,7 @@ pnpm run start:fixture antigravity-instructions --no-open --port 0
 ```
 
 - rules inventory が `.agents/rules/` 配下の Markdown ファイルごとに1行を挙げ、frontmatter が
-  宣言する activation — always on、manual、model decision、glob — を書かれたとおりに示し、
+  宣言する `trigger` — `always_on`、`manual`、`model_decision`、または `globs` を伴う `glob` — を書かれたとおりに示し、
   pattern はどこにも照合しない。同じ tree の `.agent/rules/` のファイルは旧綴りとして挙がり、
   `packages/api/.agents/rules/api.md` もそれらの隣に挙がる。
 - hooks inventory が `.agents/hooks.json` を、その event map、matcher group、1つの hook が持つ

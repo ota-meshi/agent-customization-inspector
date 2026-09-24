@@ -518,7 +518,7 @@ export function buildShowcaseRepository(root: string): void {
   ]);
   write(root, '.agents/rules/security.md', [
     '---',
-    'activation: always',
+    'trigger: always_on',
     '---',
     '',
     '# Security',
@@ -528,8 +528,8 @@ export function buildShowcaseRepository(root: string): void {
   ]);
   write(root, '.agents/rules/migrations.md', [
     '---',
-    'activation: glob',
-    'glob: "packages/api/migrations/**"',
+    'trigger: glob',
+    'globs: packages/api/migrations/**',
     '---',
     '',
     'A migration that has been deployed is never edited. Write a new one.',

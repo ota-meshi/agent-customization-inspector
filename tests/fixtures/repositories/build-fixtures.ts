@@ -8472,7 +8472,7 @@ export function buildAntigravityRuleFixture(
     '.agents/rules/house-style.md',
     [
       '---',
-      'activation: always',
+      'trigger: always_on',
       '---',
       '',
       '# House style',
@@ -8486,7 +8486,7 @@ export function buildAntigravityRuleFixture(
     '.agents/rules/release-checklist.md',
     [
       '---',
-      'activation: manual',
+      'trigger: manual',
       'description: The steps a release runs through, on request.',
       '---',
       '',
@@ -8499,7 +8499,7 @@ export function buildAntigravityRuleFixture(
     '.agents/rules/api-review.md',
     [
       '---',
-      'activation: model-decision',
+      'trigger: model_decision',
       'description: Use when a public interface changes.',
       '---',
       '',
@@ -8512,8 +8512,8 @@ export function buildAntigravityRuleFixture(
     '.agents/rules/typescript.md',
     [
       '---',
-      'activation: glob',
-      'glob: "src/**/*.ts"',
+      'trigger: glob',
+      'globs: src/**/*.ts',
       '---',
       '',
       'No `any`. Narrow with a discriminant rather than a type assertion.',
@@ -8523,13 +8523,13 @@ export function buildAntigravityRuleFixture(
   write(
     root,
     '.agent/rules/legacy-imports.md',
-    ['---', 'activation: always', '---', '', 'Import from the package root.', ''].join('\n'),
+    ['---', 'trigger: always_on', '---', '', 'Import from the package root.', ''].join('\n'),
   );
   // A subdirectory's rules directory: positive, loaded while a file below it
   // is read or edited. Near misses beside it follow.
   write(root, '.agents/rules/README.txt', 'not markdown\n');
-  write(root, '.agents/rules/frontend/components.md', '---\nactivation: always\n---\n');
-  write(root, 'packages/api/.agents/rules/api.md', '---\nactivation: always\n---\n');
+  write(root, '.agents/rules/frontend/components.md', '---\ntrigger: always_on\n---\n');
+  write(root, 'packages/api/.agents/rules/api.md', '---\ntrigger: always_on\n---\n');
   return {
     root,
     candidatePaths: [

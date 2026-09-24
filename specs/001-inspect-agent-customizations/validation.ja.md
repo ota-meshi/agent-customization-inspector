@@ -657,7 +657,7 @@ silhouetteを3つ見分けるのではなく色をたどって目的のものを
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 7**、canonical SHA-256
-`6ee79c3c2fa8acc85c2f8a348ad1604accb9723e3f4a446257ff1c4e5d15108c`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 7は
+`5ed1599f5f9d6587d19bbff17cee7493c6450fdb8271c021bdecb4a44aff38e7`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 7は
 期待結果を1つ変える。`sc003.shared-file.repository-root-gemini-md`が、root より下の`GEMINI.md`を、
 どの行にも届かなかったところから、Antigravity CLIだけのものとする。vendorのRulesページが、端末がたどって
 上る各階層のpairを文書化しているためである（specs/003-antigravity-cli-support T082〜T086）。期待結果の
@@ -681,6 +681,12 @@ AUTO-1.4のcaseを8 test実行して、すべてpassした。新しいassertion�
 収まるかを行自身の幅で決めるようになり、`accessibility`のAUTO-1.4.4は1280pxに加えて832pxでも文字の拡大を
 実行し、マークが切れないことを確かめる。このcaseは変更前のbuildに対して失敗し — 832pxでマークが101pxのうち
 0pxと測られた — 変更後はpassした。file行を描く8つのinventory specと合わせて78 test、すべてpassした。
+5回目のreview（T1223、そしてspecs/003-antigravity-cli-support T091）は、同じversionのまま参照fixture 3つの
+byteを動かした。リポジトリのbuilderと`antigravity-rules-detail`は各ruleに公式の`trigger` keyを書き、
+`claude-instructions-inventory`は、fileの2つの範囲の間をkeyboardで移るcaseを得た。そのcaseは修正前のbuildに
+対して失敗し — focusを持つ要素が無かった — 修正後はpassした。それらのdigestと上のcanonical digestを一緒に
+再記録し、detailの移動、rulesの見本、accessibilityのcaseに届く26 specをChromium projectで実行して203 test、
+すべてpassした。その後`pnpm run docs:images`はbyte単位で同一の画像を生成した。
 
 その前のsetは**version 6**、canonical SHA-256
 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`である。Version 6は

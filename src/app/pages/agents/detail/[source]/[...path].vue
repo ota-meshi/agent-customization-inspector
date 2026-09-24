@@ -678,7 +678,7 @@ useReportedPageSubject(titleSubject);
     :accessible-text="headingAccessibleText"
     :open-path="openPath"
     :open-source="openSource"
-    :selection="null"
+    :selection="originRowName"
     :subject-resolved="owner.length > 0"
     missing-text="Nothing in the current scan sits at this link's path."
     :failure-text="detailFailure"

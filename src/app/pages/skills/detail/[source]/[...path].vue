@@ -1021,7 +1021,7 @@ watch(
     :accessible-text="headingAccessibleText"
     :open-path="headingPath"
     :open-source="openSource"
-    :selection="null"
+    :selection="originRowName"
     :subject-resolved="selectionResolved"
     :missing-text="missingText"
     :failure-text="detailFailure"
