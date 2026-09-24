@@ -32,7 +32,7 @@ home がどこか、そして親仕様の「3つのツール」「4つの member
 - Q: Antigravity CLI の recognition はリポジトリルート配下の `GEMINI.md` と `AGENTS.md` に届くのか？ → A: 届く。すべての深さで、それぞれがそれを置くディレクトリを govern する。Rules ページは、端末がファイルを読むか編集するたびに、そのファイルのフォルダから workspace root まで上へ歩き、各階層で `<dir>/AGENTS.md` または `<dir>/GEMINI.md` と、`<dir>/.agents/AGENTS.md` または `<dir>/.agents/GEMINI.md` を読み込むと述べている。よってどの階層のファイルも端末が読み込みうるものであり、`.agents/` の綴りはその `.agents/` を置くディレクトリに属する。（2026-09-24 修正: Rules ページが、この答えが待っていた階層を今は文書化している。）
 - Q: 5つ目の member のディレクトリは `~/.gemini` のままだが、それが名を取った製品はサポート対象でなくなる。ラベルは何と述べるのか？ → A: `Antigravity home` である。member の表は、ディレクトリ自身の名前ではなく「誰のディレクトリか」で member を名付けており、ラベルがパスと異なる例はその表に既にある。`~/.config/github-copilot` は `Copilot home` と呼ばれている。短い語の取り方も同じ family に従う。`OpenAI Codex` が `Codex` になるように `Antigravity CLI` は `Antigravity` になる。member の root パスはラベルの隣に表示されるので、ラベルは誰のディレクトリかを、パスはどこかを述べる。
 - Q: 1つのファイルである skill にはディレクトリがなく、detail の file panel は「skill のディレクトリと開いているファイル」を持つ panel である。そのページは何を示すのか？ → A: 新しいものは何もない。1つのファイルである skill を admit する rule は無い (FR-004) ので、どの skill の detail もフォルダであり、file panel と tab を持つ。（2026-09-24 修正: フラットな形が allowlist から外れ、それとともに panel だけの detail も外れた。）
-- Q: 親仕様は、指定ファイルの ground truth が動いたときにだけ初回利用評価をやり直す。そのファイルはリポジトリルートの `AGENTS.md` であり、このツールはそれを読むので、読み手が2つから3つに変わる。実施は必要か？ → A: 必要である。親が定めた条件を満たすので、study input を更新し、リリース前に20セッションのエージェント駆動実行を行い、結果を記録する。指定ファイルの読み手が増えたことで読み手が述べるべき答えは難しくなっており、一致しなくなったページに対して測る criterion は何も測っていないことになる。
+- Q: 親仕様は、指定ファイルの ground truth が動いたときにだけ初回利用評価をやり直す。そのファイルはリポジトリルートの `AGENTS.md` であり、このツールはそれを読むので、読み手が2つから3つに変わる。実施は必要か？ → A: 必要である。親が定めた条件を満たすので、study input を更新し、リリース前に20セッションのエージェント駆動実行を行い、結果を記録する。指定ファイルの読み手が増えたことで読み手が述べるべき答えは難しくなっており、一致しなくなったページに対して測る criterion は何も測っていないことになる。(2026-09-24 修正: Claude Code もこのファイルを読むので読み手は4つであり、実行は再び必要になり、親の `validation.md` に記録している。)
 - Q: このリリースはこのツールに prompt/command kind の行を publish するのか？ → A: しない。Antigravity CLI の移行ガイドは legacy command を skill へ変換し、リポジトリの command ディレクトリを文書化するページもない。よってこのツールはこの kind の行を持たない。kind 自体は、それを publish する3つのツールのために閉じた集合に残る。
 
 ### Session 2026-09-24
@@ -147,10 +147,11 @@ Antigravity CLI はそろって、そこにある skill フォルダの `SKILL.m
   持っているものを挙げる。
 - `.gemini/commands/`、`.gemini/agents/`、`.gemini/skills/` を持つリポジトリは、それらを1つも
   挙げない。このリリースではどのサポート対象ツールもそれらを読まない。
-- `.agents/plugins/` や `_agents/plugins/` を持つリポジトリは、その配下の plugin・skill・rule・
+- `.agents/plugins/` や `_agents/plugins/` を持つリポジトリは、plugin が持つ plugin・skill・rule・
   MCP 定義・hook を1つも挙げない。端末が workspace の plugin ディレクトリを読み込むと述べる端末の
-  ページがない。そこにある `GEMINI.md` や `AGENTS.md` は、他の深さと同じく、それを置くディレクトリの
-  context file として挙げる (FR-007)。
+  ページがない。そこにある `GEMINI.md` や `AGENTS.md` はそれを置くディレクトリの context file として、
+  そこにある `.agents/rules/` はそのディレクトリの rules ディレクトリとして、他の深さと同じく挙げる
+  (FR-007、FR-016)。
 - `agent.md` の隣にファイルを持つ custom agent のディレクトリは、`agent.md` だけを挙げる。custom
   agent の隣の companion を文書化するページは引用先にないので、そのディレクトリの他のものは
   admit されない。
@@ -185,10 +186,12 @@ Antigravity CLI はそろって、そこにある skill フォルダの `SKILL.m
   customization、workspace の settings ファイル、`.agents/plugins/` と `_agents/plugins/` を含む
   workspace の plugin ディレクトリとそれが持つ customization を admit してはならない (MUST NOT)。
   引用した端末のページで端末がそれらを読むと文書化するものはなく、ページが確立しない location に
-  対する rule はこの製品自身の創作になる。これらの除外が届かないのは context file である。
-  `.gemini/` や plugin ディレクトリの中の `GEMINI.md` や `AGENTS.md` は、それを置くディレクトリの
-  context file であり、端末は他のディレクトリと同じくそこを上へ歩くときにそれを読み込む (FR-007)。
-  selector の文法には、その歩みから1つのディレクトリ名を除外する step も無い。
+  対する rule はこの製品自身の創作になる。これらの除外が届かないのは、端末が上へ歩く
+  各ディレクトリについて読み込むものである。`.gemini/` や plugin ディレクトリの中の `GEMINI.md` や
+  `AGENTS.md` は、それを置くディレクトリの context file であり (FR-007)、そこにある `.agents/rules/` や
+  `.agent/rules/` はそのディレクトリの rules ディレクトリである (FR-016)。どちらも端末が他のディレクトリと
+  同じくそこを上へ歩くときに読み込む。selector の文法には、その歩みから1つのディレクトリ名を除外する
+  step も無い。
   vendor contract は workspace の plugin ディレクトリについて、FR-010 が述べるインストール済み
   コピーの理由とは別にその理由を述べなければならない (MUST)。リポジトリで著述された plugin は
   何かのコピーではないからである (§ Clarifications)。

@@ -205,9 +205,12 @@ export const ANTIGRAVITY_REPO_RULE_RULE = {
    * edited. No trailing one, because the page states that only a rules
    * directory's immediate `.md` children are scanned; Claude's rules directory
    * is documented as recursive and this one is not, so the difference between
-   * the two programs is the difference between the two pages. A nested file
-   * a `.agents/rules.json` registers is not admitted (§ Known uncertainties
-   * item 10).
+   * the two programs is the difference between the two pages. The reach
+   * includes a `.gemini/` directory and a workspace plugin directory, whose
+   * own customizations this vendor's rules exclude: a rules directory there is
+   * still that directory's own (spec.md FR-003). A nested file a
+   * `.agents/rules.json` registers is not admitted (§ Known uncertainties item
+   * 10).
    */
   matcher: {
     base: { kind: 'repository' },
@@ -933,9 +936,11 @@ export const ANTIGRAVITY_GLOBAL_HOOKS_INLINE_RULE = {
  * The workspace plugin directory as a plugin — `.agents/plugins/` and the
  * `_agents/plugins/` spelling beside it — with the skills, rules, MCP
  * definitions, and hooks inside them. A `GEMINI.md` or `AGENTS.md` inside one
- * is not excluded: it is the context file of the directory holding it, which
- * `antigravity.repo.context` admits as at any other depth, because the
- * terminal loads it while walking up through that directory.
+ * is not excluded, and neither is a `.agents/rules/` there: they are the
+ * context files and the rules directory of the directory holding them, which
+ * `antigravity.repo.context` and `antigravity.repo.rule` admit as at any other
+ * depth, because the terminal loads them while walking up through that
+ * directory.
  *
  * The reason is not the installed-copy reason the rule below gives, which does
  * not reach a plugin authored in a repository: it is that no page names a

@@ -27,7 +27,7 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 |---|---|
 | FR-001 | T003, T006, T008, T018, T035, T048, T059–T060, T068–T070, T076, T078–T080 |
 | FR-002 | T011, T020–T021, T023, T025–T029, T036–T037, T082–T083 |
-| FR-003 | T011, T021, T023, T088 |
+| FR-003 | T011, T021, T023, T088, T089 |
 | FR-004 | T022, T026, T030–T031, T052–T056, T058, T082, T084 |
 | FR-005 | T021, T029, T042 |
 | FR-006 | T021, T028 |
@@ -40,7 +40,7 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 | FR-013 | T023 |
 | FR-014 | T012–T013, T016, T063, T065 |
 | FR-015 | T002, T009, T073, T077, T086 |
-| FR-016 | T011, T020–T021, T037–T038, T059, T082–T083 |
+| FR-016 | T011, T020–T021, T037–T038, T059, T082–T083, T089 |
 | FR-017 | T011, T020–T021, T036, T038, T051, T059 |
 | QR-001 | T007, T009–T014, T017, T032, T072 |
 | QR-002 | T026, T030, T053, T084 |
@@ -269,3 +269,4 @@ Each story phase ends at a state the independent test above can measure. Phase 6
 - [X] T086 Record the widened allowlist and the removed flat rules in the contracts and the user documentation, in both languages: `specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md`, `contracts/runtime-composition.md`, the Antigravity CLI row of `spec.md` and its home step in `quickstart.md`, and `docs/which-files-are-listed.md`; regenerate the conformance fixtures, re-record the frozen counts, the presentation-allowlist digests, the outcome manifest and its digests, and the `allowlistVersion` and `traversalPlanVersion` literals in `src/server/host/global-consent.ts`, and record the run in `specs/001-inspect-agent-customizations/validation.md`, per FR-015, QR-004, QR-006.
 - [X] T087 Add a `minor` changeset in `.changeset/` for the widened Antigravity CLI allowlist and the flat skills no longer listed, and run the gates the change reaches — `pnpm run test:docs`, `test:unit`, `test:contract`, `test:integration`, `test:security`, `lint`, `typecheck`, `format:check`, and the Antigravity CLI end-to-end specs on Chromium — per QR-006, QR-003.
 - [X] T088 State in FR-003 of `specs/003-antigravity-cli-support/spec.md` and `spec.ja.md`, in its edge case, and in the `antigravity.excluded.workspace-plugins` row of `specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md` and `.ja.md` that the `.gemini/` and workspace-plugin exclusions reach the customizations those directories hold and not a `GEMINI.md` or `AGENTS.md` inside them, which `antigravity.repo.context` admits as that directory's context file; pin both cases in `tests/contract/inspection-rules.test.ts`, per FR-003, FR-007.
+- [X] T089 Extend FR-003's statement in `specs/003-antigravity-cli-support/spec.md` and `spec.ja.md`, its edge case, the `antigravity.excluded.workspace-plugins` row of the vendor contract in both languages, and `src/shared/registries/antigravity/rules.ts` to a `.agents/rules/` directory inside `.gemini/` or a plugin directory, which `antigravity.repo.rule` admits as that directory's own; restate `plan.md` and `plan.ja.md` § Implementation Boundaries to match; pin the cases in `tests/contract/inspection-rules.test.ts`; and add a dated note to the Clarifications answer that counted the designated file's readers, per FR-003, FR-016.

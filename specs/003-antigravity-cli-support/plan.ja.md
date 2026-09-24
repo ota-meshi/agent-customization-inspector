@@ -131,8 +131,9 @@ tests/fixtures/repositories/, tests/fixtures/global-homes/, tests/fixtures/outco
 ## Implementation Boundaries
 
 - **Read set**: vendor contract の Inspector の表にある selector だけ。`antigravity-cli/plugins/`
-  配下のものと、credential・session・history・cache のファイルは開かない。このリリースが出荷する
-  どの rule も、リポジトリの `.gemini/` 配下のパスを開かない。
+  配下のものと、credential・session・history・cache のファイルは開かない。リポジトリの
+  `.gemini/` ディレクトリが持つ customization は開かない。その中の context file や `.agents/rules/`
+  ディレクトリはそのディレクトリ自身のものであり、他の深さと同じく届く (spec.ja.md FR-003)。
 - **Recognition, not loading**: permission rule、hook 宣言、legacy の MCP key は、ファイルが宣言
   するものとして記録し、評価も解決もせず、vendor が受け付けるものとして分類もしない (親 FR-009)。
 - **One file, several products**: ルートの `GEMINI.md` は Copilot の recognition を保ち、この

@@ -945,6 +945,22 @@ describe('the unified instruction selector matrix (T269)', () => {
       expect(admittingTools(staticInstructionRules, path), path).toEqual(expected);
     }
   });
+
+  it('admits a rules directory inside a directory whose own customizations are excluded', () => {
+    // `.gemini/` and a workspace plugin directory are walked through like any
+    // other directory, so the rules directory each can hold is its own, while
+    // a plugin's `rules/` — a plugin's content, not a directory's rules
+    // directory — stays out (specs/003-antigravity-cli-support FR-003,
+    // FR-016).
+    const ruleRules = rules.filter((rule) => rule.kind === 'rule' && rule.tool === 'antigravity');
+    for (const [path, expected] of [
+      ['.gemini/.agents/rules/style.md', ['antigravity']],
+      ['.agents/plugins/demo/.agents/rules/style.md', ['antigravity']],
+      ['.agents/plugins/demo/rules/style.md', []],
+    ] as const) {
+      expect(admittingTools(ruleRules, path), path).toEqual(expected);
+    }
+  });
 });
 
 describe('the Codex MCP carrier slice of the reference graph (T282)', () => {

@@ -816,7 +816,12 @@ referenced suite's bytes at the same version: `copilot-instructions-detail` gain
 `applyTo` is whitespace alone. Its digest and the canonical digest above were re-recorded
 together, and the spec was run through the Chromium project, 9 tests, all passing, with
 `accessibility`'s AUTO-1.4 cases, 8 tests, all passing; each new assertion was first run against
-the build before its fix and failed there.
+the build before its fix and failed there. The fourth review (T1222) moved no referenced
+fixture: a file line now decides whether its three columns fit from the row's own width, and
+`accessibility`'s AUTO-1.4.4 runs text enlargement at 832px beside 1280px and asserts that no
+marks are clipped. That case failed against the build before the change — the marks measured 0px
+of 101px at 832px — and passes after it, with the eight inventory specs that render a
+file line, 78 tests, all passing.
 
 The set before it was **version 6**, canonical SHA-256
 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`. Version 6 changes one expected outcome:

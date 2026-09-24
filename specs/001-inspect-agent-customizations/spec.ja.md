@@ -156,7 +156,7 @@
 1. **前提** `--root`を省略し、起動時`cwd`に4ツールすべてのサポート対象カスタマイズファイルがある、**操作** ユーザーが調査を開始する、**結果** ブラウザにはそのdirectoryが1つのRepository Sourceとして、toolおよびカスタマイズファイル種別で絞り込める一覧とともに表示される。
 2. **前提** ユーザーが別directoryから起動し、relativeまたはabsoluteな`--root`を指定する、**操作** ユーザーが調査を開始する、**結果** 選択済みrootが1つのRepository Sourceとして表示され、process working directoryは変更されない。
 3. **前提** `--root`が明示的なempty valueを持つ、またはvalueが欠落している、**操作** startupがcommand lineをparseする、**結果** 明示的なempty valueは固定actionableかつsource-value-freeなerrorを出し、valueの欠落は引数parserのtyped validationによりrejectされ、どちらもsession作成またはbrowser起動より前に終了する。
-4. **前提** 1つの物理`AGENTS.md`がCopilotとCodexの両方に認識される、**操作** 一覧を表示する、**結果** 1つのカスタマイズファイルに2つの異なるtool recognitionが付いた状態で表示される。
+4. **前提** 1つの物理root `AGENTS.md`をGitHub Copilot、Claude Code、OpenAI Codex、Antigravity CLIのすべてが認識する、**操作** 一覧を表示する、**結果** 1つのカスタマイズファイルに4つの異なるtool recognitionが付いた状態で表示される。
 5. **前提** Repositoryの調査対象パス一覧に含まれないファイルがある、**操作** リポジトリをスキャンする、**結果** それらのファイルはカスタマイズファイルとして解釈も表示もされない。
 6. **前提** サポート対象カスタマイズファイルがない、**操作** スキャンが完了する、**結果** エラーではなく、サポート範囲を説明する正常な空状態が表示される。
 

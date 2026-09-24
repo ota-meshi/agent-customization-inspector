@@ -677,7 +677,10 @@ fixture digestを再現した。Claude Codeによる`AGENTS.md`のreadの3回目
 まま参照suite 1つのbyteを動かした。`copilot-instructions-detail`が、`applyTo`が空白だけのtreeを得た。その
 digestと上のcanonical digestを一緒に再記録し、そのspecをChromium projectで9 test、`accessibility`の
 AUTO-1.4のcaseを8 test実行して、すべてpassした。新しいassertionはそれぞれ、まず修正前のbuildに対して
-実行し、そこで失敗することを確かめた。
+実行し、そこで失敗することを確かめた。4回目のreview（T1222）は参照fixtureを動かしていない。file行は3列が
+収まるかを行自身の幅で決めるようになり、`accessibility`のAUTO-1.4.4は1280pxに加えて832pxでも文字の拡大を
+実行し、マークが切れないことを確かめる。このcaseは変更前のbuildに対して失敗し — 832pxでマークが101pxのうち
+0pxと測られた — 変更後はpassした。file行を描く8つのinventory specと合わせて78 test、すべてpassした。
 
 その前のsetは**version 6**、canonical SHA-256
 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`である。Version 6は

@@ -27,7 +27,7 @@
 |---|---|
 | FR-001 | T003、T006、T008、T018、T035、T048、T059–T060、T068–T070、T076、T078–T080 |
 | FR-002 | T011、T020–T021、T023、T025–T029、T036–T037、T082–T083 |
-| FR-003 | T011、T021、T023, T088 |
+| FR-003 | T011、T021、T023, T088, T089 |
 | FR-004 | T022、T026、T030–T031、T052–T056、T058、T082、T084 |
 | FR-005 | T021、T029、T042 |
 | FR-006 | T021、T028 |
@@ -40,7 +40,7 @@
 | FR-013 | T023 |
 | FR-014 | T012–T013、T016、T063、T065 |
 | FR-015 | T002、T009、T073、T077、T086 |
-| FR-016 | T011、T020–T021、T037–T038、T059、T082–T083 |
+| FR-016 | T011、T020–T021、T037–T038、T059、T082–T083, T089 |
 | FR-017 | T011、T020–T021、T036、T038、T051、T059 |
 | QR-001 | T007、T009–T014、T017、T032、T072 |
 | QR-002 | T026、T030、T053、T084 |
@@ -269,3 +269,4 @@ Phase 1・2・3 で、リポジトリの inventory が4つ目のツールを名�
 - [X] T086 広がった allowlist と取り除いたフラットな rule を、contract とユーザー文書に両言語で記録する: `specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md`、`contracts/runtime-composition.md`、`spec.md` の Antigravity CLI の行と `quickstart.md` の home の手順、`docs/which-files-are-listed.md`。conformance fixture を再生成し、凍結された件数、presentation allowlist の digest、outcome manifest とその digest、`src/server/host/global-consent.ts` の `allowlistVersion` と `traversalPlanVersion` の literal を記録し直し、その実行を `specs/001-inspect-agent-customizations/validation.md` に記録する。FR-015、QR-004、QR-006 に基づく。
 - [X] T087 広がった Antigravity CLI の allowlist ともう挙がらないフラットな skill について `.changeset/` に `minor` の changeset を加え、変更が届く gate — `pnpm run test:docs`、`test:unit`、`test:contract`、`test:integration`、`test:security`、`lint`、`typecheck`、`format:check`、Chromium での Antigravity CLI の end-to-end spec — を実行する。QR-006、QR-003 に基づく。
 - [X] T088 `.gemini/` と workspace の plugin の除外が届くのはそれらのディレクトリが持つ customization であって、その中の `GEMINI.md` や `AGENTS.md` ではなく、それは `antigravity.repo.context` がそのディレクトリの context file として admit することを、`specs/003-antigravity-cli-support/spec.md` と `spec.ja.md` の FR-003 とその edge case、`specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md` と `.ja.md` の `antigravity.excluded.workspace-plugins` の行に記し、両方の case を `tests/contract/inspection-rules.test.ts` で固定する。FR-003、FR-007 に基づく。
+- [X] T089 `specs/003-antigravity-cli-support/spec.md` と `spec.ja.md` の FR-003 の記述、その edge case、vendor contract（両言語）の `antigravity.excluded.workspace-plugins` の行、`src/shared/registries/antigravity/rules.ts` を、`.gemini/` や plugin ディレクトリの中の `.agents/rules/` ディレクトリにも広げる。それは `antigravity.repo.rule` がそのディレクトリ自身のものとして admit する。`plan.md` と `plan.ja.md` の § Implementation Boundaries をそれに合わせ、case を `tests/contract/inspection-rules.test.ts` で固定し、指定ファイルの読み手を数えた Clarifications の回答に日付付きの注記を加える。FR-003、FR-016 に基づく。

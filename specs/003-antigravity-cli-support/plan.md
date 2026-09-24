@@ -135,7 +135,9 @@ tests/fixtures/repositories/, tests/fixtures/global-homes/, tests/fixtures/outco
 
 - **Read set**: Exactly the selectors in the vendor contract's Inspector tables. Nothing under
   `antigravity-cli/plugins/`, and no credential, session, history, or cache file, is opened. No
-  `.gemini/` path in a repository is opened by any rule this release ships.
+  customization a repository's `.gemini/` directory holds is opened; a context file or a
+  `.agents/rules/` directory inside it is that directory's own, reached as at any other depth
+  (spec.md FR-003).
 - **Recognition, not loading**: A permission rule, a hook declaration, and a legacy MCP key are
   recorded as what the file declares, never evaluated, resolved, or classified as accepted by
   the vendor (parent FR-009).

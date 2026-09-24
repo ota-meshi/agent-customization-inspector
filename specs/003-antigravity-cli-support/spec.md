@@ -33,7 +33,7 @@ about four and five.
 - Q: Does an Antigravity CLI recognition reach `GEMINI.md` and `AGENTS.md` below the repository root? → A: Yes, at every depth, each governing the directory holding it. The Rules page states that whenever the terminal reads or edits a file it walks up from that file's folder to the workspace root, loading `<dir>/AGENTS.md` or `<dir>/GEMINI.md` and `<dir>/.agents/AGENTS.md` or `<dir>/.agents/GEMINI.md` at each level, so a file at any level is one the terminal can load, and the `.agents/` spelling belongs to the directory holding that `.agents/`. (Amended 2026-09-24: the Rules page now documents the hierarchy, which the answer had waited for.)
 - Q: The fifth member's directory stays `~/.gemini` while the product it was named for is no longer supported. What does its label say? → A: `Antigravity home`. The member table names a member by whose directory it is rather than by the directory's own name, and a label that differs from the path is already what that table does: `~/.config/github-copilot` is labelled `Copilot home`. The short form follows the same family — `Antigravity CLI` shortens to `Antigravity` as `OpenAI Codex` shortens to `Codex` — and the member's root path is shown beside the label, so the label says whose directory it is and the path says where.
 - Q: A skill that is one file has no directory, and the detail's file panel is the panel holding the skill's directory and the open file. What does that page show? → A: Nothing new: no rule admits a skill that is one file (FR-004), so every skill detail is the folder one, with its file panel and its tabs. (Amended 2026-09-24: the flat shape left the allowlist, and with it the panel-only detail.)
-- Q: The parent specification repeats its first-use evaluation only when the designated file's ground truth moves. That file is the repository root `AGENTS.md`, and this tool reads it, so its recognizing tools go from two to three. Is a run owed? → A: Yes. The condition the parent set is met, so the study inputs are updated and the twenty agent-driven sessions are run before release, with the result recorded. A reader of the designated file now has a harder answer to give, and a criterion measured against a page that no longer matches would be measuring nothing.
+- Q: The parent specification repeats its first-use evaluation only when the designated file's ground truth moves. That file is the repository root `AGENTS.md`, and this tool reads it, so its recognizing tools go from two to three. Is a run owed? → A: Yes. The condition the parent set is met, so the study inputs are updated and the twenty agent-driven sessions are run before release, with the result recorded. A reader of the designated file now has a harder answer to give, and a criterion measured against a page that no longer matches would be measuring nothing. (Amended 2026-09-24: Claude Code reads the file too, so its recognizing tools are four, and the run was owed again and is recorded in the parent's `validation.md`.)
 - Q: Does the release publish the prompt and command kind for this tool? → A: No. Antigravity CLI's migration guide converts legacy commands into skills, and no page documents a repository command directory, so this tool contributes no row of that kind. The kind stays in the closed set for the three tools that do publish it.
 
 ### Session 2026-09-24
@@ -153,9 +153,10 @@ on no row.
 - A repository holding `.gemini/commands/`, `.gemini/agents/`, or `.gemini/skills/` lists none
   of them: no supported tool reads them in this release.
 - A repository holding `.agents/plugins/` or `_agents/plugins/` lists no plugin, skill, rule,
-  MCP definition, or hook below it: no terminal page documents the terminal loading a workspace
-  plugin directory. A `GEMINI.md` or `AGENTS.md` there is listed as the context file of the
-  directory holding it, as at any other depth (FR-007).
+  MCP definition, or hook the plugin carries: no terminal page documents the terminal loading a
+  workspace plugin directory. A `GEMINI.md` or `AGENTS.md` there is listed as the context file of
+  the directory holding it, and a `.agents/rules/` there as that directory's rules directory, as
+  at any other depth (FR-007, FR-016).
 - A custom-agent directory holding files beside its `agent.md` lists the `agent.md` alone: no
   cited page documents a companion beside a custom agent, so nothing else in that directory is
   admitted.
@@ -193,10 +194,11 @@ on no row.
   including `.agents/plugins/` and `_agents/plugins/` or the customizations such a directory
   carries: no cited terminal page documents the terminal reading one, and a rule for a location
   no page establishes would be this product's own invention. What these exclusions do not reach
-  is a context file: a `GEMINI.md` or `AGENTS.md` inside `.gemini/` or a plugin directory is the
-  context file of the directory holding it, which the terminal loads as it walks up through that
-  directory like any other (FR-007), and the selector grammar has no step that would exclude one
-  directory name from that walk. The vendor contract MUST
+  is what the terminal loads for each directory it walks up through: a `GEMINI.md` or
+  `AGENTS.md` inside `.gemini/` or a plugin directory is the context file of the directory holding
+  it (FR-007), and a `.agents/rules/` or `.agent/rules/` there is that directory's rules
+  directory (FR-016), both loaded as the terminal walks up through that directory like any other,
+  and the selector grammar has no step that would exclude one directory name from that walk. The vendor contract MUST
   state that reason for the workspace plugin directory separately from the installed-copy reason
   FR-010 gives, because a plugin authored in a repository is not a copy of anything
   (§ Clarifications).
