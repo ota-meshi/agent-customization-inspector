@@ -1345,14 +1345,14 @@ describe('the Copilot hook reading and its surface facts (T888)', () => {
   });
 
   it('records each surface’s documented composition as its own strategy', () => {
-    // The editor resolves one event's workspace and User hooks with the
-    // workspace winning, then runs the applicable agent and plugin hooks in
-    // addition — `select-first` and `append` in one record, with `filter` for
-    // the settings and preview gates that decide which sources participate.
+    // The editor runs every applicable user, workspace, plugin, and
+    // agent-scoped hook for an event, with `filter` for the settings and
+    // preview gates that decide which sources participate; its page states no
+    // precedence or order between them, so no same-event winner is recorded.
     expect(COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY.operations).toEqual([
       'filter',
-      'select-first',
       'append',
+      'unknown-order',
     ]);
     expect(COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY.lifecycleQualifiers).toEqual(['preview']);
     // The CLI composes instead of selecting: every entry of every active source

@@ -3146,7 +3146,7 @@
     "locator": {
       "vendorScope": "user",
       "lookupBase": "profile-data",
-      "relativeSelector": ".copilot/instructions/<name>.instructions.md; .claude/rules/<name>.md; profile instruction files",
+      "relativeSelector": ".copilot/copilot-instructions.md; .copilot/instructions/<name>.instructions.md; .claude/rules/<name>.md; profile instruction files",
       "traversal": "recursive-under-base"
     },
     "documentationStatus": "documented",
@@ -3158,11 +3158,12 @@
         "officialHost": "code.visualstudio.com",
         "sections": [
           "Choose a scope",
+          "Use a .github/copilot-instructions.md file",
           "Instructions file locations",
           "Resolve conflicting instructions"
         ],
         "reviewedOn": "2026-09-24",
-        "establishes": "User-level instruction files live in the documented user locations — ~/.copilot/instructions and ~/.claude/rules for Agent Host sessions, VS Code profile storage for the Local agent — and serve personal preferences across projects; applicable instruction sources are additive, and the page documents no precedence among them."
+        "establishes": "User-level instruction files live in the documented user locations — ~/.copilot/copilot-instructions.md for personal always-on instructions and ~/.copilot/instructions and ~/.claude/rules for Agent Host sessions, VS Code profile storage for the Local agent — and serve personal preferences across projects; applicable instruction sources are additive, and the page documents no precedence among them."
       },
       {
         "sourceId": "vscode.copilot.settings",

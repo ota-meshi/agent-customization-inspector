@@ -760,20 +760,17 @@ export const COPILOT_CLOUD_PLUGINS_ACTIVATION_STRATEGY = {
 } as const satisfies RuntimeCompositionStrategy;
 
 /**
- * Copilot VS Code hook composition: for one event, the workspace hooks are
- * resolved against the User ones with the workspace taking precedence
- * (`select-first`), and the applicable agent and plugin hooks then run in
- * addition to whatever that resolution kept (`append`). Which sources
- * participate at all is the `filter`: the feature is preview, hooks need
- * `chat.useHooks` and a trusted workspace, the Claude-format files need
- * `chat.useClaudeHooks`, parent-repository discovery is opt-in, and a
- * location can be switched off through the locations setting.
+ * Copilot VS Code hook composition: which sources participate at all is the
+ * `filter` — the feature is preview, hooks need `chat.useHooks` and a trusted
+ * workspace, the Claude-format files need `chat.useClaudeHooks`,
+ * parent-repository discovery is opt-in, and a location can be switched off
+ * through the locations setting — and the applicable user, workspace, plugin,
+ * and agent-scoped hooks then all run (`append`), in an order the page does
+ * not state (`unknown-order`).
  *
- * `partially-documented`: the page describes the Local harness and states the
- * `filter` and `append` steps, but no precedence or order between the
- * workspace and User hooks of one event, so the `select-first` step rests on
- * no reviewed section (contracts/runtime-composition.md § Canonical
- * evidence-assessment index).
+ * No `select-first`: the page names no precedence between the workspace and
+ * user hooks of one event, so a same-event winner would be a resolution no
+ * reviewed section documents.
  *
  * Matcher values are not part of the composition here, and the page is
  * explicit about why: the Local parser ignores the matcher values of a
@@ -784,8 +781,8 @@ export const COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY = {
   strategyId: 'copilot.vscode.hooks.composition',
   tool: 'copilot',
   surfaces: ['copilot-vscode'],
-  operations: ['filter', 'select-first', 'append'],
-  documentationStatus: 'partially-documented',
+  operations: ['filter', 'append', 'unknown-order'],
+  documentationStatus: 'documented',
   lifecycleQualifiers: ['preview'],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [

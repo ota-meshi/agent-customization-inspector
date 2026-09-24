@@ -297,10 +297,11 @@ export const COPILOT_VSCODE_SKILLS_BEHAVIOR = {
 
 /**
  * Copilot VS Code User instructions: the personal instruction locations in
- * home and profile data, additive with the other instruction sources. Recorded
- * for maintenance only — no Repository rule rests on it, and only the
- * consented `<COPILOT_HOME>/instructions` subset is ever admitted, by the
- * Global rule that ships with its own phase.
+ * home and profile data, additive with the other instruction sources — among
+ * them the always-on `~/.copilot/copilot-instructions.md` of an Agent Host
+ * session. No Repository rule rests on it; the consented `<COPILOT_HOME>`
+ * subset — that file and the `instructions` directory — is admitted by the two
+ * Global instruction rules.
  */
 export const COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR = {
   behaviorId: 'copilot.behavior.vscode.user.instructions',
@@ -316,7 +317,7 @@ export const COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR = {
         // Relative to the base, like the other User locators: the home anchor
         // is what `profile-data` already says.
         relativeSelector:
-          '.copilot/instructions/<name>.instructions.md; .claude/rules/<name>.md; profile instruction files',
+          '.copilot/copilot-instructions.md; .copilot/instructions/<name>.instructions.md; .claude/rules/<name>.md; profile instruction files',
         traversal: 'recursive-under-base',
       }
     : null,
@@ -330,12 +331,13 @@ export const COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR = {
           officialHost: 'code.visualstudio.com',
           sections: [
             'Choose a scope',
+            'Use a .github/copilot-instructions.md file',
             'Instructions file locations',
             'Resolve conflicting instructions',
           ],
           reviewedOn: '2026-09-24',
           establishes:
-            'User-level instruction files live in the documented user locations — ~/.copilot/instructions and ~/.claude/rules for Agent Host sessions, VS Code profile storage for the Local agent — and serve personal preferences across projects; applicable instruction sources are additive, and the page documents no precedence among them.',
+            'User-level instruction files live in the documented user locations — ~/.copilot/copilot-instructions.md for personal always-on instructions and ~/.copilot/instructions and ~/.claude/rules for Agent Host sessions, VS Code profile storage for the Local agent — and serve personal preferences across projects; applicable instruction sources are additive, and the page documents no precedence among them.',
         },
         {
           sourceId: 'vscode.copilot.settings',

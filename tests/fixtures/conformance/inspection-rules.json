@@ -3253,6 +3253,14 @@
         "sections": ["Copilot CLI"],
         "reviewedOn": "2026-08-27",
         "establishes": "The CLI reads personal instructions from ~/.copilot/copilot-instructions.md, applied to every session regardless of project, which is the exact file this rule admits at the consented boundary root."
+      },
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Use a .github/copilot-instructions.md file"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "VS Code names ~/.copilot/copilot-instructions.md as the file for personal, always-on instructions in Copilot Agent Host sessions — the same file, which is why the editor is one of this rule’s readers."
       }
     ]
   },

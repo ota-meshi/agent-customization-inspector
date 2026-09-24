@@ -1716,8 +1716,10 @@ export const COPILOT_REPO_CLAUDE_SETTINGS_HOOKS_RULE = {
 
 /**
  * Copilot Global personal instructions: the read-authorizing counterpart of
- * `copilot.behavior.cli.user.instructions.root` (FR-015). An exact target, so
- * the plan reads the one named file and never enumerates the home.
+ * `copilot.behavior.cli.user.instructions.root`, and of the always-on file
+ * `copilot.behavior.vscode.user.instructions` names for an Agent Host session
+ * (FR-015). An exact target, so the plan reads the one named file and never
+ * enumerates the home.
  */
 export const COPILOT_GLOBAL_INSTRUCTIONS_ROOT_RULE = {
   ruleId: 'copilot.global.instructions.root',
@@ -1747,6 +1749,15 @@ export const COPILOT_GLOBAL_INSTRUCTIONS_ROOT_RULE = {
           reviewedOn: '2026-08-27',
           establishes:
             'The CLI reads personal instructions from ~/.copilot/copilot-instructions.md, applied to every session regardless of project, which is the exact file this rule admits at the consented boundary root.',
+        },
+        {
+          sourceId: 'vscode.copilot.instructions',
+          url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Use a .github/copilot-instructions.md file'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'VS Code names ~/.copilot/copilot-instructions.md as the file for personal, always-on instructions in Copilot Agent Host sessions — the same file, which is why the editor is one of this rule’s readers.',
         },
       ]
     : [],

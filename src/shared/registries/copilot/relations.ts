@@ -691,8 +691,14 @@ export const COPILOT_RULE_RELATIONS: Readonly<Record<CopilotRuleId, RuleRelation
    * strategies that compose those files at runtime.
    */
   [COPILOT_GLOBAL_INSTRUCTIONS_ROOT_RULE.ruleId]: {
-    basedOnBehaviors: [COPILOT_CLI_USER_INSTRUCTIONS_ROOT_BEHAVIOR],
-    explainedByStrategies: [COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY],
+    basedOnBehaviors: [
+      COPILOT_CLI_USER_INSTRUCTIONS_ROOT_BEHAVIOR,
+      COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR,
+    ],
+    explainedByStrategies: [
+      COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY,
+      COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY,
+    ],
   },
   [COPILOT_GLOBAL_INSTRUCTIONS_PATH_RULE.ruleId]: {
     basedOnBehaviors: [

@@ -1966,14 +1966,14 @@ describe('the Codex plugin activation strategy (T766)', () => {
 describe('the Copilot hook composition graph (T892)', () => {
   it('gives each surface its own composition, and each hook rule the ones it rests on', () => {
     // Three strategies rather than one, because the three surfaces compose
-    // differently: the editor resolves an event's workspace and User hooks and
-    // then adds the agent and plugin ones, the CLI appends every active
+    // differently: the editor runs every applicable source's hooks in an order
+    // its page does not state, the CLI appends every active
     // source's entries in the documented order, and the cloud sandbox has only
     // the repository files its clone holds.
     const vscode = RUNTIME_COMPOSITION_STRATEGIES['copilot.vscode.hooks.composition'];
     const cli = RUNTIME_COMPOSITION_STRATEGIES['copilot.cli.hooks.composition'];
     const cloud = RUNTIME_COMPOSITION_STRATEGIES['copilot.cloud.hooks.composition'];
-    expect(vscode.operations).toEqual(['filter', 'select-first', 'append']);
+    expect(vscode.operations).toEqual(['filter', 'append', 'unknown-order']);
     expect(cli.operations).toEqual(['filter', 'append']);
     expect(cloud.operations).toEqual(['filter', 'append']);
     expect([vscode.surfaces, cli.surfaces, cloud.surfaces]).toEqual([

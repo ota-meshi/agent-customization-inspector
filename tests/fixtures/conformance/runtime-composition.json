@@ -959,8 +959,8 @@
     "strategyId": "copilot.vscode.hooks.composition",
     "tool": "copilot",
     "surfaces": ["copilot-vscode"],
-    "operations": ["filter", "select-first", "append"],
-    "documentationStatus": "partially-documented",
+    "operations": ["filter", "append", "unknown-order"],
+    "documentationStatus": "documented",
     "lifecycleQualifiers": ["preview"],
     "evidence": [
       {

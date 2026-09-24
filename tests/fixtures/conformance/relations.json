@@ -630,8 +630,14 @@
       ]
     },
     "copilot.global.instructions.root": {
-      "basedOnBehaviors": ["copilot.behavior.cli.user.instructions.root"],
-      "explainedByStrategies": ["copilot.cli.instructions.layering"]
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.user.instructions.root",
+        "copilot.behavior.vscode.user.instructions"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.instructions.layering",
+        "copilot.vscode.instructions.layering"
+      ]
     },
     "copilot.global.mcp": {
       "basedOnBehaviors": ["copilot.behavior.cli.user.mcp"],
