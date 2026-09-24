@@ -578,7 +578,7 @@
     "locator": {
       "vendorScope": "repository",
       "lookupBase": "runtime-cwd",
-      "relativeSelector": "CLAUDE.md; CLAUDE.local.md",
+      "relativeSelector": "CLAUDE.md; CLAUDE.local.md; AGENTS.md; .claude/AGENTS.md",
       "traversal": "ancestor-chain-to-filesystem-root"
     },
     "documentationStatus": "partially-documented",
@@ -588,9 +588,9 @@
         "sourceId": "anthropic.claude-code.memory.locations-load",
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
-        "sections": ["How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md; the walk names no repository root as its stop, and it names no .claude/CLAUDE.md variant on an ancestor directory."
+        "sections": ["How CLAUDE.md files load", "When Claude Code reads AGENTS.md"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md; the walk names no repository root as its stop, and it names no .claude/CLAUDE.md variant on an ancestor directory. The AGENTS.md read at session start covers every AGENTS.md and .claude/AGENTS.md in the directories above the working directory too."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",
@@ -609,7 +609,7 @@
     "locator": {
       "vendorScope": "repository",
       "lookupBase": "runtime-cwd",
-      "relativeSelector": "CLAUDE.md; CLAUDE.local.md",
+      "relativeSelector": "CLAUDE.md; CLAUDE.local.md; AGENTS.md",
       "traversal": "lazy-descendant"
     },
     "documentationStatus": "partially-documented",
@@ -619,9 +619,13 @@
         "sourceId": "anthropic.claude-code.memory.locations-load",
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
-        "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case."
+        "sections": [
+          "Choose where to put CLAUDE.md files",
+          "How CLAUDE.md files load",
+          "When Claude Code reads AGENTS.md"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case. A subdirectory’s AGENTS.md is read the same way, once Claude opens a file there with the Read tool."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",
@@ -640,7 +644,7 @@
     "locator": {
       "vendorScope": "repository",
       "lookupBase": "runtime-cwd",
-      "relativeSelector": "CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md",
+      "relativeSelector": "CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md; AGENTS.md; .claude/AGENTS.md",
       "traversal": "exact"
     },
     "documentationStatus": "documented",
@@ -650,9 +654,13 @@
         "sourceId": "anthropic.claude-code.memory.locations-load",
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
-        "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch."
+        "sections": [
+          "Choose where to put CLAUDE.md files",
+          "How CLAUDE.md files load",
+          "When Claude Code reads AGENTS.md"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch. At session start Claude Code also reads every AGENTS.md and .claude/AGENTS.md in the working directory and the directories above it."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",
@@ -786,7 +794,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Organize rules with .claude/rules/"],
-        "reviewedOn": "2026-08-27",
+        "reviewedOn": "2026-09-24",
         "establishes": "Markdown files placed in a project's .claude/rules/ directory are all discovered recursively, so rules may be organized into subdirectories; a rule without paths frontmatter loads at launch with the same priority as .claude/CLAUDE.md, while a rule with paths applies only when Claude works with a file matching one of its glob patterns. The section states neither the trigger that loads a nested .claude/rules/ directory on demand nor the base an ancestor layer resolves its paths globs against."
       }
     ]
@@ -969,7 +977,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Auto memory"],
-        "reviewedOn": "2026-08-27",
+        "reviewedOn": "2026-09-24",
         "establishes": "Auto memory keeps its files under the Claude configuration directory per project and loads a startup prefix with topic files fetched on demand."
       },
       {
@@ -1031,7 +1039,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Choose where to put CLAUDE.md files"],
-        "reviewedOn": "2026-08-27",
+        "reviewedOn": "2026-09-24",
         "establishes": "User instructions live at ~/.claude/CLAUDE.md and hold personal preferences for all projects, one of the scopes the documented broadest-to-most-specific load order spans."
       },
       {
@@ -1170,8 +1178,8 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Organize rules with .claude/rules/"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Personal rules in ~/.claude/rules/ apply to every project on the machine and are loaded before project rules, which gives project rules the higher priority."
+        "reviewedOn": "2026-09-24",
+        "establishes": "Personal rules in ~/.claude/rules/ apply to every project on the machine and are loaded before project rules, and neither set overrides the other."
       }
     ]
   },

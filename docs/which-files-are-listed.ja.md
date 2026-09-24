@@ -14,7 +14,7 @@
 
 | 種別 | 場所 |
 | --- | --- |
-| Instructions | `CLAUDE.md` と `CLAUDE.local.md`。任意のディレクトリ |
+| Instructions | `CLAUDE.md`、`CLAUDE.local.md`、`AGENTS.md`。任意のディレクトリ |
 | Skills | `.claude/skills/` ディレクトリ配下の各ディレクトリの `SKILL.md`。そのディレクトリがどこにあっても |
 | Agents | `.claude/agents/` 配下の任意の深さの `.md` |
 | Prompts / commands | `.claude/commands/` 配下の任意の深さの `.md` |

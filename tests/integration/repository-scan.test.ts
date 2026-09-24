@@ -2055,12 +2055,14 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     // declared basename with no on-disk file derives nothing — the ordinary
     // negative, no diagnostic.
     //
-    // `AGENTS.md` is Copilot's too, at the root and at the depth the fixture's
-    // near miss sits at: Codex's rule is anchored at the root, while Copilot's
-    // reaches every depth because all three of its surfaces document reaching a
-    // nested file, each in its own way (T255). The nested file is therefore not
-    // a near miss for every product — it is a Copilot row of its own range, and
-    // the Codex rows beside it are unchanged.
+    // `AGENTS.md` is Copilot's and Claude Code's too, at the root and at the
+    // depth the fixture's near miss sits at: Codex's rule is anchored at the
+    // root, while Copilot's reaches every depth because all three of its
+    // surfaces document reaching a nested file, each in its own way (T255),
+    // and Claude Code reads a subdirectory's `AGENTS.md` once it reads a file
+    // there. The nested file is therefore not a near miss for every product —
+    // it is a row of its own range, and the Codex rows beside it are
+    // unchanged.
     expectRepositoryInstructionSources(snapshot);
     expect(normalizedInstructions(snapshot)).toEqual([
       {
@@ -2068,7 +2070,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
           { sourceRelativePath: 'AGENTS.override.md', recognitions: [CODEX_ONLY] },
           { sourceRelativePath: 'GUIDE.codex.md', recognitions: [CODEX_ONLY] },
@@ -2077,7 +2079,12 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       },
       {
         applicabilityRange: 'docs/**',
-        files: [{ sourceRelativePath: 'docs/AGENTS.md', recognitions: [COPILOT_ALL_SURFACES] }],
+        files: [
+          {
+            sourceRelativePath: 'docs/AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY],
+          },
+        ],
       },
     ]);
     // The carrier publishes like any candidate since its own candidacy
@@ -2262,7 +2269,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
         ],
       },
@@ -2415,7 +2422,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
           { sourceRelativePath: 'TEAM_GUIDE.md', recognitions: [CODEX_ONLY] },
         ],
@@ -2933,7 +2940,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
         ],
       },
@@ -3074,16 +3081,19 @@ describe('the committed Claude instructions inventory (T229)', () => {
     // `AGENTS.md` beside the Claude files — which is the grouping this phase
     // exists for — and `.claude/CLAUDE.md` lands there too, because `.claude`
     // is the rule's own container rather than what the file governs.
-    // `AGENTS.md` gains no Claude recognition: Claude Code reads `CLAUDE.md`,
-    // not `AGENTS.md`. No row states which documented layer a file belongs
-    // to, because that is a relation to a working directory this product does
-    // not observe (FR-009).
+    // `AGENTS.md` is Claude's as well as Codex's, and the nested
+    // `packages/api/AGENTS.md` joins its own directory's row: Claude reads
+    // `AGENTS.md` where and how it reads `CLAUDE.md`. No row states which
+    // documented layer a file belongs to, or whether a session reads the
+    // `CLAUDE.md` files or the `AGENTS.md` beside them, because both are
+    // relations to a working directory and a setting this product does not
+    // observe (FR-009).
     //
-    // The two shared root files carry a Copilot recognition too, and the
-    // Claude-only ones show why that is a statement rather than a filename
-    // rule: Copilot documents its `CLAUDE.md` alternative at the repository
-    // root alone, so `.claude/CLAUDE.md`, `CLAUDE.local.md`, and every nested
-    // `CLAUDE.md` stay Claude's (T256).
+    // The shared files carry a Copilot recognition too, and the Claude-only
+    // ones show why that is a statement rather than a filename rule: Copilot
+    // documents its `CLAUDE.md` alternative at the repository root alone, so
+    // `.claude/CLAUDE.md`, `CLAUDE.local.md`, and every nested `CLAUDE.md` stay
+    // Claude's (T256).
     expectRepositoryInstructionSources(snapshot);
     expect(normalizedInstructions(snapshot)).toEqual([
       {
@@ -3095,7 +3105,7 @@ describe('the committed Claude instructions inventory (T229)', () => {
           },
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
           {
             sourceRelativePath: 'CLAUDE.local.md',
@@ -3124,6 +3134,10 @@ describe('the committed Claude instructions inventory (T229)', () => {
             recognitions: [CLAUDE_ONLY],
           },
           {
+            sourceRelativePath: 'packages/api/AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY],
+          },
+          {
             sourceRelativePath: 'packages/api/CLAUDE.md',
             recognitions: [CLAUDE_ONLY],
           },
@@ -3142,7 +3156,12 @@ describe('the committed Claude instructions inventory (T229)', () => {
         .join('/'),
     );
     expect([...opened].sort()).toEqual(
-      [...fixture.expectedClaudeInstructionPaths, ...fixture.expectedCodexInstructionPaths].sort(),
+      [
+        ...new Set([
+          ...fixture.expectedClaudeInstructionPaths,
+          ...fixture.expectedCodexInstructionPaths,
+        ]),
+      ].sort(),
     );
     expect(new Set(opened).size).toBe(opened.length);
     for (const nearMiss of fixture.nearMissPaths) {
@@ -3190,13 +3209,13 @@ describe('the committed Claude instructions inventory (T229)', () => {
       }
     }
     // The failure changes no grouping: a range comes from where a file sits,
-    // not from what parsed, so the three ranges and their seven files stay.
+    // not from what parsed, so the three ranges and their eight files stay.
     expect(snapshot.instructions.map((entry) => entry.applicabilityRange)).toEqual([
       '**',
       'docs/**',
       'packages/api/**',
     ]);
-    expect(snapshot.instructions.flatMap((entry) => entry.files)).toHaveLength(7);
+    expect(snapshot.instructions.flatMap((entry) => entry.files)).toHaveLength(8);
   });
 });
 
@@ -3240,7 +3259,7 @@ describe('the committed Copilot instructions inventory (T248)', () => {
           },
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
           { sourceRelativePath: 'CLAUDE.local.md', recognitions: [CLAUDE_ONLY] },
           { sourceRelativePath: 'CLAUDE.md', recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY] },
@@ -3267,7 +3286,7 @@ describe('the committed Copilot instructions inventory (T248)', () => {
           },
           {
             sourceRelativePath: 'packages/api/AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY],
           },
           { sourceRelativePath: 'packages/api/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
           // The nested `GEMINI.md` is nobody's: Copilot documents the root
@@ -3973,7 +3992,7 @@ describe('the unified instructions inventory (T270)', () => {
         : [
             {
               sourceRelativePath: 'AGENTS.md',
-              recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+              recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
             },
           ]),
       { sourceRelativePath: 'AGENTS.override.md', recognitions: [CODEX_ONLY] },
@@ -3998,7 +4017,10 @@ describe('the unified instructions inventory (T270)', () => {
       {
         applicabilityRange: 'docs/**',
         files: [
-          { sourceRelativePath: 'docs/AGENTS.md', recognitions: [COPILOT_ALL_SURFACES] },
+          {
+            sourceRelativePath: 'docs/AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY],
+          },
           // The malformed file keeps its row: what failed is reading its
           // declarations, and a path-derived range comes from where the file
           // sits (FR-028, T1093).
@@ -4013,7 +4035,10 @@ describe('the unified instructions inventory (T270)', () => {
             sourceRelativePath: 'packages/api/.github/copilot-instructions.md',
             recognitions: [COPILOT_CLI_ONLY],
           },
-          { sourceRelativePath: 'packages/api/AGENTS.md', recognitions: [COPILOT_ALL_SURFACES] },
+          {
+            sourceRelativePath: 'packages/api/AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY],
+          },
           // The nested `CLAUDE.md` the configuration does not name: Claude's
           // alone, with zero Codex recognition — a configured fallback is an
           // entry name matched at the Repository root, and no filename
@@ -5216,12 +5241,12 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
     //
     // The root context pair first, each carrying this vendor's recognition
     // beside the ones it already had — `GEMINI.md` Copilot's, `AGENTS.md`
-    // Copilot's and Codex's — in the order the vendor catalogs are composed
-    // (spec.md § FR-007).
+    // Copilot's, Claude Code's, and Codex's — in the order the vendor catalogs
+    // are composed (spec.md § FR-007).
     const rootRow = snapshot.instructions.find((entry) => entry.applicabilityRange === '**')!;
     for (const [path, tools] of [
       ['GEMINI.md', ['copilot', 'antigravity']],
-      ['AGENTS.md', ['copilot', 'codex', 'antigravity']],
+      ['AGENTS.md', ['copilot', 'claude', 'codex', 'antigravity']],
     ] as const) {
       expect(
         rootRow.files
@@ -5316,14 +5341,17 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
 
     // A context file below the root is not this vendor's: the migration page
     // states the workspace pair at the active directory and no depth under it,
-    // so `packages/api/AGENTS.md` reaches the inventory as Copilot's alone and
-    // `packages/api/GEMINI.md`, which no other product documents there,
-    // reaches it not at all (contracts/vendors/antigravity-cli.md § Known
-    // uncertainties item 1).
+    // so `packages/api/AGENTS.md` reaches the inventory as Copilot's and Claude
+    // Code's alone and `packages/api/GEMINI.md`, which no other product
+    // documents there, reaches it not at all
+    // (contracts/vendors/antigravity-cli.md § Known uncertainties item 1).
     const nestedAgents = snapshot.instructions
       .flatMap((entry) => entry.files)
       .find((file) => file.sourceRelativePath === 'packages/api/AGENTS.md');
-    expect(nestedAgents?.recognitions.map((recognition) => recognition.tool)).toEqual(['copilot']);
+    expect(nestedAgents?.recognitions.map((recognition) => recognition.tool)).toEqual([
+      'copilot',
+      'claude',
+    ]);
     expect(
       snapshot.files.some((file) => file.sourceRelativePath === 'packages/api/GEMINI.md'),
     ).toBe(false);

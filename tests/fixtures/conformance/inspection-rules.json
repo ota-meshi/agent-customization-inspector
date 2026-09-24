@@ -1005,8 +1005,8 @@
         "sourceId": "anthropic.claude-code.memory.locations-load",
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
-        "sections": ["How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-27",
+        "sections": ["Auto memory"],
+        "reviewedOn": "2026-09-24",
         "establishes": "The automatic memory files Claude generates about the reader’s own sessions live under the configuration directory’s projects tree, which this rule declines."
       },
       {
@@ -1184,7 +1184,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-27",
+        "reviewedOn": "2026-09-24",
         "establishes": "The user memory location is ~/.claude/CLAUDE.md, loaded for every project the reader works in, and the documented scopes are concatenated into context rather than overriding one another — so the one user file is read alongside the project chain rather than instead of it."
       },
       {
@@ -1305,8 +1305,8 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Organize rules with .claude/rules/"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "The user rule directory holds modular Markdown rule files loaded alongside the user CLAUDE.md, at the direct-child depth the section’s own example shows."
+        "reviewedOn": "2026-09-24",
+        "establishes": "The user rule directory holds modular Markdown rule files that apply to every project on the machine, at the direct-child depth the section’s own example shows."
       }
     ]
   },
@@ -1574,6 +1574,15 @@
             "kind": "literal",
             "value": "CLAUDE.local.md"
           }
+        ],
+        [
+          {
+            "kind": "recursive-directories"
+          },
+          {
+            "kind": "literal",
+            "value": "AGENTS.md"
+          }
         ]
       ]
     },
@@ -1588,11 +1597,12 @@
         "officialHost": "code.claude.com",
         "sections": [
           "Choose where to put CLAUDE.md files",
+          "How CLAUDE.md files load",
           "AGENTS.md",
-          "How CLAUDE.md files load"
+          "When Claude Code reads AGENTS.md"
         ],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; both filenames are discovered on demand in subdirectories as Claude reads files there — the documented descendant reach that is why this rule admits them at every depth — while the ancestor walk above the working directory contributes only the selected root, the one member every session shares. Claude Code reads CLAUDE.md and not AGENTS.md, which is why no selector here names that filename."
+        "reviewedOn": "2026-09-24",
+        "establishes": "Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; both filenames are discovered on demand in subdirectories as Claude reads files there — the documented descendant reach that is why this rule admits them at every depth — while the ancestor walk above the working directory contributes only the selected root, the one member every session shares. Claude Code also reads AGENTS.md and .claude/AGENTS.md in the working directory and the directories above it, and a subdirectory’s AGENTS.md once it opens a file there, which is why a third program admits that filename at every depth."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",
@@ -1820,7 +1830,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Organize rules with .claude/rules/"],
-        "reviewedOn": "2026-08-27",
+        "reviewedOn": "2026-09-24",
         "establishes": "Project rules are the .md files of a project's .claude/rules/ directory, all discovered recursively so they may be organized into subdirectories, and a nested .claude/rules/ directory loads on demand — the exact locations this rule admits. The personal rules the same section places in ~/.claude/rules/ are a different Source boundary this rule may not read."
       }
     ]

@@ -1,5 +1,5 @@
 {
-  "manifestVersion": 5,
+  "manifestVersion": 6,
   "fixtures": {
     "filesystem": {
       "kind": "deterministic-builder",
@@ -14,7 +14,7 @@
     "repositories": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/repositories/build-fixtures.ts",
-      "sha256": "f7f408f9d60cb523734bc4a280be2d4ddbd482059b8b7e181a4ccbbcb5eac2f7"
+      "sha256": "12f4cd1ffd3cc8fbf75d8ae1123b4ee7183196fb426fd7d0ee263384ad11aa39"
     },
     "secrets": {
       "kind": "deterministic-builder",
@@ -104,7 +104,7 @@
     "tests/e2e/claude-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-instructions-inventory.spec.ts",
-      "sha256": "b32bdc67e26465d7379e1da7bba1971114728ec7390b40978dbcb80b66196e60"
+      "sha256": "b1df71319859853c60ca9596e077113a7817528ba035b69d11e0ab2a007c841b"
     },
     "tests/e2e/claude-mcp-files-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -629,7 +629,7 @@
           "caseId": "sc003.shared-file.repository-agents-md",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository-root `AGENTS.md` is attributed to OpenAI Codex and GitHub Copilot and Antigravity CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository-root `AGENTS.md` is attributed to Claude Code and OpenAI Codex and GitHub Copilot and Antigravity CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
         },
         {

@@ -40,11 +40,14 @@ import type { InspectionRule } from '../rule-types';
  * any other readable candidate — and the User scope the same layering
  * composes lies outside this Source.
  *
- * `AGENTS.md` gets no selector here, and that is the vendor's own statement
- * rather than an omission: Claude Code reads `CLAUDE.md`, not `AGENTS.md`, and
- * a repository already using `AGENTS.md` is told to import it from a
- * `CLAUDE.md`. Recognizing the filename for Claude would report a file Claude
- * does not read.
+ * `AGENTS.md` is admitted beside `CLAUDE.md` because Claude Code 2.1.277+
+ * looks for it in the same places: at and above the working directory at
+ * session start, and in a subdirectory once it reads a file there. Whether a
+ * session reads it instead of the `CLAUDE.md` files, beside them, or not at
+ * all turns on which of those files sit on the session's own path and on a
+ * user-level setting, which is composition rather than location
+ * (`claude.instructions.layering`), so the rule admits both filenames and
+ * decides neither.
  */
 export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
   ruleId: 'claude.repo.instructions',
@@ -54,17 +57,25 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
   sourceKinds: ['repository'],
   /**
    * The `claude.repo.instructions` matcher, authored in the typed segment form
-   * the contract table shows: `[ANY_DIRECTORIES, 'CLAUDE.md']` and
-   * `[ANY_DIRECTORIES, 'CLAUDE.local.md']`. Two programs rather than one dynamic
-   * step, so each admission carries which authored filename matched.
+   * the contract table shows: `[ANY_DIRECTORIES, 'CLAUDE.md']`,
+   * `[ANY_DIRECTORIES, 'CLAUDE.local.md']`, and `[ANY_DIRECTORIES, 'AGENTS.md']`.
+   * Three programs rather than one dynamic step, so each admission carries
+   * which authored filename matched.
    *
    * `ANY_DIRECTORIES` includes zero segments, so each program reaches the
    * Repository root and every descendant directory alike — including `.claude`,
    * which is an ordinary directory name to the recursive step. The
-   * `./.claude/CLAUDE.md` form the page names as the other project instruction
-   * location therefore needs no selector of its own; a third
+   * `./.claude/CLAUDE.md` and `./.claude/AGENTS.md` forms the page names beside
+   * the bare filenames therefore need no selector of their own; a
    * `['.claude', 'CLAUDE.md']` program would only add a second admission of a
    * file the first one already admitted.
+   *
+   * The same reach admits an `AGENTS.md` below a `.agents/` directory, which
+   * the page lists as not read. The grammar has no step that excludes one
+   * directory name, and Claude Code 2.1.280 does load such a file once it
+   * reads a file beside it, so the admission matches what the product does
+   * rather than what that sentence says (contracts/vendors/claude-code.md
+   * § Known ambiguities and version-sensitive facts).
    *
    * The descendant reach is what the vendor documents rather than an Inspector
    * widening: Claude loads the launch directory's files at session start, walks
@@ -80,6 +91,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
     selectors: [
       [ANY_DIRECTORIES, { kind: 'literal', value: 'CLAUDE.md' }],
       [ANY_DIRECTORIES, { kind: 'literal', value: 'CLAUDE.local.md' }],
+      [ANY_DIRECTORIES, { kind: 'literal', value: 'AGENTS.md' }],
     ],
   },
   policyRefs: SHIPS_MAINTENANCE_DATA
@@ -96,12 +108,13 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
           officialHost: 'code.claude.com',
           sections: [
             'Choose where to put CLAUDE.md files',
-            'AGENTS.md',
             'How CLAUDE.md files load',
+            'AGENTS.md',
+            'When Claude Code reads AGENTS.md',
           ],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; both filenames are discovered on demand in subdirectories as Claude reads files there — the documented descendant reach that is why this rule admits them at every depth — while the ancestor walk above the working directory contributes only the selected root, the one member every session shares. Claude Code reads CLAUDE.md and not AGENTS.md, which is why no selector here names that filename.',
+            'Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; both filenames are discovered on demand in subdirectories as Claude reads files there — the documented descendant reach that is why this rule admits them at every depth — while the ancestor walk above the working directory contributes only the selected root, the one member every session shares. Claude Code also reads AGENTS.md and .claude/AGENTS.md in the working directory and the directories above it, and a subdirectory’s AGENTS.md once it opens a file there, which is why a third program admits that filename at every depth.',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
@@ -377,12 +390,13 @@ export const CLAUDE_REPO_MCP_RULE = {
  * Copilot documents under `.claude` are the ones
  * `copilot.excluded.additional-standard-locations` leaves out of this release.
  * One filename is the exception, and it is not this selector's doing:
- * `copilot.repo.instructions.agents` admits an `AGENTS.md` at every depth, so
- * an `AGENTS.md` written inside a `.claude/rules/` directory is a Copilot
- * instruction file exactly as it would be in any other directory, and the same
- * file is a Claude rule by where it sits. Two products documenting a read of
- * one path is two recognitions of it — what each inventory row states — rather
- * than a collision this rule should resolve away (FR-004).
+ * `copilot.repo.instructions.agents` and `claude.repo.instructions` both admit
+ * an `AGENTS.md` at every depth, so an `AGENTS.md` written inside a
+ * `.claude/rules/` directory is an instruction file of both products exactly
+ * as it would be in any other directory, and the same file is a Claude rule by
+ * where it sits. Documented reads of one path are separate recognitions of it —
+ * what each inventory row states — rather than a collision this rule should
+ * resolve away (FR-004).
  */
 export const CLAUDE_REPO_RULES_RULE = {
   ruleId: 'claude.repo.rules',
@@ -434,7 +448,7 @@ export const CLAUDE_REPO_RULES_RULE = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Organize rules with .claude/rules/'],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
             "Project rules are the .md files of a project's .claude/rules/ directory, all discovered recursively so they may be organized into subdirectories, and a nested .claude/rules/ directory loads on demand — the exact locations this rule admits. The personal rules the same section places in ~/.claude/rules/ are a different Source boundary this rule may not read.",
         },
@@ -1081,7 +1095,7 @@ export const CLAUDE_GLOBAL_INSTRUCTIONS_RULE = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
             'The user memory location is ~/.claude/CLAUDE.md, loaded for every project the reader works in, and the documented scopes are concatenated into context rather than overriding one another — so the one user file is read alongside the project chain rather than instead of it.',
         },
@@ -1131,9 +1145,9 @@ export const CLAUDE_GLOBAL_RULES_RULE = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Organize rules with .claude/rules/'],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
-            'The user rule directory holds modular Markdown rule files loaded alongside the user CLAUDE.md, at the direct-child depth the section\u2019s own example shows.',
+            'The user rule directory holds modular Markdown rule files that apply to every project on the machine, at the direct-child depth the section\u2019s own example shows.',
         },
       ]
     : [],
@@ -1501,8 +1515,8 @@ export const CLAUDE_EXCLUDED_USER_RUNTIME_RULE = {
           sourceId: 'anthropic.claude-code.memory.locations-load',
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
-          sections: ['How CLAUDE.md files load'],
-          reviewedOn: '2026-08-27',
+          sections: ['Auto memory'],
+          reviewedOn: '2026-09-24',
           establishes:
             'The automatic memory files Claude generates about the reader\u2019s own sessions live under the configuration directory\u2019s projects tree, which this rule declines.',
         },

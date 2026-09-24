@@ -1,7 +1,7 @@
 // T272: browser acceptance for the unified instructions inventory
 // (Phase 21). Launches the packaged CLI against the all-vendor instruction
-// fixture and verifies the rendered shared-file matrix — `AGENTS.md`
-// Codex+Copilot, root `CLAUDE.md` Claude+Copilot, nested `CLAUDE.md`
+// fixture and verifies the rendered shared-file matrix — root `AGENTS.md`
+// Claude+Codex+Copilot, root `CLAUDE.md` Claude+Copilot, nested `CLAUDE.md`
 // Claude-only, `CLAUDE.local.md` Claude-only — with the configured fallback
 // rows Phase 15 activated, the filters, the exclusions' absence, the
 // deterministic per-file diagnostics, and keyboard operability.
@@ -87,14 +87,16 @@ test('lists every range with each file’s recognizing products', async ({ page 
   ]);
 
   // The shared-file matrix, as the products listed beside each path: the
-  // root `AGENTS.md` is Codex's and Copilot's, the root `CLAUDE.md` Claude's
-  // and Copilot's, and the spellings beside them stay single-product —
+  // root `AGENTS.md` is Claude's, Codex's, and Copilot's, the root `CLAUDE.md`
+  // Claude's and Copilot's, and the spellings beside them stay single-product —
   // which is what makes each shared row a statement about the file.
   const entryFor = (path: string) =>
     fileEntries(page).filter({ has: page.getByText(path, { exact: true }) });
   await expect(entryFor('AGENTS.md')).toContainText('OpenAI Codex');
   await expect(entryFor('AGENTS.md')).toContainText('GitHub Copilot');
+  await expect(entryFor('AGENTS.md')).toContainText('Claude Code');
   await expect(entryFor('AGENTS.override.md')).toContainText('OpenAI Codex');
+  await expect(entryFor('AGENTS.override.md')).not.toContainText('Claude Code');
   await expect(entryFor('AGENTS.override.md')).not.toContainText('GitHub Copilot');
   await expect(entryFor('CLAUDE.md')).toContainText('Claude Code');
   await expect(entryFor('CLAUDE.md')).toContainText('GitHub Copilot');
@@ -180,11 +182,12 @@ test('narrows the matrix with the tool and path filters, keyboard-operably', asy
   await expect(fileEntries(page)).toHaveCount(4);
   await expect(fileEntries(page).filter({ hasText: 'TEAM_GUIDE.md' })).toBeVisible();
 
-  // Claude Code keeps its files at every depth while the shared root files
-  // drop their Copilot half rather than their row.
+  // Claude Code keeps its files at every depth — each directory's `AGENTS.md`
+  // among them — while the shared root files drop their Copilot half rather
+  // than their row.
   await page.getByLabel('Tool').selectOption('claude');
   await expect(instructionRows(page)).toHaveCount(3);
-  await expect(fileEntries(page)).toHaveCount(6);
+  await expect(fileEntries(page)).toHaveCount(9);
 
   // Reach the path filter in the page's real Tab order — arriving there is
   // part of the claim — then type the query with the keyboard alone. The
@@ -194,7 +197,7 @@ test('narrows the matrix with the tool and path filters, keyboard-operably', asy
   ).toBe(true);
   await page.keyboard.type('packages/api/');
   await expect(instructionRows(page)).toHaveCount(1);
-  await expect(fileEntries(page)).toHaveCount(2);
+  await expect(fileEntries(page)).toHaveCount(3);
   // The summary counts against everything the generation committed, not
   // against the tool-narrowed population.
   await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(

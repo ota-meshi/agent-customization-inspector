@@ -5341,16 +5341,15 @@ export interface ClaudeInstructionFixture {
   /**
    * The Source-relative Paths `codex.repo.instructions` admits in the same
    * tree, sorted. The Codex-preservation half of the phase: the same scan
-   * that adds Claude rows must keep admitting exactly these, and no Claude
-   * rule may recognize one of them.
+   * that adds Claude rows must keep admitting exactly these.
    */
   readonly expectedCodexInstructionPaths: readonly string[];
   /**
    * The Source-relative Paths the Copilot instruction rules admit in the same
-   * tree, sorted. The root `AGENTS.md` and the root `CLAUDE.md` are shared
-   * files — one physical file, two products — while the nested and `.claude`
-   * spellings stay Claude's alone, because Copilot documents its `CLAUDE.md`
-   * alternative at the repository root only (T256).
+   * tree, sorted. The root `CLAUDE.md` and every `AGENTS.md` are shared
+   * files — one physical file, several products — while the nested and
+   * `.claude` `CLAUDE.md` spellings stay Claude's alone, because Copilot
+   * documents its `CLAUDE.md` alternative at the repository root only (T256).
    */
   readonly expectedCopilotInstructionPaths: readonly string[];
   /**
@@ -5385,12 +5384,14 @@ export interface ClaudeInstructionFixture {
  * credential, an authored `@path` import token, and a literal environment
  * reference — the root `CLAUDE.local.md`, the root `.claude/CLAUDE.md` the
  * any-depth program reaches through its directory step, a nested
- * `packages/api/CLAUDE.md`, a nested `packages/api/.claude/CLAUDE.md`, and a
- * `docs/CLAUDE.md` whose frontmatter cannot be parsed.
+ * `packages/api/CLAUDE.md`, a nested `packages/api/.claude/CLAUDE.md`, a
+ * `docs/CLAUDE.md` whose frontmatter cannot be parsed, and the root and nested
+ * `AGENTS.md` Claude Code reads where and how it reads `CLAUDE.md` (memory
+ * page § When Claude Code reads AGENTS.md).
  *
- * Codex preservation: the root `AGENTS.md`. Claude Code reads `CLAUDE.md`,
- * not `AGENTS.md` (memory page § AGENTS.md), so the file stays a Codex
- * instruction row alone however many Claude rules ship.
+ * Codex preservation: the root `AGENTS.md` is a Codex instruction as well,
+ * and the nested one is not, because Codex's chain stops at the runtime
+ * working directory this product never selects.
  *
  * Near misses: spelling variants one step from each literal, VCS internals,
  * an installed package's own `CLAUDE.md` at the root's `node_modules` and at a
@@ -5443,10 +5444,12 @@ export function buildClaudeInstructionFixture(
   // is confined to this file, and the complete source stays readable (FR-028).
   write(root, 'docs/CLAUDE.md', '---\nscope: [docs\n---\n\n# Docs instructions\n');
 
-  // Codex preservation: `AGENTS.md` is a Codex instruction candidate and never
-  // a Claude one — the memory page states that Claude Code reads `CLAUDE.md`,
-  // not `AGENTS.md`.
-  write(root, 'AGENTS.md', '# Codex instructions\n');
+  // Positive for Claude and preserved for Codex: the root `AGENTS.md` is an
+  // instruction candidate of both, and the nested one of Claude alone —
+  // Claude reads a subdirectory's `AGENTS.md` on demand exactly as it reads a
+  // subdirectory's `CLAUDE.md`.
+  write(root, 'AGENTS.md', '# Shared agent instructions\n');
+  write(root, 'packages/api/AGENTS.md', '# Nested agent instructions\n');
 
   // Near miss: the target of the authored import. This phase emits no
   // relationship at all, and no scan may open it.
@@ -5476,14 +5479,16 @@ export function buildClaudeInstructionFixture(
     root,
     expectedClaudeInstructionPaths: [
       '.claude/CLAUDE.md',
+      'AGENTS.md',
       'CLAUDE.local.md',
       'CLAUDE.md',
       'docs/CLAUDE.md',
       'packages/api/.claude/CLAUDE.md',
+      'packages/api/AGENTS.md',
       'packages/api/CLAUDE.md',
     ],
     expectedCodexInstructionPaths: ['AGENTS.md'],
-    expectedCopilotInstructionPaths: ['AGENTS.md', 'CLAUDE.md'],
+    expectedCopilotInstructionPaths: ['AGENTS.md', 'CLAUDE.md', 'packages/api/AGENTS.md'],
     nearMissPaths: [
       '.git/CLAUDE.md',
       'CLAUDE-local.md',

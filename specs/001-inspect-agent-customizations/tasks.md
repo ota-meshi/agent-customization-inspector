@@ -34,8 +34,8 @@ the task would have built.
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
 | FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
-| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096 |
-| FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078 |
+| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215 |
+| FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078, T1215–T1216 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
 | FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
@@ -63,7 +63,7 @@ the task would have built.
 | FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
 | FR-032 | T004, T017, T028, T061, T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T916, T919, T926–T929, T995, T997, T1029, T1041–T1042, T1061, T1206–T1207 |
 | FR-033 | T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925, T927–T929, T1206–T1207 |
-| FR-034 | T226–T244, T440, T442, T477, T857–T877, T1042 |
+| FR-034 | T226–T244, T440, T442, T477, T857–T877, T1042, T1216 |
 | FR-035 | T205–T225, T944–T962, T1084–T1090 |
 | FR-036 | T226–T244, T963–T976 |
 | FR-037 | T245–T267 |
@@ -76,12 +76,12 @@ the task would have built.
 | QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062, T1208 |
 | QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201, T1204 |
-| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
-| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202 |
-| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203, T1211 |
+| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062, T1216 |
+| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202, T1218 |
+| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203, T1211, T1217 |
 | SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194, T1203, T1211 |
 | SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194, T1203, T1211 |
-| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202 |
+| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202, T1218 |
 | SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194, T1203, T1211 |
 | SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
 | Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200, T1205 |
@@ -9527,6 +9527,74 @@ declares a `name`; `packages/api:deploy` still heads the nested row.
   `specs/001-inspect-agent-customizations/validation.ja.md` (spec.md § Release-Evidence
   Fixture Governance).
 
+## Phase 116: Claude Code Reads AGENTS.md
+
+**Purpose**: Recognize every repository `AGENTS.md` for Claude Code, which reads it from
+2.1.277 where and how it reads `CLAUDE.md` — at and above the working directory at session
+start, and in a subdirectory once it reads a file there — while stating nothing about whether a
+session reads it instead of the `CLAUDE.md` files or beside them (FR-004, FR-005, FR-009,
+spec.md § Clarifications Session 2026-09-24).
+
+**Independent Test**: Run `pnpm run test:unit`, `pnpm run test:contract`, and
+`npx playwright test --project=chromium tests/e2e/claude-instructions-inventory.spec.ts
+tests/e2e/instructions-inventory.spec.ts`; open the all-instructions fixture and find the root
+`AGENTS.md` badged for Claude Code beside OpenAI Codex, GitHub Copilot, and Antigravity CLI, and
+`packages/api/AGENTS.md` on the `packages/api/**` row badged for Claude Code and GitHub Copilot.
+
+**Visible Checkpoint**: Narrowing the instructions list to Claude Code keeps every `AGENTS.md`
+and drops `AGENTS.override.md`.
+
+### The rule's answer
+
+- [X] T1215 [US1] Add `[ANY_DIRECTORIES, 'AGENTS.md']` to `claude.repo.instructions` in
+  `src/shared/registries/claude/rules.ts`, add `AGENTS.md` and `.claude/AGENTS.md` to the launch,
+  ancestor, and descendant lookups in `src/shared/registries/claude/behaviors.ts`, record the
+  Project instructions filter and the repeat an import makes as `filter`, `append`, `deduplicate`
+  on `claude.instructions.layering` in `src/shared/registries/claude/strategies.ts`, and drop a
+  trailing `.claude` for `AGENTS.md` as for `CLAUDE.md` in
+  `src/server/inspection/rules/instructions/claude.ts`. Record at the rule why an `AGENTS.md`
+  under `.agents/` is admitted — the grammar excludes no directory name, and Claude Code 2.1.280
+  loads one there. Re-pin the admitted sets, provenance, ranges, and tool matrices in
+  `tests/unit/inspection/rules.test.ts`, `tests/contract/inspection-rules.test.ts`,
+  `tests/contract/runtime-composition.test.ts`, and `tests/integration/repository-scan.test.ts`,
+  extend `tests/fixtures/repositories/build-fixtures.ts` with a nested `AGENTS.md`, and
+  regenerate `tests/fixtures/conformance/` (FR-004, FR-005).
+
+### The record
+
+- [X] T1216 [US1] Record the decision in `specs/001-inspect-agent-customizations/spec.md` and
+  `specs/001-inspect-agent-customizations/spec.ja.md` (§ Clarifications Session 2026-09-24, the
+  supported-files table, FR-034), and restate the lookups, the matcher, the composition, and the
+  range in `data-model.md`, `contracts/vendors/claude-code.md`, and
+  `contracts/runtime-composition.md` with their Japanese companions, adding the version floor and
+  the `.agents/` measurement to the vendor contract's known ambiguities. Change the frozen
+  Claude Code Presentation Allowlist `instructions` row to name `AGENTS.md` and re-record both of
+  its digests in `contracts/official-sources.md`, `contracts/official-sources.ja.md`, and
+  `tests/contract/presentation-allowlist-freeze.test.ts`. Review every record citing
+  `anthropic.claude-code.memory.locations-load` against the page, correct what it no longer
+  establishes — user and project rules override neither the other — and advance `reviewedOn`.
+  Update `docs/which-files-are-listed.md` and `docs/which-files-are-listed.ja.md`, and add the
+  `.changeset/` entry a recognition change owes its users (FR-034, QR-005).
+
+### The browser suites and the release evidence
+
+- [X] T1217 [US1] Restate the rows in `tests/e2e/claude-instructions-inventory.spec.ts`,
+  `tests/e2e/discovery.spec.ts`, `tests/e2e/instructions-comparison.spec.ts`, and
+  `tests/e2e/instructions-inventory.spec.ts`. Name Claude Code among the recognizing tools of
+  `sc003.shared-file.repository-agents-md`, advance `tests/fixtures/outcomes/manifest.json` to
+  version 6, re-record its changed fixture digests and `tests/fixtures/outcomes/manifest.sha256`,
+  re-execute the cases the changed fixtures reach, and record the transition and the run in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` (spec.md § Release-Evidence Fixture
+  Governance).
+- [X] T1218 [US1] Name Claude Code among the designated `AGENTS.md`'s recognizing tools in
+  `tests/usability/sc001-sc006-study-inputs/ground-truth.json` and
+  `tests/usability/sc001-sc006-study-inputs/ground-truth.ja.json`, run the twenty agent-driven
+  SC-001/SC-006 sessions against the packed release candidate, and record the run in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` as an agent-driven run (spec.md
+  § SC-001, § SC-006).
+
 ## Story Coverage Matrix
 
 | Phase | Primary story coverage | Cumulative milestone |
@@ -9649,6 +9717,7 @@ declares a `name`; `packages/api:deploy` still heads the nested row.
 | 112 Convergence | shared prerequisite | The validation record reads as one account of this tree, and the story-label rule matches the phases that exist. |
 | 113 Convergence | shared prerequisite | The two records that name an artifact by its identity — the outcome manifest's digest and the readme's screenshots — name the artifact this tree holds. |
 | 115 Skill Rows Named as Claude Code Lists Them | US1 | A root skill's row is headed by the name Claude Code's own menus list it under, so one root file is one row across every product that reads it, and a nested skill keeps its directory-qualified command. |
+| 116 Claude Code Reads AGENTS.md | US1 | Every repository `AGENTS.md` names Claude Code among the products that read it, at the root and below it, and no row says whether a session reads it instead of `CLAUDE.md` or beside it. |
 
 ## Dependencies and Execution Order
 

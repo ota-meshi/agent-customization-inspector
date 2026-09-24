@@ -28,8 +28,9 @@ test.describe('discovering the customizations of one repository', () => {
 
   test.beforeEach(async () => {
     fixture = await mkdtemp(join(tmpdir(), 'aci-discovery-'));
-    // One physical file both Codex and Copilot read, one Claude-only file
-    // beside it, and a near miss a segment below the admitted spelling.
+    // One physical file Codex, Copilot, and Claude Code all read, a file only
+    // Claude Code and Copilot read beside it, and a near miss a segment below
+    // the admitted spelling.
     await writeFile(join(fixture, 'AGENTS.md'), '# Repository instructions\n', 'utf8');
     await writeFile(join(fixture, 'CLAUDE.md'), '# Claude instructions\n', 'utf8');
     await mkdir(join(fixture, 'docs'), { recursive: true });
@@ -77,6 +78,7 @@ test.describe('discovering the customizations of one repository', () => {
     const agentsLine = panel.locator('.aci-row-file').filter({ hasText: 'AGENTS.md' });
     await expect(agentsLine).toContainText('OpenAI Codex');
     await expect(agentsLine).toContainText('GitHub Copilot');
+    await expect(agentsLine).toContainText('Claude Code');
     // The near miss is listed nowhere: a path one segment from an admitted one
     // is not admitted by being close to it.
     await expect(panel).not.toContainText(NEAR_MISS);
@@ -92,9 +94,9 @@ test.describe('discovering the customizations of one repository', () => {
 
     // Pointer: the tool filter keeps the files the selected product reads and
     // drops the rest, row and all where nothing of it matched.
-    await page.getByLabel('Tool', { exact: true }).selectOption('claude');
-    await expect(panel).toContainText('CLAUDE.md');
-    await expect(panel).not.toContainText('AGENTS.md');
+    await page.getByLabel('Tool', { exact: true }).selectOption('codex');
+    await expect(panel).toContainText('AGENTS.md');
+    await expect(panel).not.toContainText('CLAUDE.md');
 
     // Keyboard: the path filter is reachable and operable without a pointer,
     // and a query that matches nothing states that rather than emptying the

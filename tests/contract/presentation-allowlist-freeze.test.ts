@@ -36,8 +36,8 @@ const RECORDED_DIGESTS = [
   {
     vendor: 'Claude Code',
     file: 'claude-code',
-    english: '2aad69c35c2ff0e348b62bd1f8f6007a538337f14d5ddaa08f6f159b3c46f858',
-    japanese: '15862bf76910e507d65ebabe865f61c5652167dcfbaad07600d29a244ac3c73a',
+    english: '59fab461ebf26a0178658fc6aaac5b62594788bc515d48d8486fd522e7efedc7',
+    japanese: '3dfaefcd4f1f4de30f5e80076366ec7bb9bdb58d90fff006cda8d16590acfcbb',
   },
   {
     vendor: 'OpenAI Codex',

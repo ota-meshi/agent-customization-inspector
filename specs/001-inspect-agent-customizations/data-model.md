@@ -1282,9 +1282,11 @@ An instruction row's applicability range is, for most files, derived from the fi
 never from the vendor's runtime: the range is the directory the file sits in, spelled as a
 glob relative to the Repository root, once a directory the recognizing product keeps its
 instruction files in is stripped from the tail. Claude Code keeps one at `.claude` for
-`CLAUDE.md` alone — the page names `./CLAUDE.md` **or** `./.claude/CLAUDE.md` as the one
-project instruction location while listing local instructions at `./CLAUDE.local.md`
-only — so `.claude/CLAUDE.md` and the root `CLAUDE.md` derive one range and share one row,
+`CLAUDE.md` and `AGENTS.md` alone — the page names `./CLAUDE.md` **or**
+`./.claude/CLAUDE.md` as the one project instruction location and reads a directory's
+`AGENTS.md` and `.claude/AGENTS.md` alike, while listing local instructions at
+`./CLAUDE.local.md` only — so `.claude/CLAUDE.md`, `.claude/AGENTS.md`, and the root
+`CLAUDE.md` and `AGENTS.md` derive one range and share one row,
 `packages/api/.claude/CLAUDE.md` derives `packages/api/**`, and a
 `.claude/CLAUDE.local.md` keeps its directory and derives `.claude/**`. What such a
 directory means is that product's own fact, so each product answers for its own rules

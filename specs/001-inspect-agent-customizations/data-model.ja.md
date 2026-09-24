@@ -983,9 +983,10 @@ pathで名指して述べる: customizationのdirectory内で失敗したreadは
 Instruction rowの適用範囲は、ほとんどのfileでは、fileのSource相対Pathから導出するのであって、vendorのruntimeからでは
 ない: 範囲はfileが置かれたdirectoryであり、認識した製品がinstruction fileを置くためのdirectoryを
 末尾から取り除いたうえで、Repository root相対のglobとして綴る。Claude Codeは`.claude`を
-`CLAUDE.md`にだけ持つ — ページはproject instructionの唯一の場所として`./CLAUDE.md`**または**
-`./.claude/CLAUDE.md`を挙げる一方、local instructionは`./CLAUDE.local.md`だけを挙げる — ため、
-`.claude/CLAUDE.md`とrootの`CLAUDE.md`は1つの範囲を導出して1 rowを共有し、
+`CLAUDE.md`と`AGENTS.md`にだけ持つ — ページはproject instructionの唯一の場所として`./CLAUDE.md`
+**または**`./.claude/CLAUDE.md`を挙げ、各directoryの`AGENTS.md`と`.claude/AGENTS.md`を同じように
+readする一方、local instructionは`./CLAUDE.local.md`だけを挙げる — ため、`.claude/CLAUDE.md`、
+`.claude/AGENTS.md`、rootの`CLAUDE.md`と`AGENTS.md`は1つの範囲を導出して1 rowを共有し、
 `packages/api/.claude/CLAUDE.md`は`packages/api/**`を導出し、`.claude/CLAUDE.local.md`は自身の
 directoryを保って`.claude/**`を導出する。そうしたdirectoryが何を意味するかはその製品自身の
 事実であるため、共有の導出が読む一覧を宣言するのではなく、各製品が自身のruleについて答える。

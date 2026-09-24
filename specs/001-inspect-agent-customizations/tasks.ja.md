@@ -31,8 +31,8 @@ dispositionである。
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
 | FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
-| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096 |
-| FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078 |
+| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215 |
+| FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078, T1215–T1216 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
 | FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
@@ -60,7 +60,7 @@ dispositionである。
 | FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
 | FR-032 | T004, T017, T028, T061, T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T916, T919, T926–T929, T995, T997, T1029, T1041–T1042, T1061, T1206–T1207 |
 | FR-033 | T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925, T927–T929, T1206–T1207 |
-| FR-034 | T226–T244, T440, T442, T477, T857–T877, T1042 |
+| FR-034 | T226–T244, T440, T442, T477, T857–T877, T1042, T1216 |
 | FR-035 | T205–T225, T944–T962, T1084–T1090 |
 | FR-036 | T226–T244, T963–T976 |
 | FR-037 | T245–T267 |
@@ -73,12 +73,12 @@ dispositionである。
 | QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062, T1208 |
 | QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201, T1204 |
-| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
-| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202 |
-| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203, T1211 |
+| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062, T1216 |
+| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202, T1218 |
+| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203, T1211, T1217 |
 | SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194, T1203, T1211 |
 | SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194, T1203, T1211 |
-| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202 |
+| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202, T1218 |
 | SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194, T1203, T1211 |
 | SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
 | Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200, T1205 |
@@ -8153,6 +8153,66 @@ inventory を開き、`.claude/skills/lander/SKILL.md` が `voyage` row だけ�
   `specs/001-inspect-agent-customizations/validation.ja.md` に記録する（spec.md § Release-Evidence
   Fixture Governance）。
 
+## フェーズ 116: Claude Code による AGENTS.md の read
+
+**目的**: repository のすべての `AGENTS.md` を Claude Code に対して認識する。Claude Code は 2.1.277 以降、
+`CLAUDE.md` を読むのと同じ場所・同じ方法でそれを読む — session 開始時に working directory 以上で、subdirectory
+ではそこの file を読んだ時点で — 一方、session がそれを `CLAUDE.md` file の代わりに読むのか横に読むのかは何も
+述べない（FR-004、FR-005、FR-009、spec.md § Clarifications Session 2026-09-24）。
+
+**独立テスト**: `pnpm run test:unit`、`pnpm run test:contract`、`npx playwright test --project=chromium
+tests/e2e/claude-instructions-inventory.spec.ts tests/e2e/instructions-inventory.spec.ts` を実行する。
+all-instructions fixture を開き、root の `AGENTS.md` が OpenAI Codex、GitHub Copilot、Antigravity CLI と並んで
+Claude Code の badge を持ち、`packages/api/AGENTS.md` が `packages/api/**` row で Claude Code と GitHub Copilot
+の badge を持つことを確かめる。
+
+**可視チェックポイント**: instructions 一覧を Claude Code に絞ると、すべての `AGENTS.md` が残り
+`AGENTS.override.md` は外れる。
+
+### rule の答え
+
+- [X] T1215 [US1] `src/shared/registries/claude/rules.ts` の `claude.repo.instructions` に
+  `[ANY_DIRECTORIES, 'AGENTS.md']` を追加し、`src/shared/registries/claude/behaviors.ts` の launch、ancestor、
+  descendant の lookup に `AGENTS.md` と `.claude/AGENTS.md` を加え、Project instructions の filter と import が生む
+  重複を `src/shared/registries/claude/strategies.ts` の `claude.instructions.layering` に `filter`、`append`、
+  `deduplicate` として記録し、`src/server/inspection/rules/instructions/claude.ts` で `CLAUDE.md` と同じく
+  `AGENTS.md` の末尾の `.claude` を取り除く。`.agents/` 配下の `AGENTS.md` を admit する理由 — grammar は
+  directory 名を除外せず、Claude Code 2.1.280 はそこの file を load する — を rule に記録する。admit される集合、
+  provenance、範囲、tool matrix を `tests/unit/inspection/rules.test.ts`、
+  `tests/contract/inspection-rules.test.ts`、`tests/contract/runtime-composition.test.ts`、
+  `tests/integration/repository-scan.test.ts` で pin し直し、`tests/fixtures/repositories/build-fixtures.ts`
+  に nested な `AGENTS.md` を加え、`tests/fixtures/conformance/` を再生成する（FR-004、FR-005）。
+
+### 記録
+
+- [X] T1216 [US1] 決定を `specs/001-inspect-agent-customizations/spec.md` と
+  `specs/001-inspect-agent-customizations/spec.ja.md` に記録し（§ Clarifications Session 2026-09-24、
+  サポート対象 file の表、FR-034）、lookup、matcher、composition、範囲を `data-model.md`、
+  `contracts/vendors/claude-code.md`、`contracts/runtime-composition.md` とその日本語版で言い直し、version の下限と
+  `.agents/` の実測を vendor contract の既知の曖昧さに加える。凍結された Claude Code の Presentation Allowlist の
+  `instructions` 行が `AGENTS.md` を挙げるように変え、その 2 つの digest を `contracts/official-sources.md`、
+  `contracts/official-sources.ja.md`、`tests/contract/presentation-allowlist-freeze.test.ts` に再記録する。
+  `anthropic.claude-code.memory.locations-load` を引用するすべての record をページと照合し、ページがもはや
+  確立しない記述 — user rule と project rule はどちらも他方を上書きしない — を直して `reviewedOn` を進める。
+  `docs/which-files-are-listed.md` と `docs/which-files-are-listed.ja.md` を更新し、認識の変更がユーザーに対して負う
+  `.changeset/` entry を追加する（FR-034、QR-005）。
+
+### browser suite と release evidence
+
+- [X] T1217 [US1] `tests/e2e/claude-instructions-inventory.spec.ts`、`tests/e2e/discovery.spec.ts`、
+  `tests/e2e/instructions-comparison.spec.ts`、`tests/e2e/instructions-inventory.spec.ts` の row を言い直す。
+  `sc003.shared-file.repository-agents-md` の認識 tool に Claude Code を挙げ、
+  `tests/fixtures/outcomes/manifest.json` を version 6 に進め、変更された fixture の digest と
+  `tests/fixtures/outcomes/manifest.sha256` を再記録し、変更された fixture が届く case を再実行して、その遷移と実行を
+  `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` に記録する（spec.md § Release-Evidence Fixture
+  Governance）。
+- [X] T1218 [US1] `tests/usability/sc001-sc006-study-inputs/ground-truth.json` と
+  `tests/usability/sc001-sc006-study-inputs/ground-truth.ja.json` で、指定された `AGENTS.md` の認識 tool に
+  Claude Code を挙げ、pack した release candidate に対して 20 の agent-driven な SC-001/SC-006 session を実行し、
+  その実行を agent-driven な run として `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` に記録する（spec.md § SC-001、§ SC-006）。
+
 ## ストーリーカバレッジマトリクス
 
 | フェーズ | 主要ストーリー範囲 | 累積マイルストーン |
@@ -8275,6 +8335,7 @@ inventory を開き、`.claude/skills/lander/SKILL.md` が `voyage` row だけ�
 | 112 収束 | 共通の前提 | validation recordがこのtreeについての1つの記述として読め、story labelのruleが存在するphaseと一致する。 |
 | 113 収束 | 共通の前提 | artifactをそのidentityで名指す2つの記録 — outcome manifestのdigestと readmeのscreenshot — が、このtreeが持つartifactを名指す。 |
 | 115 Claude Code が列挙する名前での skill row | US1 | root の skill の row は Claude Code 自身の menu がそれを列挙する名前を見出しに持ち、1 つの root の file はそれを読むすべての製品を横断して 1 つの row になり、nested な skill は directory-qualified な command を保つ。 |
+| 116 Claude Code による AGENTS.md の read | US1 | repository のすべての `AGENTS.md` は、root でもその下でも、それを読む製品の中に Claude Code を挙げ、session がそれを `CLAUDE.md` の代わりに読むのか横に読むのかをどの row も述べない。 |
 
 ## 依存関係と実行順序
 

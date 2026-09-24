@@ -1,6 +1,6 @@
-// How Claude's instruction files are read: what one admitted `CLAUDE.md` or
-// `CLAUDE.local.md` governs (contracts/vendors/claude-code.md § Repository
-// vendor behavior).
+// How Claude's instruction files are read: what one admitted `CLAUDE.md`,
+// `CLAUDE.local.md`, or `AGENTS.md` governs (contracts/vendors/claude-code.md
+// § Repository vendor behavior).
 //
 // Claude discovers instruction files per directory — the launch directory's at
 // session start, an ancestor's with them, a subdirectory's once it reads a
@@ -38,23 +38,26 @@ export class ClaudeCompiledInstructionRule
 
   /**
    * The glob one admitted Claude instruction file governs: the directory
-   * holding it, with a trailing `.claude` dropped for a `CLAUDE.md` — the page
-   * names `./CLAUDE.md` **or** `./.claude/CLAUDE.md` as the one project
-   * instruction location, so for that filename the directory is where Claude
-   * keeps the file rather than what the file governs, and both spellings land
-   * on one row (anthropic.claude-code.memory.locations-load § Choose where to
-   * put CLAUDE.md files).
+   * holding it, with a trailing `.claude` dropped for a `CLAUDE.md` or an
+   * `AGENTS.md` — the page names `./CLAUDE.md` **or** `./.claude/CLAUDE.md` as
+   * the one project instruction location, and reads `AGENTS.md` and
+   * `.claude/AGENTS.md` of each directory alike, so for those filenames the
+   * directory is where Claude keeps the file rather than what the file
+   * governs, and both spellings land on one row
+   * (anthropic.claude-code.memory.locations-load § Choose where to put
+   * CLAUDE.md files, § When Claude Code reads AGENTS.md).
    *
-   * For every other admitted filename the segment is kept, because no cited
-   * page names a `.claude` alternative for one: the same table lists local
-   * instructions at `./CLAUDE.local.md` alone, so treating a
-   * `.claude/CLAUDE.local.md` as the directory's own would assert an
-   * equivalence the documentation does not make.
+   * For `CLAUDE.local.md` the segment is kept, because no cited page names a
+   * `.claude` alternative for it: the same table lists local instructions at
+   * `./CLAUDE.local.md` alone, so treating a `.claude/CLAUDE.local.md` as the
+   * directory's own would assert an equivalence the documentation does not
+   * make.
    */
   public applicabilityRangeOf(sourceRelativePath: string): string {
     const segments = sourceRelativePath.split('/');
     const directory = segments.slice(0, -1);
-    if (segments.at(-1) === 'CLAUDE.md' && directory.at(-1) === '.claude') {
+    const name = segments.at(-1);
+    if ((name === 'CLAUDE.md' || name === 'AGENTS.md') && directory.at(-1) === '.claude') {
       directory.pop();
     }
     return directory.length === 0 ? '**' : `${directory.map(escapeGlobLiteral).join('/')}/**`;

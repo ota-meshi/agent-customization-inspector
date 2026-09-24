@@ -101,7 +101,7 @@ export const ANTIGRAVITY_REPO_CONTEXT_GEMINI_ROOT_RULE = {
 } as const satisfies InspectionRule;
 
 /**
- * The repository root's `AGENTS.md`, which Copilot and Codex also read. The
+ * The repository root's `AGENTS.md`, which Copilot, Codex, and Claude Code also read. The
  * root alone, for the reason the `GEMINI.md` rule states.
  */
 export const ANTIGRAVITY_REPO_CONTEXT_AGENTS_ROOT_RULE = {

@@ -146,8 +146,8 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["How CLAUDE.md files load", "Auto memory"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "The CLAUDE.md hierarchy a subagent inherits is the one the main conversation loads, and auto memory is the separate per-project store a session maintains under the Claude configuration directory."
+        "reviewedOn": "2026-09-24",
+        "establishes": "The CLAUDE.md hierarchy is every level from the working directory up, concatenated rather than overriding, and the main conversation’s auto memory — the per-project store under the Claude configuration directory — is not loaded into a subagent other than a fork."
       },
       {
         "sourceId": "anthropic.claude-code.subagents.scope-context",
@@ -252,7 +252,7 @@
     "strategyId": "claude.instructions.layering",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
-    "operations": ["append"],
+    "operations": ["filter", "append", "deduplicate"],
     "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
@@ -260,9 +260,14 @@
         "sourceId": "anthropic.claude-code.memory.locations-load",
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
-        "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md."
+        "sections": [
+          "Choose where to put CLAUDE.md files",
+          "How CLAUDE.md files load",
+          "When Claude Code reads AGENTS.md",
+          "Choose which instruction files load"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md. By default Claude reads AGENTS.md only when no CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md is in the working directory or above it; the Project instructions setting can instead read both files — each directory’s CLAUDE.md files first and its AGENTS.md after them, skipping an AGENTS.md already loaded — CLAUDE.md alone, or only the managed instructions."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",
@@ -377,8 +382,8 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Organize rules with .claude/rules/"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Rules without paths frontmatter load at launch with the same priority as .claude/CLAUDE.md, path-scoped rules trigger when Claude reads a file matching one of their patterns rather than on every tool use, and user-level rules load before project rules so project rules take the higher priority."
+        "reviewedOn": "2026-09-24",
+        "establishes": "Rules without paths frontmatter load at launch with the same priority as .claude/CLAUDE.md, path-scoped rules trigger when Claude reads a file matching one of their patterns rather than on every tool use, and user-level rules load before project rules while neither set overrides the other, so a conflict between them has no documented winner."
       }
     ]
   },

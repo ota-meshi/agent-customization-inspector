@@ -27,7 +27,7 @@ let host: LaunchedHost;
 
 test.beforeEach(async () => {
   fixture = await mkdtemp(join(tmpdir(), 'aci-instructions-comparison-'));
-  // The shared root pair: `AGENTS.md` (Codex+Copilot) and `CLAUDE.md`
+  // The shared root pair: `AGENTS.md` (Claude+Codex+Copilot) and `CLAUDE.md`
   // (Claude+Copilot). Their declarations overlap on `scope` (different
   // values), agree on `retries` — authored `7` versus `007`, one resolved
   // value with the literal difference kept for the source diff — and each
@@ -177,11 +177,13 @@ test('renders exact metadata rows and matches declarations by key', async ({ pag
     'OpenAI Codex',
     'Antigravity CLI',
   ]);
-  // The single-product sides are stated, not fabricated into rows: Claude
-  // does not recognize `AGENTS.md`, Codex does not recognize `CLAUDE.md`.
-  await expect(
-    toolTable.locator('tr', { hasText: 'Claude Code' }).locator('td').first(),
-  ).toHaveText('Not recognized');
+  // A product recognizing both sides says so on both, and a single-product
+  // side is stated, not fabricated into a row: Claude Code reads both files,
+  // Codex does not recognize `CLAUDE.md`.
+  await expect(toolTable.locator('tr', { hasText: 'Claude Code' }).locator('td')).toHaveText([
+    'Recognized(CLI and IDE clients)',
+    'Recognized(CLI and IDE clients)',
+  ]);
   await expect(
     toolTable.locator('tr', { hasText: 'OpenAI Codex' }).locator('td').nth(1),
   ).toHaveText('Not recognized');

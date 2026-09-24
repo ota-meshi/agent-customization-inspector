@@ -96,9 +96,9 @@ export const CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['How CLAUDE.md files load', 'Auto memory'],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
-            'The CLAUDE.md hierarchy a subagent inherits is the one the main conversation loads, and auto memory is the separate per-project store a session maintains under the Claude configuration directory.',
+            'The CLAUDE.md hierarchy is every level from the working directory up, concatenated rather than overriding, and the main conversation’s auto memory — the per-project store under the Claude configuration directory — is not loaded into a subagent other than a fork.',
         },
         {
           sourceId: 'anthropic.claude-code.subagents.scope-context',
@@ -233,23 +233,35 @@ export const CLAUDE_HOOKS_ADDITIVE_STRATEGY = {
 } as const satisfies RuntimeCompositionStrategy;
 
 /**
- * Claude instruction layering: the User file, each ancestor directory's
+ * Claude instruction layering: which instruction filenames a session reads is
+ * decided first (`filter`), then the User file, each ancestor directory's
  * files, the launch directory's own, and the lazily discovered descendant
  * ones are all added to context in load order, broadest scope first
- * (`append`).
+ * (`append`), and an `AGENTS.md` already loaded is not added again
+ * (`deduplicate`).
  *
- * One operation and deliberately no second: every discovered file is added
- * rather than one winning, and the page states that there is no hard
- * precedence between levels — conflicting natural-language instructions are
- * left to the model rather than resolved into a setting-style winner. A
- * `select-first` or `replace` here would record a resolution the vendor does
- * not document (contracts/runtime-composition.md § claude.instructions.layering).
+ * The filter is the Project instructions setting of Claude Code 2.1.277+: by
+ * default a session reads `AGENTS.md` only when no `CLAUDE.md`,
+ * `.claude/CLAUDE.md`, or `CLAUDE.local.md` sits at or above its working
+ * directory — the user's own `~/.claude/CLAUDE.md` does not count — and a
+ * subdirectory's only when that subdirectory has none of them, while other
+ * values read both families, `CLAUDE.md` alone, or neither.
+ * The value is a user-level setting and the condition is the session's own
+ * path, neither of which this tool observes, so no row says which family a
+ * session reads.
+ *
+ * There is deliberately no `select-first` or `replace` across levels: every
+ * file that survives the filter is added rather than one winning, and the page
+ * states that there is no hard precedence between levels — conflicting
+ * natural-language instructions are left to the model rather than resolved
+ * into a setting-style winner
+ * (contracts/runtime-composition.md § claude.instructions.layering).
  */
 export const CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY = {
   strategyId: 'claude.instructions.layering',
   tool: 'claude',
   surfaces: ['claude-cli-and-ide-clients'],
-  operations: ['append'],
+  operations: ['filter', 'append', 'deduplicate'],
   documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
@@ -258,10 +270,15 @@ export const CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY = {
           sourceId: 'anthropic.claude-code.memory.locations-load',
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
-          sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
-          reviewedOn: '2026-08-27',
+          sections: [
+            'Choose where to put CLAUDE.md files',
+            'How CLAUDE.md files load',
+            'When Claude Code reads AGENTS.md',
+            'Choose which instruction files load',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md.',
+            'The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md. By default Claude reads AGENTS.md only when no CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md is in the working directory or above it; the Project instructions setting can instead read both files — each directory’s CLAUDE.md files first and its AGENTS.md after them, skipping an AGENTS.md already loaded — CLAUDE.md alone, or only the managed instructions.',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
@@ -449,7 +466,8 @@ export const CLAUDE_PLUGINS_ACTIVATION_STRATEGY = {
  * Claude rule layering: add the applicable User and project rule layers
  * (`append`), and keep a `paths` rule out of context until Claude works with
  * a file its glob matches (`filter`). User rules load before project rules,
- * which is what gives project rules the higher priority.
+ * and neither set overrides the other: a conflict between them is left to the
+ * model, so no operation here names a winner.
  *
  * `partially-documented`: the page states neither the trigger that loads a
  * nested `.claude/rules/` directory on demand nor the base an ancestor
@@ -473,9 +491,9 @@ export const CLAUDE_RULES_LAYERING_STRATEGY = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Organize rules with .claude/rules/'],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Rules without paths frontmatter load at launch with the same priority as .claude/CLAUDE.md, path-scoped rules trigger when Claude reads a file matching one of their patterns rather than on every tool use, and user-level rules load before project rules so project rules take the higher priority.',
+            'Rules without paths frontmatter load at launch with the same priority as .claude/CLAUDE.md, path-scoped rules trigger when Claude reads a file matching one of their patterns rather than on every tool use, and user-level rules load before project rules while neither set overrides the other, so a conflict between them has no documented winner.',
         },
       ]
     : [],

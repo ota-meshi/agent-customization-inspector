@@ -14,7 +14,7 @@ Paths are relative to the inspected repository root.
 
 | Kind | Where |
 | --- | --- |
-| Instructions | `CLAUDE.md` and `CLAUDE.local.md`, in any directory |
+| Instructions | `CLAUDE.md`, `CLAUDE.local.md`, and `AGENTS.md`, in any directory |
 | Skills | `SKILL.md` in each directory under a `.claude/skills/` directory, wherever that directory sits |
 | Agents | any `.md` file under `.claude/agents/`, at any depth |
 | Prompts and commands | any `.md` file under `.claude/commands/`, at any depth |

@@ -5,12 +5,14 @@
 // the Codex rows the phase must leave untouched.
 //
 // The visible checkpoint this carries is the grouping: the root `AGENTS.md`
-// and `CLAUDE.md` share one row because they govern the same range, a nested
-// `CLAUDE.md` gets a row of its own, and a user can narrow either to Claude
-// Code with `AGENTS.md` staying OpenAI Codex's alone. What each admitted file
-// means to a running session — when it loads, which one wins — is deliberately
-// nowhere on the page (FR-009); the exact admitted set, provenance, and read
-// counts are proven closer to the code.
+// and `CLAUDE.md` share one row because they govern the same range, the nested
+// `CLAUDE.md` and `AGENTS.md` get a row of their own, every `AGENTS.md` names
+// Claude Code beside the other products that read it, and a user can narrow
+// either row to Claude Code with `AGENTS.override.md` staying OpenAI Codex's
+// alone. What each admitted file means to a running session — when it loads,
+// whether `AGENTS.md` is read instead of `CLAUDE.md` or beside it — is
+// deliberately nowhere on the page (FR-009); the exact admitted set,
+// provenance, and read counts are proven closer to the code.
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -44,8 +46,13 @@ test.describe('Claude instruction rows at every depth', () => {
     // subtree, so it is authored inventory rather than a near miss.
     await mkdir(join(fixture, 'packages/api'), { recursive: true });
     await writeFile(join(fixture, 'packages/api/CLAUDE.md'), '# Nested\n', 'utf8');
-    // Codex preservation: Claude Code reads CLAUDE.md, not AGENTS.md.
-    await writeFile(join(fixture, 'AGENTS.md'), '# Codex instructions\n', 'utf8');
+    // Claude Code reads `AGENTS.md` where and how it reads `CLAUDE.md`, at the
+    // root beside the other products that read it and in a subdirectory.
+    await writeFile(join(fixture, 'AGENTS.md'), '# Agent instructions\n', 'utf8');
+    await writeFile(join(fixture, 'packages/api/AGENTS.md'), '# Nested agents\n', 'utf8');
+    // Codex preservation: an override only Codex reads, which the memory page
+    // lists as not read by Claude Code.
+    await writeFile(join(fixture, 'AGENTS.override.md'), '# Codex override\n', 'utf8');
     // Unsupported locations: a spelling variant one step from each literal.
     // No shipped selector reaches either, so neither can appear.
     await writeFile(join(fixture, 'CLAUDE.md.bak'), 'backup suffix\n', 'utf8');
@@ -84,19 +91,30 @@ test.describe('Claude instruction rows at every depth', () => {
     expect(paths).toEqual([
       '.claude/CLAUDE.md',
       'AGENTS.md',
+      'AGENTS.override.md',
       'CLAUDE.local.md',
       'CLAUDE.md',
+      'packages/api/AGENTS.md',
       'packages/api/CLAUDE.md',
     ]);
-    // The grouping this phase exists for: `AGENTS.md` sits in the same row as
-    // the root `CLAUDE.md` while staying OpenAI Codex's own recognition.
+    // The grouping this phase exists for: the root `AGENTS.md` sits in the same
+    // row as the root `CLAUDE.md` and names Claude Code beside OpenAI Codex,
+    // while the override stays Codex's own recognition.
     const fileEntries = page
       .getByRole('tabpanel')
       .locator('.aci-source-family-blocks__members > li');
-    const codexEntry = fileEntries.filter({ hasText: 'AGENTS.md' });
-    await expect(codexEntry).toContainText('OpenAI Codex');
-    await expect(codexEntry).not.toContainText('Claude Code');
-    for (const path of ['.claude/CLAUDE.md', 'CLAUDE.local.md', 'packages/api/CLAUDE.md']) {
+    const rootAgents = fileEntries.filter({ hasText: /^AGENTS\.md/u });
+    await expect(rootAgents).toContainText('OpenAI Codex');
+    await expect(rootAgents).toContainText('Claude Code');
+    const override = fileEntries.filter({ hasText: 'AGENTS.override.md' });
+    await expect(override).toContainText('OpenAI Codex');
+    await expect(override).not.toContainText('Claude Code');
+    for (const path of [
+      '.claude/CLAUDE.md',
+      'CLAUDE.local.md',
+      'packages/api/AGENTS.md',
+      'packages/api/CLAUDE.md',
+    ]) {
       await expect(fileEntries.filter({ hasText: path }).first()).toContainText('Claude Code');
     }
   });
@@ -129,19 +147,20 @@ test.describe('Claude instruction rows at every depth', () => {
       .getByRole('tabpanel')
       .locator('.aci-source-family-blocks__members > li');
     await expect(items).toHaveCount(2);
-    await expect(fileEntries).toHaveCount(5);
+    await expect(fileEntries).toHaveCount(7);
 
-    // Tool: Claude Code keeps the four files Claude reads and drops the one it
+    // Tool: Claude Code keeps the six files Claude reads and drops the one it
     // does not, leaving both ranges standing.
     await page.getByLabel('Tool').selectOption('claude');
     await expect(items).toHaveCount(2);
-    await expect(fileEntries).toHaveCount(4);
-    await expect(page.getByRole('tabpanel')).not.toContainText('AGENTS.md');
+    await expect(fileEntries).toHaveCount(6);
+    await expect(page.getByRole('tabpanel')).not.toContainText('AGENTS.override.md');
 
     // Path composes over the same population, and a range whose every file the
     // filter drops is not a row.
     await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('packages/');
     await expect(items).toHaveCount(1);
+    await expect(items.first()).toContainText('packages/api/AGENTS.md');
     await expect(items.first()).toContainText('packages/api/CLAUDE.md');
     await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(
       'Showing 1 of 2',
@@ -150,7 +169,7 @@ test.describe('Claude instruction rows at every depth', () => {
     // Clearing restores the committed rows, the Codex file included.
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(2);
-    await expect(fileEntries).toHaveCount(5);
+    await expect(fileEntries).toHaveCount(7);
   });
 });
 

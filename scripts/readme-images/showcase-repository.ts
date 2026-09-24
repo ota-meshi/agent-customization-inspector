@@ -94,8 +94,8 @@ export function buildShowcaseRepository(root: string): void {
     'git diff --name-only --diff-filter=ACMR | xargs -r pnpm exec prettier --write',
   ]);
 
-  // Instructions. `AGENTS.md` is the shared file three of the four products
-  // read; `CLAUDE.md` started as a copy of it and has since fallen behind, so
+  // Instructions. `AGENTS.md` is the shared file all four products read;
+  // `CLAUDE.md` started as a copy of it and has since fallen behind, so
   // the two are a comparison a reader might actually want.
   write(root, 'AGENTS.md', [
     '# Tidewater',

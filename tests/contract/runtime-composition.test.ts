@@ -483,9 +483,9 @@ describe('the Claude rule composition strategy (T431)', () => {
   });
 
   it('composes the strategy from both documented rule scopes, by identity', () => {
-    // User rules load before project rules, which is what gives project rules
-    // the higher priority; omitting the User half would describe the layering
-    // as starting at the repository.
+    // User rules load before project rules and neither set overrides the
+    // other; omitting the User half would describe the layering as starting
+    // at the repository.
     const consumed = STRATEGY_RELATIONS['claude.rules.layering'].consumesBehaviors;
     expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
       'claude.behavior.repo.rules',
@@ -1193,16 +1193,18 @@ describe('the Codex MCP composition strategy (T296)', () => {
 });
 
 describe('the Claude instruction composition strategy (T239)', () => {
-  it('ships one operation, which is the whole documented statement', () => {
-    // `append` alone, and the absence is the content: every discovered file is
-    // added rather than one winning, and the page states there is no hard
-    // precedence between levels. A `select-first` or `replace` here would
-    // record a resolution the vendor does not document, which is exactly what
-    // the instruction detail must not project (FR-009,
-    // contracts/runtime-composition.md § claude.instructions.layering).
+  it('filters the filename families, then appends every level and drops a repeat', () => {
+    // The Project instructions setting decides which filenames a session reads
+    // — by default `AGENTS.md` only where no `CLAUDE.md` family file is on the
+    // path — every surviving file is added rather than one winning, and an
+    // `AGENTS.md` a `CLAUDE.md` already imported is not added again. The page
+    // states there is no hard precedence between levels, so a `select-first`
+    // or `replace` here would record a resolution the vendor does not
+    // document, which is exactly what the instruction detail must not project
+    // (FR-009, contracts/runtime-composition.md § claude.instructions.layering).
     const layering = RUNTIME_COMPOSITION_STRATEGIES['claude.instructions.layering'];
     expect(layering.tool).toBe('claude');
-    expect(layering.operations).toEqual(['append']);
+    expect(layering.operations).toEqual(['filter', 'append', 'deduplicate']);
     expect(layering.documentationStatus).toBe('documented');
     expect(layering.lifecycleQualifiers).toEqual([]);
   });

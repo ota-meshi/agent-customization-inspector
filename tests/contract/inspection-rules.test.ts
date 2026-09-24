@@ -899,8 +899,8 @@ describe('the unified instruction selector matrix (T269)', () => {
   });
 
   // The complete static recognition matrix, one representative path per
-  // combination (Phase 21): `AGENTS.md` is Codex+Copilot at the root and
-  // Copilot's alone below it, root `CLAUDE.md` is Claude+Copilot while a
+  // combination (Phase 21): `AGENTS.md` is Claude+Codex+Copilot at the root
+  // and Claude+Copilot below it, root `CLAUDE.md` is Claude+Copilot while a
   // nested `CLAUDE.md` is Claude-only, `CLAUDE.local.md` is Claude-only at
   // every depth, and the remaining Copilot spellings are Copilot's alone. A
   // configured fallback name is deliberately admitted by no static selector:
@@ -909,9 +909,14 @@ describe('the unified instruction selector matrix (T269)', () => {
   // `node_modules` are absent on purpose — their exclusion is the traversal
   // boundary's, not any matcher's.
   const RECOGNITION_MATRIX: readonly (readonly [string, readonly string[]])[] = [
-    ['AGENTS.md', ['antigravity', 'codex', 'copilot']],
+    ['AGENTS.md', ['antigravity', 'claude', 'codex', 'copilot']],
     ['AGENTS.override.md', ['codex']],
-    ['docs/AGENTS.md', ['copilot']],
+    ['docs/AGENTS.md', ['claude', 'copilot']],
+    // Claude reads a directory's `.claude/AGENTS.md` beside its `AGENTS.md`;
+    // to Copilot it is one more `AGENTS.md` at some depth. `AGENTS.local.md`
+    // is no product's.
+    ['.claude/AGENTS.md', ['claude', 'copilot']],
+    ['AGENTS.local.md', []],
     ['CLAUDE.md', ['claude', 'copilot']],
     ['packages/api/CLAUDE.md', ['claude']],
     ['.claude/CLAUDE.md', ['claude']],
@@ -925,7 +930,7 @@ describe('the unified instruction selector matrix (T269)', () => {
     // (contracts/vendors/antigravity-cli.md § Known uncertainties item 1).
     ['GEMINI.md', ['antigravity', 'copilot']],
     ['packages/api/GEMINI.md', []],
-    ['packages/api/AGENTS.md', ['copilot']],
+    ['packages/api/AGENTS.md', ['claude', 'copilot']],
     ['.github/copilot-instructions.md', ['copilot']],
     ['packages/api/.github/copilot-instructions.md', ['copilot']],
     ['.github/instructions/frontend.instructions.md', ['copilot']],

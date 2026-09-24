@@ -316,7 +316,7 @@ export type AnthropicSourceId =
   | 'anthropic.claude-code.subagents.scope-context'
   /** The Claude Code skills page: where skills live and how they are named. */
   | 'anthropic.claude-code.skills.locations-discovery'
-  /** The memory page: where CLAUDE.md files live, how they load, and that AGENTS.md is not read. */
+  /** The memory page: where CLAUDE.md and AGENTS.md files live, how they load, and which of them a session reads. */
   | 'anthropic.claude-code.memory.locations-load'
   /** The Agent SDK features page: the settingSources gate and the CLAUDE.md load-location table. */
   | 'anthropic.claude-code.sdk.setting-sources'
@@ -789,7 +789,7 @@ export type CopilotRuleId =
 export type AntigravityRuleId =
   /** The repository root's `GEMINI.md`, which GitHub Copilot also reads. */
   | 'antigravity.repo.context.gemini-root'
-  /** The repository root's `AGENTS.md`, which Copilot and Codex also read. */
+  /** The repository root's `AGENTS.md`, which Copilot, Codex, and Claude Code also read. */
   | 'antigravity.repo.context.agents-root'
   /** A flat workspace skill: one Markdown file directly below `.agents/skills/`. */
   | 'antigravity.repo.skill.file'

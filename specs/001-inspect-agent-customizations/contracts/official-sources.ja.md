@@ -151,7 +151,7 @@ digest inputとする。Heading、prose、blank line、連続table後のlineはh
 | Vendor | 英語table SHA-256 | 日本語table SHA-256 |
 |---|---|---|
 | GitHub Copilot | `a6f35ab28711f719500e2a4121a9aeb9d56f74f5b4accecdcd3e9c4643416525` | `b1ec5038a7c581fea4d4ed9e0f83eb7ca730c18312c65a6689bfcc3a93a3a926` |
-| Claude Code | `2aad69c35c2ff0e348b62bd1f8f6007a538337f14d5ddaa08f6f159b3c46f858` | `15862bf76910e507d65ebabe865f61c5652167dcfbaad07600d29a244ac3c73a` |
+| Claude Code | `59fab461ebf26a0178658fc6aaac5b62594788bc515d48d8486fd522e7efedc7` | `3dfaefcd4f1f4de30f5e80076366ec7bb9bdb58d90fff006cda8d16590acfcbb` |
 | OpenAI Codex | `2a598e1bd30690cfe07d64cd6e1a8c5d80512249eacb5e1e59741bd3d9194226` | `e985ad14696d2ef2a47e7fcacbdbb39a83864fdd4d5c62546112f25e62e98301` |
 | Antigravity CLI | `f311fd1d0bee9f81d03e4493e8fd4526cee5c3e19fda0ac07d2eaa5e92a5ca4c` | `52a1d8db154676ec4e428b0943e3bbc66e8cfd4f63037506c3f4a6b9d852f715` |
 
@@ -215,7 +215,7 @@ conflictとして保持し、未登録のsource repositoryやissueを代替evide
 |---|---|---|---|---|
 | `anthropic.claude-code.directory.file-reference` | <https://code.claude.com/docs/en/claude-directory> | `code.claude.com` | `File reference` | `2026-08-27` |
 | `anthropic.claude-code.env-vars` | <https://code.claude.com/docs/en/env-vars> | `code.claude.com` | `Variables` | `2026-08-27` |
-| `anthropic.claude-code.memory.locations-load` | <https://code.claude.com/docs/en/memory> | `code.claude.com` | `Choose where to put CLAUDE.md files`; `AGENTS.md`; `How CLAUDE.md files load`; `Organize rules with .claude/rules/`; `Auto memory` | `2026-08-27` |
+| `anthropic.claude-code.memory.locations-load` | <https://code.claude.com/docs/en/memory> | `code.claude.com` | `Choose where to put CLAUDE.md files`; `How CLAUDE.md files load`; `Organize rules with .claude/rules/`; `AGENTS.md`; `When Claude Code reads AGENTS.md`; `Choose which instruction files load`; `Auto memory` | `2026-09-24` |
 | `anthropic.claude-code.large-codebases.start-directory` | <https://code.claude.com/docs/en/large-codebases> | `code.claude.com` | `Choose where to start Claude`; `Layer CLAUDE.md files by directory`; `Add per-directory skills` | `2026-07-25` |
 | `anthropic.claude-code.sdk.setting-sources` | <https://code.claude.com/docs/en/agent-sdk/claude-code-features> | `code.claude.com` | `Control filesystem settings with settingSources`; `CLAUDE.md load locations` | `2026-08-18` |
 | `anthropic.claude-code.settings.scopes-precedence` | <https://code.claude.com/docs/en/settings> | `code.claude.com` | `Settings files and who they affect`、`Compare the scope of each settings file`、`Where Claude Code keeps the local file in a git repository`、`Settings precedence`、`Lists merge instead of overriding` | `2026-08-27` |
