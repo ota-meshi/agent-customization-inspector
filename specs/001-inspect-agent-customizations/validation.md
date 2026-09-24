@@ -70,6 +70,17 @@ and dated 2026-09-24; which rules follow the pages is left to the rules themselv
 reported 63 sources checked, 0 with drift, and the same four Claude Code changelog anchors
 established through a served table of contents.
 
+The same day's review of this pull request found `vscode.copilot.settings` stale in content
+though not in headings: the VS Code AI settings page now marks each location setting —
+`chat.instructionsFilesLocations`, `chat.promptFilesLocations`, `chat.agentFilesLocations`, and
+`chat.agentSkillsLocations` — deprecated and read by the Local agent alone, while the custom
+instructions page gives `~/.copilot/copilot-instructions.md` to Agent Host sessions. All twelve
+citations of the page were re-read against the records carrying them and dated 2026-09-24. Each
+now names the setting it rests on and the agent that reads it, and
+`copilot.behavior.vscode.user.instructions` separates the Local agent's switchable locations
+from the Agent Host locations no setting switches. No rule, status, or admitted path moved,
+because a location setting was already a runtime input the Inspector does not read.
+
 2026-09-11, over all 63 records, the eleven `google.antigravity.*` records
 included (specs/003-antigravity-cli-support T077) — the eleventh being
 `google.antigravity.subagents`, reviewed that day for the two custom-agent spellings the user

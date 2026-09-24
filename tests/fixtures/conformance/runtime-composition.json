@@ -958,8 +958,8 @@
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
         "sections": ["Custom agents settings"],
-        "reviewedOn": "2026-08-19",
-        "establishes": "Which locations contribute custom agents is setting-controlled, so enablement and any additional configured location stay runtime conditions of this selection."
+        "reviewedOn": "2026-09-24",
+        "establishes": "Which locations contribute custom agents is configuration — chat.agentFilesLocations, deprecated and configuring the Local agent alone, and github.copilot.chat.cli.customAgents.enabled for Copilot sessions — so enablement and any configured location stay runtime conditions of this selection."
       }
     ]
   },
@@ -1010,9 +1010,9 @@
         "sourceId": "vscode.copilot.settings",
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
-        "sections": ["Custom instructions settings"],
-        "reviewedOn": "2026-08-19",
-        "establishes": "Enablement and location settings decide which instruction inputs participate at all, which is the filtering step ahead of combining them, and the setting for nested AGENTS.md files is marked experimental."
+        "sections": ["Chat settings", "Custom instructions settings"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Enablement settings decide which instruction inputs participate at all — chat.useAgentsMdFile, chat.useClaudeMdFile, chat.includeApplyingInstructions, github.copilot.chat.codeGeneration.useInstructionFiles, and for the Local agent alone the deprecated chat.instructionsFilesLocations — which is the filtering step ahead of combining them, and the setting for nested AGENTS.md files is marked experimental."
       }
     ]
   },
@@ -1099,8 +1099,8 @@
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
         "sections": ["Agent skills settings"],
-        "reviewedOn": "2026-08-19",
-        "establishes": "Which skill locations participate is setting-filtered before any selection happens."
+        "reviewedOn": "2026-09-24",
+        "establishes": "Which skill locations participate is setting-filtered before any selection happens: chat.useAgentSkills switches skills on, and chat.agentSkillsLocations, deprecated and configuring the Local agent alone, lists that agent’s locations."
       },
       {
         "sourceId": "vscode.copilot.skills",

@@ -58,6 +58,15 @@ hookのlocationは明記されるようになり、Rulesページはdirectory-sc
 どのruleがページに従うかはrule自体の判断に委ねた。最終runは63 sources checked、0 with driftを報告し、
 同じ4件のClaude Code changelog anchorを配信されたtable of contents経由で確認したものとして挙げた。
 
+同日のこのpull requestのreviewで、`vscode.copilot.settings`がheadingではなく内容の点で古いことが分かった。
+VS CodeのAI settingsページは、location設定 — `chat.instructionsFilesLocations`、`chat.promptFilesLocations`、
+`chat.agentFilesLocations`、`chat.agentSkillsLocations` — をそれぞれdeprecatedで、Local agentだけが読むものと
+しており、custom instructionsページは`~/.copilot/copilot-instructions.md`をAgent Host sessionのものとしている。
+このページの12件のcitationすべてを、それを持つrecordに対して読み直し、2026-09-24の日付にした。各citationは
+拠って立つ設定とそれを読むagentを名指すようになり、`copilot.behavior.vscode.user.instructions`はLocal agentの
+切り替え可能なlocationと、どの設定も切り替えないAgent Hostのlocationを分けて述べる。location設定は元から
+Inspectorが読まないruntime入力だったため、rule、status、admitされるpathはどれも動いていない。
+
 2026-09-11、63 record全件 — 11件の`google.antigravity.*` recordを含む — に対して
 実行した（specs/003-antigravity-cli-support T077）。11件目は`google.antigravity.subagents`で、user
 tierがadmitする2つのcustom agentの綴りのために同日reviewしたものである。Googleのrecordはすべて

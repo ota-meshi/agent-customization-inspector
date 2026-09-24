@@ -569,9 +569,9 @@ export const COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE = {
           url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
           officialHost: 'code.visualstudio.com',
           sections: ['Custom instructions settings', 'Agent skills settings'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-24',
           establishes:
-            'VS Code settings can add instruction and skill locations beyond the fixed directories, making participation a runtime input rather than part of the documented default lookup.',
+            'VS Code settings — chat.instructionsFilesLocations and chat.agentSkillsLocations, deprecated and configuring the Local agent alone — can add instruction and skill locations beyond the fixed directories, making participation a runtime input rather than part of the documented default lookup.',
         },
       ]
     : [],
