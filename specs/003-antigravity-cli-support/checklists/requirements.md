@@ -33,12 +33,11 @@
 
 ## Notes
 
-- Both open questions were put to the user on 2026-09-10 and answered: a skill file and a
-  same-named skill directory in one `.agents/skills/` are one inventory row, and an Antigravity
-  CLI recognition reaches the repository root's context files alone. Both answers are recorded
-  in the spec's Clarifications and in the requirements they settle. (Superseded 2026-09-24: the
-  Rules page documents the hierarchy, so the recognition reaches every depth, and no flat skill
-  is admitted — spec.md § Clarifications Session 2026-09-24.)
-- The skill row shape is a question for the designer: a file-shaped skill has no companion
-  directory, and the skill row and its detail are drawn today around a directory that has one. (Superseded 2026-09-24: no rule admits a file-shaped skill.)
+- Both open questions are answered in the spec's Clarifications and in the requirements they
+  settle: a skill folder and a flat file of one name in one `.agents/skills/` are one inventory
+  row holding the folder alone, and an Antigravity CLI recognition reaches the context files at
+  every depth. (Amended 2026-09-24: the Rules page documents the hierarchy, and no page documents
+  a flat skill.)
+- The skill row shape needs no designer decision: every skill is its folder, which the skill row
+  and its detail are drawn around. (Amended 2026-09-24: no page documents a flat skill.)
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`

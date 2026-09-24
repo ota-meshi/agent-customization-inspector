@@ -18,9 +18,6 @@
 - 「両言語」は canonical な `*.md` とその `*.ja.md` を同じ task で扱うことを指す。
 - `T015` と `T066` は空番である。番号は両言語で一致していることが前提なので、作業を持たなくなった
   ID は、以降のすべての task を振り直して詰めるのではなくそのまま残す。
-- 後の task がその作業を取り除いた完了済みの task は本文を残す。本文はその task が届けたものの記録だから
-  である。そしてそれを置き換えた task を名指す日付付きの注記で終える。本文を現在の要求として読ませないのは
-  その注記であり、要求そのものは仕様書が持つ。
 
 ## Normative Requirement Traceability
 
@@ -110,23 +107,23 @@
 
 ### User Story 1 のテスト (必須) ⚠️
 
-- [X] T020 [P] [US1] リポジトリの fixture builder を追加する。`.agents/` 配下に両方の形と `.agent/` 配下にディレクトリ形を持つ skills tree、両方の綴りの下に文書化された activation mode ごとに1ファイルを持つ rules tree、standalone な `.agents/hooks.json`、両方の形を持つ agents tree、ローカルとリモートの server に legacy key を加えた MCP tree、ルートの2つとネストした near miss を持つ context tree。`.agent/skills/<name>.md` と `.agents/plugins/` を含む near-miss パスも併せて。`tests/fixtures/repositories/build-fixtures.ts`。 （2026-09-24 に T085 で置き換え: skills tree は skill フォルダだけを持ち、フラットなファイルは near miss である。）
+- [X] T020 [P] [US1] リポジトリの fixture builder を追加する。`.agents/` と `.agent/` 配下に skill フォルダを持つ skills tree、両方の綴りの下に文書化された activation mode ごとに1ファイルとサブディレクトリの1ファイルを持つ rules tree、standalone な `.agents/hooks.json`、両方の形を持つ agents tree、ローカルとリモートの server に legacy key を加えた MCP tree、ルートの組・ネストした組・ディレクトリの `.agents/` の組を持つ context tree。フラットな `.agents/skills/<name>.md`、`.agent/skills/<name>.md`、`.agents/plugins/` を含む near-miss パスも併せて。`tests/fixtures/repositories/build-fixtures.ts`。（2026-09-24 に T085 で修正: Rules ページがすべての階層の context file と rule を文書化し、フラットな skill を文書化するページは無い。）
 - [X] T021 [P] [US1] compiled unit ごとの unit test と、selector family ごとに1つの rejected な near miss — ネストした `.agents/`、`.agents/skills/` の2階層目、2階層深い rules ファイル、`.agent/skills/<name>.md`、`.agents/plugins/<name>/plugin.json`、2階層深い agent、大文字小文字の異なる leaf、`.gemini/` のパス — を追加する。`tests/unit/inspection/antigravity-metadata.test.ts` と `tests/unit/inspection/rules.test.ts`。
-- [X] T022 [P] [US1] ファイルの形の skill unit、recognizer による2つの skill の形の判別、そしてこの vendor 自身の invocation-name の答え — skill フォルダの `SKILL.md` に `name` が無い場合、このツールも隣の製品と同じくフォルダ名に解決するので1つのファイルは1行のままであり、平坦なファイルに `name` が無い場合は拡張子を除いたファイル自身の名前に解決する。その形が持つ fallback はそれだけである — について unit test を追加する。`tests/unit/inspection/antigravity-metadata.test.ts` (contracts/vendors/antigravity-cli.ja.md § 既知の不確実性 項目 7)。 （2026-09-24 に T084 で置き換え: フラットな skill は admit されないので、ファイル形の unit も判別も残らない。）
-- [X] T023 [US1] リポジトリ fixture に対する integration scan を追加し、挙がる集合、2つの recognition を持つルートの `GEMINI.md`、3つを持つルートの `AGENTS.md`、このツールの recognition を持たないネストした context file、どの near miss にも read 要求がないことを assert する。`tests/integration/repository-scan.test.ts`。 （2026-09-24 に T083 と T085 で置き換え: 入れ子の context file はこのツールの recognition を持つ。）
+- [X] T022 [P] [US1] フォルダ形の skill unit と、この vendor 自身の invocation-name の答え — skill フォルダの `SKILL.md` に `name` が無い場合、このツールも隣の製品と同じくフォルダ名に解決するので1つのファイルは1行のままである — について unit test を追加する。`tests/unit/inspection/antigravity-metadata.test.ts` (contracts/vendors/antigravity-cli.ja.md § 既知の不確実性 項目 7)。（2026-09-24 に T084 で修正: フラットな skill を文書化するページが無いので、その unit の test は取り除いた。）
+- [X] T023 [US1] リポジトリ fixture に対する integration scan を追加し、挙がる集合、2つの recognition を持つルートの `GEMINI.md`、4つを持つルートの `AGENTS.md`、それを読む他の製品の recognition の隣にこのツールの recognition を持つネストした context file、どの near miss にも read 要求がないことを assert する。`tests/integration/repository-scan.test.ts`。（2026-09-24 に T083 と T085 で修正: Rules ページがすべての階層の context file を文書化している。）
 - [X] T024 [P] [US1] MCP 宣言と skill が参照する script を持つ fixture に対し、リポジトリの zero-activation suite を拡張する。実行ゼロ、MCP 接続ゼロ、外向き要求ゼロ、変更ゼロ。`tests/integration/security/zero-activation.test.ts`。
 
 ### User Story 1 の実装
 
-- [X] T025 [US1] ルートの context の2つを共有の Markdown instruction unit へ結線する。`src/server/inspection/rules/instructions/antigravity.ts`。リポジトリルートの `GEMINI.md` と `AGENTS.md` を admit し、その下は admit しない。`src/shared/registries/copilot/rules.ts` の `copilot.repo.instructions.gemini-root` のコメントを正す。これはこのリリースが取り除く派生ルールに立っているので、行に2人目の読み手を与える静的ルールを名指すようにする。 （2026-09-24 に T083 で置き換え: context の組はすべての深さで admit される。）
-- [X] T026 [US1] ファイルの形の skill の compiled unit を追加する。行の単位はファイル、名前は frontmatter の `name` か拡張子を除いたファイル自身の名前、companion の census は publish しない。`src/server/inspection/rules/skills/file-skill.ts`。ディレクトリの形の隣に置く自身の unit とする (research.ja.md § 2)。 （2026-09-24 に T084 で置き換え: ファイル形の unit は削除した。）
-- [X] T027 [US1] skill の recognizer が2つの形を閉じた union として判別するようにする。`src/server/inspection/recognizers/candidate.ts`。手書きの述語ではなく discriminant で narrow する。 （2026-09-24 に T084 で置き換え: skill の形が1つなので、判別するものが無い。）
+- [X] T025 [US1] すべての深さの context の組を `src/server/inspection/rules/instructions/antigravity.ts` の instruction unit へ結線する。workspace のファイルはそれを置くディレクトリ、またはその `.agents/` を置くディレクトリを govern し、global のファイルは境界全体を govern する。`src/shared/registries/copilot/rules.ts` の `copilot.repo.instructions.gemini-root` のコメントで、ルートの行に2人目の読み手を与える静的ルールとして `antigravity.repo.context` を名指す。（2026-09-24 に T083 で修正: Rules ページがすべての階層の context file を文書化している。）
+- [X] T026 [US1] この vendor の skill の rule を、すべての vendor が共有するフォルダ形の skill unit へ compile する。名前は frontmatter の `name`、無ければ skill フォルダ。`src/server/inspection/rules/skills/antigravity.ts` (research.ja.md § 2)。（2026-09-24 に T084 で修正: フラットな skill を文書化するページが無いので、ファイル形の unit は取り除いた。）
+- [X] T027 [US1] すべての skill の admission をその1つの unit で認識する。`src/server/inspection/recognizers/candidate.ts`。skill の形の間の discriminant は持たない。（2026-09-24 に T084 で修正: skill の形が1つなので判別するものが無い。）
 - [X] T028 [P] [US1] custom agent の両方の形を共有の Markdown agent unit へ結線する。`src/server/inspection/rules/agents/antigravity.ts`。
 - [X] T029 [US1] top-level の `mcpServers` object を共有の server-map の読みで読む standalone MCP carrier unit を追加し、`serverUrl` と legacy key を書かれたとおりに示す。`src/server/inspection/rules/mcp/antigravity.ts`。
-- [X] T030 [US1] ファイルの形の skill の定義が companion ファイルを持たないよう publish し、行が supporting file の数を描かないようにする。`src/app/components/inventory/rows/skill-row-files.ts` と `SkillRow.vue`。 （2026-09-24 に T084 で置き換え: どの skill もそのフォルダである。）
-- [X] T031 [US1] ファイルの形の skill の detail を skill の panel だけとして描く。file panel も tab strip も出さない。`src/app/pages/skills/detail/[source]/[...path].vue`。見出しのコメントが既に確立している内容は変えず、skill 自身のパスを名指すようにする。 （2026-09-24 に T084 で置き換え: panel だけの detail はファイル形と共に削除した。）
+- [X] T030 [US1] すべての skill の定義をそのフォルダの companion の census と共に publish し、フォルダが companion を持つ行には supporting file の数を描く。`src/app/components/inventory/rows/skill-row-files.ts` と `SkillRow.vue`。（2026-09-24 に T084 で修正: どの skill もそのフォルダである。）
+- [X] T031 [US1] すべての skill の detail を file panel と tab strip 付きで、skill 自身のフォルダを見出しにして描く。`src/app/pages/skills/detail/[source]/[...path].vue`。（2026-09-24 に T084 で修正: panel だけの detail はフラットな skill と共に取り除いた。）
 - [X] T032 [P] [US1] fixture launcher に `antigravity-*` の行を追加し、貢献者が各 surface を見られるようにする。`scripts/serve-fixture.ts`。
-- [X] T033 [P] [US1] 1つの `.agents/skills/` にある両方の skill の形と、ファイルの形の panel だけの detail を覆う `tests/e2e/antigravity-skills-detail.spec.ts` を追加する。 （2026-09-24 に T085 で置き換え: spec は skill フォルダと、どの行にも載らないフラットなファイルをカバーする。）
+- [X] T033 [P] [US1] `.agents/skills/` の skill フォルダとその file panel、そしてその隣でどの行にも載らないフラットな Markdown ファイルを覆う `tests/e2e/antigravity-skills-detail.spec.ts` を追加する。（2026-09-24 に T085 で修正: フラットな skill を文書化するページは無い。）
 - [X] T034 [P] [US1] `tests/e2e/antigravity-mcp-detail.spec.ts`、`tests/e2e/antigravity-custom-agents-detail.spec.ts`、`tests/e2e/antigravity-instructions-detail.spec.ts` を追加する。
 - [X] T035 [P] [US1] inventory と comparison の copy とコメントにあるツール数・製品数の記述をすべて読み直し、このリリースがサポートする4つを名指すようにする。`src/app/components/inspection/declaration-order.ts`、`src/server/inspection/rules/mcp/server-map.ts`、`src/server/inspection/rules/agents/declared-name.ts`、`src/app/composables/custom-agent-comparison.ts`。
 - [X] T036 [US1] hook の宣言に carrier が書いた名前を持たせ、detail の section を `(event, 宣言された名前)` で識別できるようにする。この vendor の carrier は名前付き hook の map で各 hook が自身の event を抱えるので、1つの carrier が同じ event を2回宣言でき、2つの section が同じ見出しでほぼ同じ文書を抱えて並ぶ。`src/shared/api-types.ts` の `HookEventDeclarationDto` に入れ子の record として field を足し — 宣言は名前を持ちうるのであり、4形式のうち3つはそれを付けない — `specs/001-inspect-agent-customizations/contracts/http-api.md` と `.ja.md` に記述する。名前付き hook 自身の `enabled` キーもファイル自身のキーとしてその中に publish し、「無効」「停止中」とは決して描かない。hook が走るかどうかはこの製品が観測しない実行時の事柄である (contracts/vendors/antigravity-cli.ja.md § 既知の不確実性 項目 9)。inventory の行には触れない。行の中の1本は carrier で束ねられるので、1つの carrier が同じ event を2回宣言してもそれは既に1本である。行の単位は宣言された event 1つのままで、detail に階層は足さない。続いてリポジトリの hook compiled unit を追加し、`.agents/hooks.json` を共有の hook event-map の読みで読む。`src/server/inspection/rules/hooks/antigravity.ts`。1つの carrier が1つの event を2つの名前で宣言したとき、それぞれ自身の名前を持つ2つの宣言として publish されることを `tests/unit/inspection/antigravity-metadata.test.ts` で assert する (research.ja.md § 5a)。
@@ -143,14 +140,14 @@
 
 ### User Story 2 のテスト (必須) ⚠️
 
-- [X] T039 [P] [US2] 4つ目の home の行を `tests/fixtures/global-homes/build-fixtures.ts` で置き換える。どのプロパティも裏づけない環境変数の entry を落とし、それに伴って fixture を読む `tests/contract/http-api-global.test.ts` の member-id と root の期待値も動かす。`GEMINI.md`、`config/mcp_config.json`、`config/hooks.json`、`config/agents/`、`antigravity-cli/skills/` と `config/skills/` それぞれの skill フォルダ、`antigravity-cli/skills/` 直下のフラットなファイル、`antigravity-cli/settings.json`、および除外されるインストール済み plugin コピー・import manifest・credential・session state。`tests/fixtures/global-homes/README.md` と `README.ja.md` を3つの環境プロパティへ更新する。
+- [X] T039 [P] [US2] 4つ目の home の行を `tests/fixtures/global-homes/build-fixtures.ts` で置き換える。どのプロパティも裏づけない環境変数の entry を落とし、それに伴って fixture を読む `tests/contract/http-api-global.test.ts` の member-id と root の期待値も動かす。`GEMINI.md`、`AGENTS.md`、`config/GEMINI.md`、`config/AGENTS.md`、`config/rules/` と `antigravity-cli/rules/` それぞれの rule、`config/mcp_config.json`、`config/hooks.json`、`config/agents/`、`antigravity-cli/skills/` と `config/skills/` それぞれの skill フォルダ、`antigravity-cli/settings.json`、そしてその隣の near miss と除外されるパス — `antigravity-cli/skills/` 直下のフラットなファイル、インストール済み plugin コピー・import manifest・credential・session state を含む。`tests/fixtures/global-homes/README.md` と `README.ja.md` を3つの環境プロパティへ更新する。（2026-09-24 に T085 で修正: Rules ページが home の他の context file と rule を文書化し、フラットな skill を文書化するページは無い。）
 - [X] T040 [P] [US2] Global の compiled unit ごとの unit test と、selector family ごとに1つの rejected な near miss を追加する。`tests/unit/inspection/antigravity-metadata.test.ts`。
 - [X] T041 [US2] Global boundary の gate に、この member の scan case — admit される候補パスがすべて挙がり、どの near miss も enumerate・open・read されない — と5 member の transaction tuple を加える。`tests/integration/global-boundaries.test.ts`。
 - [X] T042 [P] [US2] hook 宣言・permission rule・MCP 宣言を持つ home に対し、Global の zero-activation suite を拡張する。`tests/security/global-zero-activation.test.ts`。
 
 ### User Story 2 の実装
 
-- [X] T043 [US2] Global の context・MCP・agent・skill の rule をそれぞれの compiled unit へ結線する。`src/server/inspection/rules/**/antigravity.ts`。skill の rule はファイルの形の unit に届く。 （2026-09-24 に T084 で置き換え: skill の rule はフォルダ形の unit だけに届く。）
+- [X] T043 [US2] Global の context・rule・MCP・agent・skill の rule をそれぞれの compiled unit へ結線する。`src/server/inspection/rules/**/antigravity.ts`。context の rule は範囲が境界全体である global の instruction unit に、skill の rule はフォルダ形の unit に届く。（2026-09-24 に T083 と T084 で修正: Rules ページが global の context file と rule を文書化し、フラットな skill を文書化するページは無い。）
 - [X] T044 [US2] home の settings carrier を、主題をそのファイルとする settings/config の行として admit する。`src/server/inspection/rules/settings/antigravity.ts`。
 - [X] T045 [P] [US2] carrier の `allow`・`ask`・`deny` の entry を permissions の行として publish し、書かれたとおりに示し、評価しない。`src/server/inspection/rules/permissions/antigravity.ts`。
 - [X] T046 [P] [US2] settings carrier の inline な hook 宣言を T036 が追加した unit で publish し、standalone の carrier と inline のものが1つの読みを共有するようにする。`src/server/inspection/rules/hooks/antigravity.ts`。
@@ -170,16 +167,16 @@
 
 ### User Story 3 のテスト (必須) ⚠️
 
-- [X] T052 [P] [US3] skills の fixture に、両方の形で綴られた名前1つと、片方だけで綴られた名前1つを加える。`tests/fixtures/repositories/build-fixtures.ts`。 （2026-09-24 に T085 で置き換え: 2つの形で綴られる名前は無い。）
-- [X] T053 [P] [US3] 両方の形で綴られた名前が、両方の定義を抱え各製品の解決を述べ、優先順位を述べない1行になることを assert する。`tests/integration/repository-scan.test.ts` と `tests/unit/shared/skill-collision.test.ts`。 （2026-09-24 に T085 で置き換え: 2つの形で綴られる名前は無い。）
-- [X] T054 [P] [US3] ファイルの形の skill の行が supporting-file の件数を描かないことを assert する。既存の skill surface のテストの隣、`tests/unit/app/skill-row-files.test.ts`。描画された detail の側 — file panel も tab strip も持たない skill の panel だけ — は T033 の end-to-end spec が持つ。unit の project は単一ファイル component を compile しないからである。 （2026-09-24 に T084 で置き換え: ファイル形の skill は無い。）
+- [X] T052 [P] [US3] skills の fixture に、3つの製品が読む skill フォルダと、その隣のどれも読まないフラットな Markdown ファイルを加える。`tests/fixtures/repositories/build-fixtures.ts`。（2026-09-24 に T085 で修正: フラットな skill を文書化するページは無い。）
+- [X] T053 [P] [US3] `.agents/skills/` の skill フォルダが認識する製品ごとに1つの定義を持つ1行になり、その隣のフラットなファイルはどの行にも載らないことを `tests/integration/repository-scan.test.ts` で、`.agents` と `.agent` の下の同名の2つのフォルダがこの vendor にとって衝突になることを `tests/unit/shared/skill-collision.test.ts` で assert する。（2026-09-24 に T085 で修正: フラットな skill を文書化するページは無い。）
+- [X] T054 [P] [US3] 独自の test は要らない。どの skill もそのフォルダであり、行がフォルダの census から描く件数は `tests/unit/app/skill-row-files.test.ts` の既存の case が持つ。（2026-09-24 に T084 で修正: ファイル形の skill は無い。）
 
 ### User Story 3 の実装
 
-- [X] T055 [US3] 両方の形を1つの invocation 名の下にまとめ、ファイルごと・認識する製品ごとに1つの定義を持たせる。`src/server/session/session.ts` とそれが呼ぶ skill の grouping。 （2026-09-24 に T084 で置き換え: どの定義もフォルダのものである。）
+- [X] T055 [US3] すべての skill の定義を1つの invocation 名の下にまとめ、ファイルごと・認識する製品ごとに1つの定義を持たせる。`src/server/session/session.ts` とそれが呼ぶ skill の grouping。（2026-09-24 に T084 で修正: どの定義もフォルダのものである。）
 - [X] T056 [US3] 同名 statement を skill の rule が名指す strategy から導出し、drift する製品ごとの表を作らない。`src/shared/registries/antigravity/skill-collision.ts`。
-- [X] T057 [P] [US3] 定義が2つの形にまたがる行について `tests/e2e/skills-comparison.spec.ts` と `tests/e2e/skill-metadata-comparison.spec.ts` を拡張する。 （2026-09-24 に T085 で置き換え: 2つの形にまたがる行は無い。）
-- [X] T058 [P] [US3] 行の定義一覧に形を名指す copy を足さないことを記録する。`src/app/components/inventory/rows/skill-row-files.ts` には何も足さない。copy が述べるはずだった対比が存在しないからである。この vendor は両方の形を読むので、製品ごとの違いは Copilot と Codex が平坦な形を読まないことだけであり、それは平坦なファイルの行にその2つのマークが無いことが既に述べている。この vendor が平坦な形を読むと書けば、マークの言い直しになるか、除外の意味に読まれて偽になる。この vendor が関わる行にだけ注記が出れば、他のすべての行の「注記が無いこと」に意味が生まれる。 （2026-09-24 に T084 で置き換え: フラットな形はどこでも admit されない。）
+- [X] T057 [P] [US3] `tests/e2e/skills-comparison.spec.ts` と `tests/e2e/skill-metadata-comparison.spec.ts` のすべての copy を、どの vendor の copy とも同じくフォルダとして、対応するファイルごとに比較する。（2026-09-24 に T085 で修正: フラットな skill を文書化するページは無い。）
+- [X] T058 [P] [US3] `src/app/components/inventory/rows/skill-row-files.ts` の行の定義一覧に、形を名指す copy を足さない。どの skill もそのフォルダであり、フォルダをどの製品が読むかはその行のマークが述べている。（2026-09-24 に T084 で修正: フラットな skill を文書化するページは無い。）
 
 ---
 
@@ -273,4 +270,4 @@ Phase 1・2・3 で、リポジトリの inventory が4つ目のツールを名�
 - [X] T087 広がった Antigravity CLI の allowlist ともう挙がらないフラットな skill について `.changeset/` に `minor` の changeset を加え、変更が届く gate — `pnpm run test:docs`、`test:unit`、`test:contract`、`test:integration`、`test:security`、`lint`、`typecheck`、`format:check`、Chromium での Antigravity CLI の end-to-end spec — を実行する。QR-006、QR-003 に基づく。
 - [X] T088 `.gemini/` と workspace の plugin の除外が届くのはそれらのディレクトリが持つ customization であって、その中の `GEMINI.md` や `AGENTS.md` ではなく、それは `antigravity.repo.context` がそのディレクトリの context file として admit することを、`specs/003-antigravity-cli-support/spec.md` と `spec.ja.md` の FR-003 とその edge case、`specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md` と `.ja.md` の `antigravity.excluded.workspace-plugins` の行に記し、両方の case を `tests/contract/inspection-rules.test.ts` で固定する。FR-003、FR-007 に基づく。
 - [X] T089 `specs/003-antigravity-cli-support/spec.md` と `spec.ja.md` の FR-003 の記述、その edge case、vendor contract（両言語）の `antigravity.excluded.workspace-plugins` の行、`src/shared/registries/antigravity/rules.ts` を、`.gemini/` や plugin ディレクトリの中の `.agents/rules/` ディレクトリにも広げる。それは `antigravity.repo.rule` がそのディレクトリ自身のものとして admit する。`plan.md` と `plan.ja.md` の § Implementation Boundaries をそれに合わせ、case を `tests/contract/inspection-rules.test.ts` で固定し、指定ファイルの読み手を数えた Clarifications の回答に日付付きの注記を加える。FR-003、FR-016 に基づく。
-- [X] T090 後の task がその作業を取り除いた完了済みの task とチェック項目 — T020、T022、T023、T025〜T027、T030、T031、T033、T043、T052〜T055、T057、T058、`specs/003-antigravity-cli-support/checklists/vendor-integration.md` の CHK022〜CHK023 — に両言語で日付付きの注記を加え、置き換えた本文を残す理由をこのファイルの Format の節に記す。Rules ページは両方の context の名前を持つディレクトリで両方が読み込まれるかを述べないので、`antigravity.context.layering` を `src/shared/registries/antigravity/strategies.ts` と両言語の `contracts/runtime-composition.md` で `partially-documented` とし、FR-007 も同じく述べる。FR-007、FR-015 に基づく。
+- [X] T090 後の task がその作業を取り除いた完了済みの task とチェック項目 — T020、T022、T023、T025〜T027、T030、T031、T033、T039、T043、T052〜T055、T057、T058、`specs/003-antigravity-cli-support/checklists/vendor-integration.md` の CHK007、CHK012、CHK015、CHK022、CHK023、そして `checklists/requirements.md` の注記 — を、それが今求めるものへ両言語で書き直し、それぞれに理由を短く述べる日付付きの注記を付ける (AGENTS.md § Documentation content policy)。Rules ページは両方の context の名前を持つディレクトリで両方が読み込まれるかを述べないので、`antigravity.context.layering` を `src/shared/registries/antigravity/strategies.ts` と両言語の `contracts/runtime-composition.md` で `partially-documented` とし、FR-007 も同じく述べる。FR-007、FR-015 に基づく。
