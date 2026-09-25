@@ -31,13 +31,13 @@ dispositionである。
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
 | FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
-| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222, T1225 |
+| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222, T1225, T1227 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078, T1215–T1216 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
-| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224 |
+| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224, T1227 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
 | FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
-| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220, T1221, T1224 |
+| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220, T1221, T1224, T1227 |
 | FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
 | FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137, T1164 |
 | FR-014 | T930, T944–T947, T950–T951, T956–T959, T963–T964, T967–T968, T974–T975, T977–T978, T981–T982, T988–T989, T991, T993–T995, T997–T998, T1000–T1005, T1029, T1041, T1058, T1061–T1062, T1137, T1140 |
@@ -1731,7 +1731,7 @@ dispositionである。
 
 **独立テスト**: 静的な Codex instruction fixture を開き、reference が一切生成されないこと — 本リポジトリが引用するどの公式 Codex ページも `AGENTS.md` の import/reference 構文を立証していないため、`@path` に見える token も他と同じ source text である（T217） — に加えて、stale-ID behavior、diagnostics、detail-state cleanup を検証する。別途、フェーズ 15 の構成読み取りが有効化した configured fallback instruction file の detail を検証する。Selection order と instruction capacity について vendor が文書化していることは維持管理 contract に残り、recognition や detail へ project するものは無い(T091)。
 
-**目に見えるチェックポイント**: Codex instruction を選択すると、それが正確な静的 file であっても repository の構成が加えた名前であっても、完全で非活性な detail — file の宣言、instructions、diagnostics から始まる — が開く。
+**目に見えるチェックポイント**: Codex instruction を選択すると、それが正確な静的 file であっても repository の構成が加えた名前であっても、完全で非活性な detail — 全体のまま示す file と、その diagnostics — が開く。 *(2026-09-25修正: Codex は instruction file に frontmatter を文書化していないので、detail は宣言から始めず、file を全体のまま読んで示す（T1224）。)*
 
 ### テスト先行
 
@@ -1750,9 +1750,10 @@ dispositionである。
   のページが文書化するのは discovery と fallback filename だけである — ため、引用可能なページがそれを立証するまで Codex instruction file は
   `runtime-reference` を生まない。presentation allowlist の行は kind を許可するのであって、extractor に occurrence
   の発明を求めるものではない。)*
-- [X] T218 [P] [US2] 完全な Codex instruction source、file が書いた宣言（authored 順）、fallback、空の relationship
+- [X] T218 [P] [US2] 全体のまま読む完全な Codex instruction source（宣言を分けて示さない）、fallback、空の relationship
   集合（T217）、diagnostics、environment reference の非解決、stale ID に関する detail/API の失敗テストを
   `tests/contract/http-api-files.test.ts` と `tests/unit/app/recognition-details.test.ts` に追加する
+  *(2026-09-25修正: Codex instruction file は全体のまま読むので、その detail は宣言を公開しない（T1224）。)*
   *(2026-08-06 修正: どのsurfaceもorder・capacity・condition・applicabilityをprojectしない —
   vendorの文書化されたselectionは維持管理contractに残り、製品が何をするかを述べるsurfaceは無い（FR-009、T091）。)*
 - [X] T219 [US2] reciprocal contract reference を持つ Codex instruction runtime-composition graph
@@ -1776,23 +1777,27 @@ dispositionである。
   task が記録するはずだった fallback operation は既に存在し、strategy ID の追加は禁じられている。)* *(2026-08-06 修正:
   どのsurfaceもorder・capacity・condition・applicabilityをprojectしない —
   vendorの文書化されたselectionは維持管理contractに残り、製品が何をするかを述べるsurfaceは無い（FR-009、T091）。)*
-- [X] T222 [US2] instruction file 自身の presentation — file が書いた key を authored 順に、それに続く instructions
-  を、skill が既に使っている 1 回の frontmatter parse で — を `src/server/inspection/parsers/markdown.ts` と
-  `src/server/inspection/recognizers/candidate.ts` に実装する。detail が先頭に置くのはこれであり、この kind はこれまで payload
-  を持たなかった。Codex instruction file には reference を一切生成しない: relationship extractor は構文を文書化している vendor
-  とともに到着する（フェーズ 18 の Claude import）。到着した先でも target は read authority を与えない *(2026-08-17修正: どの引用ページも
+- [X] T222 [US2] 宣言から始まる形式の instruction file 自身の presentation — file が書いた key を authored 順に、それに
+  続く instructions を、skill が既に使っている 1 回の frontmatter parse で — を `src/server/inspection/parsers/markdown.ts` と
+  `src/server/inspection/recognizers/candidate.ts` に実装する。そうした file の detail が先頭に置くのはこれであり、Codex
+  instruction file は全体のまま読むので、これを持たない。Codex instruction file には reference を一切生成しない: relationship
+  extractor は構文を文書化している vendor とともに到着する（フェーズ 18 の Claude import）。到着した先でも target は read
+  authority を与えない *(2026-09-25修正: 宣言から始まるのは Copilot の `*.instructions.md` だけであり、Codex のものを含む
+  他のすべての instruction 形式は全体のまま読む（T1224）。)* *(2026-08-17修正: どの引用ページも
   `AGENTS.md` の reference 構文を文書化していないと T217 が確定したため、Codex instruction file からは reference を抽出しない。)*
   *(amended 2026-08-21: detailはfrontmatterをread-only viewerの1つのYAML
   document（frontmatter-yaml.ts）として提示する。blockそのものの言語であり、読み手は自分のfileと翻訳なしに見比べられる。)*
-- [X] T223 [US2] Codex instructionの正確な解決済みの値、atomic parsing、決定論的な返却結果のために完全なauthored
-  sourceを保持したまま行うparser scratch/transient-semanticの破棄、構成読み取り由来のfallback
-  provenanceを`src/server/inspection/scan.ts`へ統合する。Parser/relationship/assemblyのthrow/rejectionはdomainでcatch/cause分類/retry/item/recognition/relationship/derived
+- [X] T223 [US2] Codex instructionの認識 — 各fileを全体のまま読み、そこから何も抽出せず、決定論的な返却結果のために完全な
+  authored sourceを保持する — と、構成読み取り由来のfallback provenanceを`src/server/inspection/scan.ts`へ統合する。
+  Relationship/assemblyのthrow/rejectionはdomainでcatch/cause分類/retry/item/recognition/relationship/derived
   result/body/generation化せず変更なしに伝播させ、prior commitだけを保持する。targetをrecurse/expand/readしない
-- [X] T224 [US2] Codex instruction に対する typed detail presentation をそのkind自身のdetail
+  *(2026-09-25修正: Codex instruction file は全体のまま読むので、そこから値を解決せず、parse も走らない（T1224）。)*
+- [X] T224 [US2] Codex instruction の detail — 全体のまま示す file — をそのkind自身のdetail
   route（`src/app/pages/` 配下）で拡張し、inventory からそこへ到達できるようにする:
   `src/app/components/inventory/rows/InstructionRow.vue` は、route が無い間に描画している plain text を置き換えて、認識した
   product ごとにその route へリンクする。`src/app/components/inspection/RelationshipList.vue`
-  はこのフェーズのものではなく、reference に根拠のある vendor とともに到着する（T217、T222） *(2026-08-17修正: 「instruction を選択すると
+  はこのフェーズのものではなく、reference に根拠のある vendor とともに到着する（T217、T222） *(2026-09-25修正: Codex
+  instruction file は全体のまま読むので、その detail はタブのない1面の file である（T1224）。)* *(2026-08-17修正: 「instruction を選択すると
   detail が開く」という checkpoint が URL を手で打つ以外に到達できないことがレビューで判明したため、row の link をここで明記した。)* *(2026-08-06
   修正: どのsurfaceもorder・capacity・condition・applicabilityをprojectしない —
   vendorの文書化されたselectionは維持管理contractに残り、製品が何をするかを述べるsurfaceは無い（FR-009、T091）。)*
@@ -1920,7 +1925,7 @@ dispositionである。
 
 **目的**: 完全な literal Claude instruction detail を追加します。 *(2026-08-18修正: この製品は import 参照を一切扱わない — 先送りではなく確定した判断である。この製品は prose 中から参照を読み取らない: Claude Code は `@path` import 構文を文書化しているが、そのtokenがどこで終わるかを定めた公式pageは無く、境界ruleはすべてこの製品自身の発明になり、誤ったruleは読者が書いていない参照を主張することになる。tokenは Codex の場合と同じく source text のままとし、relationship-only registry は import の relation を持たない（T217）。)*
 
-**独立テスト**: repository root と subdirectory の Claude instruction file、および malformed な file を開き、正確な解決済みの値の保持、完全な authored source、diagnostics、detail-state cleanup を検証します。
+**独立テスト**: repository root と subdirectory の Claude instruction file、および YAML でない block で始まる file を開き、完全な authored source、その block が instructions の1行のままであり file の読み取りが diagnostic を生じないこと、detail-state cleanup を検証します。 *(2026-09-25修正: Claude Code は instruction file に frontmatter を文書化していないので、file は全体のまま読む（T1224）。)*
 
 **目に見えるチェックポイント**: Claude instruction を選択すると、名指した file を開くことなく、完全で非活性な detail が表示されます。
 
@@ -2191,15 +2196,17 @@ dispositionである。
 
 **目的**: skill 比較の前例に倣い、literal および typed な instruction difference を備えた instruction kind 自身の比較サーフェスを設計します。
 
-**独立テスト**: Readableなcurrent-generation instruction fileを正確に2つ比較し、correctness claimやenvironment-reference resolutionを行わず、完全なauthored sourceと両sideのcanonical serialized frontmatter document、relationship differenceを検証する。
+**独立テスト**: Readableなcurrent-generation instruction fileを正確に2つ比較し、correctness claimやenvironment-reference resolutionを行わず、完全なauthored source — 両sideがCopilotのpath-specificな`*.instructions.md`のときは両sideのcanonical serialized frontmatter documentも — とrelationship differenceを検証する。 *(2026-09-25修正: 宣言から始まるのはその形式だけであり、他のinstruction fileを含むペアは、認識するproductと完全なfileを比較する（T1224）。)*
 
 **目に見えるチェックポイント**: 二つの instruction file を比較し、構造上の difference を理解できます。
 
 ### テスト先行
 
-- [X] T276 [US3] semantic correctness claim を行わず、正確に二つの FileDetail input、canonical serialized
-  frontmatter document、捏造された relationship row が存在しないことに関する instruction comparison の回帰失敗テストを
-  `tests/unit/app/instruction-comparison.test.ts` に追加する *(2026-08-19 修正:
+- [X] T276 [US3] semantic correctness claim を行わず、正確に二つの FileDetail input、両 side が Copilot の path-specific な
+  `*.instructions.md` のときの canonical serialized frontmatter document とそれ以外のときにそれが無いこと、捏造された
+  relationship row が存在しないことに関する instruction comparison の回帰失敗テストを
+  `tests/unit/app/instruction-comparison.test.ts` に追加する *(2026-09-25修正: 他のすべての instruction 形式は全体のまま
+  読むので、それを含むペアは宣言を比較しない（T1224）。)* *(2026-08-19 修正:
   宣言済みmetadataはfileのkindごとに1回のparseであり、pairごとに1回比較し、tool recognitionはtoolごとにその横で比較する —
   toolは宣言の座標ではない（research.md § 7）。)* *(2026-08-19修正: 確立済みの relationship model に合わせて再記述 — instruction
   file は edge を一切公開しない（T217/T238、api-types.ts § FileDetailDto）ため、relationship についてこの suite が証明するのは
@@ -2210,20 +2217,22 @@ dispositionである。
   document（skillは`name`と`description`を先頭に、他は全keyをsort順）としてMonacoでdiffし、tool
   recognitionはその横にtypedなrowとして並べる（frontmatter-yaml.ts）。)*
 - [X] T277 [US3] credential/environment-reference difference を含む完全な literal instruction
-  diff、canonical serialized declaration document、masking/reveal または environment substitution
-  なし、typed layering/fallback difference に関するブラウザー受け入れテストを
-  `tests/e2e/instructions-comparison.spec.ts` に追加する *(amended 2026-08-21: acceptanceは両sideのcanonical
+  diff、path-specific な `*.instructions.md` のペアの canonical serialized declaration document、masking/reveal または
+  environment substitution なし、typed layering/fallback difference に関するブラウザー受け入れテストを
+  `tests/e2e/instructions-comparison.spec.ts` に追加する *(2026-09-25修正: 宣言から始まるのはその形式だけなので、他の
+  instruction file を含むペアは宣言を示さない（T1224）。)* *(amended 2026-08-21: acceptanceは両sideのcanonical
   serialized documentがMonacoでdiffされることを検証する。全kindの宣言済みmetadata比較が取る形である（research.md § 7）。)*
 
 ### 実装
 
-- [X] T278 [US3] instruction comparisonが各sideの宣言済みmetadataを1つのcanonical
-  documentへserializeしてMonacoでdiffし、typed layering/fallback state を分離したままにするよう
+- [X] T278 [US3] 両sideがCopilotのpath-specificな`*.instructions.md`のとき、instruction comparisonが各sideの宣言済み
+  metadataを1つのcanonical documentへserializeしてMonacoでdiffし、typed layering/fallback state を分離したままにするよう
   `src/app/components/instruction-comparison/RecognitionComparison.vue`（skill の前例 —
   `src/app/pages/skills/compare/[family].vue`、`src/app/composables/skill-comparison.ts`、`src/app/components/skill-comparison/`
   — に倣ってこの task が設計・作成する、その kind 自身の比較サーフェスの一部。そこへ到達する entry link — その kind の inventory row
   component（`src/app/components/inventory/rows/` 配下）と、その kind の detail route（`src/app/pages/` 配下） —
-  も、skill における T203 と同様にこの task が所有する） を拡張する *(2026-08-19 修正:
+  も、skill における T203 と同様にこの task が所有する） を拡張する *(2026-09-25修正: 宣言から始まるのはその形式だけで
+  あり、他の instruction file を含むペアは、認識する product と完全な file を比較する（T1224）。)* *(2026-08-19 修正:
   宣言済みmetadataはfileのkindごとに1回のparseであり、pairごとに1回比較し、tool recognitionはtoolごとにその横で比較する —
   toolは宣言の座標ではない（research.md § 7）。)* *(2026-08-19修正: この task が作成した surface は
   `src/app/pages/instructions/compare/[family].vue`、`src/app/composables/instruction-comparison.ts`、`src/app/components/instruction-comparison/`（`RecognitionComparison.vue`、`recognition-comparison.ts`）である
@@ -8299,6 +8308,14 @@ Claude Code の badge を持ち、`packages/api/AGENTS.md` が `packages/api/**`
   `tests/unit/shared/diagnostics.test.ts` と `tests/unit/shared/display-text.test.ts` で固定し、壊れた command の
   バッジと、両方の種類を持つ skill の row を `tests/e2e/inventory-rows.spec.ts` で確かめ、利用者に届く変更として
   `.changeset/` の項目を足す（FR-028）。
+- [X] T1227 [US1] このフェーズの8回目のレビューを解決する。T1224 が全体のまま読むようにした instruction 形式を、まだ
+  宣言のために解析するものとして扱っていた完了済みの記述 — フェーズ 16 のチェックポイント、T218、T222〜T224、フェーズ
+  18 の独立テスト、フェーズ 22 の独立テストと T276〜T278 — を、それが今求めるものへ書き直し、それぞれに日付付きの注記を
+  付ける。比較が宣言を扱うのは、Copilot の path-specific な `*.instructions.md` のペアだけとする。`data-model.md`
+  § ToolRecognition では、親が書かれたときの tool の union と順序を保ち、`antigravity` を加える機能の data model
+  （`specs/003-antigravity-cli-support/data-model.md` § SupportedTool）を指し示す。Presentation Allowlist の列挙は、その
+  contract と食い違っていた独自の件数ではなく、official-source contract を通じて vendor contract を名指す
+  （FR-004、FR-007、FR-011）。
 
 ## ストーリーカバレッジマトリクス
 

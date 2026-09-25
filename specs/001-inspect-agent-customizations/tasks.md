@@ -34,13 +34,13 @@ the task would have built.
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
 | FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
-| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222, T1225 |
+| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222, T1225, T1227 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078, T1215–T1216 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
-| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224 |
+| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224, T1227 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
 | FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
-| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220, T1221, T1224 |
+| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220, T1221, T1224, T1227 |
 | FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
 | FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137, T1164 |
 | FR-014 | T930, T944–T947, T950–T951, T956–T959, T963–T964, T967–T968, T974–T975, T977–T978, T981–T982, T988–T989, T991, T993–T995, T997–T998, T1000–T1005, T1029, T1041, T1058, T1061–T1062, T1137, T1140 |
@@ -2077,7 +2077,7 @@ the task would have built.
 
 **Independent Test**: Open static Codex instruction fixtures and verify that no reference is emitted — no official Codex page this repository cites establishes an import or reference syntax for `AGENTS.md`, so an authored `@path`-looking token is source text like any other (T217) — together with stale-ID behavior, diagnostics, and detail-state cleanup; separately verify the detail of a configured fallback instruction file that Phase 15's configuration read activated. What the vendor documents about selection order and instruction capacity stays in its maintained contract — nothing projects it onto a recognition or detail (T091).
 
-**Visible Checkpoint**: Selecting a Codex instruction opens complete inert detail — the file led by what it declares, its instructions, and its diagnostics — whether it is one of the exact static files or a name the repository's configuration adds.
+**Visible Checkpoint**: Selecting a Codex instruction opens complete inert detail — the file shown whole, with its diagnostics — whether it is one of the exact static files or a name the repository's configuration adds. *(amended 2026-09-25: Codex documents no frontmatter for an instruction file, so the detail is the file read whole rather than led by declarations (T1224).)*
 
 ### Tests first
 
@@ -2097,10 +2097,11 @@ the task would have built.
   documents discovery and fallback filenames only — so a Codex instruction file yields no
   `runtime-reference` until a cited page establishes one; the presentation allowlist's row permits
   the kind, it does not require an extractor to invent occurrences.)*
-- [X] T218 [P] [US2] Add failing detail/API tests for complete Codex instruction source, the
-  declarations the file wrote in authored order, fallbacks, an empty relationship set (T217),
-  diagnostics, environment-reference non-resolution, and stale IDs in
-  `tests/contract/http-api-files.test.ts` and `tests/unit/app/recognition-details.test.ts` *(amended
+- [X] T218 [P] [US2] Add failing detail/API tests for complete Codex instruction source read whole,
+  with no declaration set apart, fallbacks, an empty relationship set (T217), diagnostics,
+  environment-reference non-resolution, and stale IDs in `tests/contract/http-api-files.test.ts`
+  and `tests/unit/app/recognition-details.test.ts` *(amended 2026-09-25: a Codex instruction file is
+  read whole, so its detail publishes no declaration (T1224).)* *(amended
   2026-08-06: a vendor's documented selection stays in its maintained contract, and no surface
   states what a product would do, so nothing projects an order, a capacity, a condition, or an
   applicability (FR-009, T091).)*
@@ -2129,30 +2130,36 @@ the task would have built.
   exist and adding a strategy ID is forbidden.)* *(amended 2026-08-06: a vendor's documented
   selection stays in its maintained contract, and no surface states what a product would do, so
   nothing projects an order, a capacity, a condition, or an applicability (FR-009, T091).)*
-- [X] T222 [US2] Implement the instruction file's own presentation — the keys it declares in
-  authored order and the instructions that follow them, through the one frontmatter parse a skill
-  already uses — in `src/server/inspection/parsers/markdown.ts` and
-  `src/server/inspection/recognizers/candidate.ts`, which is what the detail leads with and what the
-  kind has had no payload for until now. No reference is emitted for a Codex instruction file: the
-  relationship extractor arrives with the vendor whose documentation establishes a syntax (Phase
-  18's Claude imports), and targets confer zero read authority wherever it does *(amended
+- [X] T222 [US2] Implement the instruction file's own presentation for a format that opens with
+  declarations — the keys it declares in authored order and the instructions that follow them,
+  through the one frontmatter parse a skill already uses — in
+  `src/server/inspection/parsers/markdown.ts` and `src/server/inspection/recognizers/candidate.ts`,
+  which is what such a file's detail leads with; a Codex instruction file is read whole and has
+  none. No reference is emitted for a Codex instruction file: the relationship extractor arrives
+  with the vendor whose documentation establishes a syntax (Phase 18's Claude imports), and targets
+  confer zero read authority wherever it does *(amended 2026-09-25: only Copilot's
+  `*.instructions.md` opens with declarations; every other instruction format, a Codex one among
+  them, is read whole (T1224).)* *(amended
   2026-08-17: no reference is extracted from a Codex instruction file, because no cited page
   documents a reference syntax for `AGENTS.md` (T217).)* *(amended 2026-08-21: the detail presents
   the frontmatter as one YAML document in the read-only viewer (frontmatter-yaml.ts), the block's
   own language, so a reader compares it against their file without translating.)*
-- [X] T223 [US2] Integrate Codex instruction exact resolved-value preservation, atomic parsing,
-  parser scratch/transient-semantic disposal while retaining complete authored source for
-  deterministic returned outcomes, and fallback provenance from the configuration read; let every
-  parser/relationship/assembly throw/rejection propagate unchanged without domain catch, cause
-  classification, retry, item/recognition/relationship/derived result/body/generation, retaining
-  only the prior commit in `src/server/inspection/scan.ts`; never recurse, expand, or read a
-  relationship target
-- [X] T224 [US2] Extend typed detail presentation for Codex instructions in that kind's own detail
-  route under `src/app/pages/`, and make the inventory reach it:
+- [X] T223 [US2] Integrate Codex instruction recognition — each file read whole, nothing extracted
+  from it, and its complete authored source retained for deterministic returned outcomes — and
+  fallback provenance from the configuration read; let every relationship/assembly throw/rejection
+  propagate unchanged without domain catch, cause classification, retry,
+  item/recognition/relationship/derived result/body/generation, retaining only the prior commit in
+  `src/server/inspection/scan.ts`; never recurse, expand, or read a relationship target *(amended
+  2026-09-25: a Codex instruction file is read whole, so no value is resolved out of it and no parse
+  runs (T1224).)*
+- [X] T224 [US2] Extend the detail for Codex instructions — the file shown whole — in that kind's
+  own detail route under `src/app/pages/`, and make the inventory reach it:
   `src/app/components/inventory/rows/InstructionRow.vue` links each recognizing product to that
   route, replacing the plain text it renders while no route exists.
   `src/app/components/inspection/RelationshipList.vue` is not this phase's — it arrives with the
-  vendor whose references are founded (T217, T222) *(amended 2026-08-17: the row link was named here
+  vendor whose references are founded (T217, T222) *(amended 2026-09-25: a Codex instruction file is
+  read whole, so its detail is the file on one page without tabs (T1224).)* *(amended 2026-08-17: the
+  row link was named here
   after a review found the checkpoint's "selecting an instruction opens its detail" reachable only
   by typing a URL.)* *(amended 2026-08-06: a vendor's documented selection stays in its maintained
   contract, and no surface states what a product would do, so nothing projects an order, a capacity,
@@ -2302,7 +2309,7 @@ the task would have built.
 
 **Purpose**: Add complete literal Claude instruction detail. *(amended 2026-08-18: this product handles no import reference at all — a standing decision, not a deferral. It does not read references out of prose: Claude Code documents an `@path` import syntax, but where such a token ends is fixed by no official page, so every boundary rule would be this product's own invention and a wrong one would assert a reference the reader never wrote. The token stays source text, exactly as a Codex one does, and the relationship-only registry carries no import record (T217).)*
 
-**Independent Test**: Open a Claude instruction file at the repository root and in a subdirectory, and a malformed one, and verify exact resolved-value preservation, the complete authored source, diagnostics, and detail-state cleanup.
+**Independent Test**: Open a Claude instruction file at the repository root and in a subdirectory, and one opening with a block that is not YAML, and verify the complete authored source, that the block stays a line of the instructions and reading the file reports no diagnostic, and detail-state cleanup. *(amended 2026-09-25: Claude Code documents no frontmatter for an instruction file, so the file is read whole (T1224).)*
 
 **Visible Checkpoint**: Selecting a Claude instruction shows complete inert detail without opening the files it names.
 
@@ -2611,15 +2618,18 @@ the task would have built.
 
 **Purpose**: Design the instruction kind’s own comparison surface, following the skill comparison precedent, with literal and typed instruction differences.
 
-**Independent Test**: Compare exactly two readable current-generation instruction files and verify complete authored source plus the two sides' canonical serialized frontmatter documents and relationship differences without correctness claims or environment-reference resolution.
+**Independent Test**: Compare exactly two readable current-generation instruction files and verify complete authored source — plus the two sides' canonical serialized frontmatter documents where both are Copilot's path-specific `*.instructions.md` — and relationship differences without correctness claims or environment-reference resolution. *(amended 2026-09-25: only that format opens with declarations; a pair holding any other instruction file compares the recognizing products and the complete files (T1224).)*
 
 **Visible Checkpoint**: Users can compare two instruction files and understand their structure-level differences.
 
 ### Tests first
 
 - [X] T276 [US3] Add failing instruction comparison regressions for exactly two FileDetail inputs,
-  the canonical serialized frontmatter documents, and the absence of fabricated relationship rows,
-  without semantic correctness claims, in `tests/unit/app/instruction-comparison.test.ts` *(amended
+  the canonical serialized frontmatter documents where both sides are Copilot's path-specific
+  `*.instructions.md` and none otherwise, and the absence of fabricated relationship rows, without
+  semantic correctness claims, in `tests/unit/app/instruction-comparison.test.ts` *(amended
+  2026-09-25: every other instruction format is read whole, so a pair holding one compares no
+  declarations (T1224).)* *(amended
   2026-08-19: declared metadata is the file's one parse per kind, compared once per pair with tool
   recognition compared per tool beside it — a tool is not a coordinate of a declaration (research.md
   § 7).)* *(amended 2026-08-19: restated for the founded relationship model — an instruction file
@@ -2631,22 +2641,27 @@ the task would have built.
   canonical YAML document per side, `name` and `description` leading for skills and every key
   sorted, diffed in Monaco (frontmatter-yaml.ts), with tool recognition beside it as typed rows.)*
 - [X] T277 [US3] Add browser acceptance for the complete literal instruction diff including
-  credential/environment-reference differences, the canonical serialized declaration documents, no
-  masking/reveal or environment substitution, and typed layering/fallback differences in
-  `tests/e2e/instructions-comparison.spec.ts` *(amended 2026-08-21: the acceptance verifies the two
+  credential/environment-reference differences, the canonical serialized declaration documents of a
+  pair of path-specific `*.instructions.md`, no masking/reveal or environment substitution, and
+  typed layering/fallback differences in `tests/e2e/instructions-comparison.spec.ts` *(amended
+  2026-09-25: only that format opens with declarations, so a pair holding any other instruction file
+  shows none (T1224).)* *(amended 2026-08-21: the acceptance verifies the two
   sides' canonical serialized documents diffed in Monaco, the form every kind's declared-metadata
   comparison takes (research.md § 7).)*
 
 ### Implementation
 
 - [X] T278 [US3] Extend instruction comparison to serialize each side's declared metadata into one
-  canonical document diffed in Monaco while keeping typed layering/fallback state separate in
+  canonical document diffed in Monaco, where both sides are Copilot's path-specific
+  `*.instructions.md`, while keeping typed layering/fallback state separate in
   `src/app/components/instruction-comparison/RecognitionComparison.vue`, part of the kind’s own
   comparison surface this task designs and creates following the skill precedent
   (`src/app/pages/skills/compare/[family].vue`, `src/app/composables/skill-comparison.ts`,
   `src/app/components/skill-comparison/`), including the entry links that reach it from that kind's
   inventory row component under `src/app/components/inventory/rows/` and from that kind's detail
-  route under `src/app/pages/`, as T203 owns them for skills *(amended 2026-08-19: the surface this
+  route under `src/app/pages/`, as T203 owns them for skills *(amended 2026-09-25: only that format
+  opens with declarations; a pair holding any other instruction file compares the recognizing
+  products and the complete files (T1224).)* *(amended 2026-08-19: the surface this
   task created is `src/app/pages/instructions/compare/[family].vue`,
   `src/app/composables/instruction-comparison.ts`, and `src/app/components/instruction-comparison/`
   (`RecognitionComparison.vue`, `recognition-comparison.ts`) — named here so each file resolves to
@@ -9703,6 +9718,16 @@ and drops `AGENTS.override.md`.
   assert a malformed command's badge, and a skill row carrying both kinds, in
   `tests/e2e/inventory-rows.spec.ts`; and add the `.changeset/` entry the change owes its users
   (FR-028).
+- [X] T1227 [US1] Resolve the eighth review of this phase. Rewrite the completed statements that
+  still had the instruction formats T1224 reads whole parsed for their declarations — Phase 16's
+  checkpoint, T218, and T222–T224; Phase 18's independent test; and Phase 22's independent test
+  and T276–T278 — to what they now require, each with a dated note, the comparison's declarations
+  named for a pair of Copilot's path-specific `*.instructions.md` alone. In `data-model.md`
+  § ToolRecognition, keep the tool union and order the parent was written with and point to the
+  feature data model that adds `antigravity` (`specs/003-antigravity-cli-support/data-model.md`
+  § SupportedTool), and let the Presentation Allowlist enumeration name the vendor contracts
+  through the official-source contract rather than by a count of its own, which disagreed with
+  that contract (FR-004, FR-007, FR-011).
 
 ## Story Coverage Matrix
 

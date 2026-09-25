@@ -1457,7 +1457,7 @@ directory from.
 |---|---|---|
 | `sourceRelativePath` | `SourceRelativePath` | The file the recognition is attached to, by its identity (FR-030); many recognitions may reference one physical file |
 | `provenances` | ordered admission record[] | Sorted, non-empty set of rule/path admissions for this shared tool/kind interpretation; each record holds the compiled rule that authorized the read and derives its `ruleId` and `RuleDiscoveryClass` from it, beside the matched `SourceRelativePath` — and nothing beyond that |
-| `tool` | `copilot \| claude \| codex` | Required |
+| `tool` | `copilot \| claude \| codex` | Required. A feature's own data model adds a member and its place in the closed tool order: `specs/003-antigravity-cli-support/data-model.md` § SupportedTool adds `antigravity` |
 | `details` | kind-discriminated payload | The recognized kind plus what identifies a recognition of that kind — for a skill, its declared name. One field, so projecting it is a copy rather than a per-kind reconstruction |
 | `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies — an instruction file its products read whole among them (§ ToolRecognition); `failed` is all-or-nothing per `(file, kind)`: the Markdown kinds run one extraction shared by every recognizing tool, while the MCP kind runs each recognizing tool's own documented reading over the one decoded text (§ Field reading) — readings that share their parser family, so a text one rejects fails them all and the failure unit stays the `(file, kind)` pair |
 | `diagnosticIds` | opaque string[] | The kind's extraction-failure record (FR-028): one per `(file, kind)`, referenced by each failed recognition of that kind and listed once by the file |
@@ -1474,11 +1474,10 @@ reference that fails either gate remains visible only in the complete `sourceTex
 not create a published value or `Relationship`, and the parser does not infer an
 equivalent one from its shape or name.
 
-The authoritative enumerations are the Presentation Allowlist sections in the
-[GitHub Copilot](contracts/vendors/github-copilot.md), [Claude Code](contracts/vendors/claude-code.md),
-and [OpenAI Codex](contracts/vendors/openai-codex.md) contracts, with the six deterministic
-table digests and extraction algorithm recorded in the
-[official-source contract](contracts/official-sources.md). They are frozen design inputs
+The authoritative enumerations are the Presentation Allowlist sections of the vendor contracts
+under `contracts/vendors/`, with the deterministic table digests and extraction algorithm
+recorded in the [official-source contract](contracts/official-sources.md), which names every
+contract they cover. They are frozen design inputs
 before dependent implementation begins, and the implementation gate only recomputes and
 verifies them. If a field, relationship kind, source form, extractor applicability, or
 allowlist membership must change after implementation begins, dependent work stops before

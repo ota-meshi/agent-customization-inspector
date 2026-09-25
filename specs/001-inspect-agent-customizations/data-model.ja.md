@@ -1127,7 +1127,7 @@ inventoryにも現れない。一方、ruleが独立にadmitするpath — 別�
 |---|---|---|
 | `sourceRelativePath` | `SourceRelativePath` | Recognitionが付くfileをそのidentityで名指す（FR-030）。複数recognitionが1 physical fileを参照可能 |
 | `provenances` | ordered admission record[] | 共有tool/kind解釈についてのrule/path admissionのsort済み非空set。各recordは読み取りを認可したcompiled ruleを保持して`ruleId`と`RuleDiscoveryClass`をそこから導出し、matched `SourceRelativePath`を傍らに持つ — それ以上は持たない |
-| `tool` | `copilot \| claude \| codex` | 必須 |
+| `tool` | `copilot \| claude \| codex` | 必須。機能自身の data model が member と、閉じた tool 順でのその位置を加える: `specs/003-antigravity-cli-support/data-model.md` § SupportedTool は `antigravity` を加える |
 | `details` | kind判別payload | 認識されたkindと、そのkindのrecognitionを識別するもの — skillなら宣言名。1 fieldであるため、射影はkindごとの再構成ではなくcopyで済む |
 | `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当 — 全体をそのまま読むinstruction fileもこれに当たる（§ ToolRecognition）。`failed`は`(file, kind)`ごとにall-or-nothing: Markdown kindは1回のextractionを全recognizing toolで共有し、MCP kindは1つのdecoded text上で各recognizing tool自身のdocumented readingを実行する（§ Field reading）。それらのreadingはparser familyを共有するため、一方が拒むtextは全readingを失敗させ、失敗の単位は`(file, kind)`の組に留まる |
 | `diagnosticIds` | opaque string[] | そのkindのextraction失敗record（FR-028）: `(file, kind)`ごとに1件で、そのkindの失敗した各recognitionが参照し、fileは1回だけ列挙する |
@@ -1139,9 +1139,9 @@ occurrenceを定義する場合だけeligibleとする。1つのrowに複数sour
 別formへ移したりしない。どちらかのgateを満たさないauthored field/referenceは完全な`sourceText`内でだけ表示し、
 公開値または`Relationship`を作らない。Parserはshape/nameから同等のものを推論しない。
 
-規範的な列挙は、[GitHub Copilot](contracts/vendors/github-copilot.ja.md)、[Claude Code](contracts/vendors/claude-code.ja.md)、
-[OpenAI Codex](contracts/vendors/openai-codex.ja.md) contractのPresentation Allowlist sectionとし、決定的な6件のtable digestと
-抽出algorithmは[official-source contract](contracts/official-sources.ja.md)に記録する。依存するimplementation開始前に
+規範的な列挙は、`contracts/vendors/`配下のvendor contractのPresentation Allowlist sectionとし、決定的なtable digestと
+抽出algorithmは、それらが対象とするcontractをすべて名指す[official-source contract](contracts/official-sources.ja.md)に
+記録する。依存するimplementation開始前に
 frozen design inputとし、implementation gateは再計算とverifyだけを行う。Implementation開始後にfield、relationship kind、
 source form、extractor applicability、allowlist membershipの変更が必要になった場合、production registry mutationより前に
 dependent workを停止し、影響する英日specification、research、plan、quickstart、contract、data-model artifactをすべて同期して、
