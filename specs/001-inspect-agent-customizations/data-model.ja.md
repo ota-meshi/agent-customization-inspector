@@ -1341,7 +1341,7 @@ Opaque IDはorderに使わない。Relationshipの構築または保持中にtar
 | Field | Type | Rule |
 |---|---|---|
 | `diagnosticId` | opaque ASCII string | Server生成でgeneration/session内unique |
-| `code` | stable closed code | Objective testとdocumentation linkに利用可能。Shared registryが各codeのscope、severity、実行可能な英語message/next-step textを固定するため、いずれもserializeしない |
+| `code` | stable closed code | Objective testとdocumentation linkに利用可能。Shared registryが各codeのscope、severity、種類を名指す語、実行可能な英語message/next-step textを固定するため、いずれもserializeしない |
 | `severity` | `info \| warning \| error` | `code`によりregistry固定でserializeしない。Vendor validationを意味しない |
 | `scope` | `file \| source` | `code`によりregistry固定でserializeしない。必須attachment discriminator。Generation scopeかsession-lifecycleかというlifetimeとは独立 |
 | `sourceId` | opaque ASCII ID | どちらのscopeでも必須。この製品が生成するdiagnosticはすべてSourceに属するため、path-lessなものは存在しない |
@@ -1356,7 +1356,8 @@ Legalなattachment shapeは正確に次の2つだけである。`file`はnon-nul
 source scopeまたはfile scopeであり、そのどちらであるかはcommit済みgeneration内に存在するかどうかを何も語らない。
 
 Closed diagnostic-code registryはshared moduleでclosed code unionのそばに置き、各codeのseverity、
-attachment scope、問題と実用的な次stepを示す1つの実行可能な英語messageを固定する。Serverとbrowserは
+attachment scope、種類を名指す語（一覧のrowが影響pathの傍らに常に述べる語。FR-028）、
+問題と実用的な次stepを示す1つの実行可能な英語messageを固定する。Serverとbrowserは
 同じregistryを読み、client message catalogまたはlocalized/bilingualなruntime variantは存在しない。
 `lifecycleOwnerKey`は1 lifecycle instanceの識別子で、serializeしない。
 Candidateは

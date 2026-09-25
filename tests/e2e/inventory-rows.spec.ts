@@ -12,10 +12,17 @@
 // is stated by its kind at all times with the explanation disclosed rather than
 // standing.
 //
+// A skill row holding both kinds of problem a row can carry is read off a
+// tree of its own (T1226): the all-supported tree ships no supporting file that
+// cannot be read, and adding one there would move the release evidence's
+// fixture digests for one assertion.
+//
 // The grouping underneath is proven closer to the code
 // (tests/unit/app/skill-row-files.test.ts); this suite asserts it only as far
 // as a reader can see it.
-import { rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import {
@@ -256,37 +263,68 @@ test('states a diagnostic by its kind at all times and discloses the explanation
 }) => {
   await page.goto(host.origin);
 
-  // The all-supported tree carries files whose extraction cannot succeed, so
-  // some kind's list states one; which kind is the fixture's business, not this
-  // assertion's.
-  let badge: Locator | null = null;
-  for (const kind of [...NAME_HEADED_KINDS, ...NAMELESS_KINDS]) {
-    const panel = await openKind(page, kind);
-    const candidate = panel.locator('.aci-row-diagnostics__badge').first();
-    if ((await candidate.count()) > 0) {
-      badge = candidate;
-      break;
-    }
-  }
-  expect(badge, 'the all-supported tree states no row diagnostic').not.toBeNull();
+  // A command whose frontmatter does not parse keeps its line, and a failed
+  // parse is the one kind a row's own file carries: a file that could not be
+  // read, or holds binary content, is recognized as nothing and listed in no
+  // kind.
+  const panel = await openKind(page, 'Prompt / Command');
+  const line = panel
+    .locator('.aci-row-file')
+    .filter({ hasText: fixture.commandFixture.malformedCommandPath });
+  const badge = line.locator('.aci-row-diagnostics__badge');
+  // The kind is readable without opening anything, which is what lets a reader
+  // scan a list for the rows that kept one and see what each asks of them
+  // (FR-028, T1226).
+  await expect(badge).toHaveText('Could not be parsed');
 
-  // The kind of problem is readable without opening anything: that is what
-  // lets a reader scan a list for the rows that kept one.
-  await expect(badge!).toBeVisible();
-  // One word, not a clause. A badge naming the outcome put "could not be
-  // parsed" beside every affected path, which is more than a row being scanned
-  // for trouble needs: the mark it wants is that this file has some, and which
-  // kind is what opens beneath (T1163).
-  const label = (await badge!.textContent())?.trim() ?? '';
-  expect(label).toBe('diagnostic');
-
-  const explanation = badge!.locator('xpath=..').locator('.aci-row-diagnostics__explanation');
+  const explanation = line.locator('.aci-row-diagnostics__explanation');
   await expect(explanation).toBeHidden();
-  await badge!.click();
+  await badge.click();
   await expect(explanation).toBeVisible();
   // The disclosure is the sentence saying what to do about it, not the badge
   // again (FR-028).
-  expect(((await explanation.textContent()) ?? '').length).toBeGreaterThan(label.length);
+  await expect(explanation).toContainText('This file could not be parsed');
+});
+
+test.describe('a skill row that kept two kinds of problem', () => {
+  let tree: string;
+  let treeHost: LaunchedHost;
+
+  test.beforeAll(async () => {
+    tree = await mkdtemp(join(tmpdir(), 'aci-row-diagnostic-kinds-'));
+    // A `SKILL.md` whose frontmatter does not parse, beside a supporting file
+    // that cannot be read: a link whose target is not there, which the census
+    // lists and whose read is that file's own failure (FR-024).
+    await mkdir(join(tree, '.claude/skills/deploy/scripts'), { recursive: true });
+    await writeFile(
+      join(tree, '.claude/skills/deploy/SKILL.md'),
+      '---\nname: [deploy\n---\n\nDeploy the site.\n',
+      'utf8',
+    );
+    await symlink(
+      join(tree, 'no-such-script.sh'),
+      join(tree, '.claude/skills/deploy/scripts/run.sh'),
+    );
+    treeHost = await launchHost(tree);
+  });
+
+  test.afterAll(async () => {
+    await stopHost(treeHost);
+    await rm(tree, { recursive: true, force: true });
+  });
+
+  test('names each kind beside the path it belongs to', async ({ page }) => {
+    await page.goto(treeHost.origin);
+    const panel = await openKind(page, 'Skill');
+    // The two ask for different fixes — the file's own text, or whether the
+    // file is there and can be read — so each names its kind beside its own
+    // path, on the one row (FR-028).
+    await expect(panel.locator('.aci-item')).toHaveCount(1);
+    await expect(panel.locator('.aci-row-diagnostics__badge')).toHaveText([
+      'Could not be parsed',
+      'Could not be read',
+    ]);
+  });
 });
 
 test('offers the non-kind list a Source filter and no Tool filter', async ({ page }) => {

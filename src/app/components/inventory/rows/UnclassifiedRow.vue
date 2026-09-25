@@ -12,7 +12,7 @@
 // row are the two halves of that, the same two every other kind's row uses.
 //
 // The outcome is the badge the row's diagnostic discloses, rather than a
-// second statement beside one: the code's own label would otherwise say "could
+// second statement beside one: the code's own label would otherwise say "Could
 // not be read" next to an outcome already saying it ({@link RowDiagnostics}).
 //
 // It stands beside the path rather than in the column a recognized file's marks

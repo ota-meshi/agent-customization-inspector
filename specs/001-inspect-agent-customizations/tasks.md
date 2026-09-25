@@ -57,7 +57,7 @@ the task would have built.
 | FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069, T1169, T1207, T1209 |
 | FR-026 | T077, T085, T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925–T927, T995–T997, T1055 |
 | FR-027 | T084, T100, T102, T927, T1045, T1206–T1210 |
-| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163, T1224, T1225 |
+| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163, T1224, T1225, T1226 |
 | FR-029 | T015–T016, T020–T021, T023–T024, T026–T027, T031, T035, T037, T040, T046, T055, T067–T068, T141, T149, T217, T222–T223, T1085, T1087, T1090, T238, T242–T243, T915, T923–T924, T946, T958, T1006–T1008, T1013–T1014, T1017, T1021, T1023–T1024, T1029, T1041, T1043, T1046, T1054, T1058, T1062 |
 | FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082, T1149, T1151, T1152, T1180 |
 | FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
@@ -8968,11 +8968,13 @@ one, and a diagnostic stated by kind on its row with its explanation disclosed r
   `src/app/components/inventory/rows/RuleRow.vue`,
   `src/app/components/inventory/rows/PermissionsRow.vue`, and
   `src/app/components/inventory/rows/SettingsRow.vue` (FR-009)
-- [X] T1163 [US1] Mark a row that kept a diagnostic at all times and disclose what happened on
-  request, in `src/app/components/inventory/rows/RowDiagnostics.vue` and
-  `src/app/components/inventory/rows/UnclassifiedRow.vue` *(amended 2026-09-02: the mark is one
-  word, because a clause naming the outcome beside every affected path is more text than a row
-  being scanned for trouble needs)* (FR-028)
+- [X] T1163 [US1] Mark a row that kept a diagnostic at all times with the kind of problem it kept,
+  and disclose that kind's explanation on request, in
+  `src/app/components/inventory/rows/RowDiagnostics.vue` and
+  `src/app/components/inventory/rows/UnclassifiedRow.vue` *(amended 2026-09-25: the mark names the
+  kind, because FR-028 asks that the kind be learned without opening anything, and the kinds a row
+  can carry ask for different fixes; what keeps the row short is that the explanation stays
+  disclosed)* (FR-028)
 - [X] T1164 [US1] Name the personal-setup home a file came from on its row, rather than repeating
   its full path on a second line, in `src/app/components/inventory/SourceFamilySections.vue`
   (FR-013)
@@ -9689,6 +9691,18 @@ and drops `AGENTS.override.md`.
   readings fail in `tests/e2e/claude-settings-detail.spec.ts` and
   `tests/e2e/codex-config-detail.spec.ts`, and a rule file that is a command too in
   `tests/e2e/claude-rules-detail.spec.ts` (FR-004, FR-028).
+- [X] T1226 [US1] Name the kind of problem on a row's diagnostic badge (2026-09-25), as FR-028
+  asks: a failed parse is fixed in the file's own text and an unreadable file by checking that it
+  is there and can be read, and one skill row can carry both. Give each code in
+  `src/shared/diagnostics.ts` the words its badge states — `Could not be parsed`,
+  `Could not be read`, `Binary` — beside its explanation, the words the files-in-no-kind row and a
+  detail's attributes already use for the same state, and render them in
+  `src/app/components/inventory/rows/RowDiagnostics.vue`, the files-in-no-kind row keeping its read
+  outcome and every badge keeping one colour; state the words in `data-model.md` § Diagnostic; pin
+  them in `tests/unit/shared/diagnostics.test.ts` and `tests/unit/shared/display-text.test.ts`;
+  assert a malformed command's badge, and a skill row carrying both kinds, in
+  `tests/e2e/inventory-rows.spec.ts`; and add the `.changeset/` entry the change owes its users
+  (FR-028).
 
 ## Story Coverage Matrix
 

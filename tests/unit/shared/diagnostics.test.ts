@@ -55,6 +55,22 @@ describe('closed diagnostic registry', () => {
       expect(DIAGNOSTIC_REGISTRY[code].message).toBe(message);
     }
   });
+
+  it('names each kind in the words a row states it by', () => {
+    // A row says which kind of problem it kept without being opened (FR-028,
+    // T1226), in the words the product uses for that state elsewhere: an
+    // unreadable file is `Could not be read` on the files-in-no-kind row and in
+    // a detail's attributes too.
+    const labels: Record<DiagnosticCode, string> = {
+      'root-unreadable': 'Could not be read',
+      'file-unreadable': 'Could not be read',
+      'file-content-binary': 'Binary',
+      'recognition-parse-failed': 'Could not be parsed',
+    };
+    for (const [code, label] of Object.entries(labels) as [DiagnosticCode, string][]) {
+      expect(DIAGNOSTIC_REGISTRY[code].label).toBe(label);
+    }
+  });
 });
 
 describe('attachment shapes', () => {

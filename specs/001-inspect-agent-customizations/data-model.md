@@ -1739,7 +1739,7 @@ retaining a relationship; only independent candidate admission can authorize a r
 | Field | Type | Rules |
 |---|---|---|
 | `diagnosticId` | opaque ASCII string | Server-generated and unique within generation/session |
-| `code` | stable closed code | Suitable for objective tests and documentation links; the shared registry fixes each code's scope, severity, and actionable English message/next-step text, so none of them serializes |
+| `code` | stable closed code | Suitable for objective tests and documentation links; the shared registry fixes each code's scope, severity, the words naming its kind, and actionable English message/next-step text, so none of them serializes |
 | `severity` | `info \| warning \| error` | Registry-fixed by `code` and not serialized; does not imply vendor validation |
 | `scope` | `file \| source` | Registry-fixed by `code` and not serialized; required attachment discriminator; independent of generation-scoped versus session-lifecycle lifetime |
 | `sourceId` | opaque ASCII ID | Required for both scopes: every diagnostic this product produces belongs to a Source, so none of them is pathless |
@@ -1757,8 +1757,9 @@ which of the two they are says nothing about whether they live inside a committe
 generation.
 
 The closed diagnostic-code registry lives beside the closed code union in the shared
-module and fixes each code's severity, attachment scope, and one actionable English
-message that identifies the problem and a practical next step. The server and browser read
+module and fixes each code's severity, attachment scope, the words naming its kind — which
+an inventory row states beside the affected path at all times (FR-028) — and one actionable
+English message that identifies the problem and a practical next step. The server and browser read
 that same registry; there is no client message catalog or localized/bilingual runtime
 variant. `lifecycleOwnerKey`
 identifies the one lifecycle instance and

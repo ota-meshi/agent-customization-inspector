@@ -54,7 +54,7 @@ dispositionである。
 | FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069, T1169, T1207, T1209 |
 | FR-026 | T077, T085, T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925–T927, T995–T997, T1055 |
 | FR-027 | T084, T100, T102, T927, T1045, T1206–T1210 |
-| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163, T1224, T1225 |
+| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163, T1224, T1225, T1226 |
 | FR-029 | T015–T016, T020–T021, T023–T024, T026–T027, T031, T035, T037, T040, T046, T055, T067–T068, T141, T149, T217, T222–T223, T1085, T1087, T1090, T238, T242–T243, T915, T923–T924, T946, T958, T1006–T1008, T1013–T1014, T1017, T1021, T1023–T1024, T1029, T1041, T1043, T1046, T1054, T1058, T1062 |
 | FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082, T1149, T1151, T1152, T1180 |
 | FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
@@ -7632,11 +7632,11 @@ railへ、各Source family自身の状態をそれ自身のsurfaceへ置く。
   `src/app/components/inventory/rows/RuleRow.vue`、
   `src/app/components/inventory/rows/PermissionsRow.vue`、
   `src/app/components/inventory/rows/SettingsRow.vue` である（FR-009）
-- [X] T1163 [US1] Diagnosticを保持したrowを常に印で示し、何が起きたかは要求に応じて展開する。対象は
-  `src/app/components/inventory/rows/RowDiagnostics.vue` と
-  `src/app/components/inventory/rows/UnclassifiedRow.vue` である *(2026-09-02 修正: 印は1語とする。
-  outcomeを述べる節を該当pathすべての隣に置くのは、trouble を探して走査しているrowが必要とする以上の
-  文字数になるため)*（FR-028）
+- [X] T1163 [US1] Diagnosticを保持したrowを、保持した問題の種類で常に印し、その種類の説明は要求に応じて
+  展開する。対象は `src/app/components/inventory/rows/RowDiagnostics.vue` と
+  `src/app/components/inventory/rows/UnclassifiedRow.vue` である *(2026-09-25 修正: 印は種類を名指す。
+  FR-028 が何も開かずに種類を知れることを求めており、rowが持ちうる種類ごとに必要な直し方が違うため。
+  rowを短く保つのは、説明文を展開のままにすることである)*（FR-028）
 - [X] T1164 [US1] Fileが来た個人設定のhomeを、2行目にfull pathを繰り返すのではなくそのrowで名指す。
   対象は `src/app/components/inventory/SourceFamilySections.vue` である（FR-013）
 
@@ -8289,6 +8289,16 @@ Claude Code の badge を持ち、`packages/api/AGENTS.md` が `packages/api/**`
   失敗する settings document を `tests/e2e/claude-settings-detail.spec.ts` と
   `tests/e2e/codex-config-detail.spec.ts` で、command でもある rule ファイルを
   `tests/e2e/claude-rules-detail.spec.ts` で確かめる（FR-004、FR-028）。
+- [X] T1226 [US1] 一覧の row の診断バッジに問題の種類を書く（2026-09-25）。FR-028 が求めるとおりである: 解析の
+  失敗はファイル自身の本文で直し、読めないファイルはそこにあって読めるかを確かめて直すもので、1本の skill の
+  row が両方を持つことがある。`src/shared/diagnostics.ts` の各 code に、バッジが述べる語 —
+  `Could not be parsed`、`Could not be read`、`Binary` — を説明文の隣に与える。これは Files in no kind の row と
+  詳細の属性行が同じ状態にすでに使っている語である。それを
+  `src/app/components/inventory/rows/RowDiagnostics.vue` で表示し、Files in no kind の row は読み取り結果の
+  ままとし、どのバッジも1色のままとする。語を `data-model.md` § Diagnostic に述べ、
+  `tests/unit/shared/diagnostics.test.ts` と `tests/unit/shared/display-text.test.ts` で固定し、壊れた command の
+  バッジと、両方の種類を持つ skill の row を `tests/e2e/inventory-rows.spec.ts` で確かめ、利用者に届く変更として
+  `.changeset/` の項目を足す（FR-028）。
 
 ## ストーリーカバレッジマトリクス
 

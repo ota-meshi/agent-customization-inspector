@@ -150,7 +150,7 @@ const englishTasks = parseTasks(tasksEnglish);
 const japaneseTasks = parseTasks(tasksJapanese);
 
 /**
- * The declared task-ID space: T001 through T1225, less the ranges the withdrawn
+ * The declared task-ID space: T001 through T1226, less the ranges the withdrawn
  * phases left vacant (tasks.md T1041). Written out here and in the task text
  * both, because what this freezes is that a range nobody meant to change did
  * not change.
@@ -164,7 +164,7 @@ const VACANT_TASK_RANGES: readonly (readonly [number, number])[] = [
 ];
 
 /** Every task ID the current task set declares, in numeric order. */
-const DECLARED_TASK_IDS: readonly string[] = Array.from({ length: 1225 }, (_, index) => index + 1)
+const DECLARED_TASK_IDS: readonly string[] = Array.from({ length: 1226 }, (_, index) => index + 1)
   .filter((number) => !VACANT_TASK_RANGES.some(([from, to]) => number >= from && number <= to))
   .map((number) => `T${String(number).padStart(3, '0')}`);
 
@@ -479,8 +479,8 @@ describe('task set', () => {
     // a count nobody intended to change must not change unnoticed, so the
     // literals are written here and a phase or task added without deciding to
     // add one fails (AGENTS.md § Implementation simplicity policy; T1049).
-    expect(englishTasks.size).toBe(1137);
-    expect(japaneseTasks.size).toBe(1137);
+    expect(englishTasks.size).toBe(1138);
+    expect(japaneseTasks.size).toBe(1138);
     expect(tasksEnglish.match(/^## Phase /gmu)).toHaveLength(120);
     expect(tasksJapanese.match(/^## フェーズ /gmu)).toHaveLength(120);
   });
