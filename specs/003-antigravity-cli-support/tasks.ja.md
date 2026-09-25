@@ -44,7 +44,7 @@
 | FR-017 | T011、T020–T021、T036、T038、T051、T059, T094 |
 | QR-001 | T007、T009–T014、T017、T032、T072 |
 | QR-002 | T026、T030、T053、T084 |
-| QR-003 | T020–T024、T033–T034、T036–T042、T049、T051–T054、T057、T061–T062、T064、T071、T085、T087 |
+| QR-003 | T020–T024、T033–T034、T036–T042、T049、T051–T054、T057、T061–T062、T064、T071、T085、T087、T095 |
 | QR-004 | T004、T063、T065、T086 |
 | QR-005 | T042、T047 |
 | QR-006 | T001–T002、T016–T017、T059–T060、T074–T075、T080、T086–T087 |
@@ -186,7 +186,7 @@
 
 - [X] T059 [P] `docs/which-files-are-listed.md` と `.ja.md` に、リポジトリと personal setup の下の Antigravity CLI の節を加える。出荷される rule が admit する literal segment を、`.agent`・`rules`・`hooks.json`・`SKILL.md` を含めてすべて名指す散文とし、共有 agent home の「読むツール」欄も正す。
 - [X] T060 [P] `README.md` と `README.ja.md` がツールの集合を名指すすべての箇所で、このリリースがサポートする4つを名指す。`docs/images/inventory.png` と `comparison.png` を撮り直す。どちらもこの変更で動く legend を写している。
-- [X] T061 [P] 初回利用の study input を、このリリースがサポートするツールを名指すよう更新し、FR-008 が取り除く環境プロパティを落とし、指定ファイルの読み手をリポジトリルートの `AGENTS.md` を読む3つに設定する。`tests/usability/sc001-sc006-study-inputs/`。
+- [X] T061 [P] 初回利用の study input を、このリリースがサポートするツールを名指すよう更新し、FR-008 が取り除く環境プロパティを落とし、指定ファイルの読み手をリポジトリルートの `AGENTS.md` を読む4つに設定する。`tests/usability/sc001-sc006-study-inputs/`。（2026-09-24 に親の T1218 で修正: Claude Code もこのファイルを読む。）
 - [X] T062 更新された input に対して親仕様の20セッションのエージェント駆動実行を行い、その実行・日付・結果を `specs/001-inspect-agent-customizations/validation.md` と `.ja.md` に記録する (spec.ja.md § QR-003)。
 - [X] T063 outcome manifest を次の version へ進め、このツールが加える `(tool, customization file type, admitted source form)` ごとに1 case を持たせ、影響を受ける fixture digest と canonical digest を再計算する。`tests/fixtures/outcomes/manifest.json` と `manifest.sha256`。この task が入るまで `tests/contract/outcome-fixture-manifest.test.ts` は不足する `(tool, kind)` の case で失敗する。
 - [X] T064 manifest version の遷移とその denominator、実行した Antigravity CLI の case ID、official-source の実行を `specs/001-inspect-agent-customizations/validation.md` と `.ja.md` に記録する。
@@ -275,3 +275,4 @@ Phase 1・2・3 で、リポジトリの inventory が4つ目のツールを名�
 - [X] T092 `.agents/rules.json` が登録する入れ子の rule ファイルは端末が読み、この登録を読む derivation を出荷しないこのリリースの範囲外であることを、`specs/003-antigravity-cli-support/spec.md` と `spec.ja.md` の FR-016 とその edge case、`research.md` の § 7a、両言語の vendor contract の Derived Repository rule と既知の不確実性の項目10に記す。workspace のカスタマイズの場所を移す端末の設定は無いと述べていたコメントを `src/shared/registries/antigravity/rules.ts`、`src/server/inspection/rules/antigravity.ts`、`src/server/inspection/rules/vendor/antigravity.ts`、`tests/contract/inspection-rules.test.ts`、`tests/documentation/cross-artifact.test.ts` で正す。FR-016 に基づく。
 - [X] T093 `specs/003-antigravity-cli-support/data-model.md` と `data-model.ja.md` の Parser format の表に、context file と rule file はどの parser も通らないことを記す。Rules ページが `AGENTS.md` と `GEMINI.md` は frontmatter を使わないと述べ、rule file はファイル全体として公開されるからである。frontmatter を parse できない rules ファイルが diagnostic を持つとしていた `spec.md` と `spec.ja.md` の edge case を訂正する。rule file からは何も読み出さないので、その diagnostic を生む読み取りは無い。YAML でない block で始まる context file を、diagnostic なしでファイル全体として示す edge case を加える。rule の kind を Claude Code だけのものとしていた `src/shared/api-types.ts` の `RuleFileDetailDto` のコメントを訂正する。FR-007、FR-016 による。
 - [X] T094 `specs/003-antigravity-cli-support/quickstart.md` と `quickstart.ja.md` で、rules・hooks・MCP の行が何を示し、詳細が何を示すかを述べる。行はファイルとそれを読む製品を名指し、`trigger`、hook の matcher group と `enabled` キー、server の `serverUrl` や legacy の `httpUrl` は詳細で読むものである。さらに親の文書で T076 と T078 を両言語で完了させる: Clarifications の再試行の回答の固定 tuple（日付つきの注記付き）、plan の tuple・control・five-entry confirmation・失敗表、research の member Source と admit される root、data model の Global control の状態、inspection-path allowlist の member entry、quickstart の3つの環境プロパティと5 root、そして `specs/001-inspect-agent-customizations/tasks.md` と `tasks.ja.md` で member を4つと数えていた完了済みのタスクとフェーズの記述すべてを、それぞれ5 member に書き換えて日付つきの注記を付ける。また `spec.md` の edge case のうち、先頭の block が YAML として正しくない rules ファイルと context ファイルについての2つを、その読み取りが何を報告するかの記述に狭める。そうしたパスのファイルは別の kind のものでもありうるからである。FR-001、FR-005、FR-007、FR-016、FR-017 による。
+- [X] T095 `specs/003-antigravity-cli-support/tasks.md`、`tasks.ja.md`、`spec.md`、`spec.ja.md` の T061 と、初回利用評価についての Clarifications の回答を、親の T1218 が ground truth に定めたとおり、指定ファイルの `AGENTS.md` の今の4つの読み手に書き直し、それぞれに理由を短く述べる日付付きの注記を付ける。次の実行が古い数で採点されないようにするためである。QR-003 に基づく。
