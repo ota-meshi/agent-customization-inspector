@@ -47,16 +47,20 @@ pnpm run start:fixture antigravity-agents --no-open --port 0
 pnpm run start:fixture antigravity-instructions --no-open --port 0
 ```
 
-- The rules inventory lists one row per Markdown file below `.agents/rules/`, each showing the
-  `trigger` its frontmatter declares — `always_on`, `manual`, `model_decision`, or `glob` with
-  its `globs` — as written, with no pattern matched against anything. The same tree's `.agent/rules/` file is
-  listed under the superseded spelling, and `packages/api/.agents/rules/api.md` is listed beside
-  them.
-- The hooks inventory lists `.agents/hooks.json` with its event map, matcher groups, and the
-  `enabled` flag one hook carries, and runs nothing.
+- The rules inventory lists one row per Markdown file below `.agents/rules/`, naming
+  Antigravity CLI; the same tree's `.agent/rules/` file is listed under the superseded spelling,
+  and `packages/api/.agents/rules/api.md` beside them. A row names the file and the products
+  that read it; opening it shows the file whole, with the `trigger` its frontmatter declares —
+  `always_on`, `manual`, `model_decision`, or `glob` with its `globs` — as written and no
+  pattern matched against anything.
+- The hooks inventory lists `.agents/hooks.json` under each event it declares — `PostToolUse`
+  and `PreToolUse` — and runs nothing. Opening a declaration shows its matcher group, the name
+  the carrier gave the hook, and, for the one hook that writes it, `enabled: false`, all as
+  written.
 
-- The MCP inventory lists one row per name declared in `.agents/mcp_config.json`, and a remote
-  server's `serverUrl` and a legacy `url` both appear exactly as written.
+- The MCP inventory lists one row per name declared in `.agents/mcp_config.json`. Opening a
+  remote server's row shows its `serverUrl`, or the legacy `httpUrl` one declaration still
+  spells, exactly as written.
 - The agents inventory lists `.agents/agents/<name>.md` and `.agents/agents/<name>/agent.md`.
 - The root `GEMINI.md` and the root `AGENTS.md` each appear once, naming every product that
   reads them; `packages/api/GEMINI.md` and `docs/.agents/GEMINI.md` name Antigravity CLI and

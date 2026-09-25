@@ -142,11 +142,11 @@ on no row.
 - `.agents/skills/` holding a directory with no `SKILL.md` produces no skill row, and a
   Markdown file inside such a directory under any other name produces none either.
 - `.agents/rules/` holding a file that is not Markdown produces no rule row; a rules file whose
-  frontmatter is not valid YAML keeps its row and carries no diagnostic, because nothing is read
-  out of a rule file: it is shown whole, its `trigger` block as written (FR-016).
+  frontmatter is not valid YAML keeps its row, and reading it reports no diagnostic, because
+  nothing is read out of a rule file: it is shown whole, its `trigger` block as written (FR-016).
 - A `GEMINI.md` or `AGENTS.md` opening with a `---` block is shown whole, the block as a line of
-  its instructions, and carries no diagnostic even when the block is not valid YAML: the Rules
-  page says neither file uses frontmatter, so nothing is parsed out of it (FR-007).
+  its instructions, and reading it reports no diagnostic even when the block is not valid YAML:
+  the Rules page says neither file uses frontmatter, so nothing is parsed out of it (FR-007).
 - A repository holding `.agent/skills/deploy/SKILL.md` or `.agent/rules/style.md` lists both
   under the superseded spelling the vendor still supports; one holding `.agents/skills/deploy.md`
   or `.agent/skills/deploy.md` lists neither, because no page documents a flat skill.

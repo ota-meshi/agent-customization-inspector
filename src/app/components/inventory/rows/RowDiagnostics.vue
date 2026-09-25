@@ -23,6 +23,13 @@
 // The disclosure is `<details>`/`<summary>` rather than a button and a flag:
 // the expanded state, the keyboard behavior, and the announcement are the
 // platform's (AGENTS.md § Implementation simplicity policy).
+//
+// One badge per code. Every caller hands over the records of one file, and
+// two of one code are two readings of that file failing the same way — a
+// `.claude/settings.json` holding a comment fails both the permission
+// policy's strict reading and the hooks' (data-model.md § Diagnostic) —
+// while the sentence a badge discloses names neither reading, so a second
+// badge would mark nothing the first did not.
 import { computed } from 'vue';
 import DiscloseIcon from '~icons/lucide/chevron-right';
 import { DIAGNOSTIC_REGISTRY } from '../../../../shared/diagnostics';
@@ -43,15 +50,23 @@ const props = defineProps<{
   label?: string;
 }>();
 
-/** The generation's records this row references, in the generation's order. */
-const rowDiagnostics = computed(() =>
-  props.diagnostics.filter((diagnostic) => props.diagnosticIds.includes(diagnostic.diagnosticId)),
+/**
+ * The codes of the generation's records this row references, each once, in
+ * the order the generation first lists them.
+ */
+const rowCodes = computed(
+  () =>
+    new Set(
+      props.diagnostics
+        .filter((diagnostic) => props.diagnosticIds.includes(diagnostic.diagnosticId))
+        .map((diagnostic) => diagnostic.code),
+    ),
 );
 </script>
 
 <template>
-  <ul v-if="rowDiagnostics.length > 0" role="list" class="aci-row-diagnostics">
-    <li v-for="diagnostic in rowDiagnostics" :key="diagnostic.diagnosticId">
+  <ul v-if="rowCodes.size > 0" role="list" class="aci-row-diagnostics">
+    <li v-for="code in rowCodes" :key="code">
       <details class="aci-row-diagnostics__one">
         <!-- The registry fixes each code's severity, and the badge does not
              draw it: a binary file and a failed read are both attention the
@@ -62,7 +77,7 @@ const rowDiagnostics = computed(() =>
           <DiscloseIcon class="aci-row-diagnostics__caret" aria-hidden="true" />
         </summary>
         <p class="aci-row-diagnostics__explanation">
-          {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
+          {{ DIAGNOSTIC_REGISTRY[code].message }}
         </p>
       </details>
     </li>

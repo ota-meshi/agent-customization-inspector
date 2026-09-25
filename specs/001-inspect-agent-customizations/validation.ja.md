@@ -669,7 +669,7 @@ silhouetteを3つ見分けるのではなく色をたどって目的のものを
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 7**、canonical SHA-256
-`a3f10ae847011e4e413fb95e677d655abc9bc50bd393c62d7b8cbf4a1dd72c96`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 7は
+`cd516fd81da0d8cfe927ceb71e11708bab5191212c4fddacd44c66017d01a03e`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 7は
 期待結果を1つ変える。`sc003.shared-file.repository-root-gemini-md`が、root より下の`GEMINI.md`を、
 どの行にも届かなかったところから、Antigravity CLIだけのものとする。vendorのRulesページが、端末がたどって
 上る各階層のpairを文書化しているためである（specs/003-antigravity-cli-support T082〜T086）。期待結果の
@@ -708,7 +708,17 @@ parse failureが出ないことを確かめる。どのcaseのID、class、期�
 `sc007.file-confined.malformed-content`には、frontmatterがparseできないpath-specificなfileが引き続き
 届く。それらのdigestと上のcanonical digestを一緒に再記録し、instructionの行・detail・比較に届く17 specを
 2026-09-25にChromium projectで実行して116 test、instruction detailを開く`accessibility`のAUTO-2.5.3の
-caseを1 test実行して、すべてpassした。
+caseを1 test実行して、すべてpassした。7回目のreview（T1225）は、同じversionのまま参照fixture 5つのbyteを
+動かした。`tests/fixtures/repositories/build-fixtures.ts`は期待するClaudeとCopilotのinstruction pathに
+`AGENTS.md`を加え、`claude-rules-detail`、`claude-settings-detail`、`codex-config-detail`、
+`codex-mcp-detail`は、別のkindの読み取りがparseできないfile — commandでもあるrule file、commentを含む
+`.claude/settings.json`、TOMLが受け付けない`.codex/config.toml`、Codexのfallback entryが名指す
+`.mcp.json` — を組み立て、そのdetailが、そしてrule fileとsettings documentではその行も、失敗を1回
+述べることを確かめる。どのcaseのID、class、期待結果も変わっていない。それらのdigestと上のcanonical
+digestを一緒に再記録し、diagnostic、あるいはrule・skill・command・output style・settingsの行に届く
+52 specを2026-09-25にChromium projectで実行して319 test、すべてpassした。新しいassertionは
+それぞれ、まず変更を外したbuildに対して実行し、そこで失敗することを確かめた。それらの面から診断を外すと
+どれも1件も見つけず、記録を1件ずつ並べると、fileが2件の記録を持つ3つのcaseは2件を見つけた。
 
 その前のsetは**version 6**、canonical SHA-256
 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`である。Version 6は

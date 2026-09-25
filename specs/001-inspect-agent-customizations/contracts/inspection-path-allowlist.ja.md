@@ -73,10 +73,10 @@ runtime-composition contractに属し、このboundaryを変更しない。
 ### Global
 
 Global inspectionは新しいsessionごとに無効であり、current contract versionと正確なno-I/O previewにbind
-したconsentを必要とする。Consentは固定member entry — Copilot、Claude、Codex、共有agent home — に対するselectorなしの1 actionである。
-1 transactionで4つすべてをevaluateする。Deterministic rejectionはadmit済みsiblingをblockせず、1 batchが
+したconsentを必要とする。Consentは固定member entry — Copilot、Claude、Codex、Antigravity、共有agent home — に対するselectorなしの1 actionである。
+1 transactionで5つすべてをevaluateする。Deterministic rejectionはadmit済みsiblingをblockせず、1 batchが
 resulting Sourceをすべて1つのatomic generationへpublishする。Accepted member rootごとに独立したGlobal Sourceを作り、Copilot、
-Claude、Codex、共有agent homeのいずれかとして別々に識別する。各memberは自身のSourceへ対応し、各Sourceは正確に1つのrootへ
+Claude、Codex、Antigravity、共有agent homeのいずれかとして別々に識別する。各memberは自身のSourceへ対応し、各Sourceは正確に1つのrootへ
 bindする。これらはRepositoryのchildではなく、互いにmergeせず、Repository Sourceにもmergeしない。
 
 表示またはserializeする全candidate pathは、owning Sourceのsingle rootから計算したSource-relative Pathとする。

@@ -21,24 +21,43 @@
 // leaves out is a path no shipped selector reaches, so it is simply absent
 // from the inventory rather than a row saying it was left out.
 //
-// And no diagnostics, because none can reach a row of this kind: nothing is
-// read out of a rule file, so nothing can fail to be read, and a file whose
-// bytes were never accepted gains no recognition and so has no row here at
-// all. Such a file is listed under the inventory's files in no kind instead,
-// which is where a `partial` generation says which file made it partial
-// (FR-028).
+// The row states the file's diagnostics. Nothing is read out of a rule file,
+// so this reading cannot fail — but another kind's rules can admit the same
+// file, and their readings can: a rules directory below `.claude/commands/`
+// holds files that are commands too, and a command's frontmatter can fail to
+// parse. Those records are the file's, and a file-confined outcome is about
+// the file rather than about what recognized it (`RowDiagnostics.vue`,
+// FR-028), so the row states them as the rule detail does. Whether a record
+// can reach a rule file is not this kind's to settle: it turns on every other
+// rule that admits the same path. A file whose bytes were never accepted gains
+// no recognition and so has no row here at all — it is listed under the
+// inventory's files in no kind instead, which is where a `partial` generation
+// says which file made it partial.
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RecognitionMarks from '../RecognitionMarks.vue';
+import RowDiagnostics from './RowDiagnostics.vue';
 import SourceHomeBadge from '../SourceHomeBadge.vue';
 import { detailRoute } from '../../detail-route';
 import { useSessionSources } from '../../../composables/session-sources';
 import { accessiblePresentationLabel, pathPresentationLabel } from '../../../../shared/entities';
-import type { RuleInventoryEntryDto } from '../../../../shared/api-types';
+import type {
+  CustomizationFileSummaryDto,
+  RuleInventoryEntryDto,
+  SerializedDiagnostic,
+} from '../../../../shared/api-types';
 
 const props = defineProps<{
   /** The committed entry to render: one recognized rule file. */
   entry: RuleInventoryEntryDto;
+  /**
+   * Every published file by its Source and then its Source-relative Path —
+   * both halves of the file's identity (FR-030). The entry repeats none of the
+   * file's own facts, so this lookup resolves the diagnostics the file keeps.
+   */
+  filesBySource: ReadonlyMap<string, ReadonlyMap<string, CustomizationFileSummaryDto>>;
+  /** The generation's diagnostics, resolved for the file by {@link RowDiagnostics}. */
+  diagnostics: readonly SerializedDiagnostic[];
 }>();
 
 /** The shared per-Source lookups (`session-sources.ts`). */
@@ -62,6 +81,17 @@ const route = computed(() =>
     props.entry.sourceRelativePath,
     sessionSources.selectorOf(props.entry.sourceId),
   ),
+);
+
+/**
+ * The file's own diagnostic references, from its `files[]` entry: every
+ * record a reading of the file left, whichever kind's reading it was
+ * (FR-028).
+ */
+const diagnosticIds = computed(
+  () =>
+    props.filesBySource.get(props.entry.sourceId)?.get(props.entry.sourceRelativePath)
+      ?.diagnosticIds ?? [],
 );
 
 /**
@@ -96,6 +126,7 @@ const pathAccessibleText = computed(() =>
         <NuxtLink :to="route" class="aci-path aci-authored-text" :aria-label="pathAccessibleText">{{
           pathText
         }}</NuxtLink>
+        <RowDiagnostics :diagnostic-ids="diagnosticIds" :diagnostics="diagnostics" />
       </span>
       <RecognitionMarks :recognitions="entry.recognitions" />
       <span class="aci-row-file__end" />

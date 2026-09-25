@@ -23,9 +23,15 @@
 // part of the one document, while the MCP page leads with one declaration
 // (FR-007).
 //
-// A file whose bytes were never accepted gains no recognition and so has no
-// detail at all — its finding stays on the inventory, under the files in no
-// kind (FR-028).
+// The file's diagnostics stand above the document. Nothing is read out of it
+// for this kind, so this reading cannot fail — but the same document is read
+// by other kinds, and those readings can: a `.claude/settings.json` holding a
+// comment fails the permission policy's and the hooks' strict readings, and a
+// `.codex/config.toml` TOML cannot parse fails its MCP servers' and its
+// hooks'. Those records are the file's, so the page states them as the row
+// does (FR-028). A file whose bytes were never accepted gains no recognition
+// and so has no detail at all — its finding stays on the inventory, under the
+// files in no kind.
 //
 // This surface shows file contents exactly as authored — credentials
 // included, with nothing masked and no control that would uncover a masked
@@ -49,6 +55,7 @@ import {
   detailRoutePathOf,
 } from '../../../../components/detail-route';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
+import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import type { DetailPageControls } from '../../../../composables/detail-heading-focus';
 import DetailPage from '../../../../components/inspection/DetailPage.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
@@ -279,6 +286,12 @@ useReportedPageSubject(titleSubject);
       />
 
       <SourceRootNote :text="sourceRootText" />
+
+      <!-- The file's own records, whichever kind's reading of the document
+           left them, above the text they are about. The list says each code
+           once, so a comment two strict readings reject reads as one
+           sentence (`DetailDiagnostics.vue`). -->
+      <DetailDiagnostics :diagnostics="openDetail.diagnostics" />
 
       <!-- The readability guard is the narrowing this file's own union asks
            for and never a branch with a second outcome: a settings recognition

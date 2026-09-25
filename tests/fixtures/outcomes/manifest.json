@@ -14,7 +14,7 @@
     "repositories": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/repositories/build-fixtures.ts",
-      "sha256": "d519db1c6c592886647d1d44426f1ef9237b0249cfc9b8c094a496c458682057"
+      "sha256": "f14a0d42a1a7abb8caa2920e5a2cbae479c3bcc9c8c5fb25b1fc6e5a0c8dbdf3"
     },
     "secrets": {
       "kind": "deterministic-builder",
@@ -134,7 +134,7 @@
     "tests/e2e/claude-rules-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-rules-detail.spec.ts",
-      "sha256": "069b4f08b9bd65722e3a0ccaeefece18459018ca9ac994e89a4f3bb2c628034e"
+      "sha256": "dd173f4c2b3c709c14c52804738e5ee1f4696c6289135da93e0f78494511c7f9"
     },
     "tests/e2e/claude-rules-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -144,7 +144,7 @@
     "tests/e2e/claude-settings-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-settings-detail.spec.ts",
-      "sha256": "09471c1ac878fb8944d8a3da71904dd9764166655e7cd99509b9d17c11a271a5"
+      "sha256": "9364c431beba143ac110f03b3d111c6eccb27a8b15e8f09bd405dc42a5bf3b42"
     },
     "tests/e2e/claude-settings-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -164,7 +164,7 @@
     "tests/e2e/codex-config-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-config-detail.spec.ts",
-      "sha256": "30823c3f0576c7d04cdce44b5300df5d1620c1f3819d5a97f88b8c61c8dd854c"
+      "sha256": "375b074f6f240908ecc1f03b3120c513313dfa2c47900120b3feabb58c055130"
     },
     "tests/e2e/codex-config-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -204,7 +204,7 @@
     "tests/e2e/codex-mcp-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-mcp-detail.spec.ts",
-      "sha256": "a27e3062e8d73b8ee5b5e5867c0bbcd272edb40d316c4d4f45db65196072eaa5"
+      "sha256": "ecb6d8330311a679da38a46f46124a2570928a04ad6ccd02a60e2244fc9926ac"
     },
     "tests/e2e/codex-mcp-inventory.spec.ts": {
       "kind": "inline-fixture-suite",

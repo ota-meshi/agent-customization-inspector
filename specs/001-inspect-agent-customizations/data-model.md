@@ -1770,7 +1770,9 @@ order-only: each emitter creates every observation exactly once — legitimately
 records exist, because an extraction failure is one record per `(file, kind)` (FR-028)
 and one file's two kinds can each fail, sharing every public field — so there is
 no deduplication pass, and a double emission is an ordinary implementation bug owned by
-tests and review, not a runtime filter. A scan candidate belongs to one
+tests and review, not a runtime filter. The records stay two, and a surface listing one
+file's records states each code's message once: the message names neither reading, so a
+second copy tells the reader nothing the first did not. A scan candidate belongs to one
 committed generation. An out-of-generation lifecycle candidate—including a fatal scan attempt
 that cannot be committed—belongs to the session only and is never inserted into a
 generation or Source ID list. Malformed-request and other client-caused
@@ -2061,7 +2063,7 @@ ready/partial -- accepted per-source rescan --> scanning --> ready/partial
                                                      \-> failed/stale (creates own entry)
 failed/stale -- accepted per-source rescan --> scanning --> ready/partial (clears own entry + diagnostic)
                                                      \-> failed/stale (replaces own entry + diagnostic)
-active Global control (0..4 Sources) -- disable --> disabling barrier --> inactive / 0 Sources (Global sequence discarded; commits nothing)
+active Global control (0..5 Sources) -- disable --> disabling barrier --> inactive / 0 Sources (Global sequence discarded; commits nothing)
                                                                   \-> failed + retained error --> retry disable
 initial enable only -- disable --> cleanup-only barrier --> inactive / 0 Sources (no committed state changed)
                                                   \-> failed + retained error --> retry disable

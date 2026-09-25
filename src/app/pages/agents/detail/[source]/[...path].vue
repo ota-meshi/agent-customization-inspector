@@ -529,8 +529,9 @@ const openView = computed(() => {
 
 /**
  * The diagnostics of the open file. The detail response states each record
- * once — a failed extraction is one (file, kind) record (FR-028) — so the list
- * renders as published.
+ * once — a failed extraction is one (file, kind) record (FR-028) — and the
+ * list says each code once (`DetailDiagnostics.vue`), so it is passed as
+ * published.
  */
 const openDiagnostics = computed(() => openDetail.value?.diagnostics ?? []);
 

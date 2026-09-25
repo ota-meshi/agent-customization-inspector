@@ -804,7 +804,7 @@ the vendor's own glyph.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 7**, canonical
-SHA-256 `a3f10ae847011e4e413fb95e677d655abc9bc50bd393c62d7b8cbf4a1dd72c96`, recorded in
+SHA-256 `cd516fd81da0d8cfe927ceb71e11708bab5191212c4fddacd44c66017d01a03e`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Version 7 changes one expected outcome:
 `sc003.shared-file.repository-root-gemini-md` attributes a `GEMINI.md` below the root to
 Antigravity CLI alone, where it had reached no row, because the vendor's Rules page documents
@@ -855,7 +855,19 @@ reached by a path-specific file whose frontmatter does not parse. Their digests 
 canonical digest above were re-recorded together, and the 17 specs that reach an instruction
 row, detail, or comparison were run through the Chromium project on 2026-09-25, 116 tests, all
 passing, with `accessibility`'s AUTO-2.5.3 case, which opens an instruction detail, 1 test,
-passing.
+passing. The seventh review (T1225) moved five referenced fixtures' bytes at the same version:
+`tests/fixtures/repositories/build-fixtures.ts` lists `AGENTS.md` among the Claude and Copilot
+instruction paths it expects, and `claude-rules-detail`, `claude-settings-detail`,
+`codex-config-detail`, and `codex-mcp-detail` build a file another kind's reading cannot
+parse — a rule file that is a command too, a `.claude/settings.json` holding a comment, a
+`.codex/config.toml` TOML rejects, and a `.mcp.json` a Codex fallback entry names — and assert
+that its detail, and for the rule and the settings document its row, states the failure once.
+No case's ID, classes, or expected outcome changed. Their digests and the canonical digest above
+were re-recorded together, and the 52 specs that reach a diagnostic or a rule, skill,
+command, output-style, or settings row were run through the Chromium project on 2026-09-25,
+319 tests, all passing. Each new assertion was first run against a build without its change
+and failed there: with the diagnostics taken off those surfaces every one found none, and with
+each record listed on its own the three cases a file carries two records in found two.
 
 The set before it was **version 6**, canonical SHA-256
 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`. Version 6 changes one expected outcome:

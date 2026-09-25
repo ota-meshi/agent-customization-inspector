@@ -496,8 +496,8 @@ file existence. A behavior record, source record, strategy, relationship, or exc
 never authorizes a read.
 
 Every admitted member root is represented by its own member Global Source: at
-most one each for Codex, Claude, Copilot, and the shared agent home, and therefore zero to
-four Global Sources in one session. Each Source owns exactly one root and one Source-relative Path namespace.
+most one each for Codex, Claude, Copilot, Antigravity, and the shared agent home, and therefore
+zero to five Global Sources in one session. Each Source owns exactly one root and one Source-relative Path namespace.
 Files of different customization types below that root remain separate inventory items.
 The term repository-relative path is reserved for the Repository Source; inventoried-file
 and normalized-target DTO locator fields, filters, file-scoped diagnostics, and cross-source
@@ -1287,7 +1287,7 @@ missing or not a readable directory as that tool's absent or failed outcome with
 blocking the other tools (FR-014); an unexpected failure outside one tool's root aborts
 the whole transaction through the owning request boundary. If
 validation admits no root, `active-no-job` retains control for retry/disable and publishes no
-Source/job/generation. If it admits one to four roots, one provisional batch scan publishes
+Source/job/generation. If it admits one to five roots, one provisional batch scan publishes
 all of their separate Sources together in exactly one Global generation — the enable
 commit that creates the Global sequence — with no per-tool commit
 observable. Active-consent retry validation/admission is operation-local: only
@@ -1393,7 +1393,7 @@ plugin activation versus authored manifest inventory, and zero Global reads beyo
 FR-015 through FR-018 and FR-045. They also verify zero to five member Global Sources, at
 most one per member, exactly one root and Source-relative Path namespace per Source, exact literal
 credential display, no reveal controls, and no environment-variable substitution.
-Lifecycle fixtures cover concurrent unresolved failures for all four Sources, per-Source
+Lifecycle fixtures cover concurrent unresolved failures across Sources, per-Source
 clear/replace/removal, and automatic-first-failure current state. Browser fixtures cover
 an ordinary request rejection staying request-local, transport-reported channel loss, port
 reuse with a mismatched session, the absence of any page-lifecycle listener, purge, or refetch,

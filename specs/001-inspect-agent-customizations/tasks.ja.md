@@ -31,7 +31,7 @@ dispositionである。
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
 | FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
-| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222 |
+| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222, T1225 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078, T1215–T1216 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
 | FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224 |
@@ -54,7 +54,7 @@ dispositionである。
 | FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069, T1169, T1207, T1209 |
 | FR-026 | T077, T085, T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925–T927, T995–T997, T1055 |
 | FR-027 | T084, T100, T102, T927, T1045, T1206–T1210 |
-| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163, T1224 |
+| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163, T1224, T1225 |
 | FR-029 | T015–T016, T020–T021, T023–T024, T026–T027, T031, T035, T037, T040, T046, T055, T067–T068, T141, T149, T217, T222–T223, T1085, T1087, T1090, T238, T242–T243, T915, T923–T924, T946, T958, T1006–T1008, T1013–T1014, T1017, T1021, T1023–T1024, T1029, T1041, T1043, T1046, T1054, T1058, T1062 |
 | FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082, T1149, T1151, T1152, T1180 |
 | FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
@@ -1804,7 +1804,7 @@ dispositionである。
 
 ## フェーズ 17: Claude Instructions inventory
 
-**目的**: `AGENTS.md` を filename だけで recognition せず、root および nested の Claude instruction file を追加する。
+**目的**: root および nested の Claude instruction file を追加する。*(2026-09-25修正: Claude Code は 2.1.277 から `AGENTS.md` を読み、フェーズ 116 がそれをこの kind に加える。)*
 
 **独立テスト**: 対応する `CLAUDE.md`、`CLAUDE.local.md`、すべての nested `.claude/CLAUDE.md` を inventory 化し、それらが `claude.repo.instructions` に一致することを確認します。決定論的な provenance record と、変更されない Codex instruction を検証します。
 
@@ -1812,19 +1812,21 @@ dispositionである。
 
 ### fixture とテストを先行
 
-- [X] T226 [US1] root および nested の `CLAUDE.md` と `.claude/CLAUDE.md` candidate、filename-only
-  `AGENTS.md`、import、secret、malformed content、near miss に対する Claude instruction fixture を
-  `tests/fixtures/repositories/build-fixtures.ts` に作成する *(2026-08-08修正: launch/ancestor/descendant は
+- [X] T226 [US1] root および nested の `CLAUDE.md`、`.claude/CLAUDE.md`、`AGENTS.md` の candidate、
+  import、secret、malformed content、near miss に対する Claude instruction fixture を
+  `tests/fixtures/repositories/build-fixtures.ts` に作成する *(2026-09-25修正: `AGENTS.md` はフェーズ 116
+  以降 Claude の candidate であり、その T1215 が nested なものを加える。)* *(2026-08-08修正: launch/ancestor/descendant は
   vendor の runtime working directory との関係を指す語であり、Inspector はそれを観測しない — rule はあらゆる深さの `CLAUDE.md` に
   match し、file 単位の分類はどこにも描画しない（FR-009、T091）。)*
 - [X] T227 [US1] exclusion ID を定義せず、Claude instruction behavior、candidate
   matcher、composition、path-negative case、relationship、evidence row を
   `tests/fixtures/conformance/vendor-behaviors.json`、`tests/fixtures/conformance/inspection-rules.json`、`tests/fixtures/conformance/runtime-composition.json`
   に具体化する
-- [X] T228 [P] [US1] nested `.claude/CLAUDE.md` file が `claude.repo.instructions` candidate
-  であること、filename-only `AGENTS.md` は Claude-recognized されないこと、provenance が決定論的であることを証明する matcher と
+- [X] T228 [P] [US1] nested `.claude/CLAUDE.md` file とすべての `AGENTS.md` が
+  `claude.repo.instructions` candidate であること、provenance が決定論的であることを証明する matcher と
   recognition の失敗テストを `tests/unit/inspection/rules.test.ts` と
-  `tests/unit/inspection/recognizers.test.ts` に追加する
+  `tests/unit/inspection/recognizers.test.ts` に追加する *(2026-09-25修正: Claude Code は 2.1.277 から
+  `AGENTS.md` を読み、フェーズ 116（T1215）がそれを加える。)*
 - [X] T229 [US1] Claude instruction discovery、一度の read、決定論的な order、isolated failure、import-target
   read ゼロに関する scan の失敗テストを `tests/integration/repository-scan.test.ts` に追加する
 - [X] T230 [US1] Claude instruction row、filter、exclusion、diagnostics、維持される Codex instruction
@@ -2132,9 +2134,9 @@ dispositionである。
 
 ## フェーズ 21: 統合 Instructions inventory
 
-**目的**: 明示的な shared-file matrix とともに、priority wave の instruction baseline を統合します。`AGENTS.md` は Codex+Copilot、root `CLAUDE.md` は Claude+Copilot、nested `CLAUDE.md` は Claude-only — 設定済み Codex fallback は Repository root で突き合わせる entry 名であり、nested な file がそれになることはない — 、`CLAUDE.local.md` は Claude-only です。
+**目的**: 明示的な shared-file matrix とともに、priority wave の instruction baseline を統合します。root の `AGENTS.md` は Claude+Codex+Copilot+Antigravity CLI、nested なものは Claude+Copilot+Antigravity CLI、root `CLAUDE.md` は Claude+Copilot、nested `CLAUDE.md` は Claude-only — 設定済み Codex fallback は Repository root で突き合わせる entry 名であり、nested な file がそれになることはない — 、`CLAUDE.local.md` は Claude-only です。
 
-*(2026-08-17修正: フェーズ 15 が configured fallback を有効化するため、このフェーズの matrix はそれを含み、ここで carrier を待つものは無い。)*
+*(2026-08-17修正: フェーズ 15 が configured fallback を有効化するため、このフェーズの matrix はそれを含み、ここで carrier を待つものは無い。)* *(2026-09-25修正: Claude Code は 2.1.277 から `AGENTS.md` を読み（フェーズ 116）、Antigravity CLI はあらゆる深さでそれを読む（specs/003-antigravity-cli-support FR-007）ため、matrix は両方を名指す。)*
 
 **独立テスト**: all-vendor instruction fixtureを使用し、正確なshared-file matrix、受け入れ済みfileごとの一つの物理item/read、別々のrecognition/provenance、nested `CLAUDE.md`のfilename-based Codex promotionなし、configured fallback recognition、決定論的なorder、filter、fileに閉じたfailureのpartial continuity、rescan cleanupを検証する。
 
@@ -2142,10 +2144,13 @@ dispositionである。
 
 ### テスト先行
 
-- [X] T268 [US1] `AGENTS.md` Codex+Copilot、root `CLAUDE.md` Claude+Copilot、nested `CLAUDE.md`
+- [X] T268 [US1] root の `AGENTS.md` Claude+Codex+Copilot+Antigravity CLI と nested なもの
+  Claude+Copilot+Antigravity CLI、root `CLAUDE.md` Claude+Copilot、nested `CLAUDE.md`
   Claude-only と configured-fallback variant、Claude-only `CLAUDE.local.md`、その他すべての selector、決定論的な
   failure、secret、exclusion、注入した throw/rejected-operation failure case を持つ all-vendor instruction
-  fixture を `tests/fixtures/repositories/build-fixtures.ts` で完成させる
+  fixture を `tests/fixtures/repositories/build-fixtures.ts` で完成させる *(2026-09-25修正: Claude Code は
+  2.1.277 から `AGENTS.md` を読み（フェーズ 116）、Antigravity CLI はあらゆる深さでそれを読む
+  （specs/003-antigravity-cli-support FR-007）。)*
 - [X] T269 [P] [US1] 登録済みのすべての静的 instruction selector と exclusion、識別のみの derived fallback rule、正確な
   `AGENTS.md`/root `CLAUDE.md`/nested `CLAUDE.md`/`CLAUDE.local.md` recognition matrix に関する完全な
   conformance test を `tests/contract/inspection-rules.test.ts` に追加する
@@ -6254,17 +6259,17 @@ dispositionである。
   UTF-16 surrogateは`invalid`、active platformの`path.isAbsolute()`がfalseなら`relative`、それ以外の値は`eligible`で、
   その正確な文字列が各previewにfreezeされconsentまでread authorityを持たない。3つのenvironment propertyをexactな固定順で
   1回ずつreadすること、`node:os.homedir()`を無条件に1回callすること、exact lexical root、完全な
-  environment-supported escaping、正確で最小の4-entry frozen previewをカバーする。Create-or-replaceは保持済みstartup
+  environment-supported escaping、正確で最小の5-entry frozen previewをカバーする。Create-or-replaceは保持済みstartup
   inputからstate-changingなpreview作成operationだけで起き、current-preview取得はnon-mutatingで、どちらもprocess inputを
   再読込しないことを証明する。Throwされたstartup input captureは無変更で伝播し、capture、preview、path authorityを残さないことを
-  `tests/unit/host/global-consent.test.ts`で証明する
+  `tests/unit/host/global-consent.test.ts`で証明する *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - [X] T933 [US4] Immutable typed traversal plan、opaque `previewId`の背後でserverが保持するraw/display
   record、stale/replay invalidation、およびlater enable-request materialの`confirmedTools`をinvalid
-  entryも含むclosed fixed order `[copilot, claude, codex, agents]`にexactly固定し、eligibility
+  entryも含むclosed fixed order `[copilot, claude, codex, antigravity, agents]`にexactly固定し、eligibility
   narrowing、reorder、UI/API selectorを許さないpreview
   testを`tests/unit/host/global-consent.test.ts`へ追加する。このPhase-95 test
   boundaryはpreview-onlyとし、consent後のinitial/retry work-set derivationはenable
-  foundation作成後のT945–T946が所有する
+  foundation作成後のT945–T946が所有する *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - [X] T934 [P] [US4] Non-mutatingなconsent-preview read functionがcurrent frozen previewまたはfixedな
   `consent-preview-missing` rejectionだけを返すcontractと、session API契約（contracts/http-api.md）の
   state-changingでargument-freeなconsent-preview作成functionが、sessionで保持するstartup inputからunconsented previewを
@@ -6331,7 +6336,7 @@ dispositionである。
   callを0件発行することを`tests/unit/host/global-consent.test.ts`でassertする
 - [X] T945 [P] [US4] `confirmed: true`、exact version/`previewId` binding、tool
   selectorなし、extra/false/stale/superseded-preview rejection、fixed
-  `confirmedTools: [copilot, claude, codex, agents]`、server-derived initial-allまたはexact
+  `confirmedTools: [copilot, claude, codex, antigravity, agents]`、server-derived initial-allまたはexact
   `retryableTools` set—admitted-unpublishedとsame-preview rejected
   controlを含み、published、pending、lexical new-preview-required controlを除外—、exact accepted/rejected
   partitionのGlobal-enable function failing contract（session API契約、contracts/http-api.md）を追加する。Zero
@@ -6344,7 +6349,7 @@ dispositionである。
   root/contextをsynthesizeせず、T991/T993で全real
   portを通じて同じcaseを再検証する。Fileに閉じないfailureはaccept前なら失敗したrequestのordinary errorとしinitial
   consent/control/jobをactivateせず、retry stateを不変にし、acceptance後ならshared non-null IDのone retained
-  terminal error/no subset commitとすることを`tests/contract/http-api-global.test.ts`で検証する
+  terminal error/no subset commitとすることを`tests/contract/http-api-global.test.ts`で検証する *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - [X] T946 [P] [US4] Production bind前のmember portにはtest-injected typed outcomeだけを使い、fixed-member
   initial-enable/retry coordinatorのatomic control/admission partition、registered operation-IDによるcontinuation/
   settlement-entry check、FIFO、conflict、provisional Source 0件、`active-no-job`、および全nonempty injected admitted
@@ -6372,13 +6377,13 @@ dispositionである。
   レジストリ契約を
   `tests/contract/vendor-behaviors.test.ts`、`tests/contract/inspection-rules.test.ts`、`tests/contract/runtime-composition.test.ts`
   に追加する
-- [X] T950 [US4] No-selector exact-preview、fixed `[copilot, claude, codex, agents]`
+- [X] T950 [US4] No-selector exact-preview、fixed `[copilot, claude, codex, antigravity, agents]`
   confirmation、未bind Claude/Copilot portへのtest-only typed outcome、one shared batch/request
   IDへ結び付くper-tool accepted/rejected controls、`active-no-job`、ordinaryなbatch failure
   error、deterministic Diagnostic、admitted missing memberのpre-commit new/provisional Source/file row
   0件とcarried Source visibility、Repository retentionのbrowser
   acceptanceを`tests/e2e/global-codex-admission.spec.ts`へ追加する。Real Codex
-  pathだけをproduction-backedとし、全real-port browser完成はPhase 99へdeferする
+  pathだけをproduction-backedとし、全real-port browser完成はPhase 99へdeferする *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 
 ### 実装
 
@@ -6538,24 +6543,24 @@ dispositionである。
 
 このsliceは同じopen composite milestoneへreal Copilot portを追加するが、独立してgreenまたはrelease可能ではない。
 
-**目的**: 4-member consent基盤を先に敷き、Copilot root admissionと、contract化されたmember selector集合 — `COPILOT_HOME`配下のinstruction、skill、agent、hook、settings、MCPと、共有agent homeのskill rule — をsame fixed-four `GlobalBatchScan`内のseparately identified Source candidateとして追加し、exact Copilot/shared exclusionを所有する。
+**目的**: memberでkeyするconsent基盤を先に敷き、Copilot root admissionと、contract化されたmember selector集合 — `COPILOT_HOME`配下のinstruction、skill、agent、hook、settings、MCPと、共有agent homeのskill rule — をsame fixed-five `GlobalBatchScan`内のseparately identified Source candidateとして追加し、exact Copilot/shared exclusionを所有する。 *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 
-**独立テスト**: Fixed-four operation内でvalid/invalid `COPILOT_HOME`をpartitionし、contract化されたselectorだけを読み、behavior partitionをmappingする。Admitted sibling Sourceはone batch generationですべて同時に現れるか、fileに閉じないfailure後はどれも現れず、independent Copilot job/commitを作らない。
+**独立テスト**: Fixed-five operation内でvalid/invalid `COPILOT_HOME`をpartitionし、contract化されたselectorだけを読み、behavior partitionをmappingする。Admitted sibling Sourceはone batch generationですべて同時に現れるか、fileに閉じないfailure後はどれも現れず、independent Copilot job/commitを作らない。 *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 
 **目に見えるチェックポイント**: Global controlはshared operation内のCopilot per-member outcomeを報告し、new/provisional Copilot Sourceはsingle batch commitまで現れず、carried Sourcesはvisibleのままになる。
 
-### 4-member基盤
+### memberでkeyする基盤
 
-- [X] T1137 [US4] どのmemberを広げるより先に、fixed-memberのconsent operationをFR-013とFR-045が定義するfixed-four
-  member operationへ変える: session startupで3つのenvironment
+- [X] T1137 [US4] どのmemberを広げるより先に、fixed-memberのconsent operationをFR-013とFR-045が定義するmemberでkeyする
+  operationへ変える: session startupで3つのenvironment
   propertyを1回captureし、import済み`node:os.homedir()`をそのsessionで正確に1回callし、共有agent
-  homeを`node:path.join(capturedHomedir, '.agents')`としてderiveし、固定順の4 preview
+  homeを`node:path.join(capturedHomedir, '.agents')`としてderiveし、固定順でmemberごとに1つのpreview
   entryを`src/server/host/global-consent.ts`でfreezeする。`allowlistVersion`/`traversalPlanVersion`のliteralを`2026-08-27`へ上げ
   — 広がったselector集合は別のconsentであり、旧versionはmatchを止めなければならない —
   新しいliteralを`tests/contract/http-api-global.test.ts`でpinする。member
-  idをclosedな`copilot | claude | codex | agents`
+  idをサポート対象toolと`agents`からなるclosedな
   unionとして`src/shared/api-types.ts`に置き、その表記を`src/shared/api-text.ts`に置き、preview entry・control・batch
-  fieldを改訂後のcontract（contracts/http-api.md）どおりmemberでkeyし、`SourceSelector`が第4のmemberを`global-agents`と綴るよう`src/shared/registries/identifier-types.ts`とそれをparseするclientのroute/filter
+  fieldを改訂後のcontract（contracts/http-api.md）どおりmemberでkeyし、`SourceSelector`が共有agent homeのmemberを`global-agents`と綴るよう`src/shared/registries/identifier-types.ts`とそれをparseするclientのroute/filter
   moduleを更新する。member自体はそのCodex rule —
   `src/shared/registries/codex/rules.ts`と`src/server/inspection/rules/codex.ts`の`codex.global.agents-home.skill`と`codex.global.agents-home.marketplace`
   — とともに着地させ、`agents` memberのadmission portをtool portの横にbindする。これにより`~/.agents/skills`配下のskill
@@ -6563,21 +6568,21 @@ dispositionである。
   recognitionを得る。`tests/fixtures/global-homes/build-fixtures.ts`を現実的な共有agent home —
   near-miss隣接を伴うskill、personalな`plugins/marketplace.json`、除外されるinstalled plugin copy —
   でREADMEのcandidate/near-miss規則に従って拡張し、consent
-  copyを`src/app/pages/global-consent.vue`と`src/app/components/consent/GlobalConsentPreview.vue`で4つのディレクトリと広がったfile集合を述べるよう更新し、4-entry
-  preview、常にderiveされる第4 root、version bump、`agents`
+  copyを`src/app/pages/global-consent.vue`と`src/app/components/consent/GlobalConsentPreview.vue`でmemberのディレクトリと広がったfile集合を述べるよう更新し、memberごとのentryを持つ
+  preview、常にderiveされる共有agent homeのroot、version bump、`agents`
   memberのadmissionを`tests/contract/http-api-global.test.ts`、`tests/unit/host/global-consent.test.ts`、`tests/e2e/global-consent-preview.spec.ts`でend
-  to endに証明する。
+  to endに証明する。 *(2026-09-25修正: Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）ため、memberを数で呼ばない。)*
 
 ### テストを先に
 
-- [X] T977 [P] [US4] fixed-four operation内のabsent/default対invalid override、canonical root、raw-path
+- [X] T977 [P] [US4] fixed-five operation内のabsent/default対invalid override、canonical root、raw-path
   identity、targetを通して読まれるlink、missing/読み取り不能fileのCopilot post-consent boundary failing testを追加する:
   missingまたは読めないCopilot rootは、sibling
   memberのcommitを妨げずにそのmemberをabsentまたはfailedとして記録する。admitされたCopilot
   root内のfile限定failureはpartialなmember resultの中でそのfileのDiagnosticになる。1つのfileに閉じないfailureは無変更で伝播しsubset
   Source/generationなしでbatch全体を中止する。host consent codeのfilesystem
   callは0件であることを`tests/unit/host/global-consent.test.ts`で証明する *(2026-08-27修正: fixed-four — 共有agent
-  homeがmemberに加わる（FR-045）。)*
+  homeがmemberに加わる（FR-045）。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - [X] T978 [P] [US4] contract化されたCopilot Global selector集合 — instruction
   pair、`skills/<name>/SKILL.md`、`agents/*.agent.md`、`hooks/*.json`、`settings.json`、`mcp-config.json`、共有agent
   homeのskill — 、隣接する全User/runtime/managed-remote surfaceへのoperationが0件、distinct Copilot
@@ -6607,22 +6612,22 @@ dispositionである。
   `tests/contract/vendor-behaviors.test.ts`、`tests/contract/inspection-rules.test.ts`、`tests/contract/runtime-composition.test.ts`
   に追加する *(2026-08-27修正: Global scopeはinstruction fileから、4つのmember root配下の文書化済みuserカスタマイズfile全体へ広がった
   — FR-015からFR-018およびFR-045。このtaskのmember集合、selector集合、件数は改訂後のvendor contractに従う。)*
-- [X] T981 [US4] Fixed-four control内のCopilot confirmed/pending/retryable outcome、shared batch
+- [X] T981 [US4] Fixed-five control内のCopilot confirmed/pending/retryable outcome、shared batch
   request/progress、deterministic invalid-override Diagnostic、ordinaryなwhole-batch failure
   error、new/provisional pre-commit Copilot Source/file rowが0件でcarried existing
   Sourcesはvisible、atomic sibling publication、retained Repository resultに関するbrowser
   acceptanceを`tests/e2e/global-copilot-admission.spec.ts`に追加する *(2026-08-27修正: fixed-four — 共有agent
-  homeがmemberに加わる（FR-045）。)*
+  homeがmemberに加わる（FR-045）。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 
 ### 実装
 
-- [X] T982 [US4] Copilot root-admission orchestrationをfixed-fourのone
+- [X] T982 [US4] Copilot root-admission orchestrationをfixed-fiveのone
   memberとして実装する。Absent/defaultとinvalid previewを区別し、frozen rootとcompiled planをinspection
   moduleへsubmitしてtyped admission outcome/contextだけをconsumeし、raw provenanceを保持してrejected
   callを変更せずpropagateする。Host codeはfilesystem callもNode error codeのinspect/convertも行ってはならない。Admitted
   unpublished context/IDはone `GlobalBatchScan`へ供給するatomic decisionでだけCopilot
   controlへtransferする処理を`src/server/host/global-consent.ts`へ実装する *(2026-08-27修正: fixed-four — 共有agent
-  homeがmemberに加わる（FR-045）。)*
+  homeがmemberに加わる（FR-045）。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - [X] T983 [US4]
   すでに所有されている振る舞いを、contract化された相互バックリンクセットで更新する。`copilot.behavior.cli.user.instructions.root` は
   `copilot.global.instructions.root` だけ、`copilot.behavior.cli.user.instructions.path` と
@@ -6671,11 +6676,11 @@ dispositionである。
   scopeはinstruction fileから、4つのmember root配下の文書化済みuserカスタマイズfile全体へ広がった —
   FR-015からFR-018およびFR-045。このtaskのmember集合、selector集合、件数は改訂後のvendor contractに従う。)*
 - [X] T989 [US4] Copilot control/context outcomeとretry stateをindependent jobではなく、one serialized
-  fixed-four admission/batch operationのprojectionとして実装する。Admitted siblingsとrequest/progressを共有し、one
+  fixed-five admission/batch operationのprojectionとして実装する。Admitted siblingsとrequest/progressを共有し、one
   atomic commitまでprior stateを保持し、fileに閉じないfailureではshared IDにone retained ordinary terminal
   errorだけを保持してnew item/Source/result/generationおよびinitial/retry stale overlayを作らず、その後late
   workをdiscardする処理を`src/server/session/session.ts`へ実装する *(2026-08-27修正: fixed-four — 共有agent
-  homeがmemberに加わる（FR-045）。)*
+  homeがmemberに加わる（FR-045）。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - [X] T990 [US4] 英語のCopilot Global override、admission、exact exclusion、shared-batch
   progress、deterministic rejection/retry、whole-batch failure messageをそれらを描画するVue
   componentに追加し、new/provisional pre-commit Sourceがないことと、visibleなままのcarried existing Sourcesを明確に区別する
@@ -6685,11 +6690,11 @@ dispositionである。
 
 ## フェーズ 99: Atomic Global Batch Result統合（Composite Closure 4/4）
 
-**目的**: 出荷済みのClaude/Codex memberをcontract化されたkind集合へ広げたうえで、4つのreal member-admission portをすべてbindし、one initial/retry `GlobalBatchScan` commitだけで0〜4個のseparately identified one-member/one-root Global Sourceを統合してroot mergeまたはper-member commitを公開せず、composite milestoneをcloseする。
+**目的**: 出荷済みのClaude/Codex memberをcontract化されたkind集合へ広げたうえで、5つのreal member-admission portをすべてbindし、one initial/retry `GlobalBatchScan` commitだけで0〜5個のseparately identified one-member/one-root Global Sourceを統合してroot mergeまたはper-member commitを公開せず、composite milestoneをcloseする。 *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 
-**独立テスト**: Fixed tupleから0〜4 rootを決定的にadmitし、empty subsetはnew job/generationなしでcarried stateを保持し、nonempty subsetはone request/working set/resultとone Global generationですべてのseparate Sourceを同時publishする。Stable Source ID、Repository generationとviewに触れずGlobal sequenceに限定されたinvalidation、81-rule total、partition、fileに閉じないfailureによるwhole-batch abort、detail/comparison、exclusion、non-pending unpublished admittedとsame-preview rejectedからなるexact `retryableTools` controlを検証する。
+**独立テスト**: Fixed tupleから0〜5 rootを決定的にadmitし、empty subsetはnew job/generationなしでcarried stateを保持し、nonempty subsetはone request/working set/resultとone Global generationですべてのseparate Sourceを同時publishする。Stable Source ID、Repository generationとviewに触れずGlobal sequenceに限定されたinvalidation、81-rule total、partition、fileに閉じないfailureによるwhole-batch abort、detail/comparison、exclusion、non-pending unpublished admittedとsame-preview rejectedからなるexact `retryableTools` controlを検証する。 *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 
-**目に見えるチェックポイント**: Admitted Codex/Claude/Copilot/共有agent home Global Sourceはone batch commit後にseparateかつsimultaneousに現れ、その後Sourceごとにfilter、inspect、compare、explicit rescanできる。
+**目に見えるチェックポイント**: Admitted Codex/Claude/Copilot/Antigravity/共有agent home Global Sourceはone batch commit後にseparateかつsimultaneousに現れ、その後Sourceごとにfilter、inspect、compare、explicit rescanできる。 *(2026-09-25修正: Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 
 ### Memberの拡張
 
@@ -6733,10 +6738,10 @@ dispositionである。
 
 ### テストを先に
 
-- [X] T991 [P] [US4] contract化されたmember selector集合とone fixed-four transactionに関するintegrated boundary
+- [X] T991 [P] [US4] contract化されたmember selector集合とone fixed-five transactionに関するintegrated boundary
   testを`tests/integration/global-boundaries.test.ts`へ追加する。Admitted root 0件ならnew
   `scanRequestId`/job/Source/generationを割り当てず、全carried Source/controlとprior
-  snapshotを保持する。1〜4件ならmemberごとに別々に識別されるone-tool/one-root Sourceをone shared request IDかつexactly one
+  snapshotを保持する。1〜5件ならmemberごとに別々に識別されるone-tool/one-root Sourceをone shared request IDかつexactly one
   completeまたはpartial generationで同時にpublishし、missingまたは読めないmember rootをabsent/failedとして記録し、admitted
   root内のfileに閉じたoutcomeのfile単位diagnosticだけをそのpartial generationへ寄与可能とし、observableなper-tool
   commitを一切行わない。各escaped boundaryを保持したraw contextからone-wayで導出し、raw filesystem
@@ -6744,7 +6749,7 @@ dispositionである。
   labelをauthorityへreverseせず、excluded-surface
   readを0件とし、全fileに閉じないfailureでsubset全体をabortし、Repository/prior Sourcesを保持する *(2026-08-27修正: Global
   scopeはinstruction fileから、4つのmember root配下の文書化済みuserカスタマイズfile全体へ広がった —
-  FR-015からFR-018およびFR-045。このtaskのmember集合、selector集合、件数は改訂後のvendor contractに従う。)*
+  FR-015からFR-018およびFR-045。このtaskのmember集合、selector集合、件数は改訂後のvendor contractに従う。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - [X] T992 [US4] 正確に81個のrule ID（Global前の49-ID gate *(2026-08-01 修正: フェーズ 6 は skill-metadata
   derivation を出荷しない)* に3 vendor `*.excluded.user-runtime`
   record、`shared.excluded.managed-remote-state`、28 Global static read-authorizing ruleを加えたもの）、exact
@@ -6793,19 +6798,20 @@ dispositionである。
   job、`specs/001-inspect-agent-customizations/quickstart.md`/`specs/001-inspect-agent-customizations/quickstart.ja.md`のgate行とそのdirectoryを名指すcommand。suiteが空の間はいずれも削除してある。まだ存在しないsuiteは宣言できないからである:
   空のprojectはrunをそのままfailさせ、それを通す許可を与えれば、誰も書いていない検証について成功を報告することになる。Integration/securityの期待結果bulletは削除しておらずそのまま残る。このsuiteがそれで扱われていないことを報告する場合にだけ拡張する。復元するcommand行は、§
   Automated quality gatesの一覧にあるものと§ Inspect without activationにあるものである。
-- [X] T997 [US4] Selector-free fixed-four enablement、`active-no-job`、one shared batch
+- [X] T997 [US4] Selector-free fixed-five enablement、`active-no-job`、one shared batch
   requestに関するbrowser acceptanceを`tests/e2e/global-enable.spec.ts`へ追加する。別々に識別されるadmitted Sourcesがone
   generation後に同時に現れ、escaped inert boundaryがpreviewおよびSource-relative
   pathと区別され、filter、Diagnostic、replacement characterを含むexact readable literal、diagnostic-only
   binary、activation/substitution/analysis/verdictなし、Fact isolation、detail reuse、cross-Source
   comparisonを扱うことを検証する。予期しないbatch failureではone ordinaryなbatch failure
   errorだけを表示し、subset/generationまたは`StaleSourceFailure`をpublishせず、prior Repository/Global
-  stateとstable Source IDを保持する *(2026-08-27修正: fixed-four — 共有agent homeがmemberに加わる（FR-045）。)*
+  stateとstable Source IDを保持する *(2026-08-27修正: fixed-four — 共有agent homeがmemberに加わる（FR-045）。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 
 ### 実装
 
-- [X] T998 [US4] Real T951/T968/T982/T1137 Codex/Claude/Copilot/共有agent home portを4つのone-root
-  `GlobalToolControl` recordとoperation-local contextとしてbindしてfixed-four post-consent
+- [X] T998 [US4] Real T951/T968/T982/T1137 Codex/Claude/Copilot/共有agent home portとAntigravity homeのport
+  （specs/003-antigravity-cli-support FR-008）を5つのone-root
+  `GlobalToolControl` recordとoperation-local contextとしてbindしてfixed-five post-consent
   admissionを完成させる。全memberのinitial evaluation、non-pending unpublished admittedとsame-preview rejected
   controlを含みpublished、pending、lexical new-preview-required controlを除外するserver-derived exact
   `retryableTools` retry、deterministic rejected partition、および全admitted context/IDのexactly one
@@ -6813,7 +6819,7 @@ dispositionである。
   outcomeまたはunbound production portを禁止し、independent per-tool jobまたはnew/provisional pre-commit
   Sourceを作らず、carried existing Sourcesをvisibleに保ち、transfer前の全fileに閉じないfailureを伝播する *(2026-08-27修正:
   Global scopeはinstruction fileから、4つのmember root配下の文書化済みuserカスタマイズfile全体へ広がった —
-  FR-015からFR-018およびFR-045。このtaskのmember集合、selector集合、件数は改訂後のvendor contractに従う。)*
+  FR-015からFR-018およびFR-045。このtaskのmember集合、selector集合、件数は改訂後のvendor contractに従う。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - [X] T999 [US4] すべてのGlobal behavior、正確に28 Global static candidate rule、既存のexact exclusion、strategy
   reference、改訂後contractが生む evidence backlink — 同じgateで数え直してfreezeする — 、正確な81-rule total *(2026-08-01
   修正: skill metadataを導出するruleが無い（フェーズ 6）)*
@@ -6856,12 +6862,12 @@ dispositionである。
   96のCodex Global memberであり、path単独の解決が終わるべき地点もそこであった。ここに残るのはatomicなbatch
   publicationと`SourceDto`のunion化である。)* *(2026-08-27修正: publishするのはmember Global Sourceであり、共有agent
   homeを含む（FR-045）。)*
-- [X] T1002 [US4] Global-enable function responseをexact fixed-four accepted/rejected
+- [X] T1002 [US4] Global-enable function responseをexact fixed-five accepted/rejected
   partition、nonempty batchのone shared request IDと`queued`、empty
   subsetのnullと`active-no-job`、conflict、retry state、ordinaryなpre-/post-acceptance failure
   errorについて完成させる。全admitted-member Source publicationをone atomic batch commit後のlater session
   pollへ委ね、carried existing Sourcesを保持する処理を`src/server/host/devframe-app.ts`に実装する *(2026-08-27修正:
-  fixed-four — 共有agent homeがmemberに加わる（FR-045）。)*
+  fixed-four — 共有agent homeがmemberに加わる（FR-045）。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - [X] T1003 [US4] Source familyのfilter — 選択されたrepositoryと、読み手自身の設定ディレクトリを1つとして — をtool
   filterの隣に実装し、Source軸はfileがどこから来たかを、tool軸はどの製品が認識したかを述べるようにする。この選択は
   family自身の語としてinventoryのURLに載せられる。launchごとのSource IDでは載せられない。加えて、enabled
@@ -6877,17 +6883,17 @@ dispositionである。
   filterが既に答えていることを問い直すものであり、またこの選択はURLに載るためである。各instructions行と各instruction
   detailは、同じ語彙で自身のSourceを述べる。ただしsessionが複数のSourceを保持する場合だけである。行は1つのSourceの1つのrangeであり、同じpathの2行は他の点では画面上で同一になる一方、通常のsessionはSourceを1つしか持たずその行を必要としないためである。Source
   filterも同じ条件で描画する。familyが1つなら答えが1つしかない問いになるためである。)*
-- [X] T1004 [US4] One shared batch request/progressに結び付くfixed-four confirmationとper-member
+- [X] T1004 [US4] One shared batch request/progressに結び付くfixed-five confirmationとper-member
   outcome/retry control、focus recovery、`active-no-job`、ordinaryなwhole-batch failure
   error、simultaneous separate-Source outcome
   presentationを`src/app/pages/global-consent.vue`と`src/app/components/consent/GlobalSourceControls.vue`で完成させ、statusにはT071のon-demand-refresh
   contractを再利用する *(2026-08-27修正: fixed-four — 共有agent homeがmemberに加わる（FR-045）。)*
   *(2026-09-04修正: pause/resumeの側を落とした。そうしたcontrolが存在しないことをT071自身の注記が
-  記録しており、これらのpageは何も自動更新しないので、pauseする対象が無いからである。)*
-- [X] T1005 [US4] 英語のfixed-four/single-batch、one-root separate
+  記録しており、これらのpageは何も自動更新しないので、pauseする対象が無いからである。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
+- [X] T1005 [US4] 英語のfixed-five/single-batch、one-root separate
   Source、accepted/rejected、`active-no-job`、whole-batch failure、carried existing
   Sourcesをvisibleに保つretry、source/tool-filter、detail/comparison、shared-progress messageをそれらを描画するVue
-  componentに追加する *(2026-08-27修正: fixed-four — 共有agent homeがmemberに加わる（FR-045）。)*
+  componentに追加する *(2026-08-27修正: fixed-four — 共有agent homeがmemberに加わる（FR-045）。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 
 ---
 
@@ -7070,7 +7076,7 @@ dispositionである。
 ### ドキュメント
 
 - [X] T1029 意味的に等価な利用者向けガイダンスを`./README.md`/`./README.ja.md`に起草する。対象:
-  この製品が何を一覧するのか、および一覧に載ることは読み込まれることではないこと、検証済みlaunch行とCLIが受け付ける全option（正確な`--root`を含む）、11種類のcustomizationと比較surface（`docs/images/inventory.png`と`docs/images/comparison.png`で図示する）、`--inspect-personal-setup`が確認するfixed-four
+  この製品が何を一覧するのか、および一覧に載ることは読み込まれることではないこと、検証済みlaunch行とCLIが受け付ける全option（正確な`--root`を含む）、11種類のcustomizationと比較surface（`docs/images/inventory.png`と`docs/images/comparison.png`で図示する）、`--inspect-personal-setup`が確認するfixed-five
   Global consent、file単位の`file-unreadable`/`file-content-binary`/`recognition-parse-failed`
   diagnosticと、失敗した明示rescanがstale prior snapshotを保持するsource-scoped `root-unreadable`
   failure、fileを開く先、Nodeとbrowserのbaseline、`pnpm run start:fixture`による開発者向けループと、それがタスク一覧からこのリポジトリが同梱するSpec
@@ -7079,7 +7085,7 @@ dispositionである。
   *(2026-08-06 修正:
   admissionは読み取り認可のrecordに留まり、vendorが文書化していることは維持管理contractに残るため、どのsurfaceもcondition、applicability、order、runtime
   state、provenance、documentation statusをprojectしない（FR-009。T091/T1068/T1042）。)* *(2026-08-30 修正:
-  この文書は読者がツールを起動して読むために開くものなので、その読者に必要なことを載せる。ここで誰も参照しないcontractは、それを所有するartifactが既に述べている。)*
+  この文書は読者がツールを起動して読むために開くものなので、その読者に必要なことを載せる。ここで誰も参照しないcontractは、それを所有するartifactが既に述べている。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - [X] T1030 SC-001/SC-006の評価材料を作り、両言語で対にして保つ。
   `tests/usability/sc001-sc006-study-kit.md`と`tests/usability/sc001-sc006-study-kit.ja.md`、
   および`tests/usability/sc001-sc006-study-inputs/`配下のbilingual bundle — guidance、4つの
@@ -7213,7 +7219,7 @@ dispositionである。
   linkをtarget越しに読みcycle-safeなreal-path追跡とfile単位diagnosticを伴う通常traversal、発見された各fileの1回read、independentなSource/attempt/generation
   readを要求する。FR-022についてexactな2つのauthorized internal loopback
   classを別々に分類・constraint検証し、それ以外のsurfaceで禁止対象direct product request 0件とlocal-fixture zero-call
-  semanticsを要求する。さらにreplacement decode、runtime error ownership、fixed-four Global、FR-042
+  semanticsを要求する。さらにreplacement decode、runtime error ownership、fixed-five Global、FR-042
   pre-purge/epoch/fence/recovery/error semanticsとpublic-state Global-sequence
   discard対unpublished-operation unchanged committed state、およびinspection-data
   successのunchanged-epoch/null-fence final gate、non-authority/no semantic analysis/capacity
@@ -7232,7 +7238,7 @@ dispositionである。
   他の全suiteはtestが置かれる場所で分かれており、contract root内のdocumentation testはcontract jobとcoverage
   jobでも実行されてしまう。その場合、2つのprojectが1 fileのための除外を持たない限り、documentation
   jobはそれらがすでに検証したもの以外を何も検証しない。復元するcommand行は、§ Automated quality gatesの一覧にあるものと§ Release package
-  verificationにあるものである。 *(2026-08-10改訂: checklistはT1090まで続く。)*
+  verificationにあるものである。 *(2026-08-10改訂: checklistはT1090まで続く。)* *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - [X] T1042 [P] T1041通過後、gate前にmaterialize済みのT999 production registryとT1038 conformance
   recordを独立verifyし、exact 52 source record、81 inspection-rule ID *(2026-08-26 修正: 件数は現在のregistryに従う —
   skill metadataを導出するruleは無く（フェーズ 6）、内包されたhook宣言はそれぞれ自身のruleである。recognitionはruleが生むものだからである。)*、39
@@ -8268,6 +8274,21 @@ Claude Code の badge を持ち、`packages/api/AGENTS.md` が `packages/api/**`
   読み出さないことを記して両言語の digest を記録し直し、`allowlistVersion` を進め、
   `antigravity.behavior.repo.context` に § YAML frontmatter and activation modes を引用し、suite とその
   fixture と outcome manifest の digest をこの読み方に移す（FR-007、FR-011、FR-028、QR-005）。
+- [X] T1225 [US1] このフェーズの7回目のレビューを解決する。`AGENTS.md` の認識から Claude Code を外していた
+  完了済みのタスク — フェーズ 17 の目的、T226、T228、T268、フェーズ 21 の認識の表 — を、このフェーズが与える
+  認識に合わせて書き直し、`tests/fixtures/repositories/build-fixtures.ts` の Claude と Copilot の instruction
+  パスの一覧に `AGENTS.md` を加える。ファイルそのものを示す面では、どの kind の読み取りが残したものであれ、
+  そのファイルの diagnostic を述べる。記録がファイルに届くかどうかを決めるのは、表示中の kind ではなく、その
+  パスを認めるすべての規則だからである: `src/app/pages/instructions/detail/[source]/[...path].vue` の1面、
+  rule と settings-and-configuration の詳細、そして `src/app/components/inventory/rows/` の `RuleRow.vue`、
+  `SettingsRow.vue`、`SkillRow.vue`、`PromptRow.vue`、`OutputStyleRow.vue` であり、どれも `files[]` から
+  ファイル自身の参照を引く。1つのファイルの一覧では各 code を1回だけ述べることを
+  `src/app/components/inspection/DetailDiagnostics.vue` と `src/app/components/inventory/rows/RowDiagnostics.vue`
+  で行い、両方を `contracts/http-api.md`、`data-model.md` § Diagnostic、`src/shared/api-types.ts` に記録し、
+  comment を含む Codex の fallback `.mcp.json` を `tests/e2e/codex-mcp-detail.spec.ts` で、2つの読み取りが
+  失敗する settings document を `tests/e2e/claude-settings-detail.spec.ts` と
+  `tests/e2e/codex-config-detail.spec.ts` で、command でもある rule ファイルを
+  `tests/e2e/claude-rules-detail.spec.ts` で確かめる（FR-004、FR-028）。
 
 ## ストーリーカバレッジマトリクス
 
@@ -9001,8 +9022,8 @@ directory名、nestedなClaude Code recognitionはroot相対prefix付き — で
 
 1. Repository のインベントリ、詳細、比較の受け入れを通過する。
 2. I/O を行わない Global 同意プレビューを提供する。
-3. Fixed `[copilot, claude, codex, agents]`に対するselector-free consentを有効化し、initial enableでは全4件、retryではnon-pending unpublished admittedとsame-preview rejected controlを含みpublished、pending、lexical new-preview-required controlを除外するcompleteなfixed-order exact `retryableTools` projectionを評価し、tentative Sourceをpublishせずにone-root controlを検証する。
-4. Nonempty admitted subsetではexactly one shared-ID `GlobalBatchScan`を実行し、0〜4個のseparate member Sourceをone completeまたはpartial Global generationで同時にatomic publishしてcarried Sourcesを保持しrootをmergeしない。Empty deterministic subsetはjobもgenerationも作らない。
+3. Fixed `[copilot, claude, codex, antigravity, agents]`に対するselector-free consentを有効化し、initial enableでは全5件、retryではnon-pending unpublished admittedとsame-preview rejected controlを含みpublished、pending、lexical new-preview-required controlを除外するcompleteなfixed-order exact `retryableTools` projectionを評価し、tentative Sourceをpublishせずにone-root controlを検証する。 *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
+4. Nonempty admitted subsetではexactly one shared-ID `GlobalBatchScan`を実行し、0〜5個のseparate member Sourceをone completeまたはpartial Global generationで同時にatomic publishしてcarried Sourcesを保持しrootをmergeしない。Empty deterministic subsetはjobもgenerationも作らない。 *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 5. Global の再スキャン/回復と、優先ゼロ I/O 無効化バリアを追加する。
 6. Documentation/evidence/dependency reviewを完了し、その完成artifactに対してcross-cutting suiteを実行する。Remediationごとにprior post-review resultを無効にし、全applicable automated gateと影響evidence protocolを再実行し、concern 0件までcomplete-diff/tarball reviewを反復する。
 7. SC-001～SC-008のdenominator、threshold、pass/fail、`tests/usability/sc001-sc006-study-inputs/`のtask materialと20件のagent駆動sessionが採点対象としたground truth（participant cohortではなくagent駆動のrunとして記録する。spec.md § Clarifications, Session 2026-09-01）、outcome-fixture manifestのversionとcanonical digest、final packed-candidate digest、Node.js engines contract全体とexact lower-bound/browser certification sample、residual riskを記録する。capture kitは削除済みであり（spec.md § Clarifications, Session 2026-09-01。T1061、T1062）、ここでそれを実行も記録もしない。
@@ -9027,7 +9048,7 @@ directory名、nestedなClaude Code recognitionはroot相対prefix付き — で
 - Claude の独立 hook、Codex の独立 MCP、hosted/organization/managed/remote 入力、Claude workflows と agent memory、Codex Repository prompts と plugin components、Copilot LSP/extensions/一般の `.vscode/settings.json`、追加の設定済みルートには、List フェーズも読み取り権限も与えない。
 - 内包 Hook の認識は、すでに受け入れられた所有物理ファイルを再利用し、syntheticなfileを決して作らない。MCPにcontained機構は存在しない: MCP recognitionを持つのは明示的carrierだけである。宣言、plugin コンポーネントパス、Cloud の事実、runtime 参照が合成ローカルファイルを作成することはない。
 - Marketplace catalogとそのentryのroot以下のmanifestは1つの`plugin` kindである: catalogがcarrierであり、validatedなlocal sourceが各pluginのrootを指名し、censusがそのrootのfileを列挙する。Plugin manifestをadmitするruleもderiveするruleも存在せず、componentは再帰しない。
-- Global inspection は 1 つの fixed-four consent record と 4 つの control、別々に識別される 0〜4 個の Source を持ち、member ごとに最大 1 つ、Source ごとに正確に 1 root とする。tentative な admission/scan work は Source ではない。initial enable または retry は、admit された全 context を 1 つの request ID/authority/working set を持つ 1 つの `GlobalBatchScan` へ transfer し、independent な Global sequence の 1 つの complete または partial generation で全 admitted Source を一緒に publish する。per-member の中間 commit は存在せず、Global commit が Repository の generation や view に触れることはない。後続の明示的 Global rescan は single-Source transaction のままとする。Source ID は process lifetime にわたり安定し、file の identity は Source-relative Path で generation を跨いで安定する。
+- Global inspection は 1 つの fixed-five consent record と 5 つの control、別々に識別される 0〜5 個の Source を持ち、member ごとに最大 1 つ、Source ごとに正確に 1 root とする。tentative な admission/scan work は Source ではない。initial enable または retry は、admit された全 context を 1 つの request ID/authority/working set を持つ 1 つの `GlobalBatchScan` へ transfer し、independent な Global sequence の 1 つの complete または partial generation で全 admitted Source を一緒に publish する。per-member の中間 commit は存在せず、Global commit が Repository の generation や view に触れることはない。後続の明示的 Global rescan は single-Source transaction のままとする。Source ID は process lifetime にわたり安定し、file の identity は Source-relative Path で generation を跨いで安定する。 *(2026-09-25修正: fixed-five — Antigravity homeがmemberに加わる（specs/003-antigravity-cli-support FR-008）。)*
 - 完全に decode された authored source、正確な metadata literal、authored relationship target は active session で利用可能なままにする。loopback-only な session API は明示的な detail request でだけそれらを返すが、acknowledgementもnoticeのfieldも持たない。どちらもどこにも存在しないからである（FR-027）。bundled browser はそれらの request を発行し、acknowledgement も注意書きも前後に置かずに authored value を render する。credential と environment-reference syntax は変更せず表示し、参照される process-environment value は決して読み取りも置換もせず、diagnostics/log は source value を複製しない。
 - Credential detection、masking、redaction、reveal control は存在しない。session API に reveal・masking・environment-resolution の function は存在せず、source/comparisonを開く前にも隣にも、authored contentについての注意書きは現れない。
 - 通常の起動、スキャン、ビルド、テストは公式ドキュメントに関してオフラインである。ネットワークへアクセスできるのは、明示的なメンテナー向けソース確認コマンドだけである。

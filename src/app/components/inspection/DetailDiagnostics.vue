@@ -11,26 +11,37 @@
 // Why each list is drawn is the caller's, so the reason stays where the panel
 // it explains is: a failed extraction on the parse tab, a companion that could
 // not be read on the files tab.
+//
+// Each code's sentence is stated once. Every caller hands over one file's
+// records, and two records of one code are two readings of that file failing
+// the same way — a `.claude/settings.json` holding a comment fails both the
+// permission policy's strict reading and the hooks' (data-model.md
+// § Diagnostic) — while the sentence names neither reading, so a second copy
+// would tell the reader nothing the first did not.
+import { computed } from 'vue';
 import { DIAGNOSTIC_REGISTRY } from '../../../shared/diagnostics';
 import type { SerializedDiagnostic } from '../../../shared/api-types';
 
-defineProps<{
+const props = defineProps<{
   /**
    * The records this surface owns, in the generation's order. Empty draws
    * nothing, so a caller states no condition of its own.
    */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
+
+/** The codes the records carry, each once, in the order the records first name them. */
+const codes = computed(() => new Set(props.diagnostics.map((diagnostic) => diagnostic.code)));
 </script>
 
 <template>
-  <ul v-if="diagnostics.length > 0" class="aci-list" role="list">
+  <ul v-if="codes.size > 0" class="aci-list" role="list">
     <li
-      v-for="diagnostic in diagnostics"
-      :key="diagnostic.diagnosticId"
-      :class="DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error' ? 'aci-error' : 'aci-note'"
+      v-for="code in codes"
+      :key="code"
+      :class="DIAGNOSTIC_REGISTRY[code].severity === 'error' ? 'aci-error' : 'aci-note'"
     >
-      {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
+      {{ DIAGNOSTIC_REGISTRY[code].message }}
     </li>
   </ul>
 </template>

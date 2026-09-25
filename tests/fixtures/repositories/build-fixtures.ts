@@ -6236,8 +6236,9 @@ export interface CopilotInstructionFixture {
    */
   readonly expectedCopilotInstructionPaths: Readonly<Record<string, readonly string[]>>;
   /**
-   * The Source-relative Paths the Claude and Codex instruction rules admit in
-   * the same tree, sorted. The preservation half of the phase: the same scan
+   * The Source-relative Paths the Claude instruction rule admits in the same
+   * tree, sorted — every `AGENTS.md` among them, which Claude Code reads where
+   * it reads `CLAUDE.md`. The preservation half of the phase: the same scan
    * that adds Copilot rows must keep admitting exactly these.
    */
   readonly expectedClaudeInstructionPaths: readonly string[];
@@ -6453,8 +6454,10 @@ export function buildCopilotInstructionFixture(
     },
     expectedClaudeInstructionPaths: [
       '.claude/CLAUDE.md',
+      'AGENTS.md',
       'CLAUDE.local.md',
       'CLAUDE.md',
+      'packages/api/AGENTS.md',
       'packages/api/CLAUDE.md',
     ],
     expectedCodexInstructionPaths: ['AGENTS.md'],
@@ -6599,19 +6602,21 @@ export interface AllVendorInstructionFixture {
  * Builds the canonical all-vendor instruction fixture repository (T268): one
  * tree that exercises every supported static instruction selector, the
  * configured fallback derivation, and the complete shared-file matrix at once
- * (Phase 21): `AGENTS.md` is Codex+Copilot, root `CLAUDE.md` is
+ * (Phase 21): the root `AGENTS.md` is Claude+Codex+Copilot+Antigravity CLI and
+ * a nested one Claude+Copilot+Antigravity CLI, root `CLAUDE.md` is
  * Claude+Copilot, nested `CLAUDE.md` is Claude-only, and `CLAUDE.local.md` is
  * Claude-only, while a configured Codex fallback is an entry name matched at
  * the Repository root, so no nested file becomes one.
  *
- * Deterministic failures: the NUL-carrying nested `CLAUDE.md` publishes as
- * `binary` with its diagnostic, and the malformed `docs/CLAUDE.md` keeps its
- * complete source and range while its extraction fails — both file-confined,
- * so the generation commits `partial` while every other file publishes
- * (FR-028). Injected failures are runtime behavior, never tree state: suites
- * inject filesystem-operation failures against {@link injectionTargetPath}
- * through the mocked `fs-io` surface, while a recognition failure replaces
- * the recognizer callback itself, addressing no path.
+ * Deterministic failure: the NUL-carrying nested `CLAUDE.md` publishes as
+ * `binary` with its diagnostic — file-confined, so the generation commits
+ * `partial` while every other file publishes (FR-028). The block opening
+ * `docs/CLAUDE.md` is not YAML and fails nothing, because Claude Code reads the
+ * file whole (T1224). Injected failures are runtime behavior, never tree
+ * state: suites inject filesystem-operation failures against
+ * {@link injectionTargetPath} through the mocked `fs-io` surface, while a
+ * recognition failure replaces the recognizer callback itself, addressing no
+ * path.
  *
  * `root` overrides where the tree is written; the default is a fresh root
  * under the OS temporary directory. The dev fixture launcher
@@ -6755,10 +6760,13 @@ export function buildAllVendorInstructionFixture(
   const expectedDerivedFallbackPaths = ['GUIDE.codex.md', 'TEAM_GUIDE.md'];
   const expectedClaudeInstructionPaths = [
     '.claude/CLAUDE.md',
+    'AGENTS.md',
     'CLAUDE.local.md',
     'CLAUDE.md',
+    'docs/AGENTS.md',
     'docs/CLAUDE.md',
     'packages/api/.claude/CLAUDE.md',
+    'packages/api/AGENTS.md',
     'packages/api/CLAUDE.md',
     'packages/web/CLAUDE.md',
   ];

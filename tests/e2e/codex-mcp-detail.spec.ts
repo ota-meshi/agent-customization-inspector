@@ -7,8 +7,9 @@
 // as authored with no masking or reveal control, a literal environment
 // reference never replaced by the process value that a same-named variable
 // carries in the host's own environment, no raw source display anywhere
-// (FR-007), the failure diagnostic on an unparseable carrier, owner
-// navigation back to the MCP tab, and zero connection behavior.
+// (FR-007), the failure diagnostic on an unparseable carrier — on the
+// instruction page of a carrier a configured fallback names too (T1225) —
+// owner navigation back to the MCP tab, and zero connection behavior.
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -235,6 +236,50 @@ test.describe('a carrier a configured fallback also recognizes', () => {
     await expect(
       page.getByRole('tabpanel').getByRole('link', { name: /Compare this range's files/u }),
     ).toHaveCount(1);
+  });
+});
+
+test.describe('a fallback-named carrier one product cannot parse', () => {
+  let fixture: string;
+  let host: LaunchedHost;
+
+  test.beforeEach(async () => {
+    fixture = await mkdtemp(join(tmpdir(), 'aci-codex-fallback-carrier-commented-'));
+    // A comment: Claude Code reads the root `.mcp.json` as strict JSON and
+    // fails, while Copilot's JSONC reading parses (`parsers/json.ts`
+    // § acceptsComments). Codex reads the same file whole as instructions,
+    // because a fallback entry names it, so nothing that reading does can
+    // fail — but the MCP failure is the file's.
+    await mkdir(join(fixture, '.codex'), { recursive: true });
+    await writeFile(
+      join(fixture, '.codex/config.toml'),
+      'project_doc_fallback_filenames = [".mcp.json"]\n',
+      'utf8',
+    );
+    await writeFile(
+      join(fixture, '.mcp.json'),
+      '{\n  // shared servers\n  "mcpServers": { "shared": { "command": "npx" } }\n}\n',
+      'utf8',
+    );
+    host = await launchHost(fixture);
+  });
+
+  test.afterEach(async () => {
+    await stopHost(host);
+    await rm(fixture, { recursive: true, force: true });
+  });
+
+  test('states the MCP reading’s failure above the file its instruction page shows whole', async ({
+    page,
+  }) => {
+    // The instruction page is one face — the file, no tabs — and the file's
+    // diagnostics stand above it, as its row states them (FR-028, T1225).
+    await page.goto(new URL('/instructions/detail/repository/.mcp.json', host.origin).toString());
+    await expect(page.getByRole('heading', { name: '.mcp.json' })).toBeVisible();
+    await expect(page.getByRole('tablist', { name: 'Instruction detail' })).toHaveCount(0);
+    const main = page.locator('main');
+    await expect(main).toContainText('// shared servers');
+    await expect(main.locator('li', { hasText: 'This file could not be parsed' })).toHaveCount(1);
   });
 });
 

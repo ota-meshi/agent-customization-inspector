@@ -34,7 +34,7 @@ the task would have built.
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
 | FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
-| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222 |
+| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222, T1225 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078, T1215–T1216 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
 | FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224 |
@@ -57,7 +57,7 @@ the task would have built.
 | FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069, T1169, T1207, T1209 |
 | FR-026 | T077, T085, T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925–T927, T995–T997, T1055 |
 | FR-027 | T084, T100, T102, T927, T1045, T1206–T1210 |
-| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163, T1224 |
+| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163, T1224, T1225 |
 | FR-029 | T015–T016, T020–T021, T023–T024, T026–T027, T031, T035, T037, T040, T046, T055, T067–T068, T141, T149, T217, T222–T223, T1085, T1087, T1090, T238, T242–T243, T915, T923–T924, T946, T958, T1006–T1008, T1013–T1014, T1017, T1021, T1023–T1024, T1029, T1041, T1043, T1046, T1054, T1058, T1062 |
 | FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082, T1149, T1151, T1152, T1180 |
 | FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
@@ -2166,7 +2166,7 @@ the task would have built.
 
 ## Phase 17: Claude Instructions Inventory
 
-**Purpose**: Add root and nested Claude instruction files without recognizing `AGENTS.md` by filename.
+**Purpose**: Add root and nested Claude instruction files. *(amended 2026-09-25: Claude Code reads `AGENTS.md` from 2.1.277, which Phase 116 adds to this kind.)*
 
 **Independent Test**: Inventory supported `CLAUDE.md`, `CLAUDE.local.md`, and every nested `.claude/CLAUDE.md` matched by `claude.repo.instructions`; verify deterministic provenance records and unchanged Codex instructions.
 
@@ -2174,9 +2174,10 @@ the task would have built.
 
 ### Fixtures and tests first
 
-- [X] T226 [US1] Create Claude instruction fixtures for root and nested `CLAUDE.md` and
-  `.claude/CLAUDE.md` candidates, filename-only `AGENTS.md`, imports, secrets, malformed content,
-  and near misses in `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-08:
+- [X] T226 [US1] Create Claude instruction fixtures for root and nested `CLAUDE.md`,
+  `.claude/CLAUDE.md`, and `AGENTS.md` candidates, imports, secrets, malformed content, and near
+  misses in `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-09-25: `AGENTS.md` is a
+  Claude candidate since Phase 116, whose T1215 adds the nested one.)* *(amended 2026-08-08:
   launch/ancestor/descendant name a file's relation to the vendor's runtime working directory, which
   the Inspector does not observe — the rule matches `CLAUDE.md` at every depth, and no per-file
   classification renders (FR-009, T091).)*
@@ -2186,9 +2187,10 @@ the task would have built.
   `tests/fixtures/conformance/inspection-rules.json`, and
   `tests/fixtures/conformance/runtime-composition.json`
 - [X] T228 [P] [US1] Add failing matcher and recognition tests proving nested `.claude/CLAUDE.md`
-  files are `claude.repo.instructions` candidates, filename-only `AGENTS.md` is not
-  Claude-recognized, and provenance is deterministic in `tests/unit/inspection/rules.test.ts` and
-  `tests/unit/inspection/recognizers.test.ts`
+  files and every `AGENTS.md` are `claude.repo.instructions` candidates and provenance is
+  deterministic in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-09-25: Claude Code reads `AGENTS.md`
+  from 2.1.277, which Phase 116 (T1215) adds.)*
 - [X] T229 [US1] Add failing scan tests for Claude instruction discovery, one read, deterministic
   order, isolated failures, and zero import-target reads in
   `tests/integration/repository-scan.test.ts`
@@ -2546,7 +2548,7 @@ the task would have built.
 
 ## Phase 21: Unified Instructions Inventory
 
-**Purpose**: Consolidate the priority-wave instruction baseline with the explicit shared-file matrix: `AGENTS.md` is Codex+Copilot, root `CLAUDE.md` is Claude+Copilot, nested `CLAUDE.md` is Claude-only — a configured Codex fallback is an entry name matched at the Repository root, so no nested file becomes one — and `CLAUDE.local.md` is Claude-only. *(amended 2026-08-17: Phase 15 activates the configured fallbacks, so this phase's matrix includes them and nothing here waits for a carrier.)*
+**Purpose**: Consolidate the priority-wave instruction baseline with the explicit shared-file matrix: the root `AGENTS.md` is Claude+Codex+Copilot+Antigravity CLI and a nested one Claude+Copilot+Antigravity CLI, root `CLAUDE.md` is Claude+Copilot, nested `CLAUDE.md` is Claude-only — a configured Codex fallback is an entry name matched at the Repository root, so no nested file becomes one — and `CLAUDE.local.md` is Claude-only. *(amended 2026-08-17: Phase 15 activates the configured fallbacks, so this phase's matrix includes them and nothing here waits for a carrier.)* *(amended 2026-09-25: Claude Code reads `AGENTS.md` from 2.1.277 (Phase 116) and Antigravity CLI reads it at every depth (specs/003-antigravity-cli-support FR-007), so the matrix names both.)*
 
 **Independent Test**: Use an all-vendor instruction fixture and verify the exact shared-file matrix, one physical item/read per admitted file, separate recognitions/provenances, no filename-based Codex promotion of nested `CLAUDE.md`, the configured fallback recognitions, deterministic order, filters, partial continuity for file-confined failures, and rescan cleanup.
 
@@ -2554,11 +2556,14 @@ the task would have built.
 
 ### Tests first
 
-- [X] T268 [US1] Finalize the all-vendor instruction fixture with `AGENTS.md` Codex+Copilot, root
+- [X] T268 [US1] Finalize the all-vendor instruction fixture with the root `AGENTS.md`
+  Claude+Codex+Copilot+Antigravity CLI and nested ones Claude+Copilot+Antigravity CLI, root
   `CLAUDE.md` Claude+Copilot, nested `CLAUDE.md` Claude-only plus a configured-fallback variant,
   Claude-only `CLAUDE.local.md`, every other selector, deterministic failures, secrets, exclusions,
   and injected thrown/rejected-operation failure cases in
-  `tests/fixtures/repositories/build-fixtures.ts`
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-09-25: Claude Code reads
+  `AGENTS.md` from 2.1.277 (Phase 116) and Antigravity CLI reads it at every depth
+  (specs/003-antigravity-cli-support FR-007).)*
 - [X] T269 [P] [US1] Add complete conformance tests for every registered static instruction selector
   and exclusion, the derived fallback rule as identity only, and the exact `AGENTS.md`/root
   `CLAUDE.md`/nested `CLAUDE.md`/`CLAUDE.local.md` recognition matrix in
@@ -7304,18 +7309,18 @@ the task would have built.
   `path.isAbsolute()` false is `relative`; every other value is `eligible` with its exact string
   frozen into each preview and carrying no read authority until consent. Cover the three exact,
   ordered, one-time environment reads, the one unconditional `node:os.homedir()` call, exact lexical
-  roots, complete environment-supported escaping, and the exact minimal four-entry frozen preview.
+  roots, complete environment-supported escaping, and the exact minimal five-entry frozen preview.
   Prove create-or-replace occurs only through the state-changing preview-creation operation, always
   from the retained startup inputs, while current-preview retrieval is non-mutating and neither path
   rereads process inputs. A thrown startup input-capture operation propagates unchanged and leaves no
-  capture, preview, or path authority in `tests/unit/host/global-consent.test.ts`
+  capture, preview, or path authority in `tests/unit/host/global-consent.test.ts` *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T933 [US4] Extend preview tests for immutable typed traversal-plan programs, the
   server-retained raw/display record behind the opaque `previewId`, stale/replayed invalidation, and
   the later enable-request material fixing `confirmedTools` exactly to
-  `[copilot, claude, codex, agents]` in closed order—including invalid frozen entries—with no
+  `[copilot, claude, codex, antigravity, agents]` in closed order—including invalid frozen entries—with no
   eligibility narrowing, reordering, or UI/API selector. Keep this Phase-95 test boundary
   preview-only: post-consent initial/retry work-set derivation belongs to T945–T946 after the enable
-  foundation exists in `tests/unit/host/global-consent.test.ts`
+  foundation exists in `tests/unit/host/global-consent.test.ts` *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T934 [P] [US4] Add failing contracts for the non-mutating consent-preview read function, which
   returns only the current frozen preview or the fixed `consent-preview-missing` rejection, and the
   state-changing argument-free consent-preview creation function of the session API contract
@@ -7395,7 +7400,7 @@ the task would have built.
 - [X] T945 [P] [US4] Add failing Global-enable function contracts (the session API contract,
   contracts/http-api.md) for `confirmed: true`, exact version/`previewId` binding, no tool selector,
   extra-key and false/stale/superseded-preview rejection, fixed
-  `confirmedTools: [copilot, claude, codex, agents]`, server-derived initial-all or exact
+  `confirmedTools: [copilot, claude, codex, antigravity, agents]`, server-derived initial-all or exact
   `retryableTools` set, including admitted-unpublished and same-preview rejected controls but
   excluding published, pending, and lexical new-preview-required controls, exact accepted/rejected
   partition, and zero-admitted `active-no-job` with null ID and no new job/Source/generation—initial
@@ -7410,7 +7415,7 @@ the task would have built.
   pre-acceptance failure not confined to one file: initial enable activates no consent/control/job,
   while retry leaves existing consent/control, Sources, and prior snapshot unchanged; require one
   retained terminal error with the shared non-null ID/no subset commit after acceptance in
-  `tests/contract/http-api-global.test.ts`
+  `tests/contract/http-api-global.test.ts` *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T946 [P] [US4] Add failing initial-enable/retry coordinator tests for atomic fixed-member
   control activation and admission partition, using only test-injected typed outcomes for member
   ports not yet production-bound; registered operation-ID continuation and settlement-entry checks; FIFO generation selection; conflicts;
@@ -7447,13 +7452,13 @@ the task would have built.
   in `tests/contract/vendor-behaviors.test.ts`, `tests/contract/inspection-rules.test.ts`, and
   `tests/contract/runtime-composition.test.ts`
 - [X] T950 [US4] Add browser acceptance for exact-preview submission with no tool selector, fixed
-  `[copilot, claude, codex, agents]` confirmation, and test-only injected typed outcomes for the
+  `[copilot, claude, codex, antigravity, agents]` confirmation, and test-only injected typed outcomes for the
   not-yet-bound Claude/Copilot ports; cover per-tool accepted/rejected controls tied to one shared
   batch/request ID, `active-no-job`, the ordinary batch failure error, safe deterministic boundary
   Diagnostics, zero new/provisional pre-commit Global Source/file rows for admitted missing-Source
   members while carried existing Sources remain visible, and retained Repository results. Keep the
   real Codex path production-backed and defer all-real-port browser completion to Phase 99 in
-  `tests/e2e/global-codex-admission.spec.ts`
+  `tests/e2e/global-codex-admission.spec.ts` *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 ### Implementation
 
@@ -7643,25 +7648,25 @@ This slice adds the real Claude port to the open Phase-96–99 composite milesto
 
 This slice adds the real Copilot port to the same open composite milestone; it is not independently green or releasable.
 
-**Purpose**: Land the four-member consent foundation, then add Copilot root admission and its contracted member selector set — instructions, skills, agents, hooks, settings, and MCP below `COPILOT_HOME`, and the shared-agent-home skill rule — as a separately identified Source candidate inside the same fixed-four `GlobalBatchScan`, while owning the exact Copilot and shared exclusions.
+**Purpose**: Land the member-keyed consent foundation, then add Copilot root admission and its contracted member selector set — instructions, skills, agents, hooks, settings, and MCP below `COPILOT_HOME`, and the shared-agent-home skill rule — as a separately identified Source candidate inside the same fixed-five `GlobalBatchScan`, while owning the exact Copilot and shared exclusions. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
-**Independent Test**: Partition valid and invalid `COPILOT_HOME` roots within the fixed-four operation, read only the contracted selectors, map the behavior partitions, and prove every admitted sibling Source appears together in one batch generation or none appears after a failure not confined to one file, with no independent Copilot job or commit.
+**Independent Test**: Partition valid and invalid `COPILOT_HOME` roots within the fixed-five operation, read only the contracted selectors, map the behavior partitions, and prove every admitted sibling Source appears together in one batch generation or none appears after a failure not confined to one file, with no independent Copilot job or commit. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 **Visible Checkpoint**: Global controls report Copilot's per-member outcome within the shared operation; no new/provisional Copilot Source appears before the one batch commit, while carried existing Sources remain visible.
 
-### Four-member foundation
+### Member-keyed foundation
 
-- [X] T1137 [US4] Turn the fixed-member consent operation into the fixed-four member operation
+- [X] T1137 [US4] Turn the fixed-member consent operation into the member-keyed operation
   FR-013 and FR-045 define, before any member widens: capture the three environment properties once
   at session startup, call the imported `node:os.homedir()` exactly once for that session, derive the
-  shared agent home as `node:path.join(capturedHomedir, '.agents')`, and freeze four preview entries in fixed
+  shared agent home as `node:path.join(capturedHomedir, '.agents')`, and freeze one preview entry per member in fixed
   order in `src/server/host/global-consent.ts`, bumping the
   `allowlistVersion`/`traversalPlanVersion` literals to `2026-08-27` — a widened selector set is a
   different consent, so the old version must stop matching — and pinning the new literals in
   `tests/contract/http-api-global.test.ts`. Make the member id the closed
-  `copilot | claude | codex | agents` union in `src/shared/api-types.ts` with its caption in
+  union of the supported tools and `agents` in `src/shared/api-types.ts` with its caption in
   `src/shared/api-text.ts`, key the preview entry, controls, and batch fields by member per the
-  amended contract (contracts/http-api.md), and let `SourceSelector` spell the fourth member as
+  amended contract (contracts/http-api.md), and let `SourceSelector` spell the shared agent home member as
   `global-agents` through `src/shared/registries/identifier-types.ts` and the client route and
   filter modules that parse it. Land the member itself with its Codex rules —
   `codex.global.agents-home.skill` and `codex.global.agents-home.marketplace` in
@@ -7672,22 +7677,22 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   realistic shared agent home — skills with near-miss neighbours, a personal
   `plugins/marketplace.json`, and excluded installed-plugin copies — following the README's
   candidate/near-miss rule, update the consent copy in `src/app/pages/global-consent.vue` and
-  `src/app/components/consent/GlobalConsentPreview.vue` to state the four directories and the
-  widened file set, and prove the four-entry preview, the always-derived fourth root, the version
+  `src/app/components/consent/GlobalConsentPreview.vue` to state the member directories and the
+  widened file set, and prove the preview's entry per member, the always-derived agent-home root, the version
   bump, and the `agents` member's admission end to end in `tests/contract/http-api-global.test.ts`,
-  `tests/unit/host/global-consent.test.ts`, and `tests/e2e/global-consent-preview.spec.ts`.
+  `tests/unit/host/global-consent.test.ts`, and `tests/e2e/global-consent-preview.spec.ts`. *(amended 2026-09-25: the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008), so they are named without a count.)*
 
 ### Tests first
 
 - [X] T977 [P] [US4] Add failing Copilot post-consent boundary tests for absent/default versus
   invalid overrides, canonical roots, raw-path identity, links read through their targets, and
-  missing/unreadable files inside the fixed-four operation. Require a missing or unreadable Copilot
+  missing/unreadable files inside the fixed-five operation. Require a missing or unreadable Copilot
   root to record that member as absent or failed without preventing sibling members from committing;
   require a file-confined failure inside an admitted Copilot root to yield that file's Diagnostic in
   a partial member result; and require any failure not confined to one file to propagate unchanged
   and abort the whole batch with no subset Source/generation; host consent code performs zero
   filesystem calls in `tests/unit/host/global-consent.test.ts` *(amended 2026-08-27: fixed-four —
-  the shared agent home joins the members (FR-045).)*
+  the shared agent home joins the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T978 [P] [US4] Add boundary tests for the contracted Copilot Global selector sets — the
   instruction pair, `skills/<name>/SKILL.md`, `agents/*.agent.md`, `hooks/*.json`, `settings.json`,
   `mcp-config.json`, and the shared-agent-home skills — zero operations on neighboring
@@ -7728,22 +7733,22 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   FR-015 through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
   amended vendor contracts.)*
 - [X] T981 [US4] Add browser acceptance for Copilot's confirmed/pending/retryable outcome within the
-  fixed-four controls, shared batch request/progress, deterministic invalid-override Diagnostics,
+  fixed-five controls, shared batch request/progress, deterministic invalid-override Diagnostics,
   the ordinary whole-batch failure error, zero new/provisional pre-commit Copilot Source/file rows
   while carried existing Sources remain visible, atomic sibling publication, and retained Repository
   results in `tests/e2e/global-copilot-admission.spec.ts` *(amended 2026-08-27: fixed-four — the
-  shared agent home joins the members (FR-045).)*
+  shared agent home joins the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 ### Implementation
 
-- [X] T982 [US4] Implement Copilot root-admission orchestration as one fixed-four member:
+- [X] T982 [US4] Implement Copilot root-admission orchestration as one fixed-five member:
   distinguish absent/default from invalid preview, submit the frozen root and compiled plan to the
   inspection module, consume only its typed admission outcome/context, retain raw provenance, and
   propagate a rejected call unchanged. Host code MUST issue no filesystem call and MUST NOT inspect
   or convert a Node error code; it may transfer an admitted unpublished context/IDs to the Copilot
   control only in the atomic decision feeding the one `GlobalBatchScan` in
   `src/server/host/global-consent.ts` *(amended 2026-08-27: fixed-four — the shared agent home joins
-  the members (FR-045).)*
+  the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T983 [US4] Update already-owned behaviors with the contracted reciprocal backlink sets:
   `copilot.behavior.cli.user.instructions.root` only to `copilot.global.instructions.root`;
   `copilot.behavior.cli.user.instructions.path` and `copilot.behavior.vscode.user.instructions` only
@@ -7810,12 +7815,12 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   across four member roots — FR-015 through FR-018 and FR-045 — so this task's member set, selector
   sets, and counts follow the amended vendor contracts.)*
 - [X] T989 [US4] Implement Copilot control/context outcome and retry state as projections of the one
-  serialized fixed-four admission/batch operation, not an independent job; share its
+  serialized fixed-five admission/batch operation, not an independent job; share its
   request/progress with admitted siblings, preserve prior state until the one atomic commit, and on
   any failure not confined to one file retain one ordinary terminal error for the shared ID with no
   new item/Source/result/generation or initial/retry stale overlay, then discard late work in
   `src/server/session/session.ts` *(amended 2026-08-27: fixed-four — the shared agent home joins the
-  members (FR-045).)*
+  members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T990 [US4] Add English messages for Copilot Global override, admission, exact exclusions,
   shared-batch progress, deterministic rejection/retry, and whole-batch failure, explicitly
   distinguishing no new/provisional pre-commit Source from carried existing Sources that remain
@@ -7826,11 +7831,11 @@ This slice adds the real Copilot port to the same open composite milestone; it i
 
 ## Phase 99: Atomic Global Batch Result Integration (Composite Closure 4/4)
 
-**Purpose**: Widen the shipped Claude and Codex members to their contracted kind sets, then close the composite milestone by binding all four real member-admission ports and integrating zero to four separately identified member Global Sources, each with one member/root, through exactly one initial/retry `GlobalBatchScan` commit without merging roots or exposing a per-member commit.
+**Purpose**: Widen the shipped Claude and Codex members to their contracted kind sets, then close the composite milestone by binding all five real member-admission ports and integrating zero to five separately identified member Global Sources, each with one member/root, through exactly one initial/retry `GlobalBatchScan` commit without merging roots or exposing a per-member commit. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
-**Independent Test**: Evaluate the fixed tuple, deterministically admit zero to four roots, and verify an empty subset creates no new job/generation while preserving carried Sources/controls and the prior snapshot, while a nonempty subset uses one request, working set, result, and Global generation to publish every admitted separately identified Source together; verify stable Source IDs, invalidation confined to the Global sequence while Repository generation and views stay untouched, exact 81-rule total, deterministic accepted/rejected partitioning, whole-batch abort on a failure not confined to one file, detail/comparison reuse, excluded-surface isolation, and the exact non-pending-unpublished-admitted plus same-preview-rejected `retryableTools` controls.
+**Independent Test**: Evaluate the fixed tuple, deterministically admit zero to five roots, and verify an empty subset creates no new job/generation while preserving carried Sources/controls and the prior snapshot, while a nonempty subset uses one request, working set, result, and Global generation to publish every admitted separately identified Source together; verify stable Source IDs, invalidation confined to the Global sequence while Repository generation and views stay untouched, exact 81-rule total, deterministic accepted/rejected partitioning, whole-batch abort on a failure not confined to one file, detail/comparison reuse, excluded-surface isolation, and the exact non-pending-unpublished-admitted plus same-preview-rejected `retryableTools` controls. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
-**Visible Checkpoint**: Admitted Codex, Claude, Copilot, and shared-agent-home Global Sources appear separately but simultaneously after one batch commit and can then be filtered, inspected, compared, and explicitly rescanned per Source.
+**Visible Checkpoint**: Admitted Codex, Claude, Copilot, Antigravity, and shared-agent-home Global Sources appear separately but simultaneously after one batch commit and can then be filtered, inspected, compared, and explicitly rescanned per Source. *(amended 2026-09-25: the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 ### Member widening
 
@@ -7894,8 +7899,8 @@ This slice adds the real Copilot port to the same open composite milestone; it i
 ### Tests first
 
 - [X] T991 [P] [US4] Add integrated boundary tests for the contracted member selector sets and one
-  fixed-four transaction: zero admitted roots allocate no new `scanRequestId`/job/Source/generation
-  and preserve all carried Sources/controls and the prior snapshot; one to four admitted roots yield
+  fixed-five transaction: zero admitted roots allocate no new `scanRequestId`/job/Source/generation
+  and preserve all carried Sources/controls and the prior snapshot; one to five admitted roots yield
   separately identified one-member/one-root Sources together in exactly one complete or partial
   generation; a member root that disappears or cannot be read is recorded as absent or failed while
   a file-confined outcome inside an admitted root contributes its per-file diagnostic to that
@@ -7907,7 +7912,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   `tests/integration/global-boundaries.test.ts` *(amended 2026-08-27: the Global scope widened from
   the instruction files to every documented user customization file across four member roots —
   FR-015 through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
-  amended vendor contracts.)*
+  amended vendor contracts.)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T992 [US4] Add final Global registry contracts proving exactly 81 rule IDs—the 49-ID
   pre-Global gate *(amended 2026-08-01: no rule derives skill metadata (Phase 6))* plus three vendor
   `*.excluded.user-runtime` records, `shared.excluded.managed-remote-state`, and twenty-eight Global
@@ -7963,7 +7968,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   expected-result bullet was not removed and stays where it is; extend it only if this suite reports
   something it does not already cover. The restored command lines are the one in the § Automated
   quality gates list and the one in § Inspect without activation.
-- [X] T997 [US4] Add browser acceptance for selector-free fixed-four enablement, `active-no-job`,
+- [X] T997 [US4] Add browser acceptance for selector-free fixed-five enablement, `active-no-job`,
   and one shared batch request; verify separately identified admitted Sources appear simultaneously
   after one generation, with escaped inert boundaries distinct from preview and Source-relative
   paths; filters, Diagnostics, exact readable literals including replacement characters,
@@ -7971,12 +7976,13 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   and cross-Source comparison. An unexpected batch failure must show only one ordinary batch failure
   error, publish no subset/generation or `StaleSourceFailure`, and preserve prior Repository/Global
   state and stable Source IDs in `tests/e2e/global-enable.spec.ts` *(amended 2026-08-27: fixed-four
-  — the shared agent home joins the members (FR-045).)*
+  — the shared agent home joins the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 ### Implementation
 
-- [X] T998 [US4] Finalize fixed-four post-consent admission by binding the real T951/T968/T982/T1137
-  Codex/Claude/Copilot/shared-agent-home ports as four one-root `GlobalToolControl` records and
+- [X] T998 [US4] Finalize fixed-five post-consent admission by binding the real T951/T968/T982/T1137
+  Codex/Claude/Copilot/shared-agent-home ports and the Antigravity home's port
+  (specs/003-antigravity-cli-support FR-008) as five one-root `GlobalToolControl` records and
   operation-local contexts, with initial evaluation of all members, server-derived exact
   `retryableTools` retry, including non-pending unpublished admitted and same-preview rejected
   controls while excluding published, pending, and lexical new-preview-required controls,
@@ -7987,7 +7993,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   `src/server/host/global-consent.ts` *(amended 2026-08-27: the Global scope widened from the
   instruction files to every documented user customization file across four member roots — FR-015
   through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
-  amended vendor contracts.)*
+  amended vendor contracts.)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T999 [US4] Finalize all Global behavior, exactly twenty-eight Global static candidate rules,
   the existing exact exclusions, strategy references, the evidence backlinks the amended contracts
   produce — recounted and frozen in the same gate — and the exact 81-rule total *(amended
@@ -8039,13 +8045,13 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   resolution had to stop; what remains here is the atomic batch publication and the `SourceDto`
   union.)* *(amended 2026-08-27: the publication is of member Global Sources — the shared agent home
   included (FR-045).)*
-- [X] T1002 [US4] Complete the Global-enable function responses for exact fixed-four
+- [X] T1002 [US4] Complete the Global-enable function responses for exact fixed-five
   accepted/rejected partitions, one shared request ID plus `queued` for a nonempty batch or null
   plus `active-no-job` for an empty subset, conflicts, retry state, and ordinary
   pre-/post-acceptance failure errors, while leaving every admitted-member Source publication to a
   later session poll after the one atomic batch commit and preserving carried existing Sources in
   `src/server/host/devframe-app.ts` *(amended 2026-08-27: fixed-four — the shared agent home joins
-  the members (FR-045).)*
+  the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T1003 [US4] Implement a Source-family filter — the selected repository, and the reader's own
   configuration directories as one — beside the tool filter, so the Source axis states where a file
   came from while the tool axis states which product recognized it and the selection can ride in
@@ -8067,18 +8073,18 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   otherwise identical on screen, while the ordinary session has one Source and needs no such line.
   The Source filter is rendered on the same terms, because one family is a question with one
   answer.)*
-- [X] T1004 [US4] Complete fixed-four confirmation and per-member outcome/retry controls tied to one
+- [X] T1004 [US4] Complete fixed-five confirmation and per-member outcome/retry controls tied to one
   shared batch request/progress, focus recovery, `active-no-job`, the ordinary whole-batch failure
   error, and simultaneous separate-Source outcome presentation in `src/app/pages/global-consent.vue`
   and `src/app/components/consent/GlobalSourceControls.vue`; reuse T071's on-demand-refresh
   contract for status *(amended 2026-08-27: fixed-four —
   the shared agent home joins the members (FR-045).)* *(amended 2026-09-04: the pause/resume
   half is dropped, because T071's own note records that no such control exists — nothing on
-  these pages updates automatically, so there is nothing to pause.)*
-- [X] T1005 [US4] Add English fixed-four/single-batch, one-root separate Source, accepted/rejected,
+  these pages updates automatically, so there is nothing to pause.)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
+- [X] T1005 [US4] Add English fixed-five/single-batch, one-root separate Source, accepted/rejected,
   `active-no-job`, whole-batch failure, retry with carried existing Sources kept visible,
   source/tool-filter, detail/comparison, and shared-progress messages in the Vue components that
-  render them *(amended 2026-08-27: fixed-four — the shared agent home joins the members (FR-045).)*
+  render them *(amended 2026-08-27: fixed-four — the shared agent home joins the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 ---
 
@@ -8296,7 +8302,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   what the product lists and that being listed is not being loaded; the verified launch line and
   every option the CLI accepts, exact `--root` included; the eleven customization kinds and the
   comparison surface, illustrated by `docs/images/inventory.png` and `docs/images/comparison.png`;
-  the fixed-four Global consent that `--inspect-personal-setup` confirms; per-file
+  the fixed-five Global consent that `--inspect-personal-setup` confirms; per-file
   `file-unreadable`/`file-content-binary`/`recognition-parse-failed` diagnostics and the
   source-scoped `root-unreadable` failure, whose failed explicit rescan retains the stale prior
   snapshot; the file-open targets; the Node and browser baseline; the contributor loop through
@@ -8310,7 +8316,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   projects condition, applicability, order, runtime state, provenance, or documentation status
   (FR-009; T091/T1068/T1042).)* *(amended 2026-08-30: this document is what a reader opens to run
   and read the tool, so it carries what that reader needs; a contract nobody consults here is one
-  its owning artifact already states.)*
+  its owning artifact already states.)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T1030 Build the SC-001/SC-006 evaluation material and keep it paired: create
   `tests/usability/sc001-sc006-study-kit.md` and `tests/usability/sc001-sc006-study-kit.ja.md`,
   and the bilingual bundle under `tests/usability/sc001-sc006-study-inputs/` — the guidance, the
@@ -8488,7 +8494,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   per-file diagnostics, one read per discovered file, and independent Source/attempt/generation
   reads; separate classification and constraint validation of the two exact FR-022 authorized
   internal loopback classes, zero prohibited direct product requests on every other surface, and
-  local-fixture zero-call semantics; replacement decoding; exact runtime-error ownership; fixed-four
+  local-fixture zero-call semantics; replacement decoding; exact runtime-error ownership; fixed-five
   Global work; FR-042 pre-purge/epoch/fence/recovery/error semantics with public-state
   Global-sequence discard versus unpublished-operation unchanged committed state, including
   unchanged-epoch/null-fence final gates for inspection-data success; non-authority, no semantic
@@ -8515,7 +8521,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   jobs too — leaving the documentation job verifying nothing those had not already verified, unless
   two projects carried an exclusion for one file. The restored command lines are the one in the §
   Automated quality gates list and the one in § Release package verification. *(amended 2026-08-10:
-  the checklist runs through T1090.)*
+  the checklist runs through T1090.)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T1042 [P] After T1041 passes, independently verify the T999 production registry and T1038
   conformance records already materialized before the gate, and add final tests for exactly 52
   source records, exactly 81 inspection-rule IDs *(amended 2026-08-26: the count follows the current
@@ -9665,6 +9671,24 @@ and drops `AGENTS.override.md`.
   both of its digests, and advance `allowlistVersion`; cite § YAML frontmatter and activation
   modes on `antigravity.behavior.repo.context`; and move the suites, their fixtures, and the
   outcome manifest's digests onto the reading (FR-007, FR-011, FR-028, QR-005).
+- [X] T1225 [US1] Resolve the seventh review of this phase. Restate the completed tasks that left
+  Claude Code out of `AGENTS.md`'s recognition — Phase 17's purpose, T226, T228, T268, and
+  Phase 21's recognition matrix — for the recognition this phase gives it, and list `AGENTS.md`
+  among the Claude and Copilot instruction paths in `tests/fixtures/repositories/build-fixtures.ts`.
+  State a file's diagnostics wherever the file itself is shown, whichever kind's reading left
+  them, because whether a record can reach a file turns on every rule that admits its path
+  rather than on the kind in view: on the one face of
+  `src/app/pages/instructions/detail/[source]/[...path].vue`, on the rule and
+  settings-and-configuration details, and on `RuleRow.vue`, `SettingsRow.vue`, `SkillRow.vue`,
+  `PromptRow.vue`, and `OutputStyleRow.vue` in `src/app/components/inventory/rows/`, each
+  resolving the file's own references from `files[]`. Say each code once in a file's list in
+  `src/app/components/inspection/DetailDiagnostics.vue` and
+  `src/app/components/inventory/rows/RowDiagnostics.vue`; record both in `contracts/http-api.md`,
+  `data-model.md` § Diagnostic, and `src/shared/api-types.ts`; and cover a Codex fallback
+  `.mcp.json` holding a comment in `tests/e2e/codex-mcp-detail.spec.ts`, a settings document two
+  readings fail in `tests/e2e/claude-settings-detail.spec.ts` and
+  `tests/e2e/codex-config-detail.spec.ts`, and a rule file that is a command too in
+  `tests/e2e/claude-rules-detail.spec.ts` (FR-004, FR-028).
 
 ## Story Coverage Matrix
 
@@ -10665,8 +10689,8 @@ they already state.
 
 1. Pass Repository Inventory, Detail, and Comparison Acceptance.
 2. Deliver no-I/O Global consent preview.
-3. Activate selector-free consent for fixed `[copilot, claude, codex, agents]`, evaluate all four on initial enable or exactly the complete fixed-order `retryableTools` projection—non-pending unpublished admitted plus same-preview rejected controls, excluding published, pending, and lexical new-preview-required controls—on retry, and validate their one-root controls without publishing tentative Sources.
-4. For a nonempty admitted subset, run exactly one shared-ID `GlobalBatchScan` and atomically publish zero to four separate member Sources together through one complete or partial Global generation, preserving carried Sources and never merging roots; an empty deterministic subset creates no job or generation.
+3. Activate selector-free consent for fixed `[copilot, claude, codex, antigravity, agents]`, evaluate all five on initial enable or exactly the complete fixed-order `retryableTools` projection—non-pending unpublished admitted plus same-preview rejected controls, excluding published, pending, and lexical new-preview-required controls—on retry, and validate their one-root controls without publishing tentative Sources. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
+4. For a nonempty admitted subset, run exactly one shared-ID `GlobalBatchScan` and atomically publish zero to five separate member Sources together through one complete or partial Global generation, preserving carried Sources and never merging roots; an empty deterministic subset creates no job or generation. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 5. Add Global rescan/recovery and the priority zero-I/O disable barrier.
 6. Complete documentation/evidence/dependency review, then run the cross-cutting suites against those completed artifacts; after every remediation, invalidate prior post-review results, rerun all applicable automated gates and affected evidence protocols, and repeat complete-diff/tarball review until it reports no concern.
 7. Record SC-001–SC-008 denominators, thresholds, and pass/fail results; the task material under `tests/usability/sc001-sc006-study-inputs/` and the ground truth the twenty agent-driven sessions scored against, recorded as an agent-driven run and never as a participant cohort (spec.md § Clarifications, Session 2026-09-01); the outcome-fixture manifest version and canonical digest; the final packed-candidate digest; the full Node.js engines contract plus exact lower-bound/browser certification samples; and residual risks. The capture kit is removed (spec.md § Clarifications, Session 2026-09-01; T1061, T1062), so nothing here runs or records it.
@@ -10696,7 +10720,7 @@ they already state.
 - Claude standalone hooks, Codex standalone MCP, hosted/organization/managed/remote inputs, Claude workflows and agent memory, Codex Repository prompts and plugin components, Copilot LSP/extensions/general `.vscode/settings.json`, and extra configured roots never receive List phases or read authority.
 - Contained Hook recognitions reuse their already admitted owner physical file and never create a synthetic file. MCP has no contained mechanism: only explicit carriers hold MCP recognitions. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
 - A marketplace catalog and the manifests below its entries' roots are one `plugin` kind: the catalog is the carrier, a validated local source names each plugin's root, and the census enumerates that root's files — no rule admits a plugin manifest and none derives one; components never recurse.
-- Global inspection has one fixed-four consent record, four controls, and zero to four separately identified Sources, at most one per member and exactly one root per Source. Tentative admission/scan work is not a Source. Initial enable or retry transfers every admitted context into one `GlobalBatchScan` with one request ID, authority, and working set, then publishes all admitted Sources together in one complete or partial generation of the independent Global sequence; no per-member intermediate commit exists, and a Global commit never touches Repository generation or views. A later explicit Global rescan remains a single-Source transaction. Source IDs remain process-lifetime stable, and file identities are Source-relative Paths, stable across generations.
+- Global inspection has one fixed-five consent record, five controls, and zero to five separately identified Sources, at most one per member and exactly one root per Source. Tentative admission/scan work is not a Source. Initial enable or retry transfers every admitted context into one `GlobalBatchScan` with one request ID, authority, and working set, then publishes all admitted Sources together in one complete or partial generation of the independent Global sequence; no per-member intermediate commit exists, and a Global commit never touches Repository generation or views. A later explicit Global rescan remains a single-Source transaction. Source IDs remain process-lifetime stable, and file identities are Source-relative Paths, stable across generations. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - Complete decoded authored source, exact metadata literals, and authored relationship targets remain available in the active session. The loopback-only session API returns them only through explicit detail requests; it has no acknowledgement or notice field, because neither exists anywhere (FR-027). The bundled browser issues those requests and renders their authored values directly, with nothing in front of or beside them. Credentials and environment-reference syntax are displayed unchanged; referenced process-environment values are never read or substituted; diagnostics and logs do not duplicate source values.
 - Credential detection, masking, redaction, and reveal controls are absent. No reveal, masking, or environment-resolution function exists in the session API, and no notice about authored content appears before or beside a source or comparison open.
 - Normal startup, scans, builds, and tests are offline with respect to official documentation. Only the explicit maintainer source-check command may access the network.

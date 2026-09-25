@@ -758,10 +758,13 @@ export interface PermissionsInventoryEntryDto {
  * (FR-027) — and the file's own read outcome, size, and diagnostics stay on
  * its `files[]` entry.
  *
- * There is no extraction diagnostic list, for the reason
- * {@link RuleInventoryEntryDto} has none: nothing is read out of the document
- * this row publishes, so nothing can fail to be read (FR-028). A file whose
- * bytes were never accepted gains no recognition and is no row here at all.
+ * There is no diagnostic list of the row's own: nothing is read out of the
+ * document for this row, so its reading cannot fail. The records the same
+ * document's other readings leave — a `.claude/settings.json` holding a
+ * comment fails the permission policy's and the hooks' strict readings — are
+ * the file's, on its `files[]` entry, which is where the row resolves them
+ * from (FR-028). A file whose bytes were never accepted gains no recognition
+ * and is no row here at all.
  *
  * A row is never a claim that a product applied the settings: a project layer
  * applies only to a trusted project, the layers outside this Source resolve
@@ -1116,9 +1119,13 @@ export interface FrontmatterLedInstructionFileDetailDto extends FileDetailBase {
  * No `presentation`, for the reason {@link RuleFileDetailDto} has none: the
  * products read the file as the one document its author wrote, so nothing is
  * read out of it to set beside the file — and with nothing read out, nothing
- * can fail to be read, so the file carries no extraction diagnostic. A
+ * can fail to be read, so this reading produces no extraction diagnostic. A
  * presentation of no declarations and the whole file as its body would say
  * the same thing in a shape that asks where the declarations went.
+ *
+ * `diagnostics` still lists what the file's other readings recorded: a
+ * `.mcp.json` a Codex fallback name names is an MCP carrier besides, and a
+ * failed MCP parse is the file's (FR-028).
  */
 export interface WholeDocumentInstructionFileDetailDto extends FileDetailBase {
   /** Discriminant: the file is a recognized instruction file. */
@@ -1245,8 +1252,11 @@ export interface PromptFileDetailDto extends FileDetailBase {
  * rule's `paths` and an Antigravity CLI rule's `trigger` alike — because
  * splitting a rule into declarations and a body would show the reader two
  * halves of a file they wrote as one — and with nothing read out, nothing can
- * fail to be read either, so the kind produces no extraction diagnostic. The
- * kind is Claude Code's and Antigravity CLI's in this release: a Codex
+ * fail to be read either, so the kind produces no extraction diagnostic.
+ * `diagnostics` lists what another kind's reading of the same file recorded:
+ * a rules directory below `.claude/commands/` holds files that are commands
+ * too, and a command's frontmatter can fail to parse (FR-028). The kind is
+ * Claude Code's and Antigravity CLI's in this release: a Codex
  * `.codex/rules/*.rules` file is a permission policy rather than a rule, and
  * its detail is {@link PermissionPolicyDetailDto}.
  *
@@ -1683,7 +1693,11 @@ export interface OutputStyleFileDetailDto extends FileDetailBase {
  * whole answer, and a parser-resolved declaration list would drop the
  * comments, authored spellings, and section order a reader compares against
  * their own file. With nothing read out, nothing can fail to be read, so the
- * kind produces no extraction diagnostic.
+ * kind produces no extraction diagnostic. `diagnostics` lists what the same
+ * document's other readings recorded: a `.claude/settings.json` holding a
+ * comment fails the permission policy's and the hooks' strict readings, and
+ * a `.codex/config.toml` TOML cannot parse fails its MCP servers' and its
+ * hooks' (FR-028).
  *
  * A Codex `.codex/config.toml` reaches this variant whole, its
  * `[mcp_servers.*]` tables included. Those tables are a different row's

@@ -1365,6 +1365,8 @@ emitter occurrence順でemitする。Opaque Source ID自体をsort orderに使�
 各emitterは各observationを正確に1回作成し、正当に繰り返されるrecordが存在する — extraction失敗は
 `(file, kind)`につき1 recordであり（FR-028）、1 fileの2つのkindがそれぞれfailすると全public fieldを
 共有する2 recordになる — ため、dedup passはなく、二重emitはtests/reviewが受け持つ通常の実装バグでありruntime filterではない。
+Recordは2つのままであり、1つのfileのrecordを列挙するsurfaceは各codeのmessageを1回だけ述べる: messageは
+どちらの読み取りも名指さないので、2つ目の写しは1つ目が伝えた以上のことを読者に何も伝えない。
 
 Scan candidateは1つのcommit済みgenerationに属する。Commit不能なfatal scan attemptを含むout-of-generation lifecycle
 candidateはsessionだけに属し、generation/Source ID listへ入れない。Malformed request、その他client起因
@@ -1589,7 +1591,7 @@ ready/partial -- accepted per-source rescan --> scanning --> ready/partial
                                                        \-> failed/stale（own entryを作成）
 failed/stale -- accepted per-source rescan --> scanning --> ready/partial（own entry + diagnosticをclear）
                                                        \-> failed/stale（own entry + diagnosticを置換）
-active Global control（0..4 Source） -- disable --> disabling barrier --> inactive / 0 Source（Global sequenceをdiscardし、何もcommitしない）
+active Global control（0..5 Source） -- disable --> disabling barrier --> inactive / 0 Source（Global sequenceをdiscardし、何もcommitしない）
                                                                     \-> failed + retained error --> retry disable
 initial enableだけ -- disable --> cleanup-only barrier --> inactive / 0 Source（committed state不変）
                                                 \-> failed + retained error --> retry disable

@@ -184,7 +184,7 @@ The CLI captures the invocation `process.cwd()` once. Omission uses that exact s
 option is resolved against the captured invocation directory. An explicit empty value exits
 with fixed actionable, source-value-free output before a session or browser attempt. A
 missing value is rejected at the same boundary by Gunshi's typed argument validation.
-Before editor-launcher discovery and session creation, the CLI also captures the four
+Before editor-launcher discovery and session creation, the CLI also captures the three
 documented tool-home environment properties once in fixed order and calls
 `node:os.homedir()` once unconditionally. That retained capture supplies both the eligible
 personal roots excluded from launcher lookup and every preview. Selection never calls

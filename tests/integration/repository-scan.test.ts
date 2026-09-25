@@ -2327,11 +2327,11 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     expect([...mcpDiagnosticIds, ...hookDiagnosticIds].toSorted()).toEqual(
       [...carrier!.diagnosticIds].toSorted(),
     );
-    // The settings row of the same file is untouched by that failure: nothing
-    // is read out of the document for it, so nothing can fail to be read and
-    // the row carries no diagnostic list at all, while the file entry above
-    // carries the MCP and hook kinds' records (FR-028). What the row opens is
-    // the bytes the author wrote, malformed or not.
+    // The settings entry of the same file publishes no diagnostic list of its
+    // own: nothing is read out of the document for it, so its reading cannot
+    // fail, and the MCP and hook kinds' records are the file entry's above,
+    // which is where the row and the detail resolve them from (FR-028). What
+    // the row opens is the bytes the author wrote, malformed or not.
     expect(snapshot.settings).toEqual([
       {
         sourceId: context.session.repositorySourceId,
@@ -4007,9 +4007,10 @@ describe('the unified instructions inventory (T270)', () => {
             sourceRelativePath: 'docs/AGENTS.md',
             recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, ANTIGRAVITY_ONLY],
           },
-          // The malformed file keeps its row: what failed is reading its
-          // declarations, and a path-derived range comes from where the file
-          // sits (FR-028, T1093).
+          // A block that is not YAML opens this file, and nothing fails:
+          // Claude Code reads a `CLAUDE.md` whole, so the block is a line of
+          // its instructions and the range comes from where the file sits
+          // (T1224).
           { sourceRelativePath: 'docs/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
         ],
       },

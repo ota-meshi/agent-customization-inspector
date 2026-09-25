@@ -85,12 +85,12 @@ runtime-composition contracts and never changes this boundary.
 
 Global inspection is disabled in every new session and requires consent bound to the
 current contract version and exact no-I/O preview. Consent is one selector-free action for
-the fixed member entries — Copilot, Claude, Codex, and the shared agent home. One
-transaction evaluates all four; deterministic
+the fixed member entries — Copilot, Claude, Codex, Antigravity, and the shared agent home.
+One transaction evaluates all five; deterministic
 rejections do not block admitted siblings, and one batch publishes all resulting Sources in
 one atomic generation. Every accepted member root becomes
-its own Global Source, separately identified as Copilot, Claude, Codex, or the shared
-agent home.
+its own Global Source, separately identified as Copilot, Claude, Codex, Antigravity, or the
+shared agent home.
 Each member maps to its own Source, and each Source is bound to exactly one root. These
 Sources are not Repository children, are never merged with one another, and are never
 merged into the Repository Source.

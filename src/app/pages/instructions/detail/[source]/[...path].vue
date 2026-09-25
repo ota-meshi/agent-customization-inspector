@@ -20,10 +20,11 @@
 // spelling stays readable — and stacking them would show the same text twice
 // on one screen for a file that declares nothing. A format its products read
 // whole — `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, and the rest — has nothing
-// read out of it, so the page shows it once, the way the rule detail shows a
-// rule: no tabs, because there is no second subject for one to hold, and no
-// "declares none", because the format has no declarations to be without. A
-// `---` block opening such a file is shown as the line of instructions it is.
+// read out of it, so the page shows it once, the way the settings detail
+// shows a settings file: no tabs, because there is no second subject for one
+// to hold, and no "declares none", because the format has no declarations to
+// be without. A `---` block opening such a file is shown as the line of
+// instructions it is.
 //
 // This surface shows file contents exactly as authored — credentials
 // included, with nothing masked and no control that would uncover a masked
@@ -509,8 +510,11 @@ const bodyIsEmpty = computed(() => (presentation.value?.bodyText ?? '') === '');
 
 /**
  * The diagnostics of the open file. The detail response states each record
- * once — a failed extraction is one (file, kind) record (FR-028) — so the
- * list renders as published.
+ * once — a failed extraction is one (file, kind) record (FR-028) — and the
+ * list says each code once (`DetailDiagnostics.vue`), so it is passed as
+ * published. The records are the file's whichever kind's reading left them,
+ * so a file its products read whole can carry one too (session.ts
+ * § fileDetail).
  */
 const openDiagnostics = computed(() => openDetail.value?.diagnostics ?? []);
 
@@ -832,20 +836,27 @@ useReportedPageSubject(titleSubject);
       </template>
 
       <!-- A file its products read whole: the one document, shown once, as
-           the rule detail shows a rule. No diagnostics list, because nothing
-           is read out of the file, so its instruction reading has nothing
-           that could fail (FR-028). The readability guard is the narrowing the
-           file's own union asks for and never a branch with a second outcome:
-           a recognition exists only for a readable file. The viewer colours by
-           the path's own extension; colouring is tokenizing rather than
-           rendering, so no heading becomes large and no link becomes
-           clickable (FR-033). -->
-      <SourceViewer
-        v-else-if="isReadableFile(openDetail.file)"
-        panel-label="Source"
-        :source-text="openDetail.file.sourceText"
-        :source-relative-path="openDetail.file.sourceRelativePath"
-      />
+           the settings detail shows a settings file. Its diagnostics stand
+           above it, where the file tab puts them. Nothing is read out of the
+           file for this kind, so this reading cannot fail — but another
+           kind's reading of the same file can: a `.mcp.json` a Codex fallback
+           name names is an MCP carrier besides, and a failed MCP parse is the
+           file's, which its row states too (FR-028). The readability guard is
+           the narrowing the file's own union asks for and never a branch with
+           a second outcome: a recognition exists only for a readable file.
+           The viewer colours by the path's own extension; colouring is
+           tokenizing rather than rendering, so no heading becomes large and
+           no link becomes clickable (FR-033). -->
+      <template v-else>
+        <DetailDiagnostics :diagnostics="openDiagnostics" />
+
+        <SourceViewer
+          v-if="isReadableFile(openDetail.file)"
+          panel-label="Source"
+          :source-text="openDetail.file.sourceText"
+          :source-relative-path="openDetail.file.sourceRelativePath"
+        />
+      </template>
     </template>
   </DetailPage>
 </template>

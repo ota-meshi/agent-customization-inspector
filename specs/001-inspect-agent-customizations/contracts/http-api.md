@@ -451,8 +451,10 @@ SessionSnapshot
 │       rows, in the published Source order then path — because this kind's
 │       unit is the file; a file that also
 │       carries declarations another kind owns — Codex's `.codex/config.toml`
-│       — is a row here and on that kind's list too. No diagnostic list, for
-│       the reason `rules[]` has none: nothing is read out of the document
+│       — is a row here and on that kind's list too. No diagnostic list of
+│       its own: nothing is read out of the document for this row, and the
+│       records the document's other readings leave are the file's, on its
+│       `files[]` entry (FR-028)
 └── diagnostics[] { diagnosticId, code, sourceId string,
     sourceRelativePath string | null — null except file scope }
     (active-generation records plus session-owned lifecycle records)
@@ -882,8 +884,10 @@ format — `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`, `CLAUDE.local.md`, `G
 Antigravity's Rules page says that `AGENTS.md` and `GEMINI.md` use none and are read as plain
 Markdown throughout, so its variant carries no `presentation`, for the reason the `rule`
 variant has none: a `---` block opening such a file is a line of its instructions, nothing
-is read out of it, and nothing can fail to be read, so the file carries no extraction
-diagnostic. A presentation of no declarations with the whole file as its body is not
+is read out of it, and nothing can fail to be read, so this reading produces no extraction
+diagnostic. Its `diagnostics[]` still lists what the file's other readings recorded: a
+`.mcp.json` a Codex fallback name names is an MCP carrier besides, and a failed MCP parse is
+the file's (FR-028). A presentation of no declarations with the whole file as its body is not
 published in its place: it would say the same thing in a shape that asks where the
 declarations went. The format is a fact of the rule that admitted the file, and every
 recognition of one file reads it in one format: the files read for their declarations are the
@@ -927,7 +931,9 @@ declarations and a body would show the reader two halves of one file. With nothi
 out, nothing can fail to be read: the kind produces no extraction diagnostic, and a
 declared `paths` glob is authored text this product never evaluates against a filesystem
 path. The variant is its own rather than the unrecognized one, because a recognition does
-own the file and its inventory row says so.
+own the file and its inventory row says so. Its `diagnostics[]` lists what another kind's
+reading of the same file recorded: a rules directory below `.claude/commands/` holds files
+that are commands too, and a command's frontmatter can fail to parse (FR-028).
 The `settings/config` variant carries no `presentation` for the same reason, and its row
 unit is the file itself (data-model.md § Inventory unit), so the document its author wrote
 is the whole answer: a Codex `.codex/config.toml` reaches the response as the TOML it is,
@@ -937,7 +943,10 @@ row's subject and are served declaration-first by `get-mcp-carrier-detail`; that
 also visible here is the same document seen under its own row rather than a second
 publication of one fact. No declared agent, skill, model-instruction, compact-prompt, or
 hook path is read, resolved, or followed, and no environment reference is substituted
-(FR-019, FR-026).
+(FR-019, FR-026). Its `diagnostics[]` lists what the document's other readings recorded: a
+`.claude/settings.json` holding a comment fails the permission policy's and the hooks' strict
+readings, and a `.codex/config.toml` TOML cannot parse fails its MCP servers' and its hooks'
+(FR-028).
 
 A permission policy is not among these variants. What a permissions row names is a policy,
 not a file — one vendor's policy is a document of its own and another's is a block of a

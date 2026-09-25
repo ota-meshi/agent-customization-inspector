@@ -97,25 +97,6 @@ describe('skill row files', () => {
     expect(files[0]!.companionFiles).toEqual(['.claude/skills/deploy/README.md']);
   });
 
-  it('states one extraction failure once, however many products recognize the file', () => {
-    // The parse ran once per `(file, kind)` (FR-028), so a shared failure must
-    // not read as several.
-    const files = skillRowFiles([
-      definition({
-        sourceRelativePath: '.claude/skills/broken/SKILL.md',
-        tool: 'copilot',
-        diagnosticIds: ['diag-1'],
-      }),
-      definition({
-        sourceRelativePath: '.claude/skills/broken/SKILL.md',
-        tool: 'claude',
-        diagnosticIds: ['diag-1'],
-      }),
-    ]);
-
-    expect(files[0]!.diagnosticIds).toEqual(['diag-1']);
-  });
-
   it('escapes the path it renders, so a spanning path cannot read as two files', () => {
     const files = skillRowFiles([
       definition({ sourceRelativePath: '.claude/skills/od\nd/SKILL.md', tool: 'claude' }),

@@ -819,8 +819,9 @@ const openFilePathText = computed(() =>
 
 /**
  * The diagnostics of the file on screen. The detail response states each
- * record once — a failed extraction is one (file, kind) record (FR-028) — so
- * the list renders as published.
+ * record once — a failed extraction is one (file, kind) record (FR-028) — and
+ * the list says each code once (`DetailDiagnostics.vue`), so it is passed as
+ * published.
  */
 const openFileDiagnostics = computed(() => {
   const detail = openCompanion.value ?? entryDetail.value;
@@ -833,11 +834,14 @@ const openFileDiagnostics = computed(() => {
  * visible while a companion owns the files pane (FR-028). Empty whenever a
  * presentation exists: the parsed panel needs no failure story.
  *
- * A readable candidate carries exactly one diagnostic — the failed recognition parse (`scan.ts`) — and a decode that
- * replaced invalid UTF-8 carries none at all, being readable and complete
- * (spec.md § SC-007); the binary and unreadable outcomes produce no skill
- * recognition, so they never reach this page. The failure this shows is
- * therefore the whole of what the entry point can hold.
+ * A readable candidate's records are its failed parses, one per kind that
+ * reads it (`scan.ts`) — a `.claude/skills/<name>/SKILL.md` below
+ * `.claude/commands/` is a command too, and the two readings of its
+ * frontmatter fail together — while a decode that replaced invalid UTF-8
+ * carries none at all, being readable and complete (spec.md § SC-007); the
+ * binary and unreadable outcomes produce no skill recognition, so they never
+ * reach this page. What this shows is therefore the whole of what the entry
+ * point can hold.
  */
 const entryDiagnostics = computed(() => {
   const detail = entryDetail.value;

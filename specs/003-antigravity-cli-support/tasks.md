@@ -25,13 +25,13 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 
 | Requirement | Owning implementation, verification, and evidence tasks |
 |---|---|
-| FR-001 | T003, T006, T008, T018, T035, T048, T059–T060, T068–T070, T076, T078–T080 |
+| FR-001 | T003, T006, T008, T018, T035, T048, T059–T060, T068–T070, T076, T078–T080, T094 |
 | FR-002 | T011, T020–T021, T023, T025–T029, T036–T037, T082–T083 |
 | FR-003 | T011, T021, T023, T088, T089 |
 | FR-004 | T022, T026, T030–T031, T052–T056, T058, T082, T084 |
-| FR-005 | T021, T029, T042 |
+| FR-005 | T021, T029, T042, T094 |
 | FR-006 | T021, T028 |
-| FR-007 | T021, T023, T025, T082–T083, T088, T090, T093 |
+| FR-007 | T021, T023, T025, T082–T083, T088, T090, T093, T094 |
 | FR-008 | T005, T019, T039, T041, T048 |
 | FR-009 | T040–T041, T043–T046, T051, T082–T083 |
 | FR-010 | T040, T042, T047 |
@@ -40,8 +40,8 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 | FR-013 | T023 |
 | FR-014 | T012–T013, T016, T063, T065 |
 | FR-015 | T002, T009, T073, T077, T086, T090 |
-| FR-016 | T011, T020–T021, T037–T038, T059, T082–T083, T089, T091, T092, T093 |
-| FR-017 | T011, T020–T021, T036, T038, T051, T059 |
+| FR-016 | T011, T020–T021, T037–T038, T059, T082–T083, T089, T091, T092, T093, T094 |
+| FR-017 | T011, T020–T021, T036, T038, T051, T059, T094 |
 | QR-001 | T007, T009–T014, T017, T032, T072 |
 | QR-002 | T026, T030, T053, T084 |
 | QR-003 | T020–T024, T033–T034, T036–T042, T049, T051–T054, T057, T061–T062, T064, T071, T085, T087 |
@@ -274,3 +274,4 @@ Each story phase ends at a state the independent test above can measure. Phase 6
 - [X] T091 Write every positive rules sample in the official frontmatter — `trigger` set to `always_on`, `manual`, `model_decision`, or `glob` with its `globs` — in `tests/fixtures/repositories/build-fixtures.ts`, `tests/e2e/antigravity-rules-detail.spec.ts`, `tests/unit/inspection/antigravity-metadata.test.ts`, and `scripts/readme-images/showcase-repository.ts`, and name the key in `quickstart.md` and `quickstart.ja.md`, because the terminal discards a rule without a recognized `trigger`, per FR-016.
 - [X] T092 State in FR-016 of `specs/003-antigravity-cli-support/spec.md` and `spec.ja.md`, its edge case, `research.md` § 7a, and the vendor contract's Derived Repository rules and Known uncertainties item 10 in both languages that the nested rule files a `.agents/rules.json` registers are read by the terminal and outside this release, which ships no derivation reading that registration, and correct the comments that said no terminal setting relocates a workspace customization in `src/shared/registries/antigravity/rules.ts`, `src/server/inspection/rules/antigravity.ts`, `src/server/inspection/rules/vendor/antigravity.ts`, `tests/contract/inspection-rules.test.ts`, and `tests/documentation/cross-artifact.test.ts`, per FR-016.
 - [X] T093 State in the Parser format table of `specs/003-antigravity-cli-support/data-model.md` and `data-model.ja.md` that the context files and the rule files go through no parser, because the Rules page says `AGENTS.md` and `GEMINI.md` use no frontmatter and a rule file is published whole; correct the edge case of `spec.md` and `spec.ja.md` that gave a rules file with an unparseable frontmatter a diagnostic, which no reading can produce because nothing is read out of a rule file, and add the edge case of a context file opening with a block that is not YAML, shown whole with no diagnostic; and correct the comment on `RuleFileDetailDto` in `src/shared/api-types.ts`, which called the rule kind Claude Code's alone, per FR-007, FR-016.
+- [X] T094 Say in `specs/003-antigravity-cli-support/quickstart.md` and `quickstart.ja.md` what a rules, hooks, or MCP row shows and what its detail shows — a row names a file and the products that read it, and the `trigger`, a hook's matcher group and `enabled` key, and a server's `serverUrl` or legacy `httpUrl` are read on the detail — and finish T076 and T078 in the parent's documents in both languages: the Clarifications retry answer's fixed tuple with a dated note, the plan's tuple, controls, five-entry confirmation, and failure table, the research's member Sources and admitted roots, the data model's Global control state, the inspection-path allowlist's member entries, the quickstart's three environment properties and five roots, and every completed task and phase statement in `specs/001-inspect-agent-customizations/tasks.md` and `tasks.ja.md` that counted four members, each rewritten to the five members with a dated note; and narrow `spec.md`'s edge cases for a rules file and a context file whose opening block is not valid YAML to what reading them reports, because a file at such a path can be another kind's too, per FR-001, FR-005, FR-007, FR-016, FR-017.

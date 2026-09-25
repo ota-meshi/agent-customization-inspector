@@ -401,8 +401,10 @@ SessionSnapshot
 │       名指す（FR-030）: 同意されたhomeの`settings.json`と他所の同path
 │       documentは2つのrowであり、rowは公開Source順、次にpath順に並ぶ。他の kind が
 │       所有する宣言も運ぶ file — Codexの `.codex/config.toml` — は、ここ
-│       にも、その kind の一覧にも row を持つ。diagnostic の一覧は持たない。
-│       `rules[]` と同じ理由で、document から何も読み出さないためである
+│       にも、その kind の一覧にも row を持つ。row 自身の diagnostic の一覧は
+│       持たない: この row のためには document から何も読み出さず、同じ
+│       document の他の読み取りが残した record は file のものとして、その
+│       `files[]` entry にある（FR-028）
 └── diagnostics[] { diagnosticId, code, sourceId string,
     sourceRelativePath string | null — file scope以外はnull }
     （active-generation recordとsession-owned lifecycle record）
@@ -750,7 +752,9 @@ Codexのfallback名 — はfrontmatterなしで文書化されており、Antigr
 `AGENTS.md`と`GEMINI.md`がfrontmatterを使わず全体をplain Markdownとして読まれると述べている。
 そのためこちらのvariantは`presentation`を持たない。理由は`rule` variantが持たないのと同じで、
 そのようなfileの先頭の`---` blockはinstructionsの1行であり、そこからは何も読み出さず、読み出しに
-失敗することもないので、fileはextraction diagnosticを持たない。宣言0件でfile全体をbodyとする
+失敗することもないので、この読み取りはextraction diagnosticを生じない。それでも`diagnostics[]`は、
+fileの他の読み取りが記録したものを列挙する: Codexのfallback名が名指す`.mcp.json`はMCP carrierでも
+あり、失敗したMCP parseはそのfileのものである（FR-028）。宣言0件でfile全体をbodyとする
 presentationを代わりに公開することはしない: 同じことを、宣言はどこへ行ったのかと問わせる
 shapeで言うことになるからである。形式はfileをadmitしたruleの事実であり、1つのfileの
 recognitionはすべて1つの形式でそのfileを読む: 宣言のために読まれるfileはCopilot自身の
@@ -789,7 +793,9 @@ fileとして書かれたものを2つの半分として読者に見せること
 失敗することもない: このkindはextraction diagnosticを生じず、宣言された`paths` globは
 本productがfilesystem pathに対して評価することのないauthored textである。それでも独自の
 variantであるのは、recognitionがこのfileを所有しており、そのinventory rowがそう述べて
-いるからである。
+いるからである。その`diagnostics[]`は、同じfileを別のkindが読んで記録したものを列挙する:
+`.claude/commands/`の下にあるrules directoryのfileはcommandでもあり、commandのfrontmatterは
+parseに失敗し得る（FR-028）。
 `settings/config` variantが`presentation`を持たないのも同じ理由であり、そのrowの単位は
 file自身であるため（data-model.md § 一覧の単位）、authorが書いたdocumentがそのまま答えに
 なる: Codexの`.codex/config.toml`は、comment、authoredな綴り、section順を保ったTOMLとして
@@ -798,6 +804,9 @@ tableは別のrowの主題であり、`get-mcp-carrier-detail`が宣言を先頭
 見えるのは、同じdocumentを自身のrowの下で見ているからであって、1つの事実を二重に公開して
 いるのではない。宣言されたagent、skill、model-instruction、compact-prompt、hookのpathは
 読まれず、解決されず、辿られない。environment referenceも置換されない（FR-019、FR-026）。
+その`diagnostics[]`は、同じdocumentの他の読み取りが記録したものを列挙する: commentを含む
+`.claude/settings.json`はpermission policyとhooksの厳密な読み取りを失敗させ、TOMLとして
+parseできない`.codex/config.toml`はMCP serverとhooksの読み取りを失敗させる（FR-028）。
 
 Permission policyはこれらのvariantに含まれない。Permissions rowが名指すのはfileではなくpolicyで
 あり — あるvendorのpolicyはそれ自体が1つのdocumentであり、別のvendorのそれは、他のkeyが別の

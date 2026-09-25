@@ -46,15 +46,20 @@ pnpm run start:fixture antigravity-agents --no-open --port 0
 pnpm run start:fixture antigravity-instructions --no-open --port 0
 ```
 
-- rules inventory が `.agents/rules/` 配下の Markdown ファイルごとに1行を挙げ、frontmatter が
-  宣言する `trigger` — `always_on`、`manual`、`model_decision`、または `globs` を伴う `glob` — を書かれたとおりに示し、
-  pattern はどこにも照合しない。同じ tree の `.agent/rules/` のファイルは旧綴りとして挙がり、
-  `packages/api/.agents/rules/api.md` もそれらの隣に挙がる。
-- hooks inventory が `.agents/hooks.json` を、その event map、matcher group、1つの hook が持つ
-  `enabled` フラグとともに挙げ、何も実行しない。
+- rules inventory が `.agents/rules/` 配下の Markdown ファイルごとに、Antigravity CLI を名指す
+  1行を挙げる。同じ tree の `.agent/rules/` のファイルは旧綴りとして挙がり、
+  `packages/api/.agents/rules/api.md` もそれらの隣に挙がる。行が示すのはファイルとそれを読む
+  製品で、行を開くとファイル全体が示される。frontmatter が宣言する `trigger` — `always_on`、
+  `manual`、`model_decision`、または `globs` を伴う `glob` — は書かれたとおりに現れ、pattern は
+  どこにも照合しない。
+- hooks inventory が `.agents/hooks.json` を、それが宣言する event — `PostToolUse` と
+  `PreToolUse` — ごとに挙げ、何も実行しない。宣言を開くと、その matcher group、carrier が hook に
+  付けた名前、そしてそれを書く1つの hook については `enabled: false` が、どれも書かれたとおりに
+  示される。
 
-- MCP inventory が `.agents/mcp_config.json` で宣言された名前ごとに1行を挙げ、リモート server の
-  `serverUrl` と legacy の `url` がどちらも書かれたとおりに現れる。
+- MCP inventory が `.agents/mcp_config.json` で宣言された名前ごとに1行を挙げる。リモート server の
+  行を開くと、その `serverUrl`、または1つの宣言がまだ綴る legacy の `httpUrl` が書かれたとおりに
+  示される。
 - agents inventory が `.agents/agents/<name>.md` と `.agents/agents/<name>/agent.md` を挙げる。
 - ルートの `GEMINI.md` とルートの `AGENTS.md` がそれぞれ1度だけ現れ、それらを読むすべての製品を
   名指す。`packages/api/GEMINI.md` と `docs/.agents/GEMINI.md` は Antigravity CLI を名指し、

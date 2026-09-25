@@ -25,13 +25,13 @@
 
 | Requirement | Owning implementation, verification, and evidence tasks |
 |---|---|
-| FR-001 | T003、T006、T008、T018、T035、T048、T059–T060、T068–T070、T076、T078–T080 |
+| FR-001 | T003、T006、T008、T018、T035、T048、T059–T060、T068–T070、T076、T078–T080, T094 |
 | FR-002 | T011、T020–T021、T023、T025–T029、T036–T037、T082–T083 |
 | FR-003 | T011、T021、T023, T088, T089 |
 | FR-004 | T022、T026、T030–T031、T052–T056、T058、T082、T084 |
-| FR-005 | T021、T029、T042 |
+| FR-005 | T021、T029、T042, T094 |
 | FR-006 | T021、T028 |
-| FR-007 | T021、T023、T025、T082–T083, T088, T090, T093 |
+| FR-007 | T021、T023、T025、T082–T083, T088, T090, T093, T094 |
 | FR-008 | T005、T019、T039、T041、T048 |
 | FR-009 | T040–T041、T043–T046、T051、T082–T083 |
 | FR-010 | T040、T042、T047 |
@@ -40,8 +40,8 @@
 | FR-013 | T023 |
 | FR-014 | T012–T013、T016、T063、T065 |
 | FR-015 | T002、T009、T073、T077、T086, T090 |
-| FR-016 | T011、T020–T021、T037–T038、T059、T082–T083, T089, T091, T092, T093 |
-| FR-017 | T011、T020–T021、T036、T038、T051、T059 |
+| FR-016 | T011、T020–T021、T037–T038、T059、T082–T083, T089, T091, T092, T093, T094 |
+| FR-017 | T011、T020–T021、T036、T038、T051、T059, T094 |
 | QR-001 | T007、T009–T014、T017、T032、T072 |
 | QR-002 | T026、T030、T053、T084 |
 | QR-003 | T020–T024、T033–T034、T036–T042、T049、T051–T054、T057、T061–T062、T064、T071、T085、T087 |
@@ -274,3 +274,4 @@ Phase 1・2・3 で、リポジトリの inventory が4つ目のツールを名�
 - [X] T091 rules の正例をすべて公式の frontmatter — `always_on`、`manual`、`model_decision`、または `globs` を伴う `glob` を値とする `trigger` — で書く。`tests/fixtures/repositories/build-fixtures.ts`、`tests/e2e/antigravity-rules-detail.spec.ts`、`tests/unit/inspection/antigravity-metadata.test.ts`、`scripts/readme-images/showcase-repository.ts`。`quickstart.md` と `quickstart.ja.md` でその key を名指す。端末は認識できる `trigger` の無い rule を捨てるからである。FR-016 に基づく。
 - [X] T092 `.agents/rules.json` が登録する入れ子の rule ファイルは端末が読み、この登録を読む derivation を出荷しないこのリリースの範囲外であることを、`specs/003-antigravity-cli-support/spec.md` と `spec.ja.md` の FR-016 とその edge case、`research.md` の § 7a、両言語の vendor contract の Derived Repository rule と既知の不確実性の項目10に記す。workspace のカスタマイズの場所を移す端末の設定は無いと述べていたコメントを `src/shared/registries/antigravity/rules.ts`、`src/server/inspection/rules/antigravity.ts`、`src/server/inspection/rules/vendor/antigravity.ts`、`tests/contract/inspection-rules.test.ts`、`tests/documentation/cross-artifact.test.ts` で正す。FR-016 に基づく。
 - [X] T093 `specs/003-antigravity-cli-support/data-model.md` と `data-model.ja.md` の Parser format の表に、context file と rule file はどの parser も通らないことを記す。Rules ページが `AGENTS.md` と `GEMINI.md` は frontmatter を使わないと述べ、rule file はファイル全体として公開されるからである。frontmatter を parse できない rules ファイルが diagnostic を持つとしていた `spec.md` と `spec.ja.md` の edge case を訂正する。rule file からは何も読み出さないので、その diagnostic を生む読み取りは無い。YAML でない block で始まる context file を、diagnostic なしでファイル全体として示す edge case を加える。rule の kind を Claude Code だけのものとしていた `src/shared/api-types.ts` の `RuleFileDetailDto` のコメントを訂正する。FR-007、FR-016 による。
+- [X] T094 `specs/003-antigravity-cli-support/quickstart.md` と `quickstart.ja.md` で、rules・hooks・MCP の行が何を示し、詳細が何を示すかを述べる。行はファイルとそれを読む製品を名指し、`trigger`、hook の matcher group と `enabled` キー、server の `serverUrl` や legacy の `httpUrl` は詳細で読むものである。さらに親の文書で T076 と T078 を両言語で完了させる: Clarifications の再試行の回答の固定 tuple（日付つきの注記付き）、plan の tuple・control・five-entry confirmation・失敗表、research の member Source と admit される root、data model の Global control の状態、inspection-path allowlist の member entry、quickstart の3つの環境プロパティと5 root、そして `specs/001-inspect-agent-customizations/tasks.md` と `tasks.ja.md` で member を4つと数えていた完了済みのタスクとフェーズの記述すべてを、それぞれ5 member に書き換えて日付つきの注記を付ける。また `spec.md` の edge case のうち、先頭の block が YAML として正しくない rules ファイルと context ファイルについての2つを、その読み取りが何を報告するかの記述に狭める。そうしたパスのファイルは別の kind のものでもありうるからである。FR-001、FR-005、FR-007、FR-016、FR-017 による。
