@@ -1,6 +1,7 @@
-// T054/T127/T155/T207/T228/T283: Codex, Claude, and Copilot recognition from
-// the admitting rule alone — tool, the `skill`, `instructions`, and `MCP`
-// kinds, path provenance, the exact multi-tool recognition matrix, and the absence of any
+// T054/T127/T155/T207/T228/T283/T1224: Codex, Claude, and Copilot recognition
+// from the admitting rule alone — tool, the `skill`, `instructions`, and `MCP`
+// kinds, path provenance, the exact multi-tool recognition matrix, the format
+// each product reads an instruction file in, and the absence of any
 // recognition the shipped registry does not authorize (FR-004, FR-005).
 //
 // The one value a recognition lifts out of the bytes is the declared name, and
@@ -15,10 +16,25 @@ import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { recognizeCandidateForVendors } from '../../../src/server/inspection/recognizers/candidate';
-import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
-import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
+import {
+  ANTIGRAVITY_GLOBAL_RULES,
+  ANTIGRAVITY_REPOSITORY_RULES,
+} from '../../../src/server/inspection/rules/antigravity';
+import {
+  CLAUDE_GLOBAL_RULES,
+  CLAUDE_REPOSITORY_RULES,
+} from '../../../src/server/inspection/rules/claude';
+import {
+  CODEX_AGENTS_HOME_RULES,
+  CODEX_GLOBAL_RULES,
+  CODEX_REPOSITORY_RULES,
+} from '../../../src/server/inspection/rules/codex';
 import { CODEX_DERIVED_FALLBACK_RULE } from '../../../src/server/inspection/rules/instructions/codex';
-import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
+import {
+  COPILOT_AGENTS_HOME_RULES,
+  COPILOT_GLOBAL_RULES,
+  COPILOT_REPOSITORY_RULES,
+} from '../../../src/server/inspection/rules/copilot';
 import type { CompiledStaticCandidateRule } from '../../../src/server/inspection/rules/registry';
 import type { SupportedTool } from '../../../src/shared/entities';
 
@@ -482,7 +498,7 @@ describe('the Copilot recognition matrix (T155)', () => {
   });
 });
 
-describe('Codex instruction recognition (T207, presentation added by T222)', () => {
+describe('Codex instruction recognition (T207, read whole by T1224)', () => {
   it('attaches exactly one codex/instructions recognition to an admitted override', async () => {
     const recognitions = (
       await recognizeWith('codex', 'AGENTS.override.md', [codexInstructionsRule])
@@ -491,21 +507,16 @@ describe('Codex instruction recognition (T207, presentation added by T222)', () 
     expect(recognitions[0]).toMatchObject({
       sourceRelativePath: 'AGENTS.override.md',
       tool: 'codex',
-      // The payload is the file's presentation plus the range its row is
-      // grouped by — one applicability range, or the no-range row
-      // (data-model.md § Inventory unit) — so no declared name exists to
-      // extract: the one frontmatter parse a skill uses feeds the detail's
-      // declarations and instructions (T222).
-      details: { kind: 'instructions' },
-      parseStatus: 'parsed',
+      // The payload is the format the file is read in and the range its row
+      // is grouped by (data-model.md § Inventory unit) — no declared name, and
+      // nothing read out of the file: Codex documents no frontmatter for an
+      // instruction file, so it is read whole and no extraction is attempted
+      // (api-types.ts § InstructionFileFormat).
+      details: { kind: 'instructions', format: 'whole-document' },
+      parseStatus: 'not-attempted',
       diagnosticIds: [],
     });
-    expect(Object.keys(recognitions[0]!.details)).toEqual([
-      'kind',
-      'frontmatter',
-      'bodyText',
-      'applicabilityRange',
-    ]);
+    expect(Object.keys(recognitions[0]!.details)).toEqual(['kind', 'format', 'applicabilityRange']);
     // The root's range: the file governs the whole Repository (data-model.md
     // § Inventory unit), which is what puts it on one row with the
     // `CLAUDE.md` beside it.
@@ -533,12 +544,10 @@ describe('Codex instruction recognition (T207, presentation added by T222)', () 
     expect(directories).toEqual([]);
   });
 
-  it('fails a malformed frontmatter block all-or-nothing, publishing nothing parsed', async () => {
-    // The instructions kind runs the one frontmatter parse a skill uses
-    // (T222), so a malformed block is that recognition's `failed` state:
-    // extraction is all-or-nothing, nothing parsed is published, and the
-    // complete source stays with the file — the scan attaches the failure's
-    // diagnostic, which is why none is here (FR-028).
+  it('reads a block that is not YAML as a line of the file, failing nothing (T1224)', async () => {
+    // A `---` block opening a file read whole is part of its instructions, so
+    // nothing parses it: a block that would not parse as YAML is no failure,
+    // and the scan has no extraction diagnostic to attach (FR-028).
     const recognitions = (
       await recognizeWith(
         'codex',
@@ -547,13 +556,10 @@ describe('Codex instruction recognition (T207, presentation added by T222)', () 
         '---\nmalformed: [unclosed\n---\n\n# Override\n',
       )
     ).recognitions;
-    expect(recognitions[0]!.parseStatus).toBe('failed');
-    // The range survives the failure: what a file governs comes from where it
-    // sits, not from what parsed (FR-028).
+    expect(recognitions[0]!.parseStatus).toBe('not-attempted');
     expect(recognitions[0]!.details).toEqual({
       kind: 'instructions',
-      frontmatter: [],
-      bodyText: '',
+      format: 'whole-document',
       applicabilityRange: '**',
     });
     expect(recognitions[0]!.diagnosticIds).toEqual([]);
@@ -2265,9 +2271,10 @@ describe('the derived fallback recognition (T1086)', () => {
       sourceRelativePath: 'TEAM_GUIDE.md',
       tool: 'codex',
       // A derived admission's recognition is the ordinary instructions
-      // recognition: the same one parse feeds its presentation (T222).
-      details: { kind: 'instructions', bodyText: '# configured fallback\n' },
-      parseStatus: 'parsed',
+      // recognition, read whole like the `AGENTS.md` the name stands in for
+      // (T1224).
+      details: { kind: 'instructions', format: 'whole-document', applicabilityRange: '**' },
+      parseStatus: 'not-attempted',
     });
     expect(recognitions[0]!.provenances[0]).toMatchObject({
       ruleId: 'codex.derived.fallback-basename',
@@ -2285,22 +2292,19 @@ describe('Claude instruction recognition (T228)', () => {
     expect(recognitions[0]).toMatchObject({
       sourceRelativePath: 'CLAUDE.md',
       tool: 'claude',
-      // The payload is the file's presentation and nothing more: an
-      // instructions row's unit is the file itself (data-model.md § Inventory
-      // unit), so no declared name or other identity exists to extract, and
-      // no per-file classification says which documented layer the file
-      // belongs to — that is a relation to a working directory this product
-      // does not observe (FR-009).
-      details: { kind: 'instructions' },
-      parseStatus: 'parsed',
+      // The payload is the format the file is read in and the range its row
+      // is grouped by, and nothing more: an instructions row's unit is the
+      // file itself (data-model.md § Inventory unit), so no declared name or
+      // other identity exists to extract, and no per-file classification says
+      // which documented layer the file belongs to — that is a relation to a
+      // working directory this product does not observe (FR-009). Claude Code
+      // documents no frontmatter for a `CLAUDE.md`, so nothing is read out of
+      // it (T1224).
+      details: { kind: 'instructions', format: 'whole-document' },
+      parseStatus: 'not-attempted',
       diagnosticIds: [],
     });
-    expect(Object.keys(recognitions[0]!.details)).toEqual([
-      'kind',
-      'frontmatter',
-      'bodyText',
-      'applicabilityRange',
-    ]);
+    expect(Object.keys(recognitions[0]!.details)).toEqual(['kind', 'format', 'applicabilityRange']);
   });
 
   it('recognizes a nested file exactly as it recognizes the root one', async () => {
@@ -2317,8 +2321,7 @@ describe('Claude instruction recognition (T228)', () => {
     // `.claude`-shaped range of its own (data-model.md § Inventory unit).
     expect(nested[0]!.details).toEqual({
       kind: 'instructions',
-      frontmatter: [],
-      bodyText: '',
+      format: 'whole-document',
       applicabilityRange: 'packages/api/**',
     });
     expect(nested[0]!.provenances).toMatchObject([
@@ -2442,6 +2445,85 @@ describe('surface-qualified Copilot instruction recognition (T247, T257)', () =>
         throw new Error(`expected an instructions recognition for ${matchedPath}`);
       }
       expect(recognition.details.applicabilityRange, matchedPath).toBe(range);
+    }
+  });
+});
+
+describe('the format each instruction rule reads (T1224)', () => {
+  it('compiles the path-specific Copilot records alone into the unit that reads a frontmatter', () => {
+    // Copilot's `*.instructions.md` is the one shipped instruction format a
+    // product documents a frontmatter for; every other instruction record, of
+    // every product and at every boundary, is read whole (api-types.ts
+    // § InstructionFileFormat). The three identifiers are written out rather
+    // than derived, because which records read a frontmatter is what this
+    // case pins.
+    const frontmatterLed: string[] = [];
+    let wholeDocument = 0;
+    for (const catalog of [
+      CLAUDE_REPOSITORY_RULES,
+      CLAUDE_GLOBAL_RULES,
+      CODEX_REPOSITORY_RULES,
+      CODEX_GLOBAL_RULES,
+      CODEX_AGENTS_HOME_RULES,
+      COPILOT_REPOSITORY_RULES,
+      COPILOT_GLOBAL_RULES,
+      COPILOT_AGENTS_HOME_RULES,
+      ANTIGRAVITY_REPOSITORY_RULES,
+      ANTIGRAVITY_GLOBAL_RULES,
+    ]) {
+      for (const compiled of catalog) {
+        if (compiled.kind !== 'instructions') {
+          continue;
+        }
+        if (compiled.format === 'frontmatter-led') {
+          frontmatterLed.push(compiled.rule.ruleId);
+        } else {
+          wholeDocument += 1;
+        }
+      }
+    }
+    expect(frontmatterLed.toSorted()).toEqual([
+      'copilot.global.instructions.path',
+      'copilot.repo.instructions.path',
+      'copilot.repo.instructions.path-cli-context',
+    ]);
+    expect(wholeDocument).toBeGreaterThan(0);
+    expect(CODEX_DERIVED_FALLBACK_RULE.format).toBe('whole-document');
+  });
+
+  it('reads each product’s context file whole, whatever block opens it', async () => {
+    // A `---` block opening a file read whole is a line of its instructions:
+    // nothing is parsed out of it, so a block that is valid YAML publishes no
+    // declaration and one that is not fails nothing (FR-028). The range is
+    // the path's, whatever the block names.
+    const antigravityContextRule = ANTIGRAVITY_REPOSITORY_RULES.find(
+      (compiled) => compiled.rule.ruleId === 'antigravity.repo.context',
+    )!;
+    const copilotRepositoryRule = COPILOT_REPOSITORY_RULES.find(
+      (compiled) => compiled.rule.ruleId === 'copilot.repo.instructions.repository',
+    )!;
+    const cases: readonly (readonly [SupportedTool, string, CompiledStaticCandidateRule])[] = [
+      ['claude', 'CLAUDE.md', claudeInstructionsRule],
+      ['codex', 'AGENTS.md', codexInstructionsRule],
+      ['copilot', '.github/copilot-instructions.md', copilotRepositoryRule],
+      ['antigravity', 'GEMINI.md', antigravityContextRule],
+    ];
+    for (const [tool, matchedPath, rule] of cases) {
+      for (const block of ["---\napplyTo: 'src/**'\n---\n", '---\napplyTo: [unclosed\n---\n']) {
+        const { recognitions } = await recognizeWith(
+          tool,
+          matchedPath,
+          [rule],
+          `${block}\n# Instructions\n`,
+        );
+        expect(recognitions, matchedPath).toHaveLength(1);
+        expect(recognitions[0]!.parseStatus, matchedPath).toBe('not-attempted');
+        expect(recognitions[0]!.details, matchedPath).toEqual({
+          kind: 'instructions',
+          format: 'whole-document',
+          applicabilityRange: '**',
+        });
+      }
     }
   });
 });

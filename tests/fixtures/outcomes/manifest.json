@@ -14,12 +14,12 @@
     "repositories": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/repositories/build-fixtures.ts",
-      "sha256": "bb792009ada655fb22a4ba239bef2dde28a5456eb278f8779436d767db020ca0"
+      "sha256": "d519db1c6c592886647d1d44426f1ef9237b0249cfc9b8c094a496c458682057"
     },
     "secrets": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/secrets/build-fixtures.ts",
-      "sha256": "56622a679125058876471d2f25d1f3d0f728ff51dd45ee9c30581638682cbce4"
+      "sha256": "e1d0b413e03422cbf333d4d1812680efc3406356e0936dbce7467310637342c5"
     },
     "tests/contract/host-startup.test.ts": {
       "kind": "inline-fixture-suite",
@@ -44,7 +44,7 @@
     "tests/e2e/antigravity-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/antigravity-instructions-detail.spec.ts",
-      "sha256": "b3f4b4ccdce3da5363def501ce2173abef434ce227da9be587f5114230e3de9d"
+      "sha256": "108aea16220767677618a2a1da681f1aa0714a2c9c965481ff1b321da9a53657"
     },
     "tests/e2e/antigravity-mcp-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -99,12 +99,12 @@
     "tests/e2e/claude-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-instructions-detail.spec.ts",
-      "sha256": "a6b3d479f38c0608d28257a4e782cff6171c1242505e75071d40bd660eb7b897"
+      "sha256": "41e04fd492c59d43f52eec92530cd169e3fc88ea45c41ff5105df2f46302ccaf"
     },
     "tests/e2e/claude-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-instructions-inventory.spec.ts",
-      "sha256": "436bcad32ea78a630e3c807f4fa40b2f898c625ad5827e36fe67ae4dc16931c5"
+      "sha256": "19d4fdb805435744ca7c560af527394f7a7eed141438da92bee8e65c9ee2cb3b"
     },
     "tests/e2e/claude-mcp-files-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -194,7 +194,7 @@
     "tests/e2e/codex-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-instructions-detail.spec.ts",
-      "sha256": "e456cc4a8bba066a8488e872fffe3d2cd018131ba5629436816be980af03ad14"
+      "sha256": "4f0c838b97f8b555f2fccc721c5ebd8972270dfff4cafa6c396a82559da0754a"
     },
     "tests/e2e/codex-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -279,7 +279,7 @@
     "tests/e2e/copilot-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-instructions-detail.spec.ts",
-      "sha256": "15efdc0e857bc69b000c4a52818a700149894fe38a59bb60d0827895505333b5"
+      "sha256": "85ad229c96ea9db452722db7f68f9256b356666680059a4a7f58faec8670bac0"
     },
     "tests/e2e/copilot-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",

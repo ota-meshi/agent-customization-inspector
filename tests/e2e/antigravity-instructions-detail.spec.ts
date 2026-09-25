@@ -1,10 +1,12 @@
-// specs/003-antigravity-cli-support T034, T085: browser acceptance for the
-// Antigravity CLI context files. `GEMINI.md` and `AGENTS.md` are this vendor's
-// in any directory, each listed once with every product that reads it beside
-// it and governing the directory holding it — the directory holding its
-// `.agents/` when it sits in one — because the terminal loads the pair of
-// every level it walks up through from a file it reads or edits (spec.md
-// § FR-002, § FR-007).
+// specs/003-antigravity-cli-support T034, T085, and spec 001's T1224: browser
+// acceptance for the Antigravity CLI context files. `GEMINI.md` and
+// `AGENTS.md` are this vendor's in any directory, each listed once with every
+// product that reads it beside it and governing the directory holding it — the
+// directory holding its `.agents/` when it sits in one — because the terminal
+// loads the pair of every level it walks up through from a file it reads or
+// edits (spec.md § FR-002, § FR-007). Each is shown whole: the Rules page says
+// neither uses frontmatter and the terminal reads its entire content as plain
+// Markdown.
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -22,9 +24,12 @@ test.beforeAll(async () => {
   fixture = await mkdtemp(join(tmpdir(), 'aci-antigravity-instructions-'));
   await mkdir(join(fixture, 'packages/api'), { recursive: true });
   await mkdir(join(fixture, 'docs/.agents'), { recursive: true });
+  // Opened by a block that is not YAML, which the terminal reads as the
+  // Markdown it is (google.antigravity.rules § YAML frontmatter and activation
+  // modes).
   await writeFile(
     join(fixture, 'GEMINI.md'),
-    `# Project context\n\nArtifacts land under ${ENVIRONMENT_REFERENCE}.\n`,
+    `---\ntrigger: [always_on\n---\n\n# Project context\n\nArtifacts land under ${ENVIRONMENT_REFERENCE}.\n`,
     'utf8',
   );
   await writeFile(
@@ -66,6 +71,11 @@ test('shows a context file whole, resolving no reference it spells', async ({ pa
   await expect(page.locator('.aci-instruction-detail__ranges')).toContainText('Antigravity CLI');
   await expect(main).toContainText('Artifacts land under');
   await expect(main).toContainText(ENVIRONMENT_REFERENCE);
+  // The opening block is a line of the file like the rest: nothing parses it,
+  // so no tab sets declarations apart and no failure is stated (T1224).
+  await expect(main).toContainText('trigger: [always_on');
+  await expect(page.getByRole('tablist', { name: 'Instruction detail' })).toHaveCount(0);
+  await expect(main).not.toContainText('could not be parsed');
 });
 
 test('makes a nested context file this vendor’s, governing its directory', async ({ page }) => {

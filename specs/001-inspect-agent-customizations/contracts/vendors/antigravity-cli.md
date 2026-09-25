@@ -163,9 +163,9 @@ authorize a target read.
 
 | Kind | Presentation source | Admitted occurrences |
 |---|---|---|
-| `instructions` | `frontmatter`<br>`body` | The context file's frontmatter block, where it has one, and its body |
+| `instructions` | — | Nothing: an accepted `GEMINI.md` or `AGENTS.md`, in a workspace directory, its `.agents/`, or the home, is read whole — the Rules page says neither uses frontmatter and the terminal treats its entire content as plain Markdown — so a leading `---` block is source text like every other line and no value is read out of it |
 | `skill` | `frontmatter`<br>`body` | A skill folder's `SKILL.md` frontmatter block and its instructions, with its companion census published as every other directory-shaped skill's is. A row whose skill declares no `name` is named by its folder, the same fallback every product reading that file uses (§ Known uncertainties item 7) |
-| `rule` | `frontmatter`<br>`body` | A rule's frontmatter block, including the activation it declares, and the constraints below it, each shown as written and none evaluated |
+| `rule` | — | Nothing: an accepted rule file — a workspace `.agents/rules/*.md` or `.agent/rules/*.md`, or the home's `config/rules/*.md` or `antigravity-cli/rules/*.md` — is published as the one document its author wrote, frontmatter block included, so no value is read out of it and a declared `trigger` or `globs` is source text like every other line, never evaluated |
 | `agent` | `metadata`<br>`instructions` | A custom agent's frontmatter block and the body below it |
 | `MCP` | `runtime-reference` | Declared server names and every field each declares under the carrier's `mcpServers` object, including `serverUrl` and any legacy `url` or `httpUrl` |
 | `hook` | `runtime-reference` | Event map keys, matcher values, and handler leaves, under a standalone `hooks.json` and under the settings carrier's hook declarations alike. This vendor's carriers name each hook and nest the events inside it, so a declaration also publishes the name its carrier wrote and, where the carrier wrote one, that hook's own `enabled` key — both as the file's own keys, neither interpreted: whether a hook runs is runtime this product does not observe, so no row says "disabled" or "inactive" and the reader is shown that the file says `enabled: false` |

@@ -50,8 +50,8 @@ const RECORDED_DIGESTS = [
     // after this suite was watched failing against the file this row names.
     vendor: 'Antigravity CLI',
     file: 'antigravity-cli',
-    english: '459f17af2fa11f372847a99ccdf81eaa7de48f804ab15ef297d4dc4e1e276812',
-    japanese: 'd79efa39bda4758b6a8de3504ad53927d7e5fdbe6ce189f145c005497edaaec0',
+    english: 'e400f3a590cdd8efbf851898f9d9ab2c4dd76e6f2bd9e7b7eaa235ae731cbef3',
+    japanese: '200f1e85d2d7a08de6d5a3f8f8cf83f47b5ccadf80fb86a8a275da8174d9d406',
   },
 ] as const;
 

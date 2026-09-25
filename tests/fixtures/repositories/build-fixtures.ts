@@ -888,7 +888,7 @@ export interface CodexInstructionFixture {
  * Builds the canonical Codex instruction fixture repository.
  *
  * Positive cases: the root `AGENTS.override.md` — carrying a secret, a
- * literal environment reference, an import-like line, and a malformed
+ * literal environment reference, an import-like line, and a
  * frontmatter-shaped block, none of which may fail a recognition that runs no
  * extractor — an empty root `AGENTS.md`, admitted like any readable candidate
  * even though the vendor's own selection would skip an empty file (FR-009),
@@ -911,15 +911,12 @@ export function buildCodexInstructionFixture(
   root = createRepositoryFixtureRoot(prefix),
 ): CodexInstructionFixture {
   // Positive: the override, with every content shape the inventory must keep
-  // inert — a frontmatter block whose declarations stay out of every session
-  // summary, an import-like reference that stays source text (no cited Codex
-  // page establishes a reference syntax, T217), a literal credential
-  // (readable only through the detail route, FR-027), and a literal
-  // environment reference that must never be resolved against the process
-  // environment (FR-025). The block parses: a malformed block is the
-  // instruction extraction's own `failed` state since T222, and that failure
-  // case lives in the Phase 16 suites rather than in this inventory fixture,
-  // whose committed generation stays complete.
+  // inert — a frontmatter-shaped block, which is a line of the instructions
+  // because Codex reads the file whole (T1224), an import-like reference that
+  // stays source text (no cited Codex page establishes a reference syntax,
+  // T217), a literal credential (readable only through the detail route,
+  // FR-027), and a literal environment reference that must never be resolved
+  // against the process environment (FR-025).
   write(
     root,
     'AGENTS.override.md',
@@ -5336,12 +5333,12 @@ export interface ClaudeInstructionFixture {
    */
   readonly nearMissPaths: readonly string[];
   /**
-   * The admitted instruction file whose frontmatter block cannot be parsed:
-   * its recognition fails all-or-nothing and publishes the
-   * `recognition-parse-failed` Diagnostic while its complete source stays
-   * readable, making the attempt's generation `partial` (FR-028).
+   * The admitted instruction file opening with a `---` block that is not
+   * YAML. Claude Code reads the file whole, so the block is a line of its
+   * instructions: nothing parses it, nothing fails, and the attempt's
+   * generation stays `complete` (api-types.ts § InstructionFileFormat).
    */
-  readonly malformedInstructionPath: string;
+  readonly unparseableBlockInstructionPath: string;
   /**
    * The file the root `CLAUDE.md` names with an authored `@path` token. It
    * exists on disk precisely so a scan can prove no target is opened: this
@@ -5415,9 +5412,9 @@ export function buildClaudeInstructionFixture(
   // can genuinely load — the same nesting that stays a near miss for Codex.
   write(root, 'packages/api/CLAUDE.md', '# Nested instructions\n');
   write(root, 'packages/api/.claude/CLAUDE.md', '# Nested directory-form instructions\n');
-  // Positive, and the attempt's one file-confined failure: a frontmatter block
-  // no parser can read. The recognition fails all-or-nothing, its diagnostic
-  // is confined to this file, and the complete source stays readable (FR-028).
+  // Positive: a `---` block that is not YAML. Claude Code reads the file
+  // whole, so the block is a line of its instructions and no reading of it
+  // can fail (T1224).
   write(root, 'docs/CLAUDE.md', '---\nscope: [docs\n---\n\n# Docs instructions\n');
 
   // Positive for Claude and preserved for Codex: the root `AGENTS.md` is an
@@ -5477,7 +5474,7 @@ export function buildClaudeInstructionFixture(
       'tools/CLAUDE.MD',
       'tools/claude.md',
     ],
-    malformedInstructionPath: 'docs/CLAUDE.md',
+    unparseableBlockInstructionPath: 'docs/CLAUDE.md',
     importTargetPath: 'docs/setup.md',
     secretInstructionPath: 'CLAUDE.md',
   };
@@ -6551,17 +6548,17 @@ export interface AllVendorInstructionFixture {
   /**
    * The admitted paths whose bytes this scan cannot use — the NUL-carrying
    * nested `CLAUDE.md`. It publishes as a diagnostic-only file, gains no
-   * recognition, and is one of the deterministic file-confined outcomes that
-   * make the otherwise publishable generation `partial` (FR-028).
+   * recognition, and is the deterministic file-confined outcome that makes
+   * the otherwise publishable generation `partial` (FR-028).
    */
   readonly diagnosticOnlyPaths: readonly string[];
   /**
-   * The admitted instruction file whose frontmatter block cannot be parsed:
-   * its recognition fails all-or-nothing with the `recognition-parse-failed`
-   * Diagnostic while its complete source and its path-derived range stay
-   * published (FR-028) — the other deterministic file-confined outcome.
+   * The admitted instruction file opening with a `---` block that is not
+   * YAML. Every product reading it reads it whole, so the block is a line of
+   * its instructions: it publishes no diagnostic, and its path-derived range
+   * stands (api-types.ts § InstructionFileFormat).
    */
-  readonly malformedInstructionPath: string;
+  readonly unparseableBlockInstructionPath: string;
   /**
    * The Claude rule files this tree holds. They are near misses for every
    * instruction rule and candidates of `claude.repo.rules` at once, so a scan
@@ -6660,9 +6657,9 @@ export function buildAllVendorInstructionFixture(
   write(root, '.claude/CLAUDE.md', '# Directory-form project instructions\n');
   write(root, 'packages/api/CLAUDE.md', '# Nested instructions\n');
   write(root, 'packages/api/.claude/CLAUDE.md', '# Nested directory-form instructions\n');
-  // Deterministic file-confined failure: a frontmatter block no parser can
-  // read. The recognition fails all-or-nothing while the complete source and
-  // the path-derived `docs/**` range stay published (FR-028).
+  // A `---` block that is not YAML, opening a file Claude Code reads whole:
+  // the block is a line of its instructions, so nothing fails and the
+  // path-derived `docs/**` range stands (T1224).
   write(root, 'docs/CLAUDE.md', '---\nscope: [docs\n---\n\n# Docs instructions\n');
   // Deterministic file-confined failure: NUL bytes in an admitted candidate
   // publish the textless `binary` item with its diagnostic and no
@@ -6804,7 +6801,7 @@ export function buildAllVendorInstructionFixture(
     expectedCopilotInstructionPaths,
     expectedAntigravityInstructionPaths,
     diagnosticOnlyPaths: ['packages/web/CLAUDE.md'],
-    malformedInstructionPath: 'docs/CLAUDE.md',
+    unparseableBlockInstructionPath: 'docs/CLAUDE.md',
     expectedClaudeRulePaths: ['.claude/rules/style.md'],
     nearMissPaths: [
       '.copilot/instructions/personal.instructions.md',

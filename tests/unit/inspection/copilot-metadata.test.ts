@@ -404,8 +404,11 @@ describe('Copilot instruction declarations (T261)', () => {
       '.github/instructions/frontend.instructions.md',
       'copilot.repo.instructions.path',
     );
-    if (recognition.details.kind !== 'instructions') {
-      throw new Error('expected an instructions recognition');
+    if (
+      recognition.details.kind !== 'instructions' ||
+      recognition.details.format !== 'frontmatter-led'
+    ) {
+      throw new Error('expected a frontmatter-led instructions recognition');
     }
     expect(recognition.details.frontmatter.map((entry) => entry.key)).toEqual([
       'applyTo',
@@ -437,8 +440,8 @@ describe('Copilot instruction declarations (T261)', () => {
     try {
       const recognition = await recognizeInstruction(
         `---\ntoken: ${CONTENT_FIXTURE_SECRET}\nendpoint: \${ACI_T261_METADATA}/v1\n---\n\n# Repository\n`,
-        '.github/copilot-instructions.md',
-        'copilot.repo.instructions.repository',
+        '.github/instructions/deploy.instructions.md',
+        'copilot.repo.instructions.path',
       );
       const serialized = JSON.stringify(recognition);
       expect(serialized).toContain(CONTENT_FIXTURE_SECRET);

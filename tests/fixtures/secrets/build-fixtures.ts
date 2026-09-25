@@ -50,15 +50,29 @@ export interface SecretFixture {
    */
   readonly unparseableSkillPath: string;
   /**
-   * The Source-relative Path of the static Codex instruction file, declaring
-   * frontmatter keys out of alphabetical order — with a credential and the
-   * environment reference among the values — and a body of its own, so the
-   * instruction detail's authored-order and exactness claims have something
-   * to bite on (tasks.md T218).
+   * The Source-relative Path of a Copilot path-specific instruction file —
+   * the one instruction format whose frontmatter a product reads — declaring
+   * keys out of alphabetical order, with a credential and the environment
+   * reference among the values, and a body of its own, so the instruction
+   * detail's authored-order and exactness claims have something to bite on
+   * (tasks.md T218).
    */
   readonly instructionPath: string;
-  /** The complete authored text of that instruction file. */
+  /**
+   * The complete authored text of that file, and of
+   * {@link wholeDocumentInstructionPath}: the two formats open with the same
+   * block, so what each detail does with it is the only difference between
+   * them.
+   */
   readonly instructionSourceText: string;
+  /**
+   * The Source-relative Path of the static Codex instruction file, opening
+   * with a `---` block that is valid YAML and carries the same credential and
+   * environment reference. Its products read it whole, so the block is a line
+   * of its instructions and nothing is read out of it (api-types.ts
+   * § InstructionFileFormat).
+   */
+  readonly wholeDocumentInstructionPath: string;
   /**
    * The Source-relative Path of the configured fallback instruction file the
    * tree's own `.codex/config.toml` declares, activated by the
@@ -66,11 +80,17 @@ export interface SecretFixture {
    */
   readonly fallbackInstructionPath: string;
   /**
-   * The Source-relative Path of an instruction file whose frontmatter cannot
-   * be parsed, so the instruction detail's failure branch — null
-   * presentation beside the complete source — is reachable (FR-028).
+   * The Source-relative Path of a path-specific instruction file whose
+   * frontmatter cannot be parsed, so the instruction detail's failure branch —
+   * null presentation beside the complete source — is reachable (FR-028).
    */
   readonly unparseableInstructionPath: string;
+  /**
+   * The Source-relative Path of a Codex instruction file opening with a `---`
+   * block that is not valid YAML. Its products read it whole, so nothing is
+   * parsed and nothing can fail: the file carries no diagnostic.
+   */
+  readonly unparseableBlockWholeDocumentPath: string;
 }
 
 // Writes one fixture file, creating parents. Every write happens here, before
@@ -107,12 +127,14 @@ export function buildSecretFixture(prefix = 'inspector-secrets'): SecretFixture 
   write(root, skillPath, sourceText);
   const unparseableSkillPath = '.agents/skills/unparseable/SKILL.md';
   write(root, unparseableSkillPath, '---\nname: [unterminated\n---\n\n# Body\n');
-  // The static Codex instruction file. Its keys are deliberately not in
-  // alphabetical order — the detail publishes declarations in authored order,
-  // and a fixture whose authored order happens to be sorted proves nothing —
-  // and its values carry a credential and the environment reference, which
-  // every surface must show exactly as written and resolve nowhere.
-  const instructionPath = 'AGENTS.md';
+  // The two instruction formats, each opening with the same block. Its keys
+  // are deliberately not in alphabetical order — the frontmatter-led detail
+  // publishes declarations in authored order, and a fixture whose authored
+  // order happens to be sorted proves nothing — and its values carry a
+  // credential and the environment reference, which every surface must show
+  // exactly as written and resolve nowhere. The path-specific file's block is
+  // read out as its declarations; the Codex file's is a line of the
+  // instructions its products read whole.
   const instructionSourceText = [
     '---',
     'scope: repository',
@@ -125,15 +147,20 @@ export function buildSecretFixture(prefix = 'inspector-secrets'): SecretFixture 
     `Deploy with ${SECRET_LITERALS.inBody} and read @docs/target.md first.`,
     '',
   ].join('\n');
+  const instructionPath = '.github/instructions/house.instructions.md';
   write(root, instructionPath, instructionSourceText);
+  const wholeDocumentInstructionPath = 'AGENTS.md';
+  write(root, wholeDocumentInstructionPath, instructionSourceText);
   // The configured fallback: the carrier declares the name, the
   // configuration-read stage turns it into a scan target, and the carrier
   // itself is never published.
   write(root, '.codex/config.toml', 'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]\n');
   const fallbackInstructionPath = 'TEAM_GUIDE.md';
   write(root, fallbackInstructionPath, '# Configured fallback instructions\n');
-  const unparseableInstructionPath = 'AGENTS.override.md';
-  write(root, unparseableInstructionPath, '---\nscope: [unterminated\n---\n\n# Override\n');
+  const unparseableInstructionPath = '.github/instructions/broken.instructions.md';
+  write(root, unparseableInstructionPath, '---\nscope: [unterminated\n---\n\n# Broken\n');
+  const unparseableBlockWholeDocumentPath = 'AGENTS.override.md';
+  write(root, unparseableBlockWholeDocumentPath, '---\nscope: [unterminated\n---\n\n# Override\n');
   return {
     root,
     skillPath,
@@ -141,7 +168,9 @@ export function buildSecretFixture(prefix = 'inspector-secrets'): SecretFixture 
     unparseableSkillPath,
     instructionPath,
     instructionSourceText,
+    wholeDocumentInstructionPath,
     fallbackInstructionPath,
     unparseableInstructionPath,
+    unparseableBlockWholeDocumentPath,
   };
 }

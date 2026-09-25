@@ -799,23 +799,29 @@ requested kind owns the file:
 ```text
 FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' |
              'output style' | 'settings/config' | 'file'
-├── kind 'instructions' — the file is a recognized instruction file:
-│   ├── file — one CustomizationFile, discriminated by encoding:
-│   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
-│   │   ├── readable text adds hadLeadingBom, sourceText, sizeBytes
-│   │   └── binary adds sizeBytes; unknown adds nothing further
-│   ├── presentation — the one scan-time parse, or null exactly when
-│   │   extraction failed all-or-nothing (FR-028):
-│   │   ├── frontmatter[] { key, keyKind, value } — a value is one of
-│   │   │   { kind: 'scalar', scalarKind, text }, { kind: 'absent' },
-│   │   │   { kind: 'sequence', items[] }, or
-│   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }, recursively
-│   │   └── bodyText
-│   └── diagnostics[]
+├── kind 'instructions' — the file is a recognized instruction file, in the
+│   variant its format decides:
+│   ├── format 'frontmatter-led' — a format that opens with declarations its
+│   │   product reads (Copilot's `*.instructions.md`):
+│   │   ├── file — one CustomizationFile, discriminated by encoding:
+│   │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+│   │   │   ├── readable text adds hadLeadingBom, sourceText, sizeBytes
+│   │   │   └── binary adds sizeBytes; unknown adds nothing further
+│   │   ├── presentation — the one scan-time parse, or null exactly when
+│   │   │   extraction failed all-or-nothing (FR-028):
+│   │   │   ├── frontmatter[] { key, keyKind, value } — a value is one of
+│   │   │   │   { kind: 'scalar', scalarKind, text }, { kind: 'absent' },
+│   │   │   │   { kind: 'sequence', items[] }, or
+│   │   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }, recursively
+│   │   │   └── bodyText
+│   │   └── diagnostics[]
+│   └── format 'whole-document' — every other instruction format, read whole:
+│       ├── file — as above
+│       └── diagnostics[]
 ├── kind 'skill' — the file is a recognized skill entry point:
 │   ├── file — as above
-│   ├── presentation — as the instructions variant: the same one scan-time
-│   │   parse, with the same null-on-failure rule (FR-028)
+│   ├── presentation — as the frontmatter-led instructions variant: the same
+│   │   one scan-time parse, with the same null-on-failure rule (FR-028)
 │   └── diagnostics[]
 ├── kind 'agent' — the file is a recognized custom-agent definition:
 │   ├── file — as above
@@ -823,9 +829,9 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 │   │   kind shows, or null exactly when extraction failed all-or-nothing
 │   │   (FR-028):
 │   │   ├── metadata[] { key, keyKind, value } — the same declared-entry
-│   │   │   shape the instructions variant's frontmatter carries: every
-│   │   │   declaration except the one holding the instructions, in the file's
-│   │   │   own order
+│   │   │   shape the frontmatter-led instructions variant's frontmatter
+│   │   │   carries: every declaration except the one holding the
+│   │   │   instructions, in the file's own order
 │   │   └── instructionsText — the instructions the file gives the agent
 │   └── diagnostics[]
 ├── kind 'prompt/command' — the file is a recognized command file:
@@ -843,10 +849,10 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 │   └── diagnostics[]
 ├── kind 'output style' — the file is a recognized output style:
 │   ├── file — as above
-│   ├── presentation — as the instructions variant: the same one scan-time
-│   │   parse, with the same null-on-failure rule (FR-028). The frontmatter is
-│   │   what the style declares, and the body is the instructions the vendor
-│   │   appends to the system prompt
+│   ├── presentation — as the frontmatter-led instructions variant: the same
+│   │   one scan-time parse, with the same null-on-failure rule (FR-028). The
+│   │   frontmatter is what the style declares, and the body is the
+│   │   instructions the vendor appends to the system prompt
 │   └── diagnostics[]
 ├── kind 'settings/config' — the file is a recognized settings or
 │   configuration file:
@@ -867,7 +873,23 @@ host's, the client receives a Source's root only as the one-way `displayRoot` es
 it could open.
 
 This tree is the response shape: a client can rely on exactly these fields and no
-others. The `prompt/command` variant carries a `presentation` of its own shape, for the
+others. The `instructions` kind has two variants, discriminated by `format`, because the
+format decides whether anything is read out of the file at all. Copilot's path-specific
+`*.instructions.md` opens with a frontmatter whose `applyTo` names the files it applies to,
+so its detail publishes the one scan-time parse as `presentation`. Every other instruction
+format — `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`, `CLAUDE.local.md`, `GEMINI.md`,
+`copilot-instructions.md`, and a Codex fallback name — is documented with no frontmatter, and
+Antigravity's Rules page says that `AGENTS.md` and `GEMINI.md` use none and are read as plain
+Markdown throughout, so its variant carries no `presentation`, for the reason the `rule`
+variant has none: a `---` block opening such a file is a line of its instructions, nothing
+is read out of it, and nothing can fail to be read, so the file carries no extraction
+diagnostic. A presentation of no declarations with the whole file as its body is not
+published in its place: it would say the same thing in a shape that asks where the
+declarations went. The format is a fact of the rule that admitted the file, and every
+recognition of one file reads it in one format: the files read for their declarations are the
+`*.instructions.md` below Copilot's own instruction directories, where no other product's rule
+admits a file.
+The `prompt/command` variant carries a `presentation` of its own shape, for the
 reason the `agent` variant does: the split is not always a frontmatter block. A Claude Code,
 Copilot, or Codex command is Markdown split at the frontmatter fence, while a format that
 declares its prompt as one key holds the prompt in that key and the metadata in the keys
@@ -924,8 +946,9 @@ settings file whose other keys belong to a different recognition — so it is
 for a file it is not about.
 The parse the other recognized kinds show is the file's, not a recognizing tool's, and the
 response publishes it once as `presentation`. For the Markdown kinds the extraction runs
-once per `(file, kind)`, because every shipped vendor reads the same fixed YAML semantics
-for them. The custom-agent kind is the exception, and it is the admitting rule's own
+once per `(file, kind)`, because the declarations are read under this product's one fixed
+YAML semantics whichever rule admitted the file (data-model.md § Field reading) — and not
+at all for an instruction file read whole. The custom-agent kind is the exception, and it is the admitting rule's own
 reading rather than the kind's: a Codex agent is TOML whose `developer_instructions`
 string is the prose, while the Markdown products' agents split at a frontmatter fence, so
 the extraction is per `(file, tool)` there. What each reading produces is the same shape,

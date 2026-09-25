@@ -23,7 +23,10 @@ import {
   CopilotCompiledPromptRule,
   CopilotCompiledPromptFileRule,
 } from './prompts-and-commands/copilot';
-import { CopilotCompiledInstructionRule } from './instructions/copilot';
+import {
+  CopilotCompiledInstructionRule,
+  CopilotCompiledPathSpecificInstructionRule,
+} from './instructions/copilot';
 import {
   CopilotCompiledSettingsHookRule,
   CopilotCompiledStandaloneHookRule,
@@ -129,9 +132,14 @@ export const COPILOT_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = 
     // names them, an MCP record which servers its carrier declares, a skill
     // record the name its file is invoked by; every other kind compiles into
     // the plain one, which is what keeps a rule-file rule from carrying an
-    // answer it has none of.
+    // answer it has none of. The two path-specific instruction records compile
+    // into the unit that reads a frontmatter, because their `*.instructions.md`
+    // files are the one Copilot instruction format that has one.
     rule.kind === 'instructions'
-      ? new CopilotCompiledInstructionRule(rule)
+      ? rule.ruleId === 'copilot.repo.instructions.path' ||
+        rule.ruleId === 'copilot.repo.instructions.path-cli-context'
+        ? new CopilotCompiledPathSpecificInstructionRule(rule)
+        : new CopilotCompiledInstructionRule(rule)
       : rule.kind === 'skill'
         ? new CopilotCompiledSkillRule(rule)
         : rule.kind === 'MCP'
@@ -192,7 +200,9 @@ export const { copilot: COPILOT_GLOBAL_RULES = [], agents: COPILOT_AGENTS_HOME_R
       // reading at another consented boundary.
       .map((rule) =>
         rule.kind === 'instructions'
-          ? new CopilotCompiledInstructionRule(rule)
+          ? rule.ruleId === 'copilot.global.instructions.path'
+            ? new CopilotCompiledPathSpecificInstructionRule(rule)
+            : new CopilotCompiledInstructionRule(rule)
           : rule.kind === 'skill'
             ? new CopilotCompiledSkillRule(rule)
             : rule.kind === 'MCP'

@@ -52,10 +52,14 @@ export const ANTIGRAVITY_REPO_CONTEXT_BEHAVIOR = {
           sourceId: 'google.antigravity.rules',
           url: 'https://antigravity.google/docs/rules/',
           officialHost: 'antigravity.google',
-          sections: ['Directory-scoped rules', 'Managing rules in Antigravity CLI'],
+          sections: [
+            'Directory-scoped rules',
+            'YAML frontmatter and activation modes',
+            'Managing rules in Antigravity CLI',
+          ],
           reviewedOn: '2026-09-24',
           establishes:
-            'The CLI evaluates AGENTS.md and GEMINI.md at the repository root and in subdirectories: whenever it reads or edits a file it walks up from that file’s folder to the workspace root, loading <dir>/AGENTS.md or <dir>/GEMINI.md and <dir>/.agents/AGENTS.md or <dir>/.agents/GEMINI.md at each level; neither file uses frontmatter and each is always active for its directory scope.',
+            'The CLI evaluates AGENTS.md and GEMINI.md at the repository root and in subdirectories: whenever it reads or edits a file it walks up from that file’s folder to the workspace root, loading <dir>/AGENTS.md or <dir>/GEMINI.md and <dir>/.agents/AGENTS.md or <dir>/.agents/GEMINI.md at each level; neither file uses frontmatter — the terminal treats its entire content as plain Markdown — and each is always active for its directory scope.',
         },
         {
           sourceId: 'google.antigravity.cli-migration',

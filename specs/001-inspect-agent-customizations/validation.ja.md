@@ -146,6 +146,18 @@ specification、vendor contract、runtime-composition contractと共に、同じ
 どちらも進めていなかった上記のClaude Codeの変更の分である。task setは再生成せず、
 specs/003-antigravity-cli-supportのフェーズ8で拡張した。他のvendorのdigestは動いていない。
 
+**Antigravity CLIの組は2026-09-25に、driftではなく変更として改めて再記録した。** Rulesページは、
+`AGENTS.md`と`GEMINI.md`がfrontmatterを使わず、端末がその内容全体をplain Markdownとして扱うと述べて
+いるので、productはcontext fileから何も読み出さない。rule fileからも何も読み出さない。`instructions`行と
+`rule`行は、どのextractorも読まない`frontmatter`と`body`をpresentation sourceに挙げていたため、両行とも
+何も読み出さないと述べる形にした（T1224）。両行を両言語で変更し、再計算した2つのdigest — 英語
+`e400f3a590cdd8efbf851898f9d9ab2c4dd76e6f2bd9e7b7eaa235ae731cbef3`、日本語
+`200f1e85d2d7a08de6d5a3f8f8cf83f47b5ccadf80fb86a8a275da8174d9d406` — を、両行が拠って立つdata modelと
+HTTP API contractと共に、同じ変更の中で`contracts/official-sources.md`、その日本語版、freeze suiteに
+書いた。`allowlistVersion`はこれと共に`2026-09-25`へ進めた。planは変わっていないので、
+`traversalPlanVersion`は`2026-09-24`のままである。task setは再生成せず、フェーズ116で拡張した。他の
+vendorのdigestは動いていない。
+
 ## Dependency review
 
 `pnpm outdated`は27 packageに新しいreleaseがあると報告する。`package.json`の依存はすべてcaret range
@@ -657,7 +669,7 @@ silhouetteを3つ見分けるのではなく色をたどって目的のものを
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 7**、canonical SHA-256
-`5ed1599f5f9d6587d19bbff17cee7493c6450fdb8271c021bdecb4a44aff38e7`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 7は
+`a3f10ae847011e4e413fb95e677d655abc9bc50bd393c62d7b8cbf4a1dd72c96`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 7は
 期待結果を1つ変える。`sc003.shared-file.repository-root-gemini-md`が、root より下の`GEMINI.md`を、
 どの行にも届かなかったところから、Antigravity CLIだけのものとする。vendorのRulesページが、端末がたどって
 上る各階層のpairを文書化しているためである（specs/003-antigravity-cli-support T082〜T086）。期待結果の
@@ -686,7 +698,17 @@ byteを動かした。リポジトリのbuilderと`antigravity-rules-detail`は�
 `claude-instructions-inventory`は、fileの2つの範囲の間をkeyboardで移るcaseを得た。そのcaseは修正前のbuildに
 対して失敗し — focusを持つ要素が無かった — 修正後はpassした。それらのdigestと上のcanonical digestを一緒に
 再記録し、detailの移動、rulesの見本、accessibilityのcaseに届く26 specをChromium projectで実行して203 test、
-すべてpassした。その後`pnpm run docs:images`はbyte単位で同一の画像を生成した。
+すべてpassした。その後`pnpm run docs:images`はbyte単位で同一の画像を生成した。6回目のreview（T1224）は、
+同じversionのまま参照fixture 7つのbyteを動かした。Copilotの`*.instructions.md`以外のすべての
+instruction形式を全体のまま読むようにしたため、リポジトリのbuilderと秘密値を持つfixtureは、frontmatterの
+caseにpath-specificなfileを与え、context fileの先頭のblockをinstructionsの1行として保つ。
+`antigravity-instructions-detail`、`claude-instructions-detail`、`claude-instructions-inventory`、
+`codex-instructions-detail`、`copilot-instructions-detail`は、タブのないdetailと、YAMLでないblockに
+parse failureが出ないことを確かめる。どのcaseのID、class、期待結果も変わっていない:
+`sc007.file-confined.malformed-content`には、frontmatterがparseできないpath-specificなfileが引き続き
+届く。それらのdigestと上のcanonical digestを一緒に再記録し、instructionの行・detail・比較に届く17 specを
+2026-09-25にChromium projectで実行して116 test、instruction detailを開く`accessibility`のAUTO-2.5.3の
+caseを1 test実行して、すべてpassした。
 
 その前のsetは**version 6**、canonical SHA-256
 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`である。Version 6は

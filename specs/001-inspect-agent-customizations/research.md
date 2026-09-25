@@ -918,7 +918,9 @@ recognizing one and not the other is the row that says so, and one line per side
 sides are whole carrier files, since the products that read a file are that file's own facts
 and the two lines already carry them. A list too long for its line wraps rather than
 widening the page. That parse runs once per `(file, kind)` for the Markdown kinds,
-which every shipped vendor reads under the same fixed YAML semantics; the custom-agent
+because this product reads their declarations under its one fixed YAML semantics whichever
+rule admitted the file (data-model.md § Field reading), and not at all for an instruction
+file its products read whole, which declares nothing; the custom-agent
 kind is the exception and runs once per `(file, tool)`, because how an agent file splits
 is the admitting rule's own reading — a Codex agent is TOML whose
 `developer_instructions` string is the prose. The Markdown kinds' frontmatter

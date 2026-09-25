@@ -880,9 +880,9 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- The component owns the section order — the recognitions, the
-           declarations, the body, and last the complete files it takes below
-           through the `source` slot (research.md § 7). What the source diff is
-           stays this page's. -->
+           declarations and the body where both formats declare, and last the
+           complete files it takes below through the `source` slot
+           (research.md § 7). What the source diff is stays this page's. -->
       <RecognitionComparison
         :comparison="readyView.recognition"
         :left-path="readyView.sides[0].path"
@@ -893,8 +893,15 @@ onBeforeUnmount(() => {
             <h3 class="aci-compare-block-title">Source comparison</h3>
             <!-- What the diff holds, said before it, as each block above says
                  what its own two sides are: this one is the files themselves,
-                 with nothing removed or reordered (FR-027). -->
-            <p class="aci-note">Each side is the file exactly as written, frontmatter included.</p>
+                 with nothing removed or reordered (FR-027). The frontmatter is
+                 named only beside the blocks that took it apart: where the
+                 formats declare nothing, a block opening a file is a line of
+                 its instructions, and naming it would say otherwise
+                 (api-types.ts § InstructionFileFormat). -->
+            <p v-if="readyView.recognition.declarations !== null" class="aci-note">
+              Each side is the file exactly as written, frontmatter included.
+            </p>
+            <p v-else class="aci-note">Each side is the file exactly as written.</p>
             <SourceDiff
               v-bind="readyView.diff"
               :register-content-owner="registerComparisonContentOwner"

@@ -159,9 +159,9 @@ relationship-only な `ruleId` の定義は
 
 | Kind | Presentation source | Admitted occurrences |
 |---|---|---|
-| `instructions` | `frontmatter`<br>`body` | context file が frontmatter block を持つ場合はそれと、その body |
+| `instructions` | — | 何も読み出さない: workspaceのdirectory、その`.agents/`、またはhomeにある受理済み`GEMINI.md`や`AGENTS.md`は全体をそのまま読む — Rules pageは、どちらもfrontmatterを使わず、端末がその内容全体をplain Markdownとして扱うと述べている — ので、先頭の`---` blockも他の行と同じsource textであり、そこから値は読み出さない |
 | `skill` | `frontmatter`<br>`body` | skill フォルダの `SKILL.md` の frontmatter block とその指示。companion の census は他のディレクトリ形の skill と同じく publish する。`name` を宣言しない skill の行は、そのファイルを読むどの製品も使う同じ fallback であるフォルダ名で名付ける (§ 既知の不確実性 項目 7) |
-| `rule` | `frontmatter`<br>`body` | rule の frontmatter block（宣言された activation を含む）とその下の制約。それぞれ書かれたとおりに示し、評価はしない |
+| `rule` | — | 何も読み出さない: 受理済みのrule file — workspaceの`.agents/rules/*.md`や`.agent/rules/*.md`、またはhomeの`config/rules/*.md`や`antigravity-cli/rules/*.md` — はauthorが書いた1つのdocumentとして、frontmatter blockごと公開される。したがってそこから値は読み出さず、宣言された`trigger`や`globs`も他の行と同じsource textであり、評価はしない |
 | `agent` | `metadata`<br>`instructions` | custom agent の frontmatter block とその下の body |
 | `MCP` | `runtime-reference` | carrier の `mcpServers` object の下で宣言された server 名と、各 server が宣言するすべての field。`serverUrl` と legacy の `url`・`httpUrl` を含む |
 | `hook` | `runtime-reference` | standalone な `hooks.json` の下でも settings carrier の hook 宣言の下でも同じく、event map の key、matcher の値、handler の葉。この vendor の carrier は各 hook に名前を付け、その中に event を入れ子にするので、宣言は carrier が書いた名前と、carrier が書いていればその hook 自身の `enabled` キーも publish する。どちらもファイル自身のキーとしてであり、解釈はしない。hook が走るかどうかはこの製品が観測しない実行時の事柄なので、どの行も「無効」「停止中」とは述べず、読み手にはファイルが `enabled: false` と書いていることを示す |

@@ -34,10 +34,10 @@ dispositionである。
 | FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078, T1215–T1216 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
-| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223 |
+| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
 | FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
-| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220, T1221 |
+| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220, T1221, T1224 |
 | FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
 | FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137, T1164 |
 | FR-014 | T930, T944–T947, T950–T951, T956–T959, T963–T964, T967–T968, T974–T975, T977–T978, T981–T982, T988–T989, T991, T993–T995, T997–T998, T1000–T1005, T1029, T1041, T1058, T1061–T1062, T1137, T1140 |
@@ -54,7 +54,7 @@ dispositionである。
 | FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069, T1169, T1207, T1209 |
 | FR-026 | T077, T085, T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925–T927, T995–T997, T1055 |
 | FR-027 | T084, T100, T102, T927, T1045, T1206–T1210 |
-| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163 |
+| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163, T1224 |
 | FR-029 | T015–T016, T020–T021, T023–T024, T026–T027, T031, T035, T037, T040, T046, T055, T067–T068, T141, T149, T217, T222–T223, T1085, T1087, T1090, T238, T242–T243, T915, T923–T924, T946, T958, T1006–T1008, T1013–T1014, T1017, T1021, T1023–T1024, T1029, T1041, T1043, T1046, T1054, T1058, T1062 |
 | FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082, T1149, T1151, T1152, T1180 |
 | FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
@@ -73,7 +73,7 @@ dispositionである。
 | QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062, T1208 |
 | QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201, T1204 |
-| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062, T1216, T1219, T1220 |
+| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062, T1216, T1219, T1220, T1224 |
 | SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202, T1218, T1219 |
 | SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203, T1211, T1217 |
 | SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194, T1203, T1211 |
@@ -8252,6 +8252,22 @@ Claude Code の badge を持ち、`packages/api/AGENTS.md` が `packages/api/**`
   Previous や Next の移動が、取り除いたリンクと共に focus を落とすのではなく見出しに focus を移すようにする。その
   座標を `src/app/composables/detail-heading-focus.ts` に記し、両方向を
   `tests/e2e/claude-instructions-inventory.spec.ts` でカバーする（FR-007、SC-008）。
+- [X] T1224 [US1] このフェーズの6回目のレビューを解決する。Copilot の `*.instructions.md` 以外のすべての
+  instruction 形式を全体のまま読む。`AGENTS.md`、`AGENTS.override.md`、`CLAUDE.md`、`CLAUDE.local.md`、
+  `GEMINI.md`、`copilot-instructions.md`、Codex の fallback 名にはどの製品も frontmatter を文書化しておらず、
+  Antigravity の Rules page は `AGENTS.md` と `GEMINI.md` が frontmatter を使わないと述べているためである:
+  `src/server/inspection/rules/instructions/` で各 instruction 単位に形式を持たせ、Copilot の単位を
+  リポジトリ全体向けのものと path-specific なものに分け、`src/server/inspection/recognizers/candidate.ts` で
+  全体のまま読む file を extraction なしで認識し、`src/shared/api-types.ts` と `contracts/http-api.md` で
+  `InstructionFileDetailDto` を `format` で判別する。`src/app/pages/instructions/detail/[source]/[...path].vue`
+  で全体のまま読む file をタブのない1面で示し、取り除いた byte-order mark をその属性行で述べ、
+  `src/app/components/instruction-comparison/` では両側が宣言を持つときだけ宣言済み metadata と instructions を
+  比較し、source 比較の注記で frontmatter に触れるのもそのときだけにする。instruction・custom-agent・prompt の
+  比較 component の節の順序を述べる comment を訂正する。形式を `data-model.md`、`research.md`、`plan.md` に
+  記録し、Antigravity CLI の vendor contract の presentation allowlist に context file と rule file からは何も
+  読み出さないことを記して両言語の digest を記録し直し、`allowlistVersion` を進め、
+  `antigravity.behavior.repo.context` に § YAML frontmatter and activation modes を引用し、suite とその
+  fixture と outcome manifest の digest をこの読み方に移す（FR-007、FR-011、FR-028、QR-005）。
 
 ## ストーリーカバレッジマトリクス
 
@@ -8630,7 +8646,7 @@ authored な `name`、Claude Code は skill directory で、nested なら root �
   `kind: 'skill'`、file、`presentation`（scan時の1回のparse:
   `frontmatter`と`bodyText`。failedなextractionでは正確にnull）、fileのdiagnostics —
   と、recognitionが所有しないfileのための`UnrecognizedFileDetailDto`（`kind: 'file'`）のunionになる。toolごとの`recognitions`
-  arrayはwireから去る: parseはfileの事実であり — shippedな全vendorは同じ固定YAML semanticsを読む — 認識tool・invocation
+  arrayはwireから去る: parseはfileの事実であり — どのruleがadmitしても、このproductの1つの固定YAML semanticsで読む — 認識tool・invocation
   name・parse stateはinventoryの`definitions[]`にあるため、copyは食い違うことしかできない。admissionはrelationship
   phaseのための内部recordにとどまる。kindごとに1回のextractionは1件の失敗recordであり（FR-028）、そのkindの失敗した各定義が共有し、fileは1回だけ列挙する。`ToolRecognition`と`CandidateProvenance`は`src/server/inspection/recognizers/candidate.ts`のclassになる
   — wire shapeではなくなった内部のsingle-producer recordであり、`CandidateProvenance`は保持するcompiled

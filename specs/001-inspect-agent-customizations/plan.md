@@ -27,8 +27,9 @@ The browser presents complete authored
 source as its own coloured text and compares two sources side by side in the same rendering;
 tool recognition is compared per tool, and declared metadata is compared once —
 serialized to one canonical document per side, which the comparison shows beside the
-source. The parse behind it runs once per `(file, kind)` for the Markdown kinds and once
-per `(file, tool)` for the custom-agent kind.
+source. The parse behind it runs once per `(file, kind)` for the Markdown kinds — never for
+an instruction file its products read whole, which declares nothing — and once per
+`(file, tool)` for the custom-agent kind.
 
 Root selection is simple and lexical: the CLI captures `process.cwd()` exactly once and
 accepts `--root <path>`, resolving a repeated option to the parser's last value. An absolute option is kept as given, a relative option
@@ -1290,8 +1291,9 @@ configuration.
   compared per tool, and a file's declared metadata is compared once — serialized to one
   canonical document per side, which the comparison shows beside the source, rather than
   field-matched and rendered in Vue. The parse behind it runs once per `(file, kind)` for
-  the Markdown kinds and once per `(file, tool)` for the custom-agent kind, whose split is
-  the admitting rule's own reading.
+  the Markdown kinds — never for an instruction file its products read whole, which declares
+  nothing — and once per `(file, tool)` for the custom-agent kind, whose split is the
+  admitting rule's own reading.
   Repository comparison acceptance first uses two distinct readable current-generation customization files from the
   same Repository Source; only after a successful Global commit does US4 verify two
   consented homes' readable files of one row against each other while retaining each

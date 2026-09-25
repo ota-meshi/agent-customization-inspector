@@ -982,8 +982,8 @@ export interface SameNameSkillResolutionDto {
 
 /**
  * What the one scan-time parse resolved out of a frontmatter-led Markdown
- * customization file — a skill entry point or an instruction file — as its
- * detail surface shows it (data-model.md § Skill presentation): every
+ * customization file — a skill entry point or a path-specific instruction file
+ * — as its detail surface shows it (data-model.md § Skill presentation): every
  * declaration by the key the file wrote, and the instructions the frontmatter
  * block was removed from. Published rather than re-parsed in the browser,
  * because the inventory row's name comes from the same parse — a second
@@ -1046,17 +1046,60 @@ interface FileDetailBase {
 }
 
 /**
- * Detail of a recognized instruction file: the file plus what the one
- * scan-time parse resolved (contracts/http-api.md § get-file-detail). A
- * detail is addressed by the file even though the inventory groups rows by
- * applicability range (data-model.md § Inventory unit), and no per-tool
- * identity exists here: which tools recognize the file is the instructions
- * inventory's fact, and the parse — the same fixed YAML semantics every
- * vendor reads — is published once as the file's.
+ * How the products recognizing an instruction file read it: whether the format
+ * opens with declarations they read, or is instructions from its first line to
+ * its last (contracts/http-api.md § get-file-detail). The one fact an
+ * instruction file's detail and comparison are shaped by — a parse beside the
+ * file, or the file alone.
+ *
+ * A fact of the format, which the admitting rule knows, never of the bytes: a
+ * `---` line opening an `AGENTS.md` is a line of its instructions, because no
+ * product that reads the filename documents frontmatter for it.
  */
-export interface InstructionFileDetailDto extends FileDetailBase {
+export type InstructionFileFormat =
+  /**
+   * GitHub Copilot's path-specific `*.instructions.md`, whose frontmatter
+   * names the files it applies to (`applyTo`): the one shipped instruction
+   * format with declarations of its own. Produced for a file every recognizing
+   * rule reads that way, and split by the one scan-time parse into the
+   * declarations and the instructions below them.
+   */
+  | 'frontmatter-led'
+  /**
+   * Every other instruction format — `AGENTS.md`, `AGENTS.override.md`,
+   * `CLAUDE.md`, `CLAUDE.local.md`, `GEMINI.md`, `copilot-instructions.md`,
+   * and a Codex fallback name. No product that reads one documents
+   * frontmatter for it, and Antigravity's own page says that `AGENTS.md` and
+   * `GEMINI.md` use none and are read as plain Markdown throughout
+   * (google.antigravity.rules § YAML frontmatter and activation modes), so
+   * nothing is read out of the file: a block
+   * that opens one is part of its instructions, and nothing can fail to be
+   * read.
+   */
+  | 'whole-document';
+
+/**
+ * Detail of a recognized instruction file (contracts/http-api.md
+ * § get-file-detail), in the variant its format decides
+ * ({@link InstructionFileFormat}). A detail is addressed by the file even
+ * though the inventory groups rows by applicability range (data-model.md
+ * § Inventory unit), and no per-tool identity exists here: which tools
+ * recognize the file is the instructions inventory's fact.
+ */
+export type InstructionFileDetailDto =
+  FrontmatterLedInstructionFileDetailDto | WholeDocumentInstructionFileDetailDto;
+
+/**
+ * Detail of an instruction file whose format opens with declarations: the file
+ * plus what the one scan-time parse resolved. The parse is published once as
+ * the file's: its declarations are read under this product's one fixed YAML
+ * semantics whichever rule admitted the file (data-model.md § Field reading).
+ */
+export interface FrontmatterLedInstructionFileDetailDto extends FileDetailBase {
   /** Discriminant: the file is a recognized instruction file. */
   readonly kind: 'instructions';
+  /** Discriminant within the kind; see {@link InstructionFileFormat}. */
+  readonly format: 'frontmatter-led';
   /**
    * The parsed declarations and instructions, or null exactly when extraction
    * failed all-or-nothing (FR-028): nothing was parsed, the failure's
@@ -1067,13 +1110,33 @@ export interface InstructionFileDetailDto extends FileDetailBase {
 }
 
 /**
+ * Detail of an instruction file its products read whole: the file, and
+ * nothing derived from it.
+ *
+ * No `presentation`, for the reason {@link RuleFileDetailDto} has none: the
+ * products read the file as the one document its author wrote, so nothing is
+ * read out of it to set beside the file — and with nothing read out, nothing
+ * can fail to be read, so the file carries no extraction diagnostic. A
+ * presentation of no declarations and the whole file as its body would say
+ * the same thing in a shape that asks where the declarations went.
+ */
+export interface WholeDocumentInstructionFileDetailDto extends FileDetailBase {
+  /** Discriminant: the file is a recognized instruction file. */
+  readonly kind: 'instructions';
+  /** Discriminant within the kind; see {@link InstructionFileFormat}. */
+  readonly format: 'whole-document';
+}
+
+/**
  * Detail of a skill entry point: the file plus what the one scan-time parse
  * resolved (contracts/http-api.md § get-file-detail). The parse is a fact of
- * the file, not of a recognizing tool — every vendor reads the same fixed
- * YAML semantics — so it is published once; which tools recognize the file,
- * and the name each invokes it by, are the inventory's facts
- * (`skills[].definitions[]` under the row each name keys), which the detail
- * surface reads off the rows holding the file rather than from this response.
+ * the file, not of a recognizing tool — its declarations are read under this
+ * product's one fixed YAML semantics whichever rule admitted the file
+ * (data-model.md § Field reading) — so it is published once; which tools
+ * recognize the file, and the name each invokes it by, are the inventory's
+ * facts (`skills[].definitions[]` under the row each name keys), which the
+ * detail surface reads off the rows holding the file rather than from this
+ * response.
  */
 export interface SkillFileDetailDto extends FileDetailBase {
   /** Discriminant: the file is a recognized skill entry point. */

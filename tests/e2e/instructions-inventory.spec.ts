@@ -1,10 +1,10 @@
-// T272: browser acceptance for the unified instructions inventory
+// T272, T1224: browser acceptance for the unified instructions inventory
 // (Phase 21). Launches the packaged CLI against the all-vendor instruction
 // fixture and verifies the rendered shared-file matrix — root `AGENTS.md`
 // Claude+Codex+Copilot, root `CLAUDE.md` Claude+Copilot, nested `CLAUDE.md`
 // Claude-only, `CLAUDE.local.md` Claude-only — with the configured fallback
 // rows Phase 15 activated, the filters, the exclusions' absence, the
-// deterministic per-file diagnostics, and keyboard operability.
+// deterministic per-file diagnostic, and keyboard operability.
 //
 // The exact admitted sets, provenance, and read order are proven closer to
 // the code (tests/integration/repository-scan.test.ts, T270); what is
@@ -149,18 +149,15 @@ test('names no Source and offers no Source filter with one Source carried', asyn
   ).toHaveAttribute('aria-label', "Compare this range's files: **");
 });
 
-test('reports the deterministic failures on the files they happened to', async ({ page }) => {
+test('reports the deterministic failure on the file it happened to', async ({ page }) => {
   await page.goto(host.origin);
   await expect(instructionRows(page)).toHaveCount(5);
-  // The malformed frontmatter is confined to its file: the row keeps its
-  // place under `docs/**` with its own diagnostic, and no other file carries
-  // one (FR-028).
-  await expect(fileEntries(page).filter({ hasText: 'docs/CLAUDE.md' })).toContainText(
-    'This file could not be parsed',
-  );
-  await expect(fileEntries(page).filter({ hasText: 'AGENTS.md' }).first()).not.toContainText(
-    'This file could not be parsed',
-  );
+  // The block opening `docs/CLAUDE.md` is not YAML, and it is no failure:
+  // Claude Code reads the file whole, so the block is a line of its
+  // instructions and the file keeps its place under `docs/**` with no
+  // diagnostic, like every other instruction file here (FR-028, T1224).
+  await expect(fileEntries(page).filter({ hasText: 'docs/CLAUDE.md' })).toHaveCount(1);
+  await expect(page.getByRole('tabpanel')).not.toContainText('This file could not be parsed');
   // The binary candidate is in no kind's inventory; its own row under
   // "Files in no kind" states its path and read outcome, which is how the
   // `partial` generation names its other cause on this page.

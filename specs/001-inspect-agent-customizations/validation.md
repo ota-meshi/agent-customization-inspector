@@ -175,6 +175,20 @@ for this change and for Claude Code's above, which moved both the contracts and 
 without advancing either. The task set was extended by specs/003-antigravity-cli-support
 Phase 8 rather than regenerated. The other vendors' digests did not move.
 
+**The Antigravity CLI pair was re-recorded again on 2026-09-25, as a change rather than a
+drift.** The Rules page says that `AGENTS.md` and `GEMINI.md` use no frontmatter and that the
+terminal treats their entire content as plain Markdown, so the product reads nothing out of a
+context file, and it reads nothing out of a rule file either: the `instructions` and `rule` rows
+named `frontmatter` and `body` as presentation sources no extractor reads, and both now say that
+nothing is read out (T1224). Both rows were changed in both languages, and both recomputed
+digests — English `e400f3a590cdd8efbf851898f9d9ab2c4dd76e6f2bd9e7b7eaa235ae731cbef3`, Japanese
+`200f1e85d2d7a08de6d5a3f8f8cf83f47b5ccadf80fb86a8a275da8174d9d406` — were written into
+`contracts/official-sources.md`, its Japanese companion, and the freeze suite in the same change,
+together with the data model and HTTP API contract the rows rest on. `allowlistVersion` advanced
+to `2026-09-25` with them; `traversalPlanVersion` stays at `2026-09-24`, because no plan
+changed. The task set was extended by Phase 116 rather than regenerated. The other vendors'
+digests did not move.
+
 ## Dependency review
 
 `pnpm outdated` reports 27 packages with a newer release available. Every dependency in
@@ -790,7 +804,7 @@ the vendor's own glyph.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 7**, canonical
-SHA-256 `5ed1599f5f9d6587d19bbff17cee7493c6450fdb8271c021bdecb4a44aff38e7`, recorded in
+SHA-256 `a3f10ae847011e4e413fb95e677d655abc9bc50bd393c62d7b8cbf4a1dd72c96`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Version 7 changes one expected outcome:
 `sc003.shared-file.repository-root-gemini-md` attributes a `GEMINI.md` below the root to
 Antigravity CLI alone, where it had reached no row, because the vendor's Rules page documents
@@ -829,7 +843,19 @@ keyboard, which failed against the build before its fix — no element held focu
 after it. Their digests and the canonical digest above were re-recorded together, and the 26
 specs that reach a detail move, a rules sample, or the accessibility cases were run through the
 Chromium project, 203 tests, all passing; `pnpm run docs:images` then produced byte-identical
-images.
+images. The sixth review (T1224) moved seven referenced fixtures' bytes at the same version:
+every instruction format but Copilot's `*.instructions.md` is read whole, so the repository
+builders and the secret-bearing fixture give the frontmatter cases a path-specific file and keep
+a context file's opening block as a line of its instructions, and
+`antigravity-instructions-detail`, `claude-instructions-detail`,
+`claude-instructions-inventory`, `codex-instructions-detail`, and `copilot-instructions-detail`
+assert the detail without tabs and no parse failure for a block that is not YAML. No case's
+ID, classes, or expected outcome changed: `sc007.file-confined.malformed-content` is still
+reached by a path-specific file whose frontmatter does not parse. Their digests and the
+canonical digest above were re-recorded together, and the 17 specs that reach an instruction
+row, detail, or comparison were run through the Chromium project on 2026-09-25, 116 tests, all
+passing, with `accessibility`'s AUTO-2.5.3 case, which opens an instruction detail, 1 test,
+passing.
 
 The set before it was **version 6**, canonical SHA-256
 `44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`. Version 6 changes one expected outcome:

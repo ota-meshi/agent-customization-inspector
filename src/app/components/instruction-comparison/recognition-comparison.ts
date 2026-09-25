@@ -8,8 +8,11 @@
 // rendering the same file-level fact under each recognizing tool would
 // publish one fact as many: each side's frontmatter serializes to one
 // canonical YAML document, every key sorted, and the two documents are what
-// the comparison diffs (research.md § 7, frontmatter-yaml.ts). This module is the
-// data half, kept out of the component so the decisions are testable
+// the comparison diffs (research.md § 7, frontmatter-yaml.ts). There is a
+// parse to compare only where both files' formats open with declarations
+// (api-types.ts § InstructionFileFormat); a pair holding a file its products
+// read whole compares its recognitions and its sources alone. This module is
+// the data half, kept out of the component so the decisions are testable
 // without a single-file-component compiler.
 //
 // The instruction kind's model differs from the skill one in two typed
@@ -79,10 +82,12 @@ export const INSTRUCTION_RECOGNITION_SIDE_STATE_TEXT: Readonly<
 };
 
 /**
- * What one side's declared metadata is: the file's one parse for the
- * instructions kind, or the stated reason no parsed declarations exist to
- * compare. No absent or foreign-kind state exists: the compare route accepts
- * only committed instruction files.
+ * What one side's declared metadata is, in a pair whose formats both open with
+ * declarations ({@link InstructionDeclarationComparison}): the file's one
+ * parse for the instructions kind, or the stated reason no parsed
+ * declarations exist to compare. No absent or foreign-kind state exists: the
+ * compare route accepts only committed instruction files, and a pair holding
+ * a file its products read whole has no declaration half at all.
  */
 export type InstructionDeclarationSideState =
   /** A detail with a parsed presentation: its declarations serialize into the diff. */
@@ -157,28 +162,27 @@ export class InstructionToolRecognitionRow {
 }
 
 /**
- * The recognition-metadata comparison of one instruction pair (FR-011): the
- * per-tool recognition rows, each side's declaration state, and the canonical
- * serialized document each side's parse becomes — built once for the pair,
- * because the declarations are the files' rather than any recognition's.
+ * The declaration half of one instruction pair: each side's declaration state,
+ * and the canonical serialized document and body each side's parse becomes —
+ * built once for the pair, because the declarations are the files' rather
+ * than any recognition's.
  *
- * A class whose constructor derives the whole comparison from the two sides
+ * Its own class rather than fields of {@link InstructionRecognitionComparison},
+ * because it exists only for a pair whose formats both open with declarations
+ * (api-types.ts § InstructionFileFormat): a file its products read whole
+ * declares nothing, and a comparison built for it would have to answer what
+ * its declarations are with a state that is none of `parsed` or
+ * `extraction-failed`.
+ *
+ * A class whose constructor derives the whole half from the two parses
  * (AGENTS.md § Class and interface policy).
  */
-export class InstructionRecognitionComparison {
-  /**
-   * One row per tool recognizing either side, in the contracted tool order
-   * rather than any preference (US3 scenario 2). Empty exactly when no
-   * compared file carries a recognition — then there is no recognition
-   * metadata to compare, and none is fabricated.
-   */
-  public readonly tools: readonly InstructionToolRecognitionRow[];
-
+export class InstructionDeclarationComparison {
   /** What the first file's declared metadata is; see {@link InstructionDeclarationSideState}. */
-  public readonly leftDeclarations: InstructionDeclarationSideState;
+  public readonly left: InstructionDeclarationSideState;
 
   /** What the second file's declared metadata is; see {@link InstructionDeclarationSideState}. */
-  public readonly rightDeclarations: InstructionDeclarationSideState;
+  public readonly right: InstructionDeclarationSideState;
 
   /**
    * The two canonical YAML documents the frontmatter diff mounts — the
@@ -214,7 +218,69 @@ export class InstructionRecognitionComparison {
     readonly modifiedText: string;
   } | null;
 
-  /** Derives the pair's recognition rows, declaration states, and diff documents. */
+  /**
+   * Derives both sides' states and diff documents from the two parses, each
+   * null exactly when that file's all-or-nothing extraction failed (FR-028).
+   * Read once per side, so the stated state and the diffed document cannot
+   * disagree about whether the file parsed.
+   */
+  public constructor(left: MarkdownPresentationDto | null, right: MarkdownPresentationDto | null) {
+    this.left = left === null ? 'extraction-failed' : 'parsed';
+    this.right = right === null ? 'extraction-failed' : 'parsed';
+    this.frontmatterDiff =
+      left !== null && right !== null
+        ? {
+            originalText: canonicalFrontmatterYamlText(
+              left.frontmatter,
+              LEADING_INSTRUCTION_FRONTMATTER_KEYS,
+            ),
+            modifiedText: canonicalFrontmatterYamlText(
+              right.frontmatter,
+              LEADING_INSTRUCTION_FRONTMATTER_KEYS,
+            ),
+          }
+        : null;
+    // The other half of the same one parse, under the same guard: a side that
+    // offers no declarations offers no body either, because both come from the
+    // presentation that failed.
+    this.bodyDiff =
+      left !== null && right !== null
+        ? { originalText: left.bodyText, modifiedText: right.bodyText }
+        : null;
+  }
+}
+
+/**
+ * The recognition-metadata comparison of one instruction pair (FR-011): the
+ * per-tool recognition rows, and — where both files' formats open with
+ * declarations — the declaration half comparing what each file declares and
+ * says.
+ *
+ * A class whose constructor derives the whole comparison from the two sides
+ * (AGENTS.md § Class and interface policy).
+ */
+export class InstructionRecognitionComparison {
+  /**
+   * One row per tool recognizing either side, in the contracted tool order
+   * rather than any preference (US3 scenario 2). Empty exactly when no
+   * compared file carries a recognition — then there is no recognition
+   * metadata to compare, and none is fabricated.
+   */
+  public readonly tools: readonly InstructionToolRecognitionRow[];
+
+  /**
+   * What each file declares and says, compared; null unless both details are
+   * of a format that opens with declarations (api-types.ts
+   * § InstructionFileFormat). A file its products read whole has nothing
+   * read out of it, so a pair holding one has no declarations to set side by
+   * side, and its source comparison is the whole of what the two files say.
+   * A detail of another kind is null here too: the compare route asked for
+   * an instruction file, so a file that is no longer one answers as the plain
+   * file, which has nothing read out of it (session.ts § fileDetail).
+   */
+  public readonly declarations: InstructionDeclarationComparison | null;
+
+  /** Derives the pair's recognition rows and, where both formats declare, its declaration half. */
   public constructor(left: InstructionComparisonSideInput, right: InstructionComparisonSideInput) {
     const tools: InstructionToolRecognitionRow[] = [];
     for (const tool of SUPPORTED_TOOL_ORDER) {
@@ -226,46 +292,16 @@ export class InstructionRecognitionComparison {
       }
     }
     this.tools = tools;
-    // Read once per side, so the stated state and the diffed document cannot
-    // disagree about whether the file parsed.
-    const leftPresentation = presentationOf(left);
-    const rightPresentation = presentationOf(right);
-    this.leftDeclarations = leftPresentation === null ? 'extraction-failed' : 'parsed';
-    this.rightDeclarations = rightPresentation === null ? 'extraction-failed' : 'parsed';
-    this.frontmatterDiff =
-      leftPresentation !== null && rightPresentation !== null
-        ? {
-            originalText: canonicalFrontmatterYamlText(
-              leftPresentation.frontmatter,
-              LEADING_INSTRUCTION_FRONTMATTER_KEYS,
-            ),
-            modifiedText: canonicalFrontmatterYamlText(
-              rightPresentation.frontmatter,
-              LEADING_INSTRUCTION_FRONTMATTER_KEYS,
-            ),
-          }
-        : null;
-    // The other half of the same one parse, under the same guard: a side that
-    // offers no declarations offers no body either, because both come from the
-    // presentation that failed.
-    this.bodyDiff =
-      leftPresentation !== null && rightPresentation !== null
-        ? {
-            originalText: leftPresentation.bodyText,
-            modifiedText: rightPresentation.bodyText,
-          }
+    const leftDetail = left.detail;
+    const rightDetail = right.detail;
+    this.declarations =
+      leftDetail.kind === 'instructions' &&
+      leftDetail.format === 'frontmatter-led' &&
+      rightDetail.kind === 'instructions' &&
+      rightDetail.format === 'frontmatter-led'
+        ? new InstructionDeclarationComparison(leftDetail.presentation, rightDetail.presentation)
         : null;
   }
-}
-
-/**
- * One side's parse, or null when there is none. The parse is the file's, one
- * per kind (FR-028). Only this kind's variant carries it: the detail was
- * asked for as an instruction file, so a file of another kind answers as the
- * plain file, which has nothing read out of it (session.ts § fileDetail).
- */
-function presentationOf(side: InstructionComparisonSideInput): MarkdownPresentationDto | null {
-  return side.detail.kind === 'instructions' ? side.detail.presentation : null;
 }
 
 /**

@@ -1071,7 +1071,7 @@ skill ruleを出荷する作業が、そのstrategyと記述を一緒に出荷�
 Recognitionはcommit済みgenerationの内部recordであり、どのsession responseも運ばない
 （FR-027）: inventory rowもdetailもこれらからprojectされる — 定義は1 recognitionの
 `(file, tool)` identityであり、detailの`presentation`は1つのMarkdown recognition —
-skillまたはinstruction file — のparseである。コード上は、recognizerが唯一のproduction構築場所であるclassとし、recognize seam
+skillまたはfrontmatter-ledなinstruction file — のparseである。コード上は、recognizerが唯一のproduction構築場所であるclassとし、recognize seam
 （`CandidateRecognition`）はテストがliteral doubleで満たすinterfaceのままとする。
 
 Recognition recordのdetailsは`kind`で判別する。Recognitionを識別する情報はkindごとに異なり、1つの共有
@@ -1080,9 +1080,20 @@ optional fieldには収まらないからである: skillは単一の`name`を�
 宣言された`name`、nestedなClaude Code skillではdirectory-qualifiedなcommand — を運び、
 emptyになることはない（FR-007、FR-027）: Fileが宣言しないか空で宣言するrowは、代わりにその
 skill directory名で名付けられる。
-Instruction recognitionのdetailsは同じ1回のparse — 書かれた順の宣言済みkeyとblockを
-除いたbody — を運び、名前は意図的に持たない: recognitionを識別するのはそれが見つかったfile
-であるため、recognitionが既に運ぶSource-relative Pathがidentityの全体である。これは
+Instruction recognitionのdetailsは、admitしたruleがfileを読む形式を運び、名前は意図的に
+持たない: recognitionを識別するのはそれが見つかったfileであるため、recognitionが既に運ぶ
+Source-relative Pathがidentityの全体である。形式が宣言で始まる場合 — `applyTo`で適用先の
+fileを名指すCopilotのpath-specificな`*.instructions.md` — は、detailsは同じ1回のparse、
+すなわち書かれた順の宣言済みkeyとblockを除いたbodyを運ぶ。それ以外のすべてのinstruction
+形式は全体をそのまま読む: `AGENTS.md`、`AGENTS.override.md`、`CLAUDE.md`、`CLAUDE.local.md`、
+`GEMINI.md`、`copilot-instructions.md`、Codexのfallback名を読むどのproductも、それらに
+frontmatterを文書化しておらず、AntigravityのRules pageは`AGENTS.md`と`GEMINI.md`が
+frontmatterを使わず全体をplain Markdownとして読まれると述べている。そうしたdetailsは範囲だけを
+運び、extractionは試みない（`not-attempted`）: それらのfileの先頭の`---` blockはinstructionsの
+1行なので、YAMLとして正しいblockも宣言を公開せず、正しくないblockも何も失敗させない。形式は
+admitしたruleの事実であり、1つのfileのrecognitionがそれについて食い違うことはない。宣言の
+ために読まれるfileはCopilot自身のinstruction directoryの下にある`*.instructions.md`であり、
+他のproductのruleはそこにあるfileをadmitしないからである。これは
 recognitionのidentityであってrowの単位ではない — instructions一覧はこれらのrecordが運ぶ適用範囲で
 groupingする（§ 一覧の単位） — 。2つは別の問いのままである: 範囲を導出するのはadmitしたruleで1度きり
 であり、そのvendorがそのfile名をどこから読むかを知るのはその単位だけだからである。Recordが範囲を
@@ -1118,7 +1129,7 @@ inventoryにも現れない。一方、ruleが独立にadmitするpath — 別�
 | `provenances` | ordered admission record[] | 共有tool/kind解釈についてのrule/path admissionのsort済み非空set。各recordは読み取りを認可したcompiled ruleを保持して`ruleId`と`RuleDiscoveryClass`をそこから導出し、matched `SourceRelativePath`を傍らに持つ — それ以上は持たない |
 | `tool` | `copilot \| claude \| codex` | 必須 |
 | `details` | kind判別payload | 認識されたkindと、そのkindのrecognitionを識別するもの — skillなら宣言名。1 fieldであるため、射影はkindごとの再構成ではなくcopyで済む |
-| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当。`failed`は`(file, kind)`ごとにall-or-nothing: Markdown kindは1回のextractionを全recognizing toolで共有し、MCP kindは1つのdecoded text上で各recognizing tool自身のdocumented readingを実行する（§ Field reading）。それらのreadingはparser familyを共有するため、一方が拒むtextは全readingを失敗させ、失敗の単位は`(file, kind)`の組に留まる |
+| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当 — 全体をそのまま読むinstruction fileもこれに当たる（§ ToolRecognition）。`failed`は`(file, kind)`ごとにall-or-nothing: Markdown kindは1回のextractionを全recognizing toolで共有し、MCP kindは1つのdecoded text上で各recognizing tool自身のdocumented readingを実行する（§ Field reading）。それらのreadingはparser familyを共有するため、一方が拒むtextは全readingを失敗させ、失敗の単位は`(file, kind)`の組に留まる |
 | `diagnosticIds` | opaque string[] | そのkindのextraction失敗record（FR-028）: `(file, kind)`ごとに1件で、そのkindの失敗した各recognitionが参照し、fileは1回だけ列挙する |
 
 維持管理するsupported-customization文書を規範的なpresentation allowlistとする。Supportedな各`(tool, kind)`について、
@@ -1164,7 +1175,9 @@ File間のdeclaration comparisonは、sideごとに1つのcanonical serialized d
 Extractorは、認識したkindが公開する宣言を、そのformatのparserが解決した結果 — admit済みsource formごとに
 文書化された決定的なreading 1つ、JSON familyについては`(tool, path)`ごとに1つ — として報告する:
 Markdown fileのfrontmatterはYAML 1.2 core schema、`.codex/config.toml`のcarrierはTOML 1.0、
-JSON carrierはいずれも`JSON.parse`である。そのparseは、readingのclient自身がcommentを受け付ける場合を除いて
+JSON carrierはいずれも`JSON.parse`である。全体をそのまま読む形式にはreadingがそもそもない:
+Copilotの`*.instructions.md`以外のinstruction fileはどのparserも通らないので、その先頭の
+`---` blockは宣言でも失敗でもない（§ ToolRecognition）。そのparseは、readingのclient自身がcommentを受け付ける場合を除いて
 strictである。受け付けるのはCopilotのeditorであり、`.vscode/mcp.json`、rootの`.mcp.json`、
 `.claude/settings.json`と`.claude/settings.local.json`のpair、`.github/hooks/*.json`に対するそのreadingでは、
 commentとtrailing commaを空白化してから同じparseへ渡す。それ以外のsyntax errorは依然としてdocument全体を
@@ -1251,7 +1264,8 @@ skillの宣言と指示のすべての下に沈むからである。
 
 Parse自体はdetail responseのskill variant（`SkillFileDetailDto.presentation`、
 contracts/http-api.md § get-file-detail）に1回だけ公開される: parseはfileの事実であり —
-shippedな全vendorが同じ固定YAML semanticsを読む — toolごとのcopyはwireに存在しない。
+どのruleがfileをadmitしても、宣言はこのproductの1つの固定YAML semanticsで読まれる
+（§ Field reading） — toolごとのcopyはwireに存在しない。
 内部の`ToolRecognition.details`は`skill` kindについて次を運ぶ。
 
 | Field | Type | Rule |

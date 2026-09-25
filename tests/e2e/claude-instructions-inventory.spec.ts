@@ -1,8 +1,9 @@
-// T230, T1223: browser acceptance for the Claude instructions inventory (Phase 17).
-// Launches the packaged CLI against an instruction-bearing fixture, opens the
-// printed loopback URL, and verifies the rendered rows, the filters, the
-// absence of every unsupported location, the file-confined diagnostic, and
-// the Codex rows the phase must leave untouched.
+// T230, T1223, T1224: browser acceptance for the Claude instructions inventory
+// (Phase 17). Launches the packaged CLI against an instruction-bearing
+// fixture, opens the printed loopback URL, and verifies the rendered rows, the
+// filters, the absence of every unsupported location, the absence of any
+// diagnostic for a block Claude Code reads as instructions, and the Codex rows
+// the phase must leave untouched.
 //
 // The visible checkpoint this carries is the grouping: the root `AGENTS.md`
 // and `CLAUDE.md` share one row because they govern the same range, the nested
@@ -173,14 +174,14 @@ test.describe('Claude instruction rows at every depth', () => {
   });
 });
 
-test.describe('a Claude instruction file whose declarations cannot be parsed', () => {
+test.describe('a Claude instruction file opening with a block that is not YAML', () => {
   let fixture: string;
   let host: LaunchedHost;
 
   test.beforeEach(async () => {
-    fixture = await mkdtemp(join(tmpdir(), 'aci-claude-instructions-malformed-'));
-    // A frontmatter block no parser can read: the recognition fails
-    // all-or-nothing, and the failure stays confined to this file (FR-028).
+    fixture = await mkdtemp(join(tmpdir(), 'aci-claude-instructions-block-'));
+    // Claude Code reads a `CLAUDE.md` whole, so this block is a line of its
+    // instructions: nothing parses it, so nothing can fail (FR-028).
     await writeFile(
       join(fixture, 'CLAUDE.md'),
       '---\nscope: [unclosed\n---\n\n# Project\n',
@@ -195,25 +196,18 @@ test.describe('a Claude instruction file whose declarations cannot be parsed', (
     await rm(fixture, { recursive: true, force: true });
   });
 
-  test('keeps both rows and reports the failure on the file it happened to', async ({ page }) => {
+  test('keeps both files on their row and reports no failure', async ({ page }) => {
     await page.goto(host.origin);
     const fileEntries = page
       .getByRole('tabpanel')
       .locator('.aci-source-family-blocks__members > li');
-    // Both files keep their place under the root range: what failed is reading
-    // one file's declarations, not recognizing it, and a range comes from
-    // where a file sits rather than from what parsed.
+    // Both files keep their place under the root range, which comes from
+    // where a file sits.
     await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
     await expect(fileEntries).toHaveCount(2);
-    // `CLAUDE.local.md` does not contain `CLAUDE.md`, so the filter names the
-    // malformed file alone.
-    await expect(fileEntries.filter({ hasText: 'CLAUDE.md' })).toContainText(
-      'This file could not be parsed',
-    );
-    // The failure is confined: the file beside it carries none.
-    await expect(fileEntries.filter({ hasText: 'CLAUDE.local.md' })).not.toContainText(
-      'This file could not be parsed',
-    );
+    // Neither carries a diagnostic: the block is instructions, not a
+    // frontmatter that failed to parse (T1224).
+    await expect(page.getByRole('tabpanel')).not.toContainText('This file could not be parsed');
   });
 });
 

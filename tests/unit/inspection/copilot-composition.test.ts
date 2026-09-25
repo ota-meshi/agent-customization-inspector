@@ -41,14 +41,11 @@ describe('an `applyTo` declaration keys a row and decides nothing else', () => {
     const pathRule = copilotInstructionRules.find(
       (compiled) => compiled.rule.ruleId === 'copilot.repo.instructions.path',
     )!;
-    if (pathRule.kind !== 'instructions') {
-      throw new Error('expected a compiled Copilot instruction rule');
+    if (pathRule.kind !== 'instructions' || pathRule.format !== 'frontmatter-led') {
+      throw new Error('expected a compiled Copilot path-specific instruction rule');
     }
-    const admitted = '.github/instructions/frontend.instructions.md';
     for (const declared of ['src/**', 'src/**/', '**/*.ts,**/*.tsx', '!src/vendor/**']) {
-      expect(pathRule.applicabilityRangeOf(admitted, declaredApplyTo(declared)), declared).toBe(
-        declared,
-      );
+      expect(pathRule.applicabilityRangeOf(declaredApplyTo(declared)), declared).toBe(declared);
     }
   });
 

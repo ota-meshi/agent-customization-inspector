@@ -16,16 +16,19 @@
 // and a per-vendor entry point would enumerate the same directory once per
 // recognizing product.
 //
-// A Markdown customization's declarations — a skill's, an instruction file's,
-// and a command file's — are read out as the file wrote them (FR-007): every
-// declared key in authored order, plus the instructions left once the block is
-// removed. The skill's declared name leads because it seeds the resolved name
-// the grouped inventory row is keyed by and the heading a detail page shows —
-// authored when declared, the skill directory otherwise — and the authored
-// value is not recoverable from the path: a skill's `name` need not match its
-// directory. An instruction file has no name to read at all — its payload is
-// the presentation plus the applicability range its inventory row is grouped
-// by. A command file has no name to read either, and for a sharper reason: the
+// A Markdown customization's declarations — a skill's, a path-specific
+// instruction file's, and a command file's — are read out as the file wrote
+// them (FR-007): every declared key in authored order, plus the instructions
+// left once the block is removed. The skill's declared name leads because it
+// seeds the resolved name the grouped inventory row is keyed by and the
+// heading a detail page shows — authored when declared, the skill directory
+// otherwise — and the authored value is not recoverable from the path: a
+// skill's `name` need not match its directory. An instruction file has no name
+// to read at all — its payload is the applicability range its inventory row is
+// grouped by, beside the presentation where its format opens with
+// declarations; a format its products read whole, such as `AGENTS.md`, has
+// nothing read out of it (api-types.ts § InstructionFileFormat). A command
+// file has no name to read either, and for a sharper reason: the
 // vendor ignores a `name` key in one and derives the command from the path, so
 // the name its row is grouped by is the admitting rule's answer rather than
 // anything the bytes hold (data-model.md § Inventory unit).
@@ -50,12 +53,15 @@
 // enable, trust, select, or load it.
 import type {
   CompiledCandidateRule,
+  CompiledDerivedInstructionRule,
   CompiledStaticAgentRule,
+  CompiledStaticFrontmatterLedInstructionRule,
   CompiledStaticHookRule,
   CompiledStaticMcpReadingRule,
   CompiledStaticPermissionsCarrierRule,
   CompiledStaticPluginRule,
   CompiledStaticPromptRule,
+  CompiledStaticWholeDocumentInstructionRule,
   HookCarrierReading,
   PluginCarrierReading,
   SelectorOrigin,
@@ -148,17 +154,21 @@ export class CandidateProvenance {
  */
 export type RecognitionDetails =
   /**
-   * An instruction file, presented by what it declares and grouped by what it
-   * governs. No declared name is read: the Source-relative Path the
-   * recognition already carries is the file's whole identity. What the kind
-   * carries instead is the file's own presentation — the same one parse a
-   * skill uses, because the detail leads with the keys the file declares and
-   * the instructions that follow them (FR-007) — and the applicability range
-   * its inventory row is grouped by (data-model.md § Inventory unit).
+   * An instruction file whose format opens with declarations its product
+   * reads (api-types.ts § InstructionFileFormat), presented by what it
+   * declares and grouped by what it governs. No declared name is read: the
+   * Source-relative Path the recognition already carries is the file's whole
+   * identity. What the kind carries instead is the file's own presentation —
+   * the same one parse a skill uses, because the detail leads with the keys
+   * the file declares and the instructions that follow them (FR-007) — and the
+   * applicability range its inventory row is grouped by (data-model.md
+   * § Inventory unit).
    */
   | {
       /** The recognized customization kind. */
       readonly kind: 'instructions';
+      /** How the file is read; see api-types.ts § InstructionFileFormat. */
+      readonly format: 'frontmatter-led';
       /**
        * Every key the instruction file's frontmatter declares, in authored
        * order; the source of the detail response's `presentation.frontmatter`.
@@ -174,16 +184,33 @@ export type RecognitionDetails =
        */
       readonly bodyText: string;
       /**
-       * The glob this file governs relative to the Repository root — derived
-       * from the path, or declared by the file itself where its product reads
-       * one (Copilot's `applyTo`) — and the identity its inventory row is
+       * The glob this file declares it governs relative to the Repository
+       * root (Copilot's `applyTo`), and the identity its inventory row is
        * grouped by (data-model.md § Inventory unit). Null exactly when the
-       * product reads this filename's range from its declaration alone and
-       * the declarations supply none: such a file lists under the row that
-       * says no range is known — which covers a file whose declarations could
-       * not be read at all, its parse-failure diagnostic beside it (FR-028).
+       * declarations supply none: such a file lists under the row that says
+       * no range is known — which covers a file whose declarations could not
+       * be read at all, its parse-failure diagnostic beside it (FR-028).
        */
       readonly applicabilityRange: string | null;
+    }
+  /**
+   * An instruction file its products read whole (api-types.ts
+   * § InstructionFileFormat): grouped by what it governs, with nothing read
+   * out of it, so it carries no presentation and no extraction ever runs on
+   * it — a `---` block opening one is a line of its instructions, never a
+   * frontmatter that could fail to parse.
+   */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'instructions';
+      /** How the file is read; see api-types.ts § InstructionFileFormat. */
+      readonly format: 'whole-document';
+      /**
+       * The glob this file governs relative to the Repository root, derived
+       * from its path, and the identity its inventory row is grouped by
+       * (data-model.md § Inventory unit). Never null: a path always answers.
+       */
+      readonly applicabilityRange: string;
     }
   /** A skill, identified by the name its recognizing tool invokes it by. */
   | {
@@ -350,9 +377,9 @@ export type RecognitionDetails =
    * Claude Code ignores a `name` key in a command file and derives the name
    * from the path instead, so the admitting rule is what answers it
    * (`registry.ts` § CompiledStaticPromptRule). The presentation comes from
-   * the same one parse a skill and an instruction file use, because a command
-   * file supports a skill's frontmatter keys and its detail leads with them
-   * (FR-007).
+   * the same one parse a skill and a frontmatter-led instruction file use,
+   * because a command file supports a skill's frontmatter keys and its detail
+   * leads with them (FR-007).
    */
   | {
       /** The recognized customization kind. */
@@ -514,11 +541,13 @@ export type RecognitionDetails =
  * Internal to the committed generation, never serialized to a client: the
  * inventory rows and the detail response are both projected from these — a
  * definition is one recognition's `(file, tool)` identity, and the detail's
- * `presentation` is one Markdown recognition's parse, the skill's or the
- * instruction file's — so the record itself
+ * `presentation` is one Markdown recognition's parse, the skill's or a
+ * frontmatter-led instruction file's — so the record itself
  * carries no wire identity of its own. A class reached only through its
- * factories, which fix how a record comes to be: one typed factory per kind
- * ({@link recognizeSkill}, {@link recognizeInstructions}, {@link recognizeMcp},
+ * factories, which fix how a record comes to be: one typed factory per kind,
+ * and per format where a kind's formats are read differently
+ * ({@link recognizeSkill}, {@link recognizeFrontmatterLedInstructions},
+ * {@link recognizeWholeDocumentInstructions}, {@link recognizeMcp},
  * {@link recognizeAgent}, {@link recognizeOther}) derives the published
  * fields from exactly the extraction its kind produces — the kind→payload
  * correlation is each signature's own fact, never a runtime shape test over a
@@ -647,48 +676,65 @@ export class ToolRecognition {
   }
 
   /**
-   * Builds one instructions recognition from the same one Markdown extraction
-   * a skill reads — the presentation a detail shows cannot differ by kind
-   * (FR-007) — plus the one question only this kind answers, asked of the
-   * admitting rule: what the file governs (data-model.md § Inventory unit).
+   * Builds one instructions recognition for a format that opens with
+   * declarations (api-types.ts § InstructionFileFormat), from the same one
+   * Markdown extraction a skill reads — the presentation a detail shows cannot
+   * differ by kind (FR-007) — plus the one question only this kind answers,
+   * asked of the admitting rule: what the file governs (data-model.md
+   * § Inventory unit).
    */
-  public static recognizeInstructions(
+  public static recognizeFrontmatterLedInstructions(
     sourceRelativePath: string,
     tool: SupportedTool,
+    rule: CompiledStaticFrontmatterLedInstructionRule,
     extraction: RecognitionExtraction<ParsedMarkdownDocument | undefined>,
     admissions: readonly RecognitionAdmission[],
   ): ToolRecognition {
-    // Asked of the admitting rule, which is where a product's own answer
-    // lives. Any admission answers: a recognition's admissions are one
-    // product's, and that product defines the answer once, so they cannot
-    // disagree. The narrowing is the compiler's own, over the `kind` that
-    // discriminates `CompiledCandidateRule` — nothing here asserts a
-    // capability the unit might not have.
-    const [admission] = admissions;
-    if (admission === undefined || admission.compiled.kind !== 'instructions') {
-      throw new TypeError('an instructions recognition has no rule that can answer its range');
-    }
     // A failed extraction has no document at all, which is what publishes
     // nothing rather than the part that parsed (FR-028). The declarations are
     // handed to the rule all the same, and an empty set answers like a file
-    // that declares nothing: a path-derived range where the product derives
-    // one, and null — the no-known-range row — where the product reads this
-    // filename's range from its declaration alone, so an unreadable
-    // declaration block never widens into a range read off the path.
+    // that declares nothing: null, the no-known-range row, because the
+    // product reads this format's range from its declaration alone — so an
+    // unreadable declaration block never widens into a range read off the path.
     const frontmatter = extraction.extracted?.frontmatterEntries ?? [];
     return ToolRecognition.#assemble(
       sourceRelativePath,
       tool,
       {
         kind: 'instructions',
+        format: 'frontmatter-led',
         frontmatter,
         bodyText: extraction.extracted?.body ?? '',
-        applicabilityRange: admission.compiled.applicabilityRangeOf(
-          sourceRelativePath,
-          frontmatter,
-        ),
+        applicabilityRange: rule.applicabilityRangeOf(frontmatter),
       },
       extraction.status,
+      admissions,
+    );
+  }
+
+  /**
+   * Builds one instructions recognition for a format its products read whole
+   * (api-types.ts § InstructionFileFormat): the range the admitting rule
+   * derives from the path, and nothing read out of the file. `not-attempted`
+   * is the honest status, because no extraction applies to a file that is
+   * instructions from its first line to its last — which is also why no
+   * extraction-failure diagnostic can attach to one (FR-028).
+   */
+  public static recognizeWholeDocumentInstructions(
+    sourceRelativePath: string,
+    tool: SupportedTool,
+    rule: CompiledStaticWholeDocumentInstructionRule | CompiledDerivedInstructionRule,
+    admissions: readonly RecognitionAdmission[],
+  ): ToolRecognition {
+    return ToolRecognition.#assemble(
+      sourceRelativePath,
+      tool,
+      {
+        kind: 'instructions',
+        format: 'whole-document',
+        applicabilityRange: rule.applicabilityRangeOf(sourceRelativePath),
+      },
+      'not-attempted',
       admissions,
     );
   }
@@ -1142,10 +1188,10 @@ type PluginReadingRule = CompiledStaticPluginRule;
  * extraction family, so what an extraction produced is the slot's own type
  * and no consumer re-derives a payload's family from its runtime shape. Each
  * slot runs at most once and is shared by every recognition that reads it —
- * `skill`, `instructions`, and `prompt/command` by the one Markdown parse,
- * every tool alike — because what a file declares does not depend on who asks
- * (same-fact-once). A kind with no extraction has no slot: its factory
- * records `not-attempted` directly.
+ * `skill`, `prompt/command`, and a frontmatter-led `instructions` file by the
+ * one Markdown parse, every tool alike — because what a file declares does not
+ * depend on who asks (same-fact-once). A kind or format with no extraction has
+ * no slot: its factory records `not-attempted` directly.
  */
 class CandidateExtractions {
   /** The file's complete decoded text every slot reads; see {@link RecognitionInput.sourceText}. */
@@ -1193,7 +1239,9 @@ class CandidateExtractions {
 
   /**
    * The Markdown extraction every frontmatter-led kind reads — `skill`,
-   * `instructions`, and `prompt/command` alike: the parsed document with its
+   * `prompt/command`, and an `instructions` file whose format opens with
+   * declarations alike, while an instruction file read whole never asks for
+   * it (api-types.ts § InstructionFileFormat): the parsed document with its
    * rendered declaration entries, the parser module's own presentation
    * (`parsers/markdown.ts`). What the file declares does not depend on which
    * product or kind asks, so parsing once is the same-fact-once rule, not an
@@ -1430,12 +1478,37 @@ export async function recognizeCandidateForVendors(
   const recognitions = [...byTool.entries()].flatMap(([tool, byKind]) =>
     [...byKind.entries()].map(([kind, group]) => {
       if (kind === 'instructions') {
-        return ToolRecognition.recognizeInstructions(
-          input.matchedPath,
-          tool,
-          extractions.markdown(),
-          group,
-        );
+        // Dispatched over the `kind` and `format` discriminants, because the
+        // format the admitting rule reads decides whether anything is read out
+        // of the file at all (api-types.ts § InstructionFileFormat): the
+        // Markdown extraction runs for a format that opens with declarations
+        // and never for one read whole. Any admission answers: a recognition's
+        // admissions are one product's reading of one filename, so they cannot
+        // disagree. A loop rather than `find`, as for an agent below, because
+        // a callback's narrowing does not reach the caller without a
+        // hand-authored predicate. Every admission of this group is of this
+        // kind, so the loop answers on its first; the throw after it is what
+        // the compiler asks of a loop, and the group, formed by an admission,
+        // is never empty.
+        for (const { compiled } of group) {
+          if (compiled.kind === 'instructions') {
+            return compiled.format === 'frontmatter-led'
+              ? ToolRecognition.recognizeFrontmatterLedInstructions(
+                  input.matchedPath,
+                  tool,
+                  compiled,
+                  extractions.markdown(),
+                  group,
+                )
+              : ToolRecognition.recognizeWholeDocumentInstructions(
+                  input.matchedPath,
+                  tool,
+                  compiled,
+                  group,
+                );
+          }
+        }
+        throw new TypeError('an instructions recognition has no rule that can answer its range');
       }
       if (kind === 'skill') {
         return ToolRecognition.recognizeSkill(

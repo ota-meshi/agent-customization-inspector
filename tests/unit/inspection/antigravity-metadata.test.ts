@@ -156,20 +156,21 @@ describe('the range a context file governs (T085)', () => {
     // (google.antigravity.rules § Directory-scoped rules).
     const compiled = repositoryRule('antigravity.repo.context');
     expect(compiled).toBeInstanceOf(AntigravityCompiledInstructionRule);
-    if (compiled.kind !== 'instructions') {
-      throw new Error('expected the workspace context rule to compile to an instruction unit');
+    if (compiled.kind !== 'instructions' || compiled.format !== 'whole-document') {
+      throw new Error('expected the workspace context rule to compile to a whole-document unit');
     }
-    expect(compiled.applicabilityRangeOf('GEMINI.md', [])).toBe('**');
-    expect(compiled.applicabilityRangeOf('packages/api/AGENTS.md', [])).toBe('packages/api/**');
-    expect(compiled.applicabilityRangeOf('docs/.agents/GEMINI.md', [])).toBe('docs/**');
+    expect(compiled.applicabilityRangeOf('GEMINI.md')).toBe('**');
+    expect(compiled.applicabilityRangeOf('packages/api/AGENTS.md')).toBe('packages/api/**');
+    expect(compiled.applicabilityRangeOf('docs/.agents/GEMINI.md')).toBe('docs/**');
   });
 
   it('answers the whole boundary for every global file', () => {
     const compiled = globalRule('antigravity.global.context');
-    if (compiled.kind !== 'instructions') {
-      throw new Error('expected the global context rule to compile to an instruction unit');
+    expect(compiled).toBeInstanceOf(AntigravityCompiledGlobalInstructionRule);
+    if (compiled.kind !== 'instructions' || compiled.format !== 'whole-document') {
+      throw new Error('expected the global context rule to compile to a whole-document unit');
     }
-    expect(compiled.applicabilityRangeOf('config/AGENTS.md', [])).toBe('**');
+    expect(compiled.applicabilityRangeOf('config/AGENTS.md')).toBe('**');
   });
 });
 

@@ -1383,8 +1383,8 @@ product's skill rule ships its strategy and its statement together.
 A recognition is an internal record of the committed generation, carried by no session
 response (FR-027): the inventory rows and the detail are both projected from these —
 a definition is one recognition's `(file, tool)` identity, and the detail's
-`presentation` is one Markdown recognition's parse, the skill's or the instruction
-file's. In code it is a class whose one
+`presentation` is one Markdown recognition's parse, the skill's or a frontmatter-led
+instruction file's. In code it is a class whose one
 production construction site is the recognizer, while the recognize seam
 (`CandidateRecognition`) stays an interface tests satisfy with literal doubles.
 
@@ -1395,9 +1395,21 @@ invocation name the admitting rule resolved — the declared `name` for a skill 
 selected root, the directory-qualified command for a nested Claude Code one (FR-007,
 FR-027) — never empty: a row whose file declares none, or declares it empty, is named by
 its skill directory instead. An instruction recognition's details
-carry the same one parse — the declared keys in authored order and the body the block
-was removed from — and deliberately no name: what identifies the recognition is the file
-it was found in, so the Source-relative Path it already carries is the whole identity.
+carry the format its admitting rule reads the file in, and deliberately no name: what
+identifies the recognition is the file it was found in, so the Source-relative Path it
+already carries is the whole identity. Where the format opens with declarations —
+Copilot's path-specific `*.instructions.md`, whose `applyTo` names the files it applies to
+— the details carry the same one parse, the declared keys in authored order and the body
+the block was removed from. Every other instruction format is read whole: no product that
+reads an `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`, `CLAUDE.local.md`, `GEMINI.md`,
+`copilot-instructions.md`, or Codex fallback name documents a frontmatter for it, and
+Antigravity's Rules page says that `AGENTS.md` and `GEMINI.md` use none and are read as
+plain Markdown throughout. Such details carry the range alone, and no extraction is
+attempted (`not-attempted`): a `---` block opening one of those files is a line of its
+instructions, so a block that is valid YAML publishes no declaration and one that is not
+fails nothing. The format is the admitting rule's fact, and one file's recognitions never
+disagree about it, because the files read for their declarations are the `*.instructions.md`
+below Copilot's own instruction directories, where no other product's rule admits a file.
 That is the recognition's identity and not the row's unit — the instructions inventory
 groups these records by the applicability range they carry (§ Inventory unit) — and the
 two stay separate questions: the range is derived once by the admitting rule, which is the
@@ -1447,7 +1459,7 @@ directory from.
 | `provenances` | ordered admission record[] | Sorted, non-empty set of rule/path admissions for this shared tool/kind interpretation; each record holds the compiled rule that authorized the read and derives its `ruleId` and `RuleDiscoveryClass` from it, beside the matched `SourceRelativePath` — and nothing beyond that |
 | `tool` | `copilot \| claude \| codex` | Required |
 | `details` | kind-discriminated payload | The recognized kind plus what identifies a recognition of that kind — for a skill, its declared name. One field, so projecting it is a copy rather than a per-kind reconstruction |
-| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies; `failed` is all-or-nothing per `(file, kind)`: the Markdown kinds run one extraction shared by every recognizing tool, while the MCP kind runs each recognizing tool's own documented reading over the one decoded text (§ Field reading) — readings that share their parser family, so a text one rejects fails them all and the failure unit stays the `(file, kind)` pair |
+| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies — an instruction file its products read whole among them (§ ToolRecognition); `failed` is all-or-nothing per `(file, kind)`: the Markdown kinds run one extraction shared by every recognizing tool, while the MCP kind runs each recognizing tool's own documented reading over the one decoded text (§ Field reading) — readings that share their parser family, so a text one rejects fails them all and the failure unit stays the `(file, kind)` pair |
 | `diagnosticIds` | opaque string[] | The kind's extraction-failure record (FR-028): one per `(file, kind)`, referenced by each failed recognition of that kind and listed once by the file |
 
 The maintained supported-customization documentation is the normative presentation
@@ -1524,7 +1536,10 @@ key order (FR-007).
 An extractor reports what its format's parser resolves a declaration to — one
 documented, deterministic reading per admitted source form, and for the JSON family per
 `(tool, path)`: YAML 1.2's core schema for a Markdown file's frontmatter, TOML 1.0 for the
-`.codex/config.toml` carrier, and `JSON.parse` for every JSON carrier. That parse is strict
+`.codex/config.toml` carrier, and `JSON.parse` for every JSON carrier. A format its products
+read whole has no reading at all: an instruction file other than Copilot's
+`*.instructions.md` goes through no parser, so a `---` block opening one is neither a
+declaration nor a failure (§ ToolRecognition). That parse is strict
 except where the reading's own client accepts comments, which is Copilot's editor: its
 readings of `.vscode/mcp.json`, the root `.mcp.json`, the `.claude/settings.json` and
 `.claude/settings.local.json` pair, and the `.github/hooks/*.json` files have comments and a
@@ -1634,8 +1649,8 @@ instructs.
 
 The parse itself is published once, on the detail response's skill variant
 (`SkillFileDetailDto.presentation`, contracts/http-api.md § get-file-detail): it is the
-file's fact — every shipped vendor reads the same fixed YAML semantics — so no per-tool
-copy exists on the wire, and the internal `ToolRecognition.details` carries, for the
+file's fact — the declarations are read under this product's one fixed YAML semantics
+whichever rule admitted the file (§ Field reading) — so no per-tool copy exists on the wire, and the internal `ToolRecognition.details` carries, for the
 `skill` kind:
 
 | Field | Type | Rules |

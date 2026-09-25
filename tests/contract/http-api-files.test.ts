@@ -407,11 +407,11 @@ describe('get-file-detail', () => {
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
-    // The instruction variant carries the same one scan-time parse the skill
-    // variant does (contracts/http-api.md § get-file-detail): the file's own
-    // fact, published once whatever the recognizing tools are.
-    if (result.data.kind !== 'instructions') {
-      throw new Error('expected the instructions variant');
+    // A format that opens with declarations carries the same one scan-time
+    // parse the skill variant does (contracts/http-api.md § get-file-detail):
+    // the file's own fact, published once whatever the recognizing tools are.
+    if (result.data.kind !== 'instructions' || result.data.format !== 'frontmatter-led') {
+      throw new Error('expected the frontmatter-led instructions variant');
     }
     const presentation = result.data.presentation;
     if (presentation === null) {
@@ -446,12 +446,38 @@ describe('get-file-detail', () => {
     expect(JSON.stringify(result.data)).not.toContain('relationship');
     expect(Object.keys(result.data).toSorted()).toEqual([
       'diagnostics',
-      // The `vscode://` link the server builds, because the absolute path is
-      // the server's alone (data-model.md § SourceBoundary).
       'file',
+      'format',
       'kind',
       'presentation',
     ]);
+  });
+
+  it('returns a file its products read whole as the file alone, its opening block included (T218)', async () => {
+    // The same bytes as the path-specific file above, under a filename no
+    // product documents a frontmatter for: the block is a line of the
+    // instructions, so nothing is read out of it and the variant has no
+    // `presentation` to put it in (api-types.ts § InstructionFileFormat).
+    const { context, fixture } = await scannedFixture();
+    const result = await getFileDetail(
+      context,
+      fixture.wholeDocumentInstructionPath,
+      'instructions',
+    );
+    if (!('data' in result)) {
+      throw new Error('expected a detail result');
+    }
+    if (result.data.kind !== 'instructions' || result.data.format !== 'whole-document') {
+      throw new Error('expected the whole-document instructions variant');
+    }
+    expect(Object.keys(result.data).toSorted()).toEqual(['diagnostics', 'file', 'format', 'kind']);
+    expect(result.data.diagnostics).toEqual([]);
+    if (result.data.file.encoding !== 'utf-8') {
+      throw new Error('expected the readable variant');
+    }
+    // The credential and the environment reference are in the file exactly as
+    // written, block and all (FR-025).
+    expect(result.data.file.sourceText).toBe(fixture.instructionSourceText);
   });
 
   it('returns the complete authored instruction source exactly as it was read (T218)', async () => {
@@ -470,19 +496,19 @@ describe('get-file-detail', () => {
   it('serves a configured fallback instruction file through the same variant (T218)', async () => {
     // The carrier's declared name became a scan target through the
     // configuration read (Phase 15); its detail is the ordinary instruction
-    // detail — provenance is an internal read-authorization record no
-    // response carries.
+    // detail of a file read whole, like the `AGENTS.md` the name stands in for
+    // — provenance is an internal read-authorization record no response
+    // carries.
     const { context, fixture } = await scannedFixture();
     const result = await getFileDetail(context, fixture.fallbackInstructionPath, 'instructions');
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
-    expect(result.data.kind).toBe('instructions');
-    if (result.data.kind !== 'instructions' || result.data.presentation === null) {
-      throw new Error('expected a parsed instructions variant');
+    expect(result.data).toMatchObject({ kind: 'instructions', format: 'whole-document' });
+    if (result.data.file.encoding !== 'utf-8') {
+      throw new Error('expected the readable variant');
     }
-    expect(result.data.presentation.frontmatter).toEqual([]);
-    expect(result.data.presentation.bodyText).toBe('# Configured fallback instructions\n');
+    expect(result.data.file.sourceText).toBe('# Configured fallback instructions\n');
   });
 
   it('publishes null presentation with the failure diagnostic for an unparseable instruction file (T218)', async () => {
@@ -491,14 +517,40 @@ describe('get-file-detail', () => {
     if (!('data' in result)) {
       throw new Error('expected a detail result');
     }
-    if (result.data.kind !== 'instructions') {
-      throw new Error('expected the instructions variant');
+    if (result.data.kind !== 'instructions' || result.data.format !== 'frontmatter-led') {
+      throw new Error('expected the frontmatter-led instructions variant');
     }
     // The same all-or-nothing rule as the skill variant (FR-028): nothing
     // parsed, one (file, kind) failure record, complete source still served.
     expect(result.data.presentation).toBeNull();
     expect(result.data.diagnostics).toHaveLength(1);
     expect(result.data.diagnostics[0]!.code).toBe('recognition-parse-failed');
+    if (result.data.file.encoding !== 'utf-8') {
+      throw new Error('expected the readable variant');
+    }
+    expect(result.data.file.sourceText).toContain('# Broken');
+  });
+
+  it('reports nothing about a whole-document file whose opening block is not YAML', async () => {
+    // The block that fails the parse above is, in a file its products read
+    // whole, a line of its instructions: nothing parses it, so nothing fails,
+    // and neither the detail nor the file's own entry carries a diagnostic
+    // (FR-028; api-types.ts § InstructionFileFormat).
+    const { context, fixture } = await scannedFixture();
+    const result = await getFileDetail(
+      context,
+      fixture.unparseableBlockWholeDocumentPath,
+      'instructions',
+    );
+    if (!('data' in result)) {
+      throw new Error('expected a detail result');
+    }
+    expect(result.data).toMatchObject({
+      kind: 'instructions',
+      format: 'whole-document',
+      diagnostics: [],
+    });
+    expect(result.data.file.diagnosticIds).toEqual([]);
     if (result.data.file.encoding !== 'utf-8') {
       throw new Error('expected the readable variant');
     }

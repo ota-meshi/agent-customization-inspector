@@ -734,7 +734,9 @@ documentを並べて比較する。例外はcarrier自身が宣言であるside�
 productがあることを述べるのがそのrowだからである。両sideがcarrier file そのものであるkindでは
 side ごとに1行とする。あるfileを読むproductはそのfile自身の事実であり、2行が既にそれを担うからである。
 1行に収まらないlistはpageを広げず折り返す。その背後のparseは、Markdown系kindについては`(file, kind)`ごとに
-1回である。shippedな全vendorが同じ固定YAML semanticsで読むためである。custom-agent kindは
+1回である。どのruleがfileをadmitしても、このproductはその宣言を1つの固定YAML semanticsで読むためである
+（data-model.md § Field reading）。productが全体をそのまま読むinstruction fileは何も宣言しないので、
+parseは1回も行わない。custom-agent kindは
 例外で`(file, tool)`ごとに1回になる。agent fileがどこで分割されるかはadmitしたrule自身の
 読み取りであり、Codexのagentは`developer_instructions`のstringがproseであるTOMLだからである。Markdown系kindのfrontmatterは
 YAML — blockそのものの言語 — へserializeし、各comparisonはそのkindについてvendorが文書化して

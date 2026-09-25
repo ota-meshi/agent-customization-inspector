@@ -1,9 +1,12 @@
-// T263, T1221: browser acceptance for the Copilot instruction detail (Phase 20).
-// Launches the packaged CLI against an instruction-bearing fixture, opens a
-// Copilot instruction from the inventory, and verifies the complete inert
-// detail screen: the declarations the file wrote in authored order, the
-// instructions that follow them, the complete authored source, the
-// diagnostics, and the cleanup that takes the content away again.
+// T263, T1221, T1224: browser acceptance for the Copilot instruction detail
+// (Phase 20). Launches the packaged CLI against an instruction-bearing
+// fixture, opens a Copilot instruction from the inventory, and verifies the
+// complete inert detail screen in the shape each format takes: a path-specific
+// `*.instructions.md` — the one format Copilot documents a frontmatter for —
+// as the declarations it wrote in authored order and the instructions that
+// follow them, beside the complete authored source and its diagnostics; every
+// other file shown once and whole, a `---` block opening it a line of its
+// instructions; and the cleanup that takes the content away again.
 //
 // The claims here can only be made against a rendered page: that a credential
 // is shown exactly as written with no masking and no reveal control anywhere,
@@ -130,18 +133,19 @@ test('opens complete inert Copilot instruction detail from the inventory', async
   const recognitions = page.locator('.aci-instruction-detail__recognitions');
   await expect(recognitions).toContainText('GitHub Copilot');
   await expect(recognitions).toContainText('VS Code, CLI, Cloud agent');
-  // The declarations lead, in authored order — scope, endpoint, api_key is the
-  // file's own order, not a sort — with the credential and the environment
-  // reference exactly as written.
-  const declarations = page.locator('.aci-instruction-detail__declarations');
-  await expect(declarations).toContainText('scope');
-  await expect(declarations).toContainText(FIXTURE_SECRET);
-  await expect(declarations).toContainText(ENVIRONMENT_REFERENCE);
-  // The instructions follow: the body the frontmatter block was removed from,
-  // its reference-looking token staying source text.
-  const instructions = page.locator('.aci-instruction-detail__instructions');
-  await expect(instructions).toContainText('# House rules');
-  await expect(instructions).toContainText('See docs/setup.md before deploying.');
+  // The repository-wide file is read whole: Copilot documents a frontmatter
+  // for `*.instructions.md` alone, so the block opening this one is a line of
+  // its instructions, shown once with the rest — the credential and the
+  // environment reference exactly as written, the reference-looking token
+  // staying source text — and no tab divides it (T1224).
+  const viewer = page.locator('.aci-instruction-detail .aci-source-viewer');
+  await expect(viewer).toHaveCount(1);
+  await expect(viewer).toContainText('scope: repository');
+  await expect(viewer).toContainText(FIXTURE_SECRET);
+  await expect(viewer).toContainText(ENVIRONMENT_REFERENCE);
+  await expect(viewer).toContainText('# House rules');
+  await expect(viewer).toContainText('See docs/setup.md before deploying.');
+  await expect(page.getByRole('tablist', { name: 'Instruction detail' })).toHaveCount(0);
 });
 
 test('separates the surfaces one documented filename is read from', async ({ page }) => {
@@ -181,7 +185,10 @@ test('shows applyTo as an authored declaration and as the range its row is keyed
   ]);
   await openInstruction(page, '.github/instructions/frontend.instructions.md');
   // And the same value is on the detail as an ordinary declaration, published
-  // by the key the file wrote, beside a key this product has no opinion about.
+  // by the key the file wrote, beside a key this product has no opinion about:
+  // this is the format that opens with declarations, so the page is the parse
+  // and the file on two tabs.
+  await expect(page.getByRole('tablist', { name: 'Instruction detail' })).toBeVisible();
   const declarations = page.locator('.aci-instruction-detail__declarations');
   await expect(declarations).toContainText('applyTo');
   await expect(declarations).toContainText('src/frontend/**');
@@ -196,7 +203,9 @@ test('masks nothing, offers no reveal control, and resolves no environment refer
   page,
 }) => {
   await openInstruction(page, '.github/copilot-instructions.md');
-  await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(FIXTURE_SECRET);
+  await expect(page.locator('.aci-instruction-detail .aci-source-viewer')).toContainText(
+    FIXTURE_SECRET,
+  );
   const text = await page.locator('main').innerText();
   // The named variable is set in the host's environment, and its value still
   // appears nowhere: the authored `${...}` spelling is the whole display, and
@@ -208,7 +217,7 @@ test('masks nothing, offers no reveal control, and resolves no environment refer
 });
 
 test('serves the complete authored source on the file tab', async ({ page }) => {
-  await openInstruction(page, '.github/copilot-instructions.md');
+  await openInstruction(page, '.github/instructions/frontend.instructions.md');
   await page.getByRole('tab', { name: /^file$/iu }).click();
   // Scoped to the file panel: the instructions panel keeps its own viewer
   // mounted behind the tab strip, and this claim is about the complete file.
@@ -216,9 +225,8 @@ test('serves the complete authored source on the file tab', async ({ page }) => 
   await expect(viewer).toBeVisible();
   // The frontmatter's authored spelling lives here — the parse's two halves
   // are one tab over — together with the body, byte for byte.
-  await expect(viewer).toContainText('scope: repository');
-  await expect(viewer).toContainText(FIXTURE_SECRET);
-  await expect(viewer).toContainText('# House rules');
+  await expect(viewer).toContainText("applyTo: 'src/frontend/**'");
+  await expect(viewer).toContainText('# Frontend conventions');
 });
 
 test('renders no relationship section anywhere on the detail', async ({ page }) => {
@@ -251,7 +259,9 @@ test('reports an unparseable frontmatter with its diagnostic while the source st
 
 test('drops the content when the route leaves the file', async ({ page }) => {
   await openInstruction(page, '.github/copilot-instructions.md');
-  await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(FIXTURE_SECRET);
+  await expect(page.locator('.aci-instruction-detail .aci-source-viewer')).toContainText(
+    FIXTURE_SECRET,
+  );
   await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.locator('.aci-instruction-detail')).toHaveCount(0);
   // The detail-state cleanup took the authored content with it: nothing on

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// The instruction detail route (T224): what one instruction file declares,
-// the instructions that follow, and the complete file those were read from.
+// The instruction detail route (T224): one instruction file — what it
+// declares and the instructions that follow, where its format declares
+// anything, and the complete file.
 //
 // The file is the subject, because the file is this kind's inventory unit
 // (data-model.md § Inventory unit): no authored declaration names an
@@ -11,11 +12,18 @@
 // distinguishes what the page would show, so the path alone is the link's
 // identity, stable across rescans and server launches (FR-030).
 //
-// The parse and the file are two tabs, not one column, exactly as the skill
+// The file's format decides the page's shape (api-types.ts
+// § InstructionFileFormat). A format that opens with declarations — Copilot's
+// `*.instructions.md` — is two tabs, not one column, exactly as the skill
 // detail splits them: the declarations and instructions answer what the file
 // tells a product, while the complete authored source is where every authored
 // spelling stays readable — and stacking them would show the same text twice
-// on one screen for a file with no frontmatter block.
+// on one screen for a file that declares nothing. A format its products read
+// whole — `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, and the rest — has nothing
+// read out of it, so the page shows it once, the way the rule detail shows a
+// rule: no tabs, because there is no second subject for one to hold, and no
+// "declares none", because the format has no declarations to be without. A
+// `---` block opening such a file is shown as the line of instructions it is.
 //
 // This surface shows file contents exactly as authored — credentials
 // included, with nothing masked and no control that would uncover a masked
@@ -447,15 +455,28 @@ const openDetail = computed(() => {
 });
 
 /**
+ * The open detail when its format opens with declarations, which is when the
+ * page splits into the parse and the file; null otherwise (api-types.ts
+ * § InstructionFileFormat). A file its products read whole is shown as the
+ * one document it is — and so is a detail of another kind, which is what the
+ * host answers for a file that stopped being an instruction file after the
+ * link was made: the plain file, with nothing read out of it
+ * (session.ts § fileDetail).
+ */
+const frontmatterLedDetail = computed(() => {
+  const detail = openDetail.value;
+  return detail !== null && detail.kind === 'instructions' && detail.format === 'frontmatter-led'
+    ? detail
+    : null;
+});
+
+/**
  * The file's own presentation — the one scan-time parse, published on the
- * instructions variant of the detail (InstructionFileDetailDto). Null when
+ * frontmatter-led variant of the detail (InstructionFileDetailDto). Null when
  * extraction failed all-or-nothing, which is when there is nothing parsed to
  * show and the failure's diagnostic says so (FR-028).
  */
-const presentation = computed(() => {
-  const detail = openDetail.value;
-  return detail !== null && detail.kind === 'instructions' ? detail.presentation : null;
-});
+const presentation = computed(() => frontmatterLedDetail.value?.presentation ?? null);
 
 /**
  * The frontmatter as the YAML document the detail renders (FR-007,
@@ -494,10 +515,11 @@ const bodyIsEmpty = computed(() => (presentation.value?.bodyText ?? '') === '');
 const openDiagnostics = computed(() => openDetail.value?.diagnostics ?? []);
 
 /**
- * The two halves of an instruction detail, as the tab strip presents them:
- * what the parse read out of the file, and the complete file itself. The same
- * split the skill detail uses, for the same reason: two subjects, and stacked
- * they would show one text twice for a file with no frontmatter block.
+ * The two halves of a frontmatter-led instruction detail, as the tab strip
+ * presents them: what the parse read out of the file, and the complete file
+ * itself. The same split the skill detail uses, for the same reason: two
+ * subjects, and stacked they would show one text twice for a file that
+ * declares nothing.
  */
 const INSTRUCTION_DETAIL_TABS = ['instructions', 'file'] as const;
 
@@ -550,7 +572,9 @@ const subjectTabs = useSubjectTabs({
  * Opening a file starts on what it declares and instructs — unless its
  * extraction failed, where that panel has nothing parsed to show and the
  * complete source is the honest landing (FR-028): the failure's diagnostic
- * stays visible on both.
+ * stays visible on both. A file read whole has no tabs for the decision to
+ * reach; it is still made for it, so a move from it to a file that has them is
+ * a decision like any other.
  *
  * The detail's arrival is where that is decided, because it is the first
  * moment there is anything to decide between: the strip is rendered beside
@@ -654,8 +678,15 @@ useReportedPageSubject(titleSubject);
            on this line — the arrangement the skill detail gives a file two
            products invoke by two names (FR-007). No product is quoted for what
            it would select or load, because existence is what an admission
-           proves (FR-009). -->
-      <DetailAttributes :file="openDetail.file" :source="openSource" />
+           proves (FR-009). The removed byte-order mark is stated here when the
+           file is the page's one face, and otherwise on the file tab, beside
+           the text it was removed from (`DetailAttributes.vue`
+           § statesByteOrderMark). -->
+      <DetailAttributes
+        :file="openDetail.file"
+        :source="openSource"
+        :states-byte-order-mark="frontmatterLedDetail === null"
+      />
 
       <SourceRootNote :text="sourceRootText" />
 
@@ -714,89 +745,107 @@ useReportedPageSubject(titleSubject);
         </li>
       </ul>
 
-      <!-- Two subjects, two tabs: what the parse read out of the file, and
-           the complete file itself. A real `tablist`, with the roving
-           tabindex and arrow keys the WAI-ARIA tabs pattern specifies
-           (QR-004, contracts/accessibility-acceptance.md). -->
-      <SubjectTabStrip :tabs="subjectTabs" label="Instruction detail">
-        <template #tab="{ tab }">{{ INSTRUCTION_DETAIL_TAB_TEXT[tab] }}</template>
-      </SubjectTabStrip>
+      <template v-if="frontmatterLedDetail !== null">
+        <!-- Two subjects, two tabs: what the parse read out of the file, and
+             the complete file itself. A real `tablist`, with the roving
+             tabindex and arrow keys the WAI-ARIA tabs pattern specifies
+             (QR-004, contracts/accessibility-acceptance.md). -->
+        <SubjectTabStrip :tabs="subjectTabs" label="Instruction detail">
+          <template #tab="{ tab }">{{ INSTRUCTION_DETAIL_TAB_TEXT[tab] }}</template>
+        </SubjectTabStrip>
 
-      <!-- Both panels stay in the document and the unselected one is hidden,
-           so the source box keeps its text and the reader's scroll position across a
-           tab switch, and both `aria-controls` IDREFs resolve. -->
-      <SubjectTabPanel :tabs="subjectTabs" tab="instructions">
-        <!-- A failed extraction leaves this panel with nothing parsed to
-             show; its Diagnostic is what says so, and the complete source is
-             one tab away (FR-028). -->
-        <DetailDiagnostics v-if="presentation === null" :diagnostics="openDiagnostics" />
+        <!-- Both panels stay in the document and the unselected one is hidden,
+             so the source box keeps its text and the reader's scroll position across a
+             tab switch, and both `aria-controls` IDREFs resolve. -->
+        <SubjectTabPanel :tabs="subjectTabs" tab="instructions">
+          <!-- A failed extraction leaves this panel with nothing parsed to
+               show; its Diagnostic is what says so, and the complete source is
+               one tab away (FR-028). -->
+          <DetailDiagnostics v-if="presentation === null" :diagnostics="openDiagnostics" />
 
-        <div v-if="presentation" class="aci-instruction-detail__declarations">
-          <p v-if="presentation.frontmatter.length === 0" class="aci-note">
-            This file declares none.
+          <div v-if="presentation" class="aci-instruction-detail__declarations">
+            <p v-if="presentation.frontmatter.length === 0" class="aci-note">
+              This file declares none.
+            </p>
+            <!-- The declared keys as one read-only YAML document in the file's
+                 own order (FR-007), through the same viewer the instructions
+                 use — sized to the block, because a frontmatter is short
+                 (SourceViewer § fitContent). YAML because the block is YAML:
+                 nothing here is markup, a link, or a resolved reference
+                 (FR-025, FR-026, FR-033). "Frontmatter" because every
+                 instruction file this product reads is Markdown, so the word
+                 names what the reader sees on screen; a kind whose keys can
+                 arrive in another syntax says "Metadata" instead (the agent and
+                 prompt details), and this label changes with it the day an
+                 instruction file does. -->
+            <SourceViewer
+              v-else
+              panel-label="Frontmatter"
+              :source-text="frontmatterText"
+              :source-relative-path="openPath"
+              content-label="Frontmatter of"
+              content-language="yaml"
+            />
+          </div>
+
+          <div v-if="presentation" class="aci-instruction-detail__instructions">
+            <p v-if="bodyIsEmpty" class="aci-note">This file has none.</p>
+            <!-- The same read-only viewer the file tab uses, given the file's
+                 own path so the body is highlighted as the Markdown it is.
+                 Highlighting is tokenizing, not rendering: no heading becomes
+                 large, no link becomes clickable, and no image loads (FR-033). -->
+            <SourceViewer
+              v-else
+              panel-label="Instructions"
+              :source-text="presentation.bodyText"
+              :source-relative-path="openPath"
+              content-label="Instructions of"
+            />
+          </div>
+        </SubjectTabPanel>
+
+        <SubjectTabPanel :tabs="subjectTabs" tab="file">
+          <!-- What the read produced, and nothing else. The file below is the
+               file; a viewer that narrated what a file might contain would be
+               telling the reader about their own repository (FR-027). -->
+          <p class="aci-note">
+            {{ FILE_ENCODING_TEXT[openDetail.file.encoding]
+            }}<template v-if="openDetail.file.encoding !== 'unknown'">
+              · {{ openDetail.file.sizeBytes }} bytes</template
+            ><template v-if="isReadableFile(openDetail.file) && openDetail.file.hadLeadingBom">
+              · byte-order mark removed before decoding</template
+            >
           </p>
-          <!-- The declared keys as one read-only YAML document in the file's
-               own order (FR-007), through the same viewer the instructions
-               use — sized to the block, because a frontmatter is short
-               (SourceViewer § fitContent). YAML because the block is YAML:
-               nothing here is markup, a link, or a resolved reference
-               (FR-025, FR-026, FR-033). "Frontmatter" because every
-               instruction file this product reads is Markdown, so the word
-               names what the reader sees on screen; a kind whose keys can
-               arrive in another syntax says "Metadata" instead (the agent and
-               prompt details), and this label changes with it the day an
-               instruction file does. -->
+
+          <DetailDiagnostics :diagnostics="openDiagnostics" />
+
+          <!-- Only the readable variants carry text. An unreadable file has no
+               source to show and its diagnostic above says why. -->
           <SourceViewer
-            v-else
-            panel-label="Frontmatter"
-            :source-text="frontmatterText"
-            :source-relative-path="openPath"
-            content-label="Frontmatter of"
-            content-language="yaml"
+            v-if="isReadableFile(openDetail.file)"
+            panel-label="Source"
+            :source-text="openDetail.file.sourceText"
+            :source-relative-path="openDetail.file.sourceRelativePath"
           />
-        </div>
+          <p v-else class="aci-note">This file has no source text to show.</p>
+        </SubjectTabPanel>
+      </template>
 
-        <div v-if="presentation" class="aci-instruction-detail__instructions">
-          <p v-if="bodyIsEmpty" class="aci-note">This file has none.</p>
-          <!-- The same read-only viewer the file tab uses, given the file's
-               own path so the body is highlighted as the Markdown it is.
-               Highlighting is tokenizing, not rendering: no heading becomes
-               large, no link becomes clickable, and no image loads (FR-033). -->
-          <SourceViewer
-            v-else
-            panel-label="Instructions"
-            :source-text="presentation.bodyText"
-            :source-relative-path="openPath"
-            content-label="Instructions of"
-          />
-        </div>
-      </SubjectTabPanel>
-
-      <SubjectTabPanel :tabs="subjectTabs" tab="file">
-        <!-- What the read produced, and nothing else. The file below is the
-             file; a viewer that narrated what a file might contain would be
-             telling the reader about their own repository (FR-027). -->
-        <p class="aci-note">
-          {{ FILE_ENCODING_TEXT[openDetail.file.encoding]
-          }}<template v-if="openDetail.file.encoding !== 'unknown'">
-            · {{ openDetail.file.sizeBytes }} bytes</template
-          ><template v-if="isReadableFile(openDetail.file) && openDetail.file.hadLeadingBom">
-            · byte-order mark removed before decoding</template
-          >
-        </p>
-
-        <DetailDiagnostics :diagnostics="openDiagnostics" />
-
-        <!-- Only the readable variants carry text. An unreadable file has no
-             source to show and its diagnostic above says why. -->
-        <SourceViewer
-          v-if="isReadableFile(openDetail.file)"
-          panel-label="Source"
-          :source-text="openDetail.file.sourceText"
-          :source-relative-path="openDetail.file.sourceRelativePath"
-        />
-        <p v-else class="aci-note">This file has no source text to show.</p>
-      </SubjectTabPanel>
+      <!-- A file its products read whole: the one document, shown once, as
+           the rule detail shows a rule. No diagnostics list, because nothing
+           is read out of the file, so its instruction reading has nothing
+           that could fail (FR-028). The readability guard is the narrowing the
+           file's own union asks for and never a branch with a second outcome:
+           a recognition exists only for a readable file. The viewer colours by
+           the path's own extension; colouring is tokenizing rather than
+           rendering, so no heading becomes large and no link becomes
+           clickable (FR-033). -->
+      <SourceViewer
+        v-else-if="isReadableFile(openDetail.file)"
+        panel-label="Source"
+        :source-text="openDetail.file.sourceText"
+        :source-relative-path="openDetail.file.sourceRelativePath"
+      />
     </template>
   </DetailPage>
 </template>

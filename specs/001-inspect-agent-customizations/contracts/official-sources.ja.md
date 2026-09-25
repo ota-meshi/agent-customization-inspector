@@ -153,7 +153,7 @@ digest inputとする。Heading、prose、blank line、連続table後のlineはh
 | GitHub Copilot | `a6f35ab28711f719500e2a4121a9aeb9d56f74f5b4accecdcd3e9c4643416525` | `b1ec5038a7c581fea4d4ed9e0f83eb7ca730c18312c65a6689bfcc3a93a3a926` |
 | Claude Code | `59fab461ebf26a0178658fc6aaac5b62594788bc515d48d8486fd522e7efedc7` | `3dfaefcd4f1f4de30f5e80076366ec7bb9bdb58d90fff006cda8d16590acfcbb` |
 | OpenAI Codex | `2a598e1bd30690cfe07d64cd6e1a8c5d80512249eacb5e1e59741bd3d9194226` | `e985ad14696d2ef2a47e7fcacbdbb39a83864fdd4d5c62546112f25e62e98301` |
-| Antigravity CLI | `459f17af2fa11f372847a99ccdf81eaa7de48f804ab15ef297d4dc4e1e276812` | `d79efa39bda4758b6a8de3504ad53927d7e5fdbe6ce189f145c005497edaaec0` |
+| Antigravity CLI | `e400f3a590cdd8efbf851898f9d9ab2c4dd76e6f2bd9e7b7eaa235ae731cbef3` | `200f1e85d2d7a08de6d5a3f8f8cf83f47b5ccadf80fb86a8a275da8174d9d406` |
 
 Implementation freeze testは8 inputすべてを正確に再計算し、fileごとにmatching headingと連続tableが正確に1つだけ
 存在することを要求し、全digestをconstant timeで比較し、row IDと英日semantic parityを別に検証しなければならない。

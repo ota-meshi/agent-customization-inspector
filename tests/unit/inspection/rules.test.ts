@@ -2500,14 +2500,18 @@ describe('the applicability range a Claude instruction rule answers (T1093)', ()
   const instructionRule = CLAUDE_REPOSITORY_RULES.find(
     (candidate) => candidate.kind === 'instructions',
   );
-  if (instructionRule === undefined || instructionRule.kind !== 'instructions') {
-    throw new Error('expected a compiled Claude instruction rule');
+  if (
+    instructionRule === undefined ||
+    instructionRule.kind !== 'instructions' ||
+    instructionRule.format !== 'whole-document'
+  ) {
+    throw new Error('expected a compiled Claude instruction rule read whole');
   }
-  // Claude's rules name no declaration that could carry a range, so every case
-  // here answers from the path with an empty declaration set — and always
-  // answers: only a declared-range filename can have no range, and Claude
-  // ships none.
-  const rangeOf = (path: string): string | null => instructionRule.applicabilityRangeOf(path, []);
+  // Claude reads its instruction files whole, so every case here answers from
+  // the path alone — and always answers: only a format that declares its own
+  // range can have none, and Claude ships none (api-types.ts
+  // § InstructionFileFormat).
+  const rangeOf = (path: string): string => instructionRule.applicabilityRangeOf(path);
 
   it('answers the Repository root for a file the root holds', () => {
     expect(rangeOf('CLAUDE.md')).toBe('**');
@@ -2824,7 +2828,13 @@ describe('the shipped Copilot instruction plans and their matrix (T247)', () => 
     if (compiled.kind !== 'instructions') {
       throw new Error(`expected a compiled Copilot instruction rule for ${ruleId}`);
     }
-    return compiled.applicabilityRangeOf(path, declared);
+    // The unit's format decides what it is asked: a path-specific file answers
+    // from its declarations, every other file from its path, and the other
+    // half of the case is never handed over (api-types.ts
+    // § InstructionFileFormat).
+    return compiled.format === 'frontmatter-led'
+      ? compiled.applicabilityRangeOf(declared)
+      : compiled.applicabilityRangeOf(path);
   }
 
   /** One declared frontmatter key, for the declared-range cases below. */
@@ -3014,9 +3024,12 @@ describe('the shipped Copilot instruction plans and their matrix (T247)', () => 
     // A file whose extraction failed declares nothing here: no range is known,
     // and its parse-failure diagnostic states why beside it (FR-028).
     expect(rangeOf('copilot.repo.instructions.path', path, [])).toBeNull();
-    // And the key is read only for the filename Copilot documents it on: an
-    // `AGENTS.md` carrying `applyTo` declared it to nobody, and its range
-    // stays the path's.
+    // And the key is read only for the format Copilot documents it on: an
+    // `AGENTS.md` is read whole, so one carrying `applyTo` declared it to
+    // nobody, its unit reads no declaration at all, and its range stays the
+    // path's.
+    const agentsRule = copilotRule('copilot.repo.instructions.agents');
+    expect(agentsRule.kind === 'instructions' && agentsRule.format).toBe('whole-document');
     expect(
       rangeOf(
         'copilot.repo.instructions.agents',

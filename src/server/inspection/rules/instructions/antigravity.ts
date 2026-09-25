@@ -16,7 +16,7 @@
 // extend that base, and a base declared in either would have to be imported
 // back by the other.
 import { AntigravityCompiledRule } from '../vendor/antigravity';
-import type { CompiledStaticInstructionRule } from './compiled-rule';
+import type { CompiledStaticWholeDocumentInstructionRule } from './compiled-rule';
 import { escapeGlobLiteral } from './applicability-range';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
 
@@ -27,10 +27,18 @@ import type { InspectionRule } from '../../../../shared/registries/rule-types';
  */
 export class AntigravityCompiledInstructionRule
   extends AntigravityCompiledRule
-  implements CompiledStaticInstructionRule
+  implements CompiledStaticWholeDocumentInstructionRule
 {
   /** Narrowed to the one kind this unit compiles; the constructor proves it. */
   declare public readonly kind: 'instructions';
+
+  /**
+   * Read whole: the page states that `AGENTS.md` and `GEMINI.md` use no
+   * frontmatter and that the terminal treats their entire content as plain
+   * Markdown (google.antigravity.rules § YAML frontmatter and activation
+   * modes; api-types.ts § InstructionFileFormat).
+   */
+  public readonly format: 'whole-document';
 
   /**
    * The glob one admitted workspace context file governs: the directory
@@ -54,6 +62,7 @@ export class AntigravityCompiledInstructionRule
     if (rule.kind !== 'instructions') {
       throw new TypeError(`rule ${rule.ruleId} is not an Antigravity CLI instruction rule`);
     }
+    this.format = 'whole-document';
   }
 }
 
@@ -63,10 +72,17 @@ export class AntigravityCompiledInstructionRule
  */
 export class AntigravityCompiledGlobalInstructionRule
   extends AntigravityCompiledRule
-  implements CompiledStaticInstructionRule
+  implements CompiledStaticWholeDocumentInstructionRule
 {
   /** Narrowed to the one kind this unit compiles; the constructor proves it. */
   declare public readonly kind: 'instructions';
+
+  /**
+   * Read whole: the page gives the standalone global files as needing no
+   * frontmatter (google.antigravity.rules § Global rules; api-types.ts
+   * § InstructionFileFormat).
+   */
+  public readonly format: 'whole-document';
 
   /**
    * `**` — the whole of the consented boundary, for every admitted global file
@@ -84,5 +100,6 @@ export class AntigravityCompiledGlobalInstructionRule
     if (rule.kind !== 'instructions') {
       throw new TypeError(`rule ${rule.ruleId} is not an Antigravity CLI instruction rule`);
     }
+    this.format = 'whole-document';
   }
 }

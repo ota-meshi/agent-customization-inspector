@@ -1,9 +1,10 @@
-// T240: browser acceptance for the Claude instruction detail (Phase 18).
-// Launches the packaged CLI against an instruction-bearing fixture, opens a
-// Claude instruction file from the inventory, and verifies the complete inert
-// detail screen: the declarations the file wrote in authored order, the
-// instructions that follow them, the complete authored source, the diagnostic
-// of a file whose frontmatter cannot be parsed, and the cleanup that takes the
+// T240, T1224: browser acceptance for the Claude instruction detail (Phase
+// 18). Launches the packaged CLI against an instruction-bearing fixture, opens
+// a Claude instruction file from the inventory, and verifies the complete
+// inert detail screen: the file shown once and whole, with no tabs — Claude
+// Code documents no frontmatter for a `CLAUDE.md`, so a `---` block opening one
+// is a line of its instructions rather than declarations to set beside it —
+// no diagnostic for a block that is not YAML, and the cleanup that takes the
 // content away again.
 //
 // The claims here can only be made against a rendered page: that a credential
@@ -17,8 +18,8 @@
 // ends at is fixed by no official page, so any extraction rule would be this
 // product's invention and a wrong one would assert a reference the reader never
 // wrote. The token therefore reaches the screen the way every other authored
-// character does — through the instructions and the complete source — and no
-// relationship section exists to carry it.
+// character does — through the complete source — and no relationship section
+// exists to carry it.
 //
 // The visible checkpoint of this milestone: selecting a Claude instruction
 // shows complete inert detail without opening the files it names, at the
@@ -67,14 +68,18 @@ test.beforeEach(async () => {
   // under a second row.
   await mkdir(join(fixture, 'packages/api'), { recursive: true });
   await writeFile(join(fixture, 'packages/api/CLAUDE.md'), '# Nested instructions\n', 'utf8');
-  // A second root file whose frontmatter cannot be parsed: extraction is
-  // all-or-nothing, so its declarations and instructions are absent while its
-  // complete source stays readable (FR-028).
+  // A second root file opening with a block that is not YAML. Claude Code
+  // reads the file whole, so the block is a line of its instructions: nothing
+  // parses it, so nothing fails (FR-028).
   await writeFile(
     join(fixture, 'CLAUDE.local.md'),
-    '---\nscope: [unterminated\n---\n\n# Broken local instructions\n',
+    '---\nscope: [unterminated\n---\n\n# Local instructions\n',
     'utf8',
   );
+  // A file written with a leading byte-order mark, which the one face states
+  // on the line under the heading because no file tab exists to state it.
+  await mkdir(join(fixture, 'packages/web'), { recursive: true });
+  await writeFile(join(fixture, 'packages/web/CLAUDE.md'), '\uFEFF# Web instructions\n', 'utf8');
   // The file the authored token names. It exists so "no target is opened" is
   // proven against a real file rather than against an absence.
   await mkdir(join(fixture, 'docs'), { recursive: true });
@@ -128,17 +133,19 @@ test('opens complete inert instruction detail from the inventory', async ({ page
   await expect(attributes).toContainText('VS Code, CLI, Cloud agent');
   await expect(attributes).toContainText('Claude Code');
   await expect(attributes).toContainText('CLI and IDE clients');
-  // The declarations lead, in authored order — scope, endpoint, api_key is the
-  // file's own order, not a sort — with the credential and the environment
-  // reference exactly as written.
-  const declarations = page.locator('.aci-instruction-detail__declarations');
-  await expect(declarations).toContainText('scope');
-  await expect(declarations).toContainText(FIXTURE_SECRET);
-  await expect(declarations).toContainText(ENVIRONMENT_REFERENCE);
-  // The instructions follow: the body the frontmatter block was removed from.
-  const instructions = page.locator('.aci-instruction-detail__instructions');
-  await expect(instructions).toContainText('# House rules');
-  await expect(instructions).toContainText('See @docs/setup.md before deploying.');
+  // The file, once and whole: the block that opens it is a line of the
+  // instructions like the rest, with the credential and the environment
+  // reference exactly as written, so there is no second subject for a tab to
+  // hold and no declaration panel to say it holds none (T1224).
+  const viewer = page.locator('.aci-instruction-detail .aci-source-viewer');
+  await expect(viewer).toHaveCount(1);
+  await expect(viewer).toContainText('scope: project');
+  await expect(viewer).toContainText(FIXTURE_SECRET);
+  await expect(viewer).toContainText(ENVIRONMENT_REFERENCE);
+  await expect(viewer).toContainText('# House rules');
+  await expect(viewer).toContainText('See @docs/setup.md before deploying.');
+  await expect(page.getByRole('tablist', { name: 'Instruction detail' })).toHaveCount(0);
+  await expect(page.locator('.aci-instruction-detail')).not.toContainText('declares none');
 });
 
 test('opens a subdirectory instruction file exactly as it opens the root one', async ({ page }) => {
@@ -148,11 +155,21 @@ test('opens a subdirectory instruction file exactly as it opens the root one', a
   // (FR-030). Depth changes nothing else about the page.
   await expect(page.locator('.aci-instruction-detail h2')).toHaveText('packages/api/CLAUDE.md');
   await expect(page.locator('.aci-instruction-detail__ranges')).toContainText('Claude Code');
-  await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(
-    'This file declares none.',
-  );
-  await expect(page.locator('.aci-instruction-detail__instructions')).toContainText(
+  await expect(page.locator('.aci-instruction-detail .aci-source-viewer')).toContainText(
     '# Nested instructions',
+  );
+});
+
+test('states a removed byte-order mark on the line under the heading', async ({ page }) => {
+  // The one face has no file tab, so the line of the file's own facts is
+  // where the decoding is stated in full (`DetailAttributes.vue`
+  // § statesByteOrderMark).
+  await openInstruction(page, 'packages/web/CLAUDE.md');
+  await expect(page.locator('.aci-instruction-detail .aci-detail-attributes')).toContainText(
+    'byte-order mark removed before decoding',
+  );
+  await expect(page.locator('.aci-instruction-detail .aci-source-viewer')).toContainText(
+    '# Web instructions',
   );
 });
 
@@ -160,7 +177,9 @@ test('masks nothing, offers no reveal control, and resolves no environment refer
   page,
 }) => {
   await openInstruction(page, 'CLAUDE.md');
-  await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(FIXTURE_SECRET);
+  await expect(page.locator('.aci-instruction-detail .aci-source-viewer')).toContainText(
+    FIXTURE_SECRET,
+  );
   const text = await page.locator('main').innerText();
   // The named variable is set in the host's environment, and its value still
   // appears nowhere: the authored `${...}` spelling is the whole display, and
@@ -171,20 +190,6 @@ test('masks nothing, offers no reveal control, and resolves no environment refer
   expect(text).not.toMatch(/•{3,}|\*{3,}/u);
 });
 
-test('serves the complete authored source on the file tab', async ({ page }) => {
-  await openInstruction(page, 'CLAUDE.md');
-  await page.getByRole('tab', { name: /^file$/iu }).click();
-  // Scoped to the file panel: the instructions panel keeps its own viewer
-  // mounted behind the tab strip, and this claim is about the complete file.
-  const viewer = page.locator('#aci-instruction-panel-file .aci-source-viewer');
-  await expect(viewer).toBeVisible();
-  // The frontmatter's authored spelling lives here — the parse's two halves
-  // are one tab over — together with the body, byte for byte.
-  await expect(viewer).toContainText('scope: project');
-  await expect(viewer).toContainText(FIXTURE_SECRET);
-  await expect(viewer).toContainText('# House rules');
-});
-
 test('keeps an authored @path token as source text, with no relationship section', async ({
   page,
 }) => {
@@ -192,11 +197,11 @@ test('keeps an authored @path token as source text, with no relationship section
   // Claude Code documents this syntax, and the product still records no edge:
   // where an authored token ends is fixed by no official page, so extracting
   // one would mean inventing the rule and asserting references the reader did
-  // not write. The token stays in the instructions the reader can read.
-  // Asserted through the panel that renders it, because the instructions are
-  // drawn by the source viewer and appear as it finishes mounting; the
-  // negatives below are read from the settled page.
-  await expect(page.locator('.aci-instruction-detail__instructions')).toContainText(
+  // not write. The token stays in the file the reader can read. Asserted
+  // through the viewer that renders it, because the file is drawn by the
+  // source viewer and appears as it finishes mounting; the negatives below are
+  // read from the settled page.
+  await expect(page.locator('.aci-instruction-detail .aci-source-viewer')).toContainText(
     'See @docs/setup.md before deploying.',
   );
   const text = await page.locator('main').innerText();
@@ -209,27 +214,23 @@ test('keeps an authored @path token as source text, with no relationship section
   expect(await page.locator('main').innerText()).not.toContain('docs/setup.md');
 });
 
-test('reports an unparseable frontmatter with its diagnostic while the source stays readable', async ({
+test('shows a block that is not YAML as a line of the file, with no diagnostic', async ({
   page,
 }) => {
   await openInstruction(page, 'CLAUDE.local.md');
-  // Extraction failed all-or-nothing: the page lands on the file itself, the
-  // failure's diagnostic says why no declarations show, and the complete
-  // source stays readable (FR-028).
-  await expect(page.locator('.aci-instruction-detail')).toContainText(
-    'This file could not be parsed',
-  );
-  await expect(page.getByRole('tab', { name: /^file$/iu })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  // Nothing parses the block of a file read whole, so nothing failed: the
+  // page is the file, block included, and states no failure (FR-028).
   const viewer = page.locator('.aci-instruction-detail .aci-source-viewer');
-  await expect(viewer).toContainText('# Broken local instructions');
+  await expect(viewer).toContainText('scope: [unterminated');
+  await expect(viewer).toContainText('# Local instructions');
+  await expect(page.locator('.aci-instruction-detail')).not.toContainText('could not be parsed');
 });
 
 test('drops the content when the route leaves the file', async ({ page }) => {
   await openInstruction(page, 'CLAUDE.md');
-  await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(FIXTURE_SECRET);
+  await expect(page.locator('.aci-instruction-detail .aci-source-viewer')).toContainText(
+    FIXTURE_SECRET,
+  );
   await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.locator('.aci-instruction-detail')).toHaveCount(0);
   // The detail-state cleanup took the authored content with it: nothing on the

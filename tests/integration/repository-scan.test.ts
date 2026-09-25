@@ -3172,8 +3172,8 @@ describe('the committed Claude instructions inventory (T229)', () => {
     expect(serialized).not.toContain('@docs/setup.md');
   });
 
-  it('confines the malformed file to its own diagnostic and a partial outcome', async () => {
-    const fixture = buildClaudeInstructionFixture('inspector-scan-claude-instructions-partial');
+  it('reads a block that is not YAML as instructions, committing a complete generation', async () => {
+    const fixture = buildClaudeInstructionFixture('inspector-scan-claude-instructions-block');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
 
@@ -3181,25 +3181,20 @@ describe('the committed Claude instructions inventory (T229)', () => {
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
     }
-    // A frontmatter block no parser can read is that recognition's `failed`
-    // state: extraction is all-or-nothing, the file keeps its row and its
-    // complete readable source, and the failure makes the generation
-    // `partial` without touching any other file (FR-028).
-    expect(publication.outcome).toBe('partial');
+    // Claude Code reads a `CLAUDE.md` whole, so a `---` block opening one is
+    // a line of its instructions: nothing parses it, so nothing can fail, and
+    // the file keeps its row and its complete source with no diagnostic
+    // (T1224; api-types.ts § InstructionFileFormat).
+    expect(publication.outcome).toBe('complete');
     const snapshot = context.session.snapshot();
-    expect(snapshot.diagnostics).toHaveLength(1);
-    expect(snapshot.diagnostics[0]!.code).toBe('recognition-parse-failed');
-    const malformed = snapshot.files.find(
-      (file) => file.sourceRelativePath === fixture.malformedInstructionPath,
-    );
-    expect(malformed?.diagnosticIds).toEqual([snapshot.diagnostics[0]!.diagnosticId]);
-    for (const file of snapshot.files) {
-      if (file.sourceRelativePath !== fixture.malformedInstructionPath) {
-        expect(file.diagnosticIds, file.sourceRelativePath).toEqual([]);
-      }
-    }
-    // The failure changes no grouping: a range comes from where a file sits,
-    // not from what parsed, so the three ranges and their eight files stay.
+    expect(snapshot.diagnostics).toEqual([]);
+    expect(
+      snapshot.files.find(
+        (file) => file.sourceRelativePath === fixture.unparseableBlockInstructionPath,
+      )?.diagnosticIds,
+    ).toEqual([]);
+    // A range comes from where a file sits, so the three ranges and their
+    // eight files stand.
     expect(snapshot.instructions.map((entry) => entry.applicabilityRange)).toEqual([
       '**',
       'docs/**',
@@ -4116,14 +4111,20 @@ describe('the unified instructions inventory (T270)', () => {
       ).toBe(false);
     }
 
-    // Partial publication only after complete traversal: the two
-    // deterministic file-confined outcomes — the malformed frontmatter and
-    // the binary candidate — are the generation's only diagnostics, and both
-    // files stay published under their own facts (FR-028).
+    // Partial publication only after complete traversal: the deterministic
+    // file-confined outcome — the binary candidate — is the generation's only
+    // diagnostic, and the file stays published under its own facts (FR-028).
+    // The `CLAUDE.md` opening with a block that is not YAML carries none: it
+    // is read whole, so nothing parsed it to fail (T1224).
     expect(publication.outcome).toBe('partial');
     expect(snapshot.diagnostics.map((diagnostic) => diagnostic.sourceRelativePath).sort()).toEqual(
-      [fixture.malformedInstructionPath, ...fixture.diagnosticOnlyPaths].sort(),
+      [...fixture.diagnosticOnlyPaths].sort(),
     );
+    expect(
+      snapshot.files.find(
+        (file) => file.sourceRelativePath === fixture.unparseableBlockInstructionPath,
+      )?.diagnosticIds,
+    ).toEqual([]);
     const binary = snapshot.files.find(
       (file) => file.sourceRelativePath === fixture.diagnosticOnlyPaths[0],
     );
@@ -4158,13 +4159,9 @@ describe('the unified instructions inventory (T270)', () => {
     expect(publication.outcome).toBe('partial');
     const snapshot = context.session.snapshot();
     expect(snapshot.repositoryGeneration).toBe(1);
-    // Only the injected file's diagnostic joins the two deterministic ones.
+    // Only the injected file's diagnostic joins the deterministic one.
     expect(snapshot.diagnostics.map((diagnostic) => diagnostic.sourceRelativePath).sort()).toEqual(
-      [
-        fixture.injectionTargetPath,
-        fixture.malformedInstructionPath,
-        ...fixture.diagnosticOnlyPaths,
-      ].sort(),
+      [fixture.injectionTargetPath, ...fixture.diagnosticOnlyPaths].sort(),
     );
     // The complete published set is retained — the unreadable target keeps
     // its diagnostic-only item — while its row alone drops out of the matrix.
@@ -5024,8 +5021,8 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
     expect(snapshot.instructions.map((entry) => entry.applicabilityRange)).toEqual([
       '.claude/agents/**',
     ]);
-    // Each route asks for its own kind and receives that kind's parse of the
-    // one file, in the shape that variant publishes it (session.ts
+    // Each route asks for its own kind and receives that kind's reading of
+    // the one file, in the shape that variant publishes it (session.ts
     // § fileDetail).
     const asAgent = context.session.fileDetail('.claude/agents/CLAUDE.md', 'repository', 'agent');
     if (asAgent?.kind !== 'agent' || asAgent.presentation === null) {
@@ -5041,14 +5038,16 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
       'repository',
       'instructions',
     );
-    if (asInstructions?.kind !== 'instructions' || asInstructions.presentation === null) {
-      throw new Error('expected a parsed instructions detail');
-    }
-    expect(asInstructions.presentation.frontmatter.map((entry) => entry.key)).toEqual([
-      'name',
-      'description',
-    ]);
-    expect(asInstructions.presentation.bodyText).toBe('\n# Body\n');
+    // As an instruction file it is read whole: Claude Code documents no
+    // frontmatter for a `CLAUDE.md`, so the block the agent reading splits off
+    // is a line of the instructions here, and nothing is read out of it
+    // (api-types.ts § InstructionFileFormat).
+    expect(asInstructions).toMatchObject({
+      kind: 'instructions',
+      format: 'whole-document',
+      diagnostics: [],
+    });
+    expect(asInstructions).not.toHaveProperty('presentation');
   });
 
   it('serves the two halves of a subagent detail and no MCP row for its frontmatter', async () => {

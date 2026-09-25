@@ -1739,16 +1739,25 @@ export class InspectionSession {
               diagnostics,
             };
           case 'instructions':
-            return {
-              kind: 'instructions',
-              file,
-              // The same all-or-nothing rule as the skill variant (FR-028).
-              presentation:
-                parseStatus === 'parsed'
-                  ? { frontmatter: details.frontmatter, bodyText: details.bodyText }
-                  : null,
-              diagnostics,
-            };
+            // The variant the format decides (api-types.ts
+            // § InstructionFileFormat). Any recognition of the file answers:
+            // the files read for their declarations are the `*.instructions.md`
+            // below Copilot's own instruction directories, where no other
+            // product's rule admits a file, so every recognition of one file
+            // reads it the same way.
+            return details.format === 'frontmatter-led'
+              ? {
+                  kind: 'instructions',
+                  format: 'frontmatter-led',
+                  file,
+                  // The same all-or-nothing rule as the skill variant (FR-028).
+                  presentation:
+                    parseStatus === 'parsed'
+                      ? { frontmatter: details.frontmatter, bodyText: details.bodyText }
+                      : null,
+                  diagnostics,
+                }
+              : { kind: 'instructions', format: 'whole-document', file, diagnostics };
           case 'prompt/command':
             // The file plus its own parse, in the two halves the kind shows
             // (api-types.ts § PromptPresentationDto).

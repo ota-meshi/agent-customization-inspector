@@ -13,7 +13,7 @@
 // that base, and a base declared in either would have to be imported back by
 // the other.
 import { ClaudeCompiledRule } from '../vendor/claude';
-import type { CompiledStaticInstructionRule } from './compiled-rule';
+import type { CompiledStaticWholeDocumentInstructionRule } from './compiled-rule';
 import { escapeGlobLiteral } from './applicability-range';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
 
@@ -31,10 +31,19 @@ import type { InspectionRule } from '../../../../shared/registries/rule-types';
  */
 export class ClaudeCompiledInstructionRule
   extends ClaudeCompiledRule
-  implements CompiledStaticInstructionRule
+  implements CompiledStaticWholeDocumentInstructionRule
 {
   /** Narrowed to the one kind this unit compiles; the constructor proves it. */
   declare public readonly kind: 'instructions';
+
+  /**
+   * Read whole: the memory page documents a frontmatter for a `.claude/rules/`
+   * file alone — a rule rather than an instruction file — and none for a
+   * `CLAUDE.md`, a `CLAUDE.local.md`, or an `AGENTS.md`
+   * (anthropic.claude-code.memory.locations-load § Organize rules with
+   * .claude/rules/; api-types.ts § InstructionFileFormat).
+   */
+  public readonly format: 'whole-document';
 
   /**
    * The glob one admitted Claude instruction file governs: the directory
@@ -69,5 +78,6 @@ export class ClaudeCompiledInstructionRule
     if (rule.kind !== 'instructions') {
       throw new TypeError(`rule ${rule.ruleId} is not a Claude instruction rule`);
     }
+    this.format = 'whole-document';
   }
 }

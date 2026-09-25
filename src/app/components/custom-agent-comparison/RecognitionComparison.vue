@@ -102,10 +102,12 @@ function surfacesText(definition: CustomAgentSideDefinition): string {
 
 <template>
   <div class="aci-custom-agent-recognition-comparison">
-    <!-- The sections stand in the order a reader needs them: what each file
-         declares, what each file says, then the complete files the page
-         supplies, and last the recognitions — which tool reads which side is
-         context for the rest rather than the subject of the comparison. -->
+    <!-- The sections stand in the order a reader needs them: which products
+         read each side, then what each file declares, what each file says, and
+         last the complete files the page supplies. The recognitions lead
+         because they say who the difference below is a difference for — and
+         because they are the only place a comparison can state that a product
+         reads neither side, which the side cards can only leave unsaid. -->
     <p v-if="comparison.tools.length === 0" class="aci-note">
       No compared file here carries a recognition, so there is nothing of this kind to compare here.
       Each file's own detail still shows what it declares and what it instructs.
@@ -245,14 +247,14 @@ function surfacesText(definition: CustomAgentSideDefinition): string {
         />
       </section>
     </template>
-    <!-- Where the page's complete authored sources land: below the two
-         halves they were split into and above the recognitions. The page owns
-         what that is, because it differs by kind — one diff where both sides
-         share a format, two independent viewers for the custom-agent kind,
-         whose two formats have no meaningful byte-for-byte alignment — while
-         the order is this component's, so every kind's comparison reads the
-         same way. Outside the recognition branch above, because a file every
-         tool fails to recognize still shows its bytes (FR-027). -->
+    <!-- Where the page's complete authored sources land: last, below the two
+         halves they were split into. The page owns what that is, because it
+         differs by kind — one diff where both sides share a format, two
+         independent viewers for the custom-agent kind, whose two formats have
+         no meaningful byte-for-byte alignment — while the order is this
+         component's, so every kind's comparison reads the same way. Outside
+         the recognition branch above, because a file every tool fails to
+         recognize still shows its bytes (FR-027). -->
     <slot name="source" />
   </div>
 </template>

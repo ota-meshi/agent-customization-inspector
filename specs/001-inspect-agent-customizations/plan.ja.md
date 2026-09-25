@@ -24,7 +24,8 @@ sourceをそれ自身の着色されたtextとして表示し、2つのsourceの
 toolごとに比較し、宣言済みmetadataは1回だけ比較する — sideごとに1つのcanonical documentへ
 serializeし、それをcomparisonがsourceの傍らに示す。kind/fieldで対応付けてVue
 componentで描画するのではない。その背後のparseは、Markdown系kindについては`(file, kind)`
-ごと、custom-agent kindについては`(file, tool)`ごとに1回であり、後者の分割はadmitした
+ごと — productが全体をそのまま読むinstruction fileは何も宣言しないので1回も行わない — 、
+custom-agent kindについては`(file, tool)`ごとに1回であり、後者の分割はadmitした
 rule自身の読み取りである。
 
 Root selectionは単純かつlexicalとする。CLIは`process.cwd()`を正確に1回captureし、`--root <path>`を
@@ -1011,7 +1012,8 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   比較し、fileの宣言済みmetadataは1回だけ比較する — sideごとに1つのcanonical documentへ
   serializeし、それをcomparisonがsourceの傍らに示す。kind/fieldで対応付けてVue
   componentで描画するのではない。その背後のparseは、Markdown系kindについては`(file, kind)`
-  ごと、custom-agent kindについては`(file, tool)`ごとに1回であり、後者の分割はadmitした
+  ごと — productが全体をそのまま読むinstruction fileは何も宣言しないので1回も行わない — 、
+  custom-agent kindについては`(file, tool)`ごとに1回であり、後者の分割はadmitした
   rule自身の読み取りである。Repository comparison acceptanceでは最初に同じRepository Source内のreadableなcurrent-generation distinctなカスタマイズファイル
   2件を使用し、正常なGlobal commit後だけ、2つのconsented homeが持つ同じrowのreadableなfileどうしの
   比較を、各owning SourceとSource-relative namespaceを維持したままUS4で検証する — 比較は1つの
