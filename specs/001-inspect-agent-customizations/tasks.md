@@ -34,10 +34,10 @@ the task would have built.
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
 | FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
-| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222, T1225, T1227 |
+| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222, T1225, T1227, T1228 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078, T1215–T1216 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
-| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224, T1227 |
+| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224, T1227, T1228 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
 | FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
 | FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220, T1221, T1224, T1227 |
@@ -1969,9 +1969,9 @@ the task would have built.
   exclusions, and an explicit configured-fallback-pending state with zero config rows in
   `tests/e2e/codex-instructions-inventory.spec.ts` *(amended 2026-08-17: T1088 activates the
   configured fallbacks in this same phase, so the suite asserts the activated fallback rows and the
-  carrier's complete absence.)* *(amended 2026-08-08: a detail shows the declarations the file
-  wrote, and what a vendor documents stays in its maintained contract, so no surface projects trust,
-  precedence, order, or uncertainty (FR-009, T091).)*
+  carrier's complete absence.)* *(amended 2026-08-08: what a vendor documents stays in its
+  maintained contract, so no surface projects trust, precedence, order, or uncertainty (FR-009,
+  T091).)*
 
 ### Implementation
 
@@ -2165,9 +2165,8 @@ the task would have built.
   contract, and no surface states what a product would do, so nothing projects an order, a capacity,
   a condition, or an applicability (FR-009, T091).)*
 - [X] T225 [US2] Add English Codex instruction detail and fallback messages in the Vue components
-  that render them *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a
-  vendor documents stays in its maintained contract, so no surface projects trust, precedence,
-  order, or uncertainty (FR-009, T091).)*
+  that render them *(amended 2026-08-08: what a vendor documents stays in its maintained contract,
+  so no surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
 
 ---
 
@@ -2224,8 +2223,8 @@ the task would have built.
   working directory, which the Inspector does not observe — the rule matches `CLAUDE.md` at every
   depth, and no per-file classification renders (FR-009, T091).)* *(amended 2026-08-18:
   `src/server/inspection/recognizers/candidate.ts` needed no edit — it dispatches on the compiled
-  rule's product and kind, and the `instructions` kind's payload is the one Markdown parse both
-  kinds share, so a Claude admission recognizes through the same engine as a Codex one.)*
+  rule's product and kind, so a Claude admission recognizes through the same engine as a Codex
+  one.)*
 - [X] T235 [US1] Integrate Claude instruction classification without reading imports or changing
   Codex results in `src/server/inspection/scan.ts` *(amended 2026-08-18: scope emptied —
   `src/server/inspection/scan.ts` composes each vendor's compiled catalog, so a rule added to that
@@ -2361,34 +2360,31 @@ the task would have built.
   `claude.instructions.layering` at `append`, which the shipped record already carries, and this
   task may add no strategy ID. This product handles no import reference, so there is no import
   coverage to record either. T239 gates the record against that row in both languages.)*
-- [X] T242 [US2] Extend Claude instruction recognition with exact metadata, complete direct one-hop
-  non-recursive relationships, source-value-free environment-failure diagnostics, and evidence in
-  `src/server/inspection/recognizers/candidate.ts`; relationship targets confer zero read authority
-  and nested/transitive projection is omitted before access *(amended 2026-08-06: an admission stays
-  a read-authorization record, and what a vendor documents stays in its maintained contract, so no
-  surface projects a condition, applicability, order, runtime state, provenance, or documentation
-  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-18: scope emptied — the `instructions`
-  payload the detail shows is the one Markdown parse T222 shipped and T1093's range, which T234
-  already recorded needs no Claude-specific edit; this product handles no import reference, so there
-  is no relationship, environment-failure Diagnostic, or evidence to add.)*
-- [X] T243 [US2] Integrate Claude instruction parsing, exact resolved-value extraction, complete
-  deterministic direct relationship-only imports subject only to environment capacity, and parser
-  scratch/transient-semantic disposal while retaining complete authored source for deterministic
-  returned outcomes; let every parser/relationship/assembly throw/rejection propagate unchanged
-  without domain catch, cause classification, retry, item/recognition/relationship/derived
-  result/body/generation, retaining only the prior commit in `src/server/inspection/scan.ts`; never
-  recurse, expand, or read a relationship target *(amended 2026-08-18: scope emptied — Phase 15/16
-  shipped the parse, the exact resolved-value preservation, the scratch disposal, and the unchanged
-  throw/rejection propagation, and T235 already recorded that a rule added to a vendor catalog
-  reaches the walk with no edit here; this product handles no import reference, so there is none to
-  integrate.)*
-- [X] T244 [US2] Extend typed detail and English Claude instruction relationship messages in that
-  kind's own detail route under `src/app/pages/` *(amended 2026-08-08: a detail shows the
-  declarations the file wrote, and what a vendor documents stays in its maintained contract, so no
-  surface projects trust, precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-18:
+- [X] T242 [US2] No Claude-specific recognition to add in
+  `src/server/inspection/recognizers/candidate.ts`: a Claude instruction file is recognized with no
+  extraction and carries T1093's range, through the engine T234 records needs no Claude-specific
+  edit *(amended 2026-08-06: an admission stays a read-authorization record, and what a vendor
+  documents stays in its maintained contract, so no surface projects a condition, applicability,
+  order, runtime state, provenance, or documentation status (FR-009; T091/T1068/T1042).)*
+  *(amended 2026-08-18: scope emptied — this product handles no import reference, so there is no
+  relationship, environment-failure Diagnostic, or evidence to add.)* *(amended 2026-09-25: a
+  Claude instruction file is read whole, so no metadata is extracted from it (T1224).)*
+- [X] T243 [US2] No Claude-specific scan integration in `src/server/inspection/scan.ts`: a Claude
+  instruction file is read whole with nothing extracted and its complete authored source retained,
+  the unchanged throw/rejection propagation is the walk's own, and a rule added to a vendor catalog
+  reaches the walk with no edit here (T235); nothing recurses into, expands, or reads a target
+  *(amended 2026-08-18: scope emptied — this product handles no import reference, so there is none
+  to integrate.)* *(amended 2026-09-25: a Claude instruction file is read whole, so no parse or
+  value extraction runs for it (T1224).)*
+- [X] T244 [US2] No Claude-specific detail or message to add: a Claude instruction file's detail is
+  the kind's own route under `src/app/pages/` (T224), showing the file whole *(amended 2026-08-08:
+  what a vendor documents stays in its maintained contract, so no surface projects trust,
+  precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-18:
   scope emptied — the detail route is this kind's own (T224) and the inventory row already links
   every recognizing product to it (T236), which T240 exercises for a root and a nested Claude file;
   this product handles no import reference, so there is no relationship message to write.)*
+  *(amended 2026-09-25: a Claude instruction file is read whole, so its detail is the file on one
+  page without tabs (T1224).)*
 
 ---
 
@@ -2521,8 +2517,10 @@ the task would have built.
   rows fix, this phase ships no authored relationship for an instruction file to carry, and the task
   may add no strategy ID. T262 gates each shipped record against its normative row in both
   languages.)*
-- [X] T265 [US2] Extend Copilot recognition with the declared keys its files write, relationships,
-  diagnostics, and evidence in `src/server/inspection/recognizers/candidate.ts` *(amended
+- [X] T265 [US2] Extend Copilot recognition with the declared keys its path-specific files write,
+  relationships, diagnostics, and evidence in `src/server/inspection/recognizers/candidate.ts`
+  *(amended 2026-09-25: a repository-wide `copilot-instructions.md` is read whole and declares
+  nothing (T1224).)* *(amended
   2026-08-05: nothing projects an applicability, a surface condition, or a condition reason (T091),
   so no test, registry extension, recognizer output, or UI surface plans one.)* *(amended
   2026-08-18: what this task ships is the declared-range branch Phase 17b left to it — a Copilot
@@ -2532,7 +2530,7 @@ the task would have built.
   `src/server/inspection/rules/copilot.ts` and the shared question in
   `src/server/inspection/rules/registry.ts` carry it. The published keys themselves needed no
   change: the one Markdown parse already publishes every declaration by the key the file wrote
-  (T222) A path-instruction file that declares nothing a row can be keyed by has no range — VS Code
+  (T222). A path-instruction file that declares nothing a row can be keyed by has no range — VS Code
   documents an undeclared file as not applied automatically — so it lists under the null-range row
   rather than under a range read off its path.)*
 - [X] T266 [US2] Integrate Copilot instruction parsing, exact resolved-value extraction, inert
@@ -2586,9 +2584,9 @@ the task would have built.
   badges, configured fallback rows, and rescan cleanup in `tests/unit/app/inventory.test.ts`
 - [X] T272 [US1] Add browser acceptance for the unified instruction inventory, filters, shared
   recognitions, configured fallback rows, exclusions, diagnostics, and keyboard use in
-  `tests/e2e/instructions-inventory.spec.ts` *(amended 2026-08-08: a detail shows the declarations
-  the file wrote, and what a vendor documents stays in its maintained contract, so no surface
-  projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+  `tests/e2e/instructions-inventory.spec.ts` *(amended 2026-08-08: what a vendor documents stays in
+  its maintained contract, so no surface projects trust, precedence, order, or uncertainty (FR-009,
+  T091).)*
 
 ### Implementation
 
@@ -9728,6 +9726,12 @@ and drops `AGENTS.override.md`.
   § SupportedTool), and let the Presentation Allowlist enumeration name the vendor contracts
   through the official-source contract rather than by a count of its own, which disagreed with
   that contract (FR-004, FR-007, FR-011).
+- [X] T1228 [US1] Resolve the ninth review of this phase. Rewrite the completed statements that
+  still described the Claude, Codex, and repository-wide Copilot instruction files T1224 reads whole
+  as parsed for their declarations: T242–T244 and T265 to what they now require, each with a dated
+  note, and the notes of T209, T225, T234, and T272 that credited a detail with the declarations the
+  file wrote or the kind with one shared Markdown parse, each keeping what stays true; drop the
+  attribution the Japanese T265 note alone carried (FR-004, FR-007).
 
 ## Story Coverage Matrix
 

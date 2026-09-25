@@ -31,10 +31,10 @@ dispositionである。
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
 | FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
-| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222, T1225, T1227 |
+| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222, T1225, T1227, T1228 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078, T1215–T1216 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
-| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224, T1227 |
+| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224, T1227, T1228 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
 | FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
 | FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220, T1221, T1224, T1227 |
@@ -1645,7 +1645,7 @@ dispositionである。
 - [X] T209 [US1] 静的な Codex instruction row、filter、diagnostics、exclusion、および config row がゼロの明示的な
   configured-fallback-pending 状態に関するブラウザー受け入れテストを `tests/e2e/codex-instructions-inventory.spec.ts`
   に追加する *(2026-08-17修正: 同じフェーズの T1088 が configured fallback を有効化するため、suite は有効化された fallback 行と
-  carrier が現れないことを assert する。)* *(2026-08-08修正: detail は file が書いた宣言を示し、vendor が文書化する内容はその
+  carrier が現れないことを assert する。)* *(2026-08-08修正: vendor が文書化する内容はその
   maintained contract に留まるため、どの surface も trust、precedence、order、uncertainty を project
   しない（FR-009、T091）。)*
 
@@ -1802,7 +1802,7 @@ dispositionである。
   修正: どのsurfaceもorder・capacity・condition・applicabilityをprojectしない —
   vendorの文書化されたselectionは維持管理contractに残り、製品が何をするかを述べるsurfaceは無い（FR-009、T091）。)*
 - [X] T225 [US2] 英語の Codex instruction detail、fallback message をそれらを描画する Vue component に追加する
-  *(2026-08-08修正: detail は file が書いた宣言を示し、vendor が文書化する内容はその maintained contract に留まるため、どの surface も
+  *(2026-08-08修正: vendor が文書化する内容はその maintained contract に留まるため、どの surface も
   trust、precedence、order、uncertainty を project しない（FR-009、T091）。)*
 
 ---
@@ -1855,8 +1855,7 @@ dispositionである。
   launch/ancestor/descendant は vendor の runtime working directory との関係を指す語であり、Inspector はそれを観測しない —
   rule はあらゆる深さの `CLAUDE.md` に match し、file 単位の分類はどこにも描画しない（FR-009、T091）。)* *(2026-08-18修正:
   `src/server/inspection/recognizers/candidate.ts` の編集は不要だった — recognizer は compiled rule の product
-  と kind で dispatch し、`instructions` kind の payload は両 kind が共有する唯一の Markdown parse なので、Claude の
-  admission も Codex と同じ engine で recognize される。)*
+  と kind で dispatch するので、Claude の admission も Codex と同じ engine で recognize される。)*
 - [X] T235 [US1] import を読み取らず、Codex result も変更せずに Claude instruction classification を
   `src/server/inspection/scan.ts` に統合する *(2026-08-18修正: scope を空にした —
   `src/server/inspection/scan.ts` は各 vendor の compiled catalog を合成するので、その catalog に追加した rule
@@ -1970,27 +1969,26 @@ dispositionである。
   scopeは空である — contract row は `claude.instructions.layering` を `append` に固定しており shipped record
   は既にそれを持つ。またこの task は strategy ID を追加できない。この製品は import 参照を扱わないため、記録すべき import coverage も無い。T239 が
   record と両言語の row を突き合わせる。)*
-- [X] T242 [US2] Exact metadata、complete direct one-hop かつ non-recursive な
-  relationship、source-value-free environment-failure Diagnostic、evidence で Claude instruction
-  recognition を `src/server/inspection/recognizers/candidate.ts` において拡張する。Relationship target は read
-  authority を与えず、nested/transitive projection を access 前に省略する *(2026-08-06 修正:
+- [X] T242 [US2] Claude 固有の recognition は `src/server/inspection/recognizers/candidate.ts` に追加しない: Claude
+  instruction file は抽出なしで認識されて T1093 の range を持ち、T234 が Claude 固有の編集を要さないと記録した engine を
+  通る *(2026-08-06 修正:
   admissionは読み取り認可のrecordに留まり、vendorが文書化していることは維持管理contractに残るため、どのsurfaceもcondition、applicability、order、runtime
   state、provenance、documentation statusをprojectしない（FR-009。T091/T1068/T1042）。)* *(2026-08-18修正:
-  scopeは空である — detail が示す `instructions` payload は T222 が ship した1回の Markdown parse と T1093 の range
-  であり、T234 が既に Claude 固有の編集を要さないと記録済み。この製品は import 参照を扱わないため、relationship も environment-failure
-  Diagnostic も evidence も追加対象が無い。)*
-- [X] T243 [US2] Claude instruction parsing、正確な解決済みの値の抽出、complete deterministic direct
-  relationship-only import、scratch
-  disposalを`src/server/inspection/scan.ts`へ統合する。Parser/relationshipのthrow/rejectionはdomainでcatch/cause分類/retry/item/recognition/relationship/derived
-  body/generation化せず変更なしにouter boundaryへ伝播し、targetをrecurse/expand/readしない *(2026-08-18修正: scopeは空である
-  — parse、正確な解決済みの値の保持、scratch disposal、変更なしの throw/rejection 伝播は Phase 15/16 が ship 済みで、vendor
-  catalog に追加した rule がここを編集せず walk に届くことは T235 が記録済み。この製品は import 参照を扱わないため、統合すべき import が無い。)*
-- [X] T244 [US2] typed detail と、英語の Claude instruction relationship message をそのkind自身のdetail
-  route（`src/app/pages/` 配下） において拡張する *(2026-08-08修正: detail は file が書いた宣言を示し、vendor が文書化する内容はその
+  scopeは空である — この製品は import 参照を扱わないため、relationship も environment-failure Diagnostic も evidence も
+  追加対象が無い。)* *(2026-09-25修正: Claude instruction file は全体のまま読むので、そこから metadata を抽出しない
+  （T1224）。)*
+- [X] T243 [US2] Claude 固有の scan 統合は `src/server/inspection/scan.ts` に無い: Claude instruction file は全体のまま
+  読まれて何も抽出されず、完全な authored source を保持し、変更なしの throw/rejection 伝播は walk 自身のものであり、vendor
+  catalog に追加した rule はここを編集せず walk に届く（T235）。target を recurse/expand/read するものは無い
+  *(2026-08-18修正: scopeは空である — この製品は import 参照を扱わないため、統合すべき import が無い。)*
+  *(2026-09-25修正: Claude instruction file は全体のまま読むので、parse も値の抽出も走らない（T1224）。)*
+- [X] T244 [US2] Claude 固有の detail や message は追加しない: Claude instruction file の detail はこの kind 自身の
+  route（`src/app/pages/` 配下、T224）であり、file を全体のまま示す *(2026-08-08修正: vendor が文書化する内容はその
   maintained contract に留まるため、どの surface も trust、precedence、order、uncertainty を project
   しない（FR-009、T091）。)* *(2026-08-18修正: scopeは空である — detail route はこの kind 自身のもの（T224）で、inventory row
   は既に認識する各 product をそこへ link しており（T236）、T240 が root と nested の Claude file で実際に確認している。この製品は import
-  参照を扱わないため、書くべき relationship message が無い。)*
+  参照を扱わないため、書くべき relationship message が無い。)* *(2026-09-25修正: Claude instruction file は全体のまま読む
+  ので、その detail はタブのない1面の file である（T1224）。)*
 
 ---
 
@@ -2111,16 +2109,17 @@ dispositionである。
   scopeを空にした — T250が、contract rowが固定する完全なbehavior集合とともに三つのsurface layeringを出荷しており、この phase
   はinstruction fileが持つauthored relationshipを出荷せず、このtaskはstrategy
   IDを追加できない。T262が出荷済みの各recordをその規範rowと両言語で照合する。)*
-- [X] T265 [US2] file が書く宣言 key、relationship、diagnostics、evidence で Copilot recognition を
-  `src/server/inspection/recognizers/candidate.ts` において拡張する *(2026-08-05 修正:
+- [X] T265 [US2] path-specific な file が書く宣言 key、relationship、diagnostics、evidence で Copilot recognition を
+  `src/server/inspection/recognizers/candidate.ts` において拡張する *(2026-09-25修正: リポジトリ全体向けの
+  `copilot-instructions.md` は全体のまま読み、何も宣言しない（T1224）。)* *(2026-08-05 修正:
   どのsurfaceもapplicability・surface condition・condition reasonをprojectしない —
   projectするものが無いため、test・registry拡張・recognizer出力・UI surfaceのいずれもそれを計画しない（T091）。)* *(2026-08-18修正:
   このtaskが出荷するのは、Phase 17bがこのtaskに残した宣言範囲の分岐である — Copilotのpath-instruction
   fileの`applyTo`が、pathではなくinventory rowをkeyする（spec.md § Clarifications）。宣言はcompiled instruction
   unitを通じて答えに届く。そこは、自身のfileが担当する対象についての製品自身のruleが既に置かれている場所であり、したがって`src/server/inspection/rules/copilot.ts`と`src/server/inspection/rules/registry.ts`の共有された問いがそれを担う。公開されるkey自体は変更を要さなかった:
-  一度のMarkdown parseが、fileの書いたkeyのままにすべての宣言を既に公開している（T222） rowをkeyできるものを何も宣言しないpath-instruction
+  一度のMarkdown parseが、fileの書いたkeyのままにすべての宣言を既に公開している（T222）。rowをkeyできるものを何も宣言しないpath-instruction
   fileは範囲を持たない — VS Codeは宣言のないfileを自動適用しないとdocumentしている — ため、pathから読み取った範囲ではなくnull-range
-  rowの下に列挙される（userレビュー、2026-08-19）。)*
+  rowの下に列挙される。)*
 - [X] T266 [US2] Copilot instruction parsing、正確な解決済みの値の抽出、inert relationship、完全な authored source
   を保持しつつ行う parser scratch/transient-semantic disposal、settings-file I/O ゼロを
   `src/server/inspection/scan.ts` に統合する *(2026-08-18修正: scopeを空にした — Phase
@@ -2169,7 +2168,7 @@ dispositionである。
   行、rescan cleanup に関する client の失敗テストを `tests/unit/app/inventory.test.ts` に追加する
 - [X] T272 [US1] unified instruction inventory、filter、shared recognition、configured fallback
   行、exclusion、diagnostics、keyboard use に関するブラウザー受け入れテストを `tests/e2e/instructions-inventory.spec.ts`
-  に追加する *(2026-08-08修正: detail は file が書いた宣言を示し、vendor が文書化する内容はその maintained contract に留まるため、どの
+  に追加する *(2026-08-08修正: vendor が文書化する内容はその maintained contract に留まるため、どの
   surface も trust、precedence、order、uncertainty を project しない（FR-009、T091）。)*
 
 ### 実装
@@ -8316,6 +8315,11 @@ Claude Code の badge を持ち、`packages/api/AGENTS.md` が `packages/api/**`
   （`specs/003-antigravity-cli-support/data-model.md` § SupportedTool）を指し示す。Presentation Allowlist の列挙は、その
   contract と食い違っていた独自の件数ではなく、official-source contract を通じて vendor contract を名指す
   （FR-004、FR-007、FR-011）。
+- [X] T1228 [US1] このフェーズの9回目のレビューを解決する。T1224 が全体のまま読むようにした Claude・Codex・リポジトリ
+  全体向け Copilot の instruction file を、まだ宣言のために解析するものとして述べていた完了済みの記述を書き直す: T242〜T244
+  と T265 はそれが今求めるものへ書き直して日付付きの注記を付け、detail が file の書いた宣言を示す、あるいはこの kind が1回の
+  Markdown parse を共有すると述べていた T209・T225・T234・T272 の注記は、今も正しい部分だけを残す。日本語版の T265 の注記だけに
+  あった帰属の記述も外す（FR-004、FR-007）。
 
 ## ストーリーカバレッジマトリクス
 
