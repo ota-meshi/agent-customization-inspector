@@ -136,8 +136,12 @@ Antigravity CLI はそろって、そこにある skill フォルダの `SKILL.m
   製品は vendor がそれを受け付けるかについて何も述べない。
 - `SKILL.md` を持たないディレクトリを抱える `.agents/skills/` は skill の行を生まず、その
   ディレクトリ内の他の名前の Markdown ファイルも行を生まない。
-- Markdown でないファイルを抱える `.agents/rules/` は rule の行を生まない。frontmatter を
-  parse できない rules ファイルは行を保ち、file-confined な diagnostic を1つ持つ。
+- Markdown でないファイルを抱える `.agents/rules/` は rule の行を生まない。frontmatter が YAML として
+  正しくない rules ファイルは行を保ち、diagnostic を持たない。rule ファイルからは何も読み出さず、
+  `trigger` の block も書かれたとおりに、ファイル全体を示すからである（FR-016）。
+- `---` の block で始まる `GEMINI.md` や `AGENTS.md` は、その block を instructions の1行として
+  ファイル全体を示し、block が YAML として正しくなくても diagnostic を持たない。Rules ページは
+  どちらのファイルも frontmatter を使わないと述べており、そこから何も parse しないからである（FR-007）。
 - `.agent/skills/deploy/SKILL.md` や `.agent/rules/style.md` を持つリポジトリは、vendor が
   なお支える旧綴りとして両方を挙げる。`.agents/skills/deploy.md` や `.agent/skills/deploy.md`
   を持つリポジトリはどちらも挙げない。フラットな skill を文書化するページがないからである。

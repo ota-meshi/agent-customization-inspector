@@ -86,7 +86,12 @@ skill の行は1つの invocation 名のままで、ファイルごと・認識�
 
 この vendor が必要とする形式は既に読まれており、parser は追加しない。共有の JSON reader が MCP
 carrier・settings carrier・2つの standalone な hook carrier を、共有の frontmatter の読みが
-context file・skill・custom agent を取る。その JSON reader はどの vendor のものでもあり、変わらない。動くのはこの vendor 自身の表の
+skill・custom agent を取る。context file と rule file はどの parser も通らない。Rules ページは
+`AGENTS.md` と `GEMINI.md` が frontmatter を使わず、内容全体を plain Markdown として扱うと述べているので、
+その先頭の `---` block は instructions の1行である。rule file は、`trigger` の block も含めて、author が
+書いた1つの document として公開される。どちらからも何も読み出さないので、どちらも読み出しに失敗しない
+（親の data model § ToolRecognition と、親の vendor contract の presentation allowlist）。その JSON reader は
+どの vendor のものでもあり、変わらない。動くのはこの vendor 自身の表の
 行であり、引用したページが strict JSON を文書化していること、そして vendor の読みと製品の読みの
 差異は他と同じくそこに記録することを述べる。
 

@@ -37,11 +37,11 @@ export type RecognitionParseStatus =
 
 /**
  * One declared value as a detail surface shows it — a frontmatter value of a
- * skill or an instruction file, or a field value of an MCP server declaration
- * (data-model.md § Skill presentation). One shape for every producing format,
- * because each parser resolves into the same structure: the shape mirrors
- * what the parser resolved, so a mapping is shown as a mapping and a list as
- * a list rather than as a summary of one.
+ * skill or a path-specific instruction file, or a field value of an MCP server
+ * declaration (data-model.md § Skill presentation). One shape for every
+ * producing format, because each parser resolves into the same structure: the
+ * shape mirrors what the parser resolved, so a mapping is shown as a mapping
+ * and a list as a list rather than as a summary of one.
  */
 export type DeclaredValueDto =
   /** A string, number, or boolean the syntax resolved to one value. */
@@ -123,10 +123,10 @@ export type DeclaredKeyKind =
 
 /**
  * One parsed declaration entry, as the detail surfaces show it — a
- * frontmatter entry of a skill or an instruction file, or a field of an MCP
- * server declaration (data-model.md § Skill presentation): the key and value
- * carry what the parser resolved, while a file's authored spelling stays in
- * the complete `sourceText` where one is served.
+ * frontmatter entry of a skill or a path-specific instruction file, or a field
+ * of an MCP server declaration (data-model.md § Skill presentation): the key
+ * and value carry what the parser resolved, while a file's authored spelling
+ * stays in the complete `sourceText` where one is served.
  *
  * The key is the file's own, never a vendor catalog's: this is the reader's
  * declaration shown back to them, so a key the product has no opinion about is
@@ -1240,14 +1240,15 @@ export interface PromptFileDetailDto extends FileDetailBase {
  * (contracts/http-api.md § get-file-detail).
  *
  * No `presentation`: a rule file is published as the one document its author
- * wrote, so nothing is read out of it to set beside the file. A Claude rule
- * is Markdown and reaches the page whole, frontmatter block included, because
+ * wrote, so nothing is read out of it to set beside the file. A rule is
+ * Markdown and reaches the page whole, frontmatter block included — a Claude
+ * rule's `paths` and an Antigravity CLI rule's `trigger` alike — because
  * splitting a rule into declarations and a body would show the reader two
  * halves of a file they wrote as one — and with nothing read out, nothing can
  * fail to be read either, so the kind produces no extraction diagnostic. The
- * kind is Claude's alone in this release: a Codex `.codex/rules/*.rules` file
- * is a permission policy rather than a rule, and its detail is
- * {@link PermissionPolicyDetailDto}.
+ * kind is Claude Code's and Antigravity CLI's in this release: a Codex
+ * `.codex/rules/*.rules` file is a permission policy rather than a rule, and
+ * its detail is {@link PermissionPolicyDetailDto}.
  *
  * Its own variant rather than the unrecognized one, because a recognition
  * does own this file: the page it opens is headed as a rule, returns to the

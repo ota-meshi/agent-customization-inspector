@@ -31,7 +31,7 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 | FR-004 | T022, T026, T030–T031, T052–T056, T058, T082, T084 |
 | FR-005 | T021, T029, T042 |
 | FR-006 | T021, T028 |
-| FR-007 | T021, T023, T025, T082–T083, T088, T090 |
+| FR-007 | T021, T023, T025, T082–T083, T088, T090, T093 |
 | FR-008 | T005, T019, T039, T041, T048 |
 | FR-009 | T040–T041, T043–T046, T051, T082–T083 |
 | FR-010 | T040, T042, T047 |
@@ -40,7 +40,7 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 | FR-013 | T023 |
 | FR-014 | T012–T013, T016, T063, T065 |
 | FR-015 | T002, T009, T073, T077, T086, T090 |
-| FR-016 | T011, T020–T021, T037–T038, T059, T082–T083, T089, T091, T092 |
+| FR-016 | T011, T020–T021, T037–T038, T059, T082–T083, T089, T091, T092, T093 |
 | FR-017 | T011, T020–T021, T036, T038, T051, T059 |
 | QR-001 | T007, T009–T014, T017, T032, T072 |
 | QR-002 | T026, T030, T053, T084 |
@@ -273,3 +273,4 @@ Each story phase ends at a state the independent test above can measure. Phase 6
 - [X] T090 Rewrite each completed task and checklist item whose work a later task removed — T020, T022, T023, T025–T027, T030, T031, T033, T039, T043, T052–T055, T057, T058, and CHK007, CHK012, CHK015, CHK022, and CHK023 in `specs/003-antigravity-cli-support/checklists/vendor-integration.md`, with the notes in `checklists/requirements.md` — to what it now requires, each with a dated note saying briefly why, in both languages (AGENTS.md § Documentation content policy); record `antigravity.context.layering` as `partially-documented` in `src/shared/registries/antigravity/strategies.ts` and `contracts/runtime-composition.md` in both languages, because the Rules page leaves unstated whether a directory holding both context names has both loaded, and word FR-007 the same way, per FR-007, FR-015.
 - [X] T091 Write every positive rules sample in the official frontmatter — `trigger` set to `always_on`, `manual`, `model_decision`, or `glob` with its `globs` — in `tests/fixtures/repositories/build-fixtures.ts`, `tests/e2e/antigravity-rules-detail.spec.ts`, `tests/unit/inspection/antigravity-metadata.test.ts`, and `scripts/readme-images/showcase-repository.ts`, and name the key in `quickstart.md` and `quickstart.ja.md`, because the terminal discards a rule without a recognized `trigger`, per FR-016.
 - [X] T092 State in FR-016 of `specs/003-antigravity-cli-support/spec.md` and `spec.ja.md`, its edge case, `research.md` § 7a, and the vendor contract's Derived Repository rules and Known uncertainties item 10 in both languages that the nested rule files a `.agents/rules.json` registers are read by the terminal and outside this release, which ships no derivation reading that registration, and correct the comments that said no terminal setting relocates a workspace customization in `src/shared/registries/antigravity/rules.ts`, `src/server/inspection/rules/antigravity.ts`, `src/server/inspection/rules/vendor/antigravity.ts`, `tests/contract/inspection-rules.test.ts`, and `tests/documentation/cross-artifact.test.ts`, per FR-016.
+- [X] T093 State in the Parser format table of `specs/003-antigravity-cli-support/data-model.md` and `data-model.ja.md` that the context files and the rule files go through no parser, because the Rules page says `AGENTS.md` and `GEMINI.md` use no frontmatter and a rule file is published whole; correct the edge case of `spec.md` and `spec.ja.md` that gave a rules file with an unparseable frontmatter a diagnostic, which no reading can produce because nothing is read out of a rule file, and add the edge case of a context file opening with a block that is not YAML, shown whole with no diagnostic; and correct the comment on `RuleFileDetailDto` in `src/shared/api-types.ts`, which called the rule kind Claude Code's alone, per FR-007, FR-016.

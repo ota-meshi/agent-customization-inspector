@@ -23,11 +23,12 @@
 // an absent side: an instruction comparison is exactly two committed files.
 //
 // The comparison is literal and descriptive by construction (FR-012): it
-// states which recognitions exist, which surfaces they rest on, and what
-// each side's frontmatter serializes to, and its closed shape carries no
-// rank, no winner, and no fabricated rows — relationships in particular, because an
-// instruction file never publishes an edge for the wire to carry
-// (api-types.ts § FileDetailDto, tasks.md T217/T238).
+// states which recognitions exist, which surfaces they rest on, and — where
+// both files declare — what each side's frontmatter serializes to, and its
+// closed shape carries no rank, no winner, and no fabricated rows —
+// relationships in particular, because an instruction file never publishes an
+// edge for the wire to carry (api-types.ts § FileDetailDto, tasks.md
+// T217/T238).
 import { canonicalFrontmatterYamlText } from '../inspection/frontmatter-yaml';
 import { LEADING_INSTRUCTION_FRONTMATTER_KEYS } from '../inspection/declaration-order';
 import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entities';

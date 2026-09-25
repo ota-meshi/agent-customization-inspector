@@ -31,7 +31,7 @@
 | FR-004 | T022、T026、T030–T031、T052–T056、T058、T082、T084 |
 | FR-005 | T021、T029、T042 |
 | FR-006 | T021、T028 |
-| FR-007 | T021、T023、T025、T082–T083, T088, T090 |
+| FR-007 | T021、T023、T025、T082–T083, T088, T090, T093 |
 | FR-008 | T005、T019、T039、T041、T048 |
 | FR-009 | T040–T041、T043–T046、T051、T082–T083 |
 | FR-010 | T040、T042、T047 |
@@ -40,7 +40,7 @@
 | FR-013 | T023 |
 | FR-014 | T012–T013、T016、T063、T065 |
 | FR-015 | T002、T009、T073、T077、T086, T090 |
-| FR-016 | T011、T020–T021、T037–T038、T059、T082–T083, T089, T091, T092 |
+| FR-016 | T011、T020–T021、T037–T038、T059、T082–T083, T089, T091, T092, T093 |
 | FR-017 | T011、T020–T021、T036、T038、T051、T059 |
 | QR-001 | T007、T009–T014、T017、T032、T072 |
 | QR-002 | T026、T030、T053、T084 |
@@ -273,3 +273,4 @@ Phase 1・2・3 で、リポジトリの inventory が4つ目のツールを名�
 - [X] T090 後の task がその作業を取り除いた完了済みの task とチェック項目 — T020、T022、T023、T025〜T027、T030、T031、T033、T039、T043、T052〜T055、T057、T058、`specs/003-antigravity-cli-support/checklists/vendor-integration.md` の CHK007、CHK012、CHK015、CHK022、CHK023、そして `checklists/requirements.md` の注記 — を、それが今求めるものへ両言語で書き直し、それぞれに理由を短く述べる日付付きの注記を付ける (AGENTS.md § Documentation content policy)。Rules ページは両方の context の名前を持つディレクトリで両方が読み込まれるかを述べないので、`antigravity.context.layering` を `src/shared/registries/antigravity/strategies.ts` と両言語の `contracts/runtime-composition.md` で `partially-documented` とし、FR-007 も同じく述べる。FR-007、FR-015 に基づく。
 - [X] T091 rules の正例をすべて公式の frontmatter — `always_on`、`manual`、`model_decision`、または `globs` を伴う `glob` を値とする `trigger` — で書く。`tests/fixtures/repositories/build-fixtures.ts`、`tests/e2e/antigravity-rules-detail.spec.ts`、`tests/unit/inspection/antigravity-metadata.test.ts`、`scripts/readme-images/showcase-repository.ts`。`quickstart.md` と `quickstart.ja.md` でその key を名指す。端末は認識できる `trigger` の無い rule を捨てるからである。FR-016 に基づく。
 - [X] T092 `.agents/rules.json` が登録する入れ子の rule ファイルは端末が読み、この登録を読む derivation を出荷しないこのリリースの範囲外であることを、`specs/003-antigravity-cli-support/spec.md` と `spec.ja.md` の FR-016 とその edge case、`research.md` の § 7a、両言語の vendor contract の Derived Repository rule と既知の不確実性の項目10に記す。workspace のカスタマイズの場所を移す端末の設定は無いと述べていたコメントを `src/shared/registries/antigravity/rules.ts`、`src/server/inspection/rules/antigravity.ts`、`src/server/inspection/rules/vendor/antigravity.ts`、`tests/contract/inspection-rules.test.ts`、`tests/documentation/cross-artifact.test.ts` で正す。FR-016 に基づく。
+- [X] T093 `specs/003-antigravity-cli-support/data-model.md` と `data-model.ja.md` の Parser format の表に、context file と rule file はどの parser も通らないことを記す。Rules ページが `AGENTS.md` と `GEMINI.md` は frontmatter を使わないと述べ、rule file はファイル全体として公開されるからである。frontmatter を parse できない rules ファイルが diagnostic を持つとしていた `spec.md` と `spec.ja.md` の edge case を訂正する。rule file からは何も読み出さないので、その diagnostic を生む読み取りは無い。YAML でない block で始まる context file を、diagnostic なしでファイル全体として示す edge case を加える。rule の kind を Claude Code だけのものとしていた `src/shared/api-types.ts` の `RuleFileDetailDto` のコメントを訂正する。FR-007、FR-016 による。

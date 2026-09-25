@@ -88,9 +88,13 @@ which the root `GEMINI.md` and every `AGENTS.md` do.
 
 The formats this vendor needs are already read, and no parser is added: the shared JSON reader
 takes the MCP carriers, the settings carrier, and the two standalone hook carriers, and the
-shared frontmatter reading takes the
-context files, the skills, and the custom agents. That JSON reader is every vendor's and is
-unchanged; what moves is this vendor's own row in the format table, which records that the
+shared frontmatter reading takes the skills and the custom agents. The context files and the
+rule files go through no parser. The Rules page says `AGENTS.md` and `GEMINI.md` use no
+frontmatter and treats their entire content as plain Markdown, so a `---` block opening one is a
+line of its instructions; a rule file is published as the one document its author wrote, its
+`trigger` block included. Nothing is read out of either, so neither can fail to be read (the
+parent's data model § ToolRecognition and its vendor contract's presentation allowlist). That
+JSON reader is every vendor's and is unchanged; what moves is this vendor's own row in the format table, which records that the
 cited pages document strict JSON and that any divergence between the vendor's reading and the
 product's is recorded there as the others are.
 
