@@ -401,8 +401,10 @@ SessionSnapshot
 │       名指す（FR-030）: 同意されたhomeの`settings.json`と他所の同path
 │       documentは2つのrowであり、rowは公開Source順、次にpath順に並ぶ。他の kind が
 │       所有する宣言も運ぶ file — Codexの `.codex/config.toml` — は、ここ
-│       にも、その kind の一覧にも row を持つ。diagnostic の一覧は持たない。
-│       `rules[]` と同じ理由で、document から何も読み出さないためである
+│       にも、その kind の一覧にも row を持つ。row 自身の diagnostic の一覧は
+│       持たない: この row のためには document から何も読み出さず、同じ
+│       document の他の読み取りが残した record は file のものとして、その
+│       `files[]` entry にある（FR-028）
 └── diagnostics[] { diagnosticId, code, sourceId string,
     sourceRelativePath string | null — file scope以外はnull }
     （active-generation recordとsession-owned lifecycle record）
@@ -674,31 +676,36 @@ Active-generation file detailを1件返す。求めたkindのrecognitionがfile�
 ```text
 FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' |
              'output style' | 'settings/config' | 'file'
-├── kind 'instructions' — fileは認識されたinstruction file:
-│   ├── file — encodingで判別されるCustomizationFile 1件:
-│   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
-│   │   ├── readable textはさらにhadLeadingBom, sourceText, sizeBytesを持つ
-│   │   └── binaryはさらにsizeBytesを持ち、unknownはこれ以上何も持たない
-│   ├── presentation — scan時の1回のparse。extractionがall-or-nothingで
-│   │   失敗したときは正確にnull（FR-028）:
-│   │   ├── frontmatter[] { key, keyKind, value } — valueは
-│   │   │   { kind: 'scalar', scalarKind, text }、{ kind: 'absent' }、
-│   │   │   { kind: 'sequence', items[] }、
-│   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }のいずれかで、再帰する
-│   │   └── bodyText
-│   └── diagnostics[]
+├── kind 'instructions' — fileは認識されたinstruction fileで、その形式が決めるvariantを取る:
+│   ├── format 'frontmatter-led' — productが読む宣言で始まる形式
+│   │   （Copilotの`*.instructions.md`）:
+│   │   ├── file — encodingで判別されるCustomizationFile 1件:
+│   │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+│   │   │   ├── readable textはさらにhadLeadingBom, sourceText, sizeBytesを持つ
+│   │   │   └── binaryはさらにsizeBytesを持ち、unknownはこれ以上何も持たない
+│   │   ├── presentation — scan時の1回のparse。extractionがall-or-nothingで
+│   │   │   失敗したときは正確にnull（FR-028）:
+│   │   │   ├── frontmatter[] { key, keyKind, value } — valueは
+│   │   │   │   { kind: 'scalar', scalarKind, text }、{ kind: 'absent' }、
+│   │   │   │   { kind: 'sequence', items[] }、
+│   │   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }のいずれかで、再帰する
+│   │   │   └── bodyText
+│   │   └── diagnostics[]
+│   └── format 'whole-document' — それ以外のすべてのinstruction形式。全体をそのまま読む:
+│       ├── file — 上と同じ
+│       └── diagnostics[]
 ├── kind 'skill' — fileは認識されたskillのentry point:
 │   ├── file — 上と同じ
-│   ├── presentation — instructions variantと同じ: 同じscan時の1回のparseで、
-│   │   失敗時nullの規則も同じ（FR-028）
+│   ├── presentation — frontmatter-ledのinstructions variantと同じ: 同じscan時の
+│   │   1回のparseで、失敗時nullの規則も同じ（FR-028）
 │   └── diagnostics[]
 ├── kind 'agent' — fileは認識されたcustom-agent定義:
 │   ├── file — 上と同じ
 │   ├── presentation — 1回のscan時parseを、このkindが示す2つの半分に
 │   │   分けたもの。extractionがall-or-nothingで失敗したときに限りnull
 │   │   （FR-028）:
-│   │   ├── metadata[] { key, keyKind, value } — instructions variantの
-│   │   │   frontmatterが運ぶのと同じdeclared-entry shape。instructionsを
+│   │   ├── metadata[] { key, keyKind, value } — frontmatter-ledのinstructions
+│   │   │   variantのfrontmatterが運ぶのと同じdeclared-entry shape。instructionsを
 │   │   │   保持する宣言を除くすべての宣言を、fileが書いた順で運ぶ
 │   │   └── instructionsText — fileがagentに与えるinstructions
 │   └── diagnostics[]
@@ -715,9 +722,9 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 │   └── diagnostics[]
 ├── kind 'output style' — fileは認識されたoutput styleである:
 │   ├── file — 上と同じ
-│   ├── presentation — instructions variantと同じ: 同一のscan時parseであり、
-│   │   失敗時のnull規則も同じ（FR-028）。frontmatterはstyleが宣言するもの、
-│   │   bodyはvendorがsystem promptへ追加するinstructionsである
+│   ├── presentation — frontmatter-ledのinstructions variantと同じ: 同一のscan時
+│   │   parseであり、失敗時のnull規則も同じ（FR-028）。frontmatterはstyleが宣言する
+│   │   もの、bodyはvendorがsystem promptへ追加するinstructionsである
 │   └── diagnostics[]
 ├── kind 'settings/config' — fileは認識されたsettingsまたはconfiguration file:
 │   ├── file — 上と同じ
@@ -736,6 +743,23 @@ generationへ解決する: 絶対pathはhostのものであり、clientがSource
 detail responseは、pageが開けるものを何も渡さない。
 
 この木がresponseの形そのものである: clientは正確にこのfieldだけに依存できる。
+`instructions` kindが`format`で判別される2つのvariantを持つのは、fileから何かを読み出すか
+どうか自体を形式が決めるためである。Copilotのpath-specificな`*.instructions.md`は、適用先の
+fileを`applyTo`で名指すfrontmatterで始まるので、そのdetailは1回のscan時parseを
+`presentation`として公開する。それ以外のすべてのinstruction形式 — `AGENTS.md`、
+`AGENTS.override.md`、`CLAUDE.md`、`CLAUDE.local.md`、`GEMINI.md`、`copilot-instructions.md`、
+Codexのfallback名 — はfrontmatterなしで文書化されており、AntigravityのRules pageは
+`AGENTS.md`と`GEMINI.md`がfrontmatterを使わず全体をplain Markdownとして読まれると述べている。
+そのためこちらのvariantは`presentation`を持たない。理由は`rule` variantが持たないのと同じで、
+そのようなfileの先頭の`---` blockはinstructionsの1行であり、そこからは何も読み出さず、読み出しに
+失敗することもないので、この読み取りはextraction diagnosticを生じない。それでも`diagnostics[]`は、
+fileの他の読み取りが記録したものを列挙する: Codexのfallback名が名指す`.mcp.json`はMCP carrierでも
+あり、失敗したMCP parseはそのfileのものである（FR-028）。宣言0件でfile全体をbodyとする
+presentationを代わりに公開することはしない: 同じことを、宣言はどこへ行ったのかと問わせる
+shapeで言うことになるからである。形式はfileをadmitしたruleの事実であり、1つのfileの
+recognitionはすべて1つの形式でそのfileを読む: 宣言のために読まれるfileはCopilot自身の
+instruction directoryの下にある`*.instructions.md`であり、他のproductのruleはそこにあるfileを
+admitしない。
 `prompt/command` variantが独自のshapeの`presentation`を持つのは、`agent` variantと同じ理由で、
 分割点が常にfrontmatter blockとは限らないためである。Claude Code、Copilot、Codexのcommandは
 frontmatter fenceで分割されるMarkdownだが、promptを1つのkeyとして宣言する形式では、そのkeyがpromptで
@@ -769,7 +793,9 @@ fileとして書かれたものを2つの半分として読者に見せること
 失敗することもない: このkindはextraction diagnosticを生じず、宣言された`paths` globは
 本productがfilesystem pathに対して評価することのないauthored textである。それでも独自の
 variantであるのは、recognitionがこのfileを所有しており、そのinventory rowがそう述べて
-いるからである。
+いるからである。その`diagnostics[]`は、同じfileを別のkindが読んで記録したものを列挙する:
+`.claude/commands/`の下にあるrules directoryのfileはcommandでもあり、commandのfrontmatterは
+parseに失敗し得る（FR-028）。
 `settings/config` variantが`presentation`を持たないのも同じ理由であり、そのrowの単位は
 file自身であるため（data-model.md § 一覧の単位）、authorが書いたdocumentがそのまま答えに
 なる: Codexの`.codex/config.toml`は、comment、authoredな綴り、section順を保ったTOMLとして
@@ -778,6 +804,9 @@ tableは別のrowの主題であり、`get-mcp-carrier-detail`が宣言を先頭
 見えるのは、同じdocumentを自身のrowの下で見ているからであって、1つの事実を二重に公開して
 いるのではない。宣言されたagent、skill、model-instruction、compact-prompt、hookのpathは
 読まれず、解決されず、辿られない。environment referenceも置換されない（FR-019、FR-026）。
+その`diagnostics[]`は、同じdocumentの他の読み取りが記録したものを列挙する: commentを含む
+`.claude/settings.json`はpermission policyとhooksの厳密な読み取りを失敗させ、TOMLとして
+parseできない`.codex/config.toml`はMCP serverとhooksの読み取りを失敗させる（FR-028）。
 
 Permission policyはこれらのvariantに含まれない。Permissions rowが名指すのはfileではなくpolicyで
 あり — あるvendorのpolicyはそれ自体が1つのdocumentであり、別のvendorのそれは、他のkeyが別の
@@ -785,8 +814,10 @@ recognitionに属するsettings fileの1 blockである — したがってpolic
 `get-permission-policy-detail`のresultであって、対象ではないfileについて答えねばならなくなる
 ここでのshapeではない。
 他の認識kindが示すparseはfileの事実であって認識toolのものではなく、responseはそれを
-`presentation`として1回だけ公開する。Markdown kindについては、shippedな全vendorが同じ固定YAML
-semanticsを読むため、extractionは`(file, kind)`ごとに1回実行される。custom-agent kindはその例外で、
+`presentation`として1回だけ公開する。Markdown kindについては、どのruleがfileをadmitしても
+宣言はこのproductの1つの固定YAML semanticsで読まれるため（data-model.md § Field reading）、
+extractionは`(file, kind)`ごとに1回実行される — 全体をそのまま読むinstruction fileでは
+1回も実行されない。custom-agent kindはその例外で、
 しかもkindではなくadmitしたrule自身の読み取りである: Codexのagentは`developer_instructions`のstringが
 proseであるTOMLであり、Markdown productsのagentはfrontmatter fenceで分割されるため、ここでの
 extractionは`(file, tool)`ごとになる。どの読み取りも同じshapeを生むので`presentation`は1つのままであり、

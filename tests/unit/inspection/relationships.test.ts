@@ -417,10 +417,13 @@ describe('Codex instruction files emit no relationship at all (T217)', () => {
   });
 
   it('resolves an environment reference nowhere', async () => {
-    // The authored `${...}` spelling is published exactly as written, and no
-    // process environment is consulted: a resolved value would be runtime
-    // state this product never observes, and substituting it would rewrite
-    // the reader's own file (FR-025).
+    // The authored `${...}` spelling reaches the reader through the file's
+    // complete source, exactly as written, and no process environment is
+    // consulted: a resolved value would be runtime state this product never
+    // observes, and substituting it would rewrite the reader's own file
+    // (FR-025). The recognition of a file read whole republishes none of its
+    // text (api-types.ts § InstructionFileFormat), so there is nothing a
+    // substitution could have been written into either.
     process.env['ACI_T217_REFERENCE'] = 'resolved-from-environment';
     try {
       const recognitions = await recognizeCodexInstruction(
@@ -429,29 +432,11 @@ describe('Codex instruction files emit no relationship at all (T217)', () => {
         '---\nendpoint: ${ACI_T217_REFERENCE}\n---\n\nUse ${ACI_T217_REFERENCE} here.\n',
       );
       const serialized = JSON.stringify(recognitions);
-      expect(serialized).toContain('${ACI_T217_REFERENCE}');
+      expect(serialized).not.toContain('${ACI_T217_REFERENCE}');
       expect(serialized).not.toContain('resolved-from-environment');
     } finally {
       delete process.env['ACI_T217_REFERENCE'];
     }
-  });
-
-  it('confines an unparseable instruction frontmatter to the one recognition', async () => {
-    // The same all-or-nothing rule the skill kind follows (FR-028): nothing
-    // parsed is published — no declarations, no body — while the candidate
-    // stays admitted and its complete source stays displayed.
-    const recognitions = await recognizeCodexInstruction(
-      'AGENTS.md',
-      '---\nscope: [unterminated\n---\n\n# Body\n',
-    );
-    expect(recognitions[0]!.parseStatus).toBe('failed');
-    expect(recognitions[0]!.details).toEqual({
-      kind: 'instructions',
-      frontmatter: [],
-      bodyText: '',
-      applicabilityRange: '**',
-    });
-    expect(recognitions[0]!.diagnosticIds).toEqual([]);
   });
 });
 
@@ -489,11 +474,13 @@ describe('Claude instruction files emit no relationship either (T238)', () => {
       '# Project instructions\n\nSee @docs/target.md and [the guide](docs/target.md).\ndocs/target.md\n',
     );
     expect(recognitions).toHaveLength(1);
-    expect(recognitions[0]!.details.kind).toBe('instructions');
-    // The token reaches the reader through the complete source and the body
-    // the frontmatter block was removed from, which is where they wrote it.
-    expect(recognitions[0]!.details).toMatchObject({
-      bodyText: expect.stringContaining('@docs/target.md') as unknown as string,
+    // The token reaches the reader through the complete source, which is
+    // where they wrote it: the recognition of a file read whole carries its
+    // range and nothing read out of it (api-types.ts § InstructionFileFormat).
+    expect(recognitions[0]!.details).toEqual({
+      kind: 'instructions',
+      format: 'whole-document',
+      applicabilityRange: '**',
     });
     // The file the token names exists on disk, and nothing opened it: an
     // instruction recognition performs no filesystem operation at all — no
@@ -526,8 +513,10 @@ describe('Claude instruction files emit no relationship either (T238)', () => {
   });
 
   it('resolves an environment reference in a reference-looking token nowhere', async () => {
-    // Same rule as everywhere else: the authored spelling is published as
-    // written and no process environment is consulted (FR-026).
+    // Same rule as everywhere else: the authored spelling reaches the reader
+    // through the complete source as written, no process environment is
+    // consulted (FR-026), and the recognition of a file read whole
+    // republishes none of its text.
     process.env['ACI_T238_REFERENCE'] = 'resolved-from-environment';
     try {
       const recognitions = await recognizeClaudeInstruction(
@@ -535,7 +524,7 @@ describe('Claude instruction files emit no relationship either (T238)', () => {
         'Import @${ACI_T238_REFERENCE}/notes.md here.\n',
       );
       const serialized = JSON.stringify(recognitions);
-      expect(serialized).toContain('${ACI_T238_REFERENCE}');
+      expect(serialized).not.toContain('${ACI_T238_REFERENCE}');
       expect(serialized).not.toContain('resolved-from-environment');
     } finally {
       delete process.env['ACI_T238_REFERENCE'];

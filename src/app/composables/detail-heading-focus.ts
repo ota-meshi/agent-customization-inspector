@@ -84,10 +84,14 @@ export interface DetailHeadingFocusOptions {
   readonly openSource: ComputedRef<SourceSelector>;
   /**
    * Whatever else the address selects inside that path — a declared event, a
-   * server name — as one comparable value, and null for a kind whose path is
-   * the whole address, which has no such coordinate to step between. The same
+   * server name, the row a file was entered through — as one comparable value,
+   * and null for a kind whose path is the whole address, which has no such
+   * coordinate to step between. A declared event or a server name is the
    * coordinate the request effect keys on (`detail-request.ts`
-   * § DetailRequestOptions.selection).
+   * § DetailRequestOptions.selection); the entered row is not, because it
+   * selects no other detail, yet a move between two rows of one file changes
+   * nothing else in the address. Without it such a move leaves focus on a
+   * move link the step removes, and focus drops to the document body.
    */
   readonly selection: MaybeRefOrGetter<string | null>;
 }

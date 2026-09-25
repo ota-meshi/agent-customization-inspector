@@ -1,17 +1,23 @@
 <script setup lang="ts">
 // The per-row diagnostic list, shared by every kind's row component (T071,
-// compressed to a badge with a disclosed explanation by T1163).
+// compressed to a badge naming the kind with a disclosed explanation by T1163
+// and T1226).
 //
 // Diagnostics read the same whatever the row is: a file-confined outcome is
 // about the file, not about what was recognized in it. Factoring it here keeps
 // each kind's component about that kind, and keeps one place to change when the
 // presentation of a file-confined outcome changes (FR-028).
 //
-// The badge is one word, and what happened is what it discloses. A badge
-// naming the outcome — "could not be parsed", "the root could not be read" —
-// put a clause beside every affected path, which is more text than a row
-// scanning for trouble needs: the mark it wants is that this file has some,
-// and which kind is the next question rather than the first.
+// The badge names the kind of problem, and the explanation is what it
+// discloses (FR-028). The kind stays on the line because the kinds a row can
+// carry ask for different fixes — a failed parse is fixed in the file's own
+// text, an unreadable file by checking that it is there and can be read — and
+// one line can carry both: a skill's `SKILL.md` that did not parse beside a
+// supporting file that could not be read. One word for every kind would send
+// the reader into each disclosure to learn which, and would give every badge
+// the same accessible name (contracts/accessibility-acceptance.md § 2.4.6).
+// The words are the registry's, the ones the product already uses for the
+// same state (`diagnostics.ts` § label).
 //
 // What FR-028 asks the row to carry — enough path and Source context to
 // resolve the problem — is already on the line: the path is the link beside it
@@ -23,6 +29,13 @@
 // The disclosure is `<details>`/`<summary>` rather than a button and a flag:
 // the expanded state, the keyboard behavior, and the announcement are the
 // platform's (AGENTS.md § Implementation simplicity policy).
+//
+// One badge per code. Every caller hands over the records of one file, and
+// two of one code are two readings of that file failing the same way — a
+// `.claude/settings.json` holding a comment fails both the permission
+// policy's strict reading and the hooks' (data-model.md § Diagnostic) —
+// while the sentence a badge discloses names neither reading, so a second
+// badge would mark nothing the first did not.
 import { computed } from 'vue';
 import DiscloseIcon from '~icons/lucide/chevron-right';
 import { DIAGNOSTIC_REGISTRY } from '../../../../shared/diagnostics';
@@ -34,35 +47,47 @@ const props = defineProps<{
   /** The generation's diagnostics, resolved against those IDs here. */
   diagnostics: readonly SerializedDiagnostic[];
   /**
-   * The badge text, where the row's own outcome is the reason it is listed and
-   * is worth more than the bare word. The files-in-no-kind row is the one such
-   * caller: its read outcome is why it has a row at all, so it leads the badge
-   * and the code's explanation is what opens beneath ({@link
-   * UnclassifiedRow}). Omitted everywhere else.
+   * The badge text, where the row's own read outcome is the reason it is
+   * listed and stands in for the kind's words. The files-in-no-kind row is the
+   * one such caller: its read outcome is why it has a row at all — a readable
+   * file states it with no badge — so it leads the badge and the code's
+   * explanation is what opens beneath ({@link UnclassifiedRow}). Omitted
+   * everywhere else, where the badge states the kind's words
+   * (`diagnostics.ts` § label).
    */
   label?: string;
 }>();
 
-/** The generation's records this row references, in the generation's order. */
-const rowDiagnostics = computed(() =>
-  props.diagnostics.filter((diagnostic) => props.diagnosticIds.includes(diagnostic.diagnosticId)),
+/**
+ * The codes of the generation's records this row references, each once, in
+ * the order the generation first lists them.
+ */
+const rowCodes = computed(
+  () =>
+    new Set(
+      props.diagnostics
+        .filter((diagnostic) => props.diagnosticIds.includes(diagnostic.diagnosticId))
+        .map((diagnostic) => diagnostic.code),
+    ),
 );
 </script>
 
 <template>
-  <ul v-if="rowDiagnostics.length > 0" role="list" class="aci-row-diagnostics">
-    <li v-for="diagnostic in rowDiagnostics" :key="diagnostic.diagnosticId">
+  <ul v-if="rowCodes.size > 0" role="list" class="aci-row-diagnostics">
+    <li v-for="code in rowCodes" :key="code">
       <details class="aci-row-diagnostics__one">
         <!-- The registry fixes each code's severity, and the badge does not
-             draw it: a binary file and a failed read are both attention the
-             reader has to give the file, and the disclosed sentence is what
-             says which (WCAG 1.4.1 — nothing here rests on the colour). -->
+             draw it: the words already say which kind this is, so a colour
+             per severity would change nothing the reader does next (WCAG
+             1.4.1 — nothing here rests on the colour). A detail's list draws
+             it because there it marks the reason a panel is empty, and a
+             row's badge empties no panel (`DetailDiagnostics.vue`). -->
         <summary class="aci-row-diagnostics__badge">
-          {{ label ?? 'diagnostic' }}
+          {{ label ?? DIAGNOSTIC_REGISTRY[code].label }}
           <DiscloseIcon class="aci-row-diagnostics__caret" aria-hidden="true" />
         </summary>
         <p class="aci-row-diagnostics__explanation">
-          {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
+          {{ DIAGNOSTIC_REGISTRY[code].message }}
         </p>
       </details>
     </li>

@@ -94,8 +94,8 @@ export function buildShowcaseRepository(root: string): void {
     'git diff --name-only --diff-filter=ACMR | xargs -r pnpm exec prettier --write',
   ]);
 
-  // Instructions. `AGENTS.md` is the shared file three of the four products
-  // read; `CLAUDE.md` started as a copy of it and has since fallen behind, so
+  // Instructions. `AGENTS.md` is the shared file all four products read;
+  // `CLAUDE.md` started as a copy of it and has since fallen behind, so
   // the two are a comparison a reader might actually want.
   write(root, 'AGENTS.md', [
     '# Tidewater',
@@ -518,7 +518,7 @@ export function buildShowcaseRepository(root: string): void {
   ]);
   write(root, '.agents/rules/security.md', [
     '---',
-    'activation: always',
+    'trigger: always_on',
     '---',
     '',
     '# Security',
@@ -528,8 +528,8 @@ export function buildShowcaseRepository(root: string): void {
   ]);
   write(root, '.agents/rules/migrations.md', [
     '---',
-    'activation: glob',
-    'glob: "packages/api/migrations/**"',
+    'trigger: glob',
+    'globs: packages/api/migrations/**',
     '---',
     '',
     'A migration that has been deployed is never edited. Write a new one.',

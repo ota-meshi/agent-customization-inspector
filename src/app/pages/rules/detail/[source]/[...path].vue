@@ -13,9 +13,15 @@
 // headed by. The URL carries no tool segment, so the path alone is the link's
 // identity, stable across rescans and server launches (FR-030).
 //
-// A file whose bytes were never accepted gains no recognition and so has no
-// detail at all — its finding stays on the inventory, under the files in no
-// kind (FR-028).
+// The file's diagnostics stand above the document. Nothing is read out of a
+// rule file, so this reading cannot fail — but another kind's rules can admit
+// the same file, and their readings can: a rules directory below
+// `.claude/commands/` holds files that are commands too, and a command's
+// frontmatter can fail to parse. Those records are the file's, so the page
+// states them as the row does; whether one can reach a rule file turns on
+// every other rule that admits the path, not on this kind (FR-028). A file
+// whose bytes were never accepted gains no recognition and so has no detail at
+// all — its finding stays on the inventory, under the files in no kind.
 //
 // This surface shows file contents exactly as authored — credentials
 // included, with nothing masked and no control that would uncover a masked
@@ -37,6 +43,7 @@ import {
   detailRoutePathOf,
 } from '../../../../components/detail-route';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
+import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import type { DetailPageControls } from '../../../../composables/detail-heading-focus';
 import DetailPage from '../../../../components/inspection/DetailPage.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
@@ -255,6 +262,10 @@ useReportedPageSubject(titleSubject);
       />
 
       <SourceRootNote :text="sourceRootText" />
+
+      <!-- The file's own records, whichever kind's reading of it left them,
+           above the text they are about (`DetailDiagnostics.vue`). -->
+      <DetailDiagnostics :diagnostics="openDetail.diagnostics" />
 
       <!-- The readability guard is the narrowing this file's own union asks
            for and never a branch with a second outcome: a rule recognition

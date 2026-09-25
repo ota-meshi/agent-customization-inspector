@@ -36,8 +36,8 @@ const RECORDED_DIGESTS = [
   {
     vendor: 'Claude Code',
     file: 'claude-code',
-    english: '2aad69c35c2ff0e348b62bd1f8f6007a538337f14d5ddaa08f6f159b3c46f858',
-    japanese: '15862bf76910e507d65ebabe865f61c5652167dcfbaad07600d29a244ac3c73a',
+    english: '59fab461ebf26a0178658fc6aaac5b62594788bc515d48d8486fd522e7efedc7',
+    japanese: '3dfaefcd4f1f4de30f5e80076366ec7bb9bdb58d90fff006cda8d16590acfcbb',
   },
   {
     vendor: 'OpenAI Codex',
@@ -50,8 +50,8 @@ const RECORDED_DIGESTS = [
     // after this suite was watched failing against the file this row names.
     vendor: 'Antigravity CLI',
     file: 'antigravity-cli',
-    english: 'f311fd1d0bee9f81d03e4493e8fd4526cee5c3e19fda0ac07d2eaa5e92a5ca4c',
-    japanese: '52a1d8db154676ec4e428b0943e3bbc66e8cfd4f63037506c3f4a6b9d852f715',
+    english: 'e400f3a590cdd8efbf851898f9d9ab2c4dd76e6f2bd9e7b7eaa235ae731cbef3',
+    japanese: '200f1e85d2d7a08de6d5a3f8f8cf83f47b5ccadf80fb86a8a275da8174d9d406',
   },
 ] as const;
 

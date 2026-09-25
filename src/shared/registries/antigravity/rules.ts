@@ -8,26 +8,26 @@
 // and selectors both — so which location it reaches is the first thing a
 // reader meets on the record (AGENTS.md § Implementation simplicity policy).
 //
-// Two arrangements are worth meeting before the records. A workspace skill has
-// two documented shapes at one location — a flat Markdown file and a skill
-// folder's `SKILL.md` — so it has two rules with two row units rather than one
-// rule with two selectors, exactly as the two custom-agent shapes do
-// (research.md § 2). And the user settings carrier is one candidate recognized
-// three times — settings, permissions, hooks — the arrangement
-// `.claude/settings.json` and `.codex/config.toml` already have.
+// One arrangement is worth meeting before the records: the user settings
+// carrier is one candidate recognized three times — settings, permissions,
+// hooks — the arrangement `.claude/settings.json` and `.codex/config.toml`
+// already have.
 //
-// Where a record carries a second selector it is the superseded `.agent`
-// spelling, admitted only at the two locations whose own page states backward
-// support for it and only in the shape that page shows there
-// (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
+// Where a Repository skill or rule record carries a second selector it is the
+// superseded `.agent` spelling, admitted only at the two locations whose own
+// page states backward support for it and only in the shape that page shows
+// there (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
 //
-// This vendor ships no derived rule: no cited page documents a terminal setting
-// that renames or relocates a workspace customization, so every path below is
-// literal (contracts/vendors/antigravity-cli.md § Derived Repository rules).
+// This vendor ships no derived rule, as this release's scope: the one terminal
+// setting that decides which paths are read, `.agents/rules.json`, registers
+// rule files beyond a rules directory's immediate children, and admitting what
+// it registers would be a configuration-read derivation this release does not
+// ship for this vendor. Every path below is literal
+// (contracts/vendors/antigravity-cli.md § Derived Repository rules).
 //
 // Each record is declared with `satisfies` so the keyed map's computed keys
 // keep resolving (see `codex/rules.ts`).
-import { ANY_NAME } from '../../../server/inspection/rules/registry';
+import { ANY_DIRECTORIES, ANY_NAME } from '../../../server/inspection/rules/registry';
 import { SHIPS_MAINTENANCE_DATA } from '../maintenance-data';
 import type { AntigravityRuleId } from '../identifier-types';
 import type { InspectionRule } from '../rule-types';
@@ -55,200 +55,85 @@ const REPOSITORY_POLICY_REFS = [
 const GLOBAL_POLICY_REFS = ['FR-013', 'FR-014', 'FR-018', 'QR-001', 'QR-003', 'QR-004', 'QR-005'];
 
 /**
- * The repository root's `GEMINI.md`, which GitHub Copilot also reads: one file
- * with two recognitions, not two rows. The root alone, because the migration
- * page names the workspace context files as the ones in the active directory
- * and states no depth below it — reaching deeper would rest on an inference
- * (spec.md FR-007; § Known uncertainties item 1).
+ * The workspace context files: every `GEMINI.md` and `AGENTS.md` in the
+ * repository, at the root and in any subdirectory, and the `.agents/` spelling
+ * of each directory's pair. Whenever the terminal reads or edits a file it
+ * walks up from that file's folder to the workspace root and looks for the
+ * pair at each level, so a file at any depth is one the terminal can genuinely
+ * load; whether a directory holding both names has both loaded is not stated
+ * (contracts/vendors/antigravity-cli.md § Known uncertainties item 1). The
+ * root `GEMINI.md` is GitHub Copilot's too, and every `AGENTS.md` is read by
+ * Copilot, Claude Code, and at the root by Codex: one file carries each
+ * reader's recognition, on one row per range those readers give it
+ * (spec.md FR-007).
  */
-export const ANTIGRAVITY_REPO_CONTEXT_GEMINI_ROOT_RULE = {
-  ruleId: 'antigravity.repo.context.gemini-root',
+export const ANTIGRAVITY_REPO_CONTEXT_RULE = {
+  ruleId: 'antigravity.repo.context',
   tool: 'antigravity',
   discoveryClass: 'static-candidate',
   kind: 'instructions',
   sourceKinds: ['repository'],
   /**
-   * The `antigravity.repo.context.gemini-root` matcher: one exact `GEMINI.md`
-   * literal at the Repository root.
+   * The `antigravity.repo.context` matcher, two programs:
+   * `[ANY_DIRECTORIES, 'GEMINI.md']` and `[ANY_DIRECTORIES, 'AGENTS.md']`.
    *
-   * No leading `ANY_DIRECTORIES`. The migration page names the context files as
-   * the ones in the active directory and states no depth below it, so the root's
-   * own file is the whole admission and a nested `GEMINI.md` is a near miss at
-   * every depth (contracts/vendors/antigravity-cli.md § Known uncertainties
-   * item 1).
-   */
-  matcher: {
-    base: { kind: 'repository' },
-    selectors: [[{ kind: 'literal', value: 'GEMINI.md' }]],
-  },
-  policyRefs: SHIPS_MAINTENANCE_DATA ? REPOSITORY_POLICY_REFS : [],
-  precedenceGroup: null,
-  documentationStatus: 'partially-documented',
-  lifecycleQualifiers: [],
-  evidence: SHIPS_MAINTENANCE_DATA
-    ? [
-        {
-          sourceId: 'google.antigravity.cli-migration',
-          url: 'https://antigravity.google/docs/cli/gcli-migration/',
-          officialHost: 'antigravity.google',
-          sections: ['Context files and workspace rules'],
-          reviewedOn: '2026-09-10',
-          establishes:
-            'The agent parses and enforces the rule constraints defined inside the active directory GEMINI.md and AGENTS.md files.',
-        },
-      ]
-    : [],
-} as const satisfies InspectionRule;
-
-/**
- * The repository root's `AGENTS.md`, which Copilot and Codex also read. The
- * root alone, for the reason the `GEMINI.md` rule states.
- */
-export const ANTIGRAVITY_REPO_CONTEXT_AGENTS_ROOT_RULE = {
-  ruleId: 'antigravity.repo.context.agents-root',
-  tool: 'antigravity',
-  discoveryClass: 'static-candidate',
-  kind: 'instructions',
-  sourceKinds: ['repository'],
-  /**
-   * The `antigravity.repo.context.agents-root` matcher: one exact `AGENTS.md`
-   * literal at the Repository root, anchored for the same reason as the
-   * `GEMINI.md` rule above.
-   *
-   * Other tools admit this same file, and that is the point: one file stays one
-   * row carrying each reader's recognition (spec.md FR-007).
-   */
-  matcher: {
-    base: { kind: 'repository' },
-    selectors: [[{ kind: 'literal', value: 'AGENTS.md' }]],
-  },
-  policyRefs: SHIPS_MAINTENANCE_DATA ? REPOSITORY_POLICY_REFS : [],
-  precedenceGroup: null,
-  documentationStatus: 'partially-documented',
-  lifecycleQualifiers: [],
-  evidence: SHIPS_MAINTENANCE_DATA
-    ? [
-        {
-          sourceId: 'google.antigravity.cli-migration',
-          url: 'https://antigravity.google/docs/cli/gcli-migration/',
-          officialHost: 'antigravity.google',
-          sections: ['Context files and workspace rules'],
-          reviewedOn: '2026-09-10',
-          establishes:
-            'The agent parses and enforces the rule constraints defined inside the active directory GEMINI.md and AGENTS.md files.',
-        },
-      ]
-    : [],
-} as const satisfies InspectionRule;
-
-/**
- * A flat workspace skill: one Markdown file directly below `.agents/skills/`.
- *
- * This shape is admitted on the vendor's own documentation and against the
- * observed implementation, which is a deliberate choice rather than an
- * oversight. The terminal's plugins and skills page tells a reader to draft
- * `.agents/skills/format-tests.md`, and it is the only page in the vendor's
- * documentation that says so; the shared Agent Skills page, the editor
- * extensions' page, both plugin pages, and a Google codelab written for this
- * terminal all show a skill folder holding a `SKILL.md` instead. A static
- * analysis of the published `agy` 1.2.0 Linux x64 binary agrees with the
- * majority: the skill customization kind is the subdirectory kind rather than
- * the file kind, so `discoverInSubDirs` filters a plain file out before any
- * name is read, and `GetSkillsCreatePath` builds
- * `{workspace}/.agents/skills/{skill_name}/SKILL.md` (observed against the
- * binary whose SHA-256 is
- * 195bf11b249deebe67028305a9b7b1d19ac38e9ab281b786a163a7d2fc8ff428, not
- * established by any cited page).
- *
- * So this rule most likely admits a file the terminal does not read. It stays
- * because the two errors are not symmetric. A reader who followed the vendor's
- * own instructions has this file, and dropping the rule would show them
- * nothing at all about it — which is the failure this product exists to
- * prevent — while keeping it lists the file with a recognition the vendor's
- * documentation supports. The analysis covers the default directory
- * configuration of one platform's 1.2.0 build; "not auto-discovered there" is
- * not "never read". Delete this rule when a page or a later build settles it
- * (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
- */
-export const ANTIGRAVITY_REPO_SKILL_FILE_RULE = {
-  ruleId: 'antigravity.repo.skill.file',
-  tool: 'antigravity',
-  discoveryClass: 'static-candidate',
-  kind: 'skill',
-  sourceKinds: ['repository'],
-  /**
-   * The `antigravity.repo.skill.file` matcher, authored in the typed segment
-   * form the contract table shows: `['.agents', 'skills', /\.md$/u]`.
-   *
-   * Three segments, so what it admits is a direct child of the root's
-   * `.agents/skills/`. A `deploy/SKILL.md` inside that directory is four
-   * segments and belongs to the rule below, which is what keeps the two row
-   * units apart rather than letting one rule admit both.
-   *
-   * The superseded `.agent/` spelling is deliberately absent: the page that
-   * states backward support is the one that gives the folder shape, so it
-   * reaches that shape alone (§ Known uncertainties item 6).
+   * `ANY_DIRECTORIES` includes zero segments and `.agents` like any other
+   * directory name, so the two programs reach the root pair, every
+   * subdirectory's pair, and the `<dir>/.agents/GEMINI.md` and
+   * `<dir>/.agents/AGENTS.md` the page gives beside them; a program of their
+   * own would only admit those files a second time. The same reach includes a
+   * `.gemini/` directory and a workspace plugin directory, whose
+   * customizations this vendor's rules exclude: a context file there is still
+   * the directory's own, loaded as the walk passes through, and the grammar has
+   * no step that excludes one directory name (spec.md FR-003). Which of them
+   * a session loads depends on the files it reads, which this tool does not
+   * observe (FR-009).
    */
   matcher: {
     base: { kind: 'repository' },
     selectors: [
-      [
-        { kind: 'literal', value: '.agents' },
-        { kind: 'literal', value: 'skills' },
-        { kind: 'regex', pattern: /\.md$/u },
-      ],
+      [ANY_DIRECTORIES, { kind: 'literal', value: 'GEMINI.md' }],
+      [ANY_DIRECTORIES, { kind: 'literal', value: 'AGENTS.md' }],
     ],
   },
   policyRefs: SHIPS_MAINTENANCE_DATA ? REPOSITORY_POLICY_REFS : [],
   precedenceGroup: null,
-  documentationStatus: 'conflict',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
         {
-          sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
+          sourceId: 'google.antigravity.rules',
+          url: 'https://antigravity.google/docs/rules/',
           officialHost: 'antigravity.google',
-          sections: ['Creating local workspace skills'],
-          reviewedOn: '2026-09-10',
+          sections: ['Directory-scoped rules', 'Managing rules in Antigravity CLI'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Create a directory named .agents/skills/ at the project root and draft a markdown file with a .md extension whose frontmatter defines name and description; the skill is compiled into a slash command when agy runs in that directory.',
-        },
-        {
-          sourceId: 'google.antigravity.skills',
-          url: 'https://antigravity.google/docs/skills/',
-          officialHost: 'antigravity.google',
-          sections: ['Where skills live', 'Creating a skill'],
-          reviewedOn: '2026-09-10',
-          establishes:
-            'A skill is a folder containing a SKILL.md file, which is the shape this page gives for the same .agents/skills/ directory and is why this rule is recorded as a conflict rather than as documented.',
+            'The CLI evaluates AGENTS.md and GEMINI.md at the repository root and in subdirectories: whenever it reads or edits a file it walks up from that file’s folder to the workspace root, loading <dir>/AGENTS.md or <dir>/GEMINI.md and <dir>/.agents/AGENTS.md or <dir>/.agents/GEMINI.md at each level.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
 
 /**
- * A directory-shaped workspace skill: a skill folder's `SKILL.md` below
- * `.agents/skills/`, the same shape Codex and Copilot read at the same
- * location, so one such file carries three recognitions. It is a rule of its
- * own rather than a second selector on the flat rule above, because the two
- * row units differ — one names a file, the other a directory whose entry point
- * is `SKILL.md` — exactly as the two custom-agent shapes below are two rules
- * (research.md § 2).
+ * A workspace skill: a skill folder's `SKILL.md` below `.agents/skills/`, the
+ * same shape Codex and Copilot read at the same location, so one such file
+ * carries three recognitions.
  *
- * This is the shape every source but one agrees on, and the only shape the
- * observed implementation discovers. The flat rule above records why it is
- * nonetheless admitted (contracts/vendors/antigravity-cli.md § Known
- * uncertainties item 6).
+ * This is the shape every page that gives a terminal skill location shows, and
+ * the only shape the observed implementation discovers: a flat Markdown file
+ * directly below `skills/` is filtered out before any name is read
+ * (contracts/vendors/antigravity-cli.md § Known uncertainties item 6), so no
+ * rule admits one.
  */
-export const ANTIGRAVITY_REPO_SKILL_DIRECTORY_RULE = {
-  ruleId: 'antigravity.repo.skill.directory',
+export const ANTIGRAVITY_REPO_SKILL_RULE = {
+  ruleId: 'antigravity.repo.skill',
   tool: 'antigravity',
   discoveryClass: 'static-candidate',
   kind: 'skill',
   sourceKinds: ['repository'],
   /**
-   * The `antigravity.repo.skill.directory` matcher, two programs of four
+   * The `antigravity.repo.skill` matcher, two programs of four
    * segments:
    * `['.agents', 'skills', ANY_NAME, 'SKILL.md']` and
    * `['.agent', 'skills', ANY_NAME, 'SKILL.md']`.
@@ -282,7 +167,7 @@ export const ANTIGRAVITY_REPO_SKILL_DIRECTORY_RULE = {
   },
   policyRefs: SHIPS_MAINTENANCE_DATA ? REPOSITORY_POLICY_REFS : [],
   precedenceGroup: null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -290,20 +175,21 @@ export const ANTIGRAVITY_REPO_SKILL_DIRECTORY_RULE = {
           sourceId: 'google.antigravity.skills',
           url: 'https://antigravity.google/docs/skills/',
           officialHost: 'antigravity.google',
-          sections: ['Where skills live', 'Creating a skill'],
-          reviewedOn: '2026-09-10',
+          sections: ['What are skills?', 'Anatomy of a skill', 'CLI skill locations'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'A workspace-specific skill is a folder at <workspace-root>/.agents/skills/<skill-folder>/ holding a SKILL.md, and .agents/skills is the current default while .agent/skills keeps backward support.',
+            'A workspace skill is a folder at <workspace-root>/.agents/skills/<skill-folder>/ holding a required SKILL.md — the location the CLI skill locations table gives the terminal — and .agents/skills is the default while .agent/skills keeps backward compatibility.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
 
 /**
- * A workspace rule: one Markdown file directly below `.agents/rules/`, with
- * the superseded `.agent/rules/` spelling as the second selector. The rule's
- * declared activation — manual, always on, model decision, or a glob — is
- * shown as written and never evaluated (spec.md FR-016).
+ * A workspace rule: one Markdown file directly below a `.agents/rules/`
+ * directory at the root or in any subdirectory, with the superseded
+ * `.agent/rules/` spelling as the second selector. The rule's declared
+ * activation — manual, always on, model decision, or a glob — is shown as
+ * written and never evaluated (spec.md FR-016).
  */
 export const ANTIGRAVITY_REPO_RULE_RULE = {
   ruleId: 'antigravity.repo.rule',
@@ -312,30 +198,38 @@ export const ANTIGRAVITY_REPO_RULE_RULE = {
   kind: 'rule',
   sourceKinds: ['repository'],
   /**
-   * The `antigravity.repo.rule` matcher, two programs of three segments:
-   * `['.agents', 'rules', /\.md$/u]` and `['.agent', 'rules', /\.md$/u]`.
+   * The `antigravity.repo.rule` matcher, two programs:
+   * `[ANY_DIRECTORIES, '.agents', 'rules', /\.md$/u]` and
+   * `[ANY_DIRECTORIES, '.agent', 'rules', /\.md$/u]`.
    *
    * As with the skill directory above, the two differ in one character and the
    * second is the superseded spelling the Rules page records as still
-   * supported.
+   * loaded.
    *
-   * No `ANY_DIRECTORIES` on either end. The leading one is absent because the
-   * page names the workspace or git root, which is the selected Repository root
-   * this product reasons in; the trailing one is absent because the page shows
-   * no depth inside the rules directory. Claude's rules directory is documented
-   * as recursive and this one is not, so the difference between the two
-   * programs is the difference between the two pages
-   * (§ Known uncertainties item 10).
+   * The leading `ANY_DIRECTORIES` is the page's directory-scoped reach: a rules
+   * directory in any subdirectory is loaded while a file below it is read or
+   * edited. No trailing one, because the page states that only a rules
+   * directory's immediate `.md` children are scanned; Claude's rules directory
+   * is documented as recursive and this one is not, so the difference between
+   * the two programs is the difference between the two pages. The reach
+   * includes a `.gemini/` directory and a workspace plugin directory, whose
+   * own customizations this vendor's rules exclude: a rules directory there is
+   * still that directory's own (spec.md FR-003). A nested file a
+   * `.agents/rules.json` registers is read by the terminal and outside this
+   * release, which ships no derivation reading that registration
+   * (contracts/vendors/antigravity-cli.md § Derived Repository rules).
    */
   matcher: {
     base: { kind: 'repository' },
     selectors: [
       [
+        ANY_DIRECTORIES,
         { kind: 'literal', value: '.agents' },
         { kind: 'literal', value: 'rules' },
         { kind: 'regex', pattern: /\.md$/u },
       ],
       [
+        ANY_DIRECTORIES,
         { kind: 'literal', value: '.agent' },
         { kind: 'literal', value: 'rules' },
         { kind: 'regex', pattern: /\.md$/u },
@@ -344,18 +238,23 @@ export const ANTIGRAVITY_REPO_RULE_RULE = {
   },
   policyRefs: SHIPS_MAINTENANCE_DATA ? REPOSITORY_POLICY_REFS : [],
   precedenceGroup: null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
         {
           sourceId: 'google.antigravity.rules',
-          url: 'https://antigravity.google/docs/rules-workflows/',
+          url: 'https://antigravity.google/docs/rules/',
           officialHost: 'antigravity.google',
-          sections: ['Workspace Rules'],
-          reviewedOn: '2026-09-10',
+          sections: [
+            'Directory-scoped rules',
+            'Global rules',
+            'Activation modes',
+            'Managing rules in Antigravity CLI',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Workspace rules live in the .agents/rules folder of the workspace or git root, with backward support for .agent/rules, and each rule declares whether it activates manually, always, by model decision, or by a glob pattern.',
+            'The CLI evaluates .agents/rules/*.md at the repository root and in subdirectories, with the legacy .agent/rules/*.md still loaded; only the immediate .md children of a rules directory are scanned, and each rule declares its trigger — always_on, model_decision, glob, or manual.',
         },
       ]
     : [],
@@ -378,9 +277,10 @@ export const ANTIGRAVITY_REPO_HOOKS_RULE = {
    * pair of literals at the Repository root — the shape `.codex/hooks.json`
    * already has.
    *
-   * Root-anchored: the Hooks page names the workspace's `.agents/` as the
-   * customization directory, so a nested `.agents/hooks.json` belongs to a
-   * working directory this product never selects and stays a near miss.
+   * Root-anchored: the Hooks page gives the terminal's workspace hooks as
+   * `.agents/hooks.json` at the project root, so a nested `.agents/hooks.json`
+   * belongs to a working directory this product never selects and stays a near
+   * miss.
    */
   matcher: {
     base: { kind: 'repository' },
@@ -393,7 +293,7 @@ export const ANTIGRAVITY_REPO_HOOKS_RULE = {
   },
   policyRefs: SHIPS_MAINTENANCE_DATA ? REPOSITORY_POLICY_REFS : [],
   precedenceGroup: null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -401,10 +301,10 @@ export const ANTIGRAVITY_REPO_HOOKS_RULE = {
           sourceId: 'google.antigravity.hooks',
           url: 'https://antigravity.google/docs/hooks/',
           officialHost: 'antigravity.google',
-          sections: ['Configuration', 'Schema and File Format'],
-          reviewedOn: '2026-09-10',
+          sections: ['Managing hooks in Antigravity CLI', 'Schema and File Format'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Hooks are configured in a hooks.json file located in the customization directory, .agents/ in the workspace being one, and that file maps a hook name to its event configurations, each holding matcher groups of command handlers.',
+            'The CLI defines workspace hooks in .agents/hooks.json at the project root, and that file maps a hook name to its event configurations, each holding the handlers that run for it.',
         },
       ]
     : [],
@@ -444,10 +344,10 @@ export const ANTIGRAVITY_REPO_AGENT_FILE_RULE = {
     ? [
         {
           sourceId: 'google.antigravity.cli-subagents',
-          url: 'https://antigravity.google/docs/cli/subagents/',
+          url: 'https://antigravity.google/docs/subagents/',
           officialHost: 'antigravity.google',
           sections: ['Custom Agents (Markdown Format)'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'Workspace agents are discovered at .agents/agents/<name>.md or .agents/agents/<name>/agent.md.',
         },
@@ -493,10 +393,10 @@ export const ANTIGRAVITY_REPO_AGENT_DIRECTORY_RULE = {
     ? [
         {
           sourceId: 'google.antigravity.cli-subagents',
-          url: 'https://antigravity.google/docs/cli/subagents/',
+          url: 'https://antigravity.google/docs/subagents/',
           officialHost: 'antigravity.google',
           sections: ['Custom Agents (Markdown Format)'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'Workspace agents are discovered at .agents/agents/<name>.md or .agents/agents/<name>/agent.md.',
         },
@@ -538,10 +438,10 @@ export const ANTIGRAVITY_REPO_MCP_RULE = {
     ? [
         {
           sourceId: 'google.antigravity.cli-mcp',
-          url: 'https://antigravity.google/docs/cli/mcp/',
+          url: 'https://antigravity.google/docs/mcp/',
           officialHost: 'antigravity.google',
           sections: ['Global and Workspace Server Configs'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'Workspace local MCP setups are configured in the active project under .agents/mcp_config.json.',
         },
@@ -550,7 +450,9 @@ export const ANTIGRAVITY_REPO_MCP_RULE = {
 } as const satisfies InspectionRule;
 
 /**
- * The consented home's global context file.
+ * The consented home's standalone global context files: `GEMINI.md` and
+ * `AGENTS.md` directly below the home and below its `config/` directory. Each
+ * applies across every project and is always active.
  */
 export const ANTIGRAVITY_GLOBAL_CONTEXT_RULE = {
   ruleId: 'antigravity.global.context',
@@ -559,34 +461,101 @@ export const ANTIGRAVITY_GLOBAL_CONTEXT_RULE = {
   kind: 'instructions',
   sourceKinds: ['global'],
   /**
-   * The `antigravity.global.context` matcher: the one `GEMINI.md` directly
-   * below the consented Antigravity home.
+   * The `antigravity.global.context` matcher, four exact programs:
+   * `['GEMINI.md']`, `['AGENTS.md']`, `['config', 'GEMINI.md']`, and
+   * `['config', 'AGENTS.md']`.
    *
    * The base is this tool's own Global boundary, never the Repository root: the
    * two are separate Sources whose roots never merge (FR-013 through FR-018).
-   * One exact literal, so the plan reads the named file and never enumerates
-   * the home — which is what keeps consent to read a context file from becoming
+   * Exact literals, so the plan reads the named files and never enumerates the
+   * home — which is what keeps consent to read a context file from becoming
    * permission to list a reader's `~/.gemini`, where their credentials, session
    * history, and the other two products' directories sit.
    */
   matcher: {
     base: { kind: 'global', member: 'antigravity' },
-    selectors: [[{ kind: 'literal', value: 'GEMINI.md' }]],
+    selectors: [
+      [{ kind: 'literal', value: 'GEMINI.md' }],
+      [{ kind: 'literal', value: 'AGENTS.md' }],
+      [
+        { kind: 'literal', value: 'config' },
+        { kind: 'literal', value: 'GEMINI.md' },
+      ],
+      [
+        { kind: 'literal', value: 'config' },
+        { kind: 'literal', value: 'AGENTS.md' },
+      ],
+    ],
   },
   policyRefs: SHIPS_MAINTENANCE_DATA ? GLOBAL_POLICY_REFS : [],
   precedenceGroup: null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
         {
-          sourceId: 'google.antigravity.cli-migration',
-          url: 'https://antigravity.google/docs/cli/gcli-migration/',
+          sourceId: 'google.antigravity.rules',
+          url: 'https://antigravity.google/docs/rules/',
           officialHost: 'antigravity.google',
-          sections: ['Context files and workspace rules'],
-          reviewedOn: '2026-09-10',
+          sections: ['Global rules', 'Managing rules in Antigravity CLI'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'The agent automatically consults and enforces the global constraints located at ~/.gemini/GEMINI.md.',
+            'The standalone global files ~/.gemini/AGENTS.md, ~/.gemini/GEMINI.md, ~/.gemini/config/AGENTS.md, and ~/.gemini/config/GEMINI.md apply across all projects and are always active, and the CLI section names the first two among its global rules.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The consented home's modular global rules: a Markdown file directly below
+ * `config/rules/` or the terminal's own `antigravity-cli/rules/`. A rule's
+ * declared activation is shown as written and never evaluated (spec.md
+ * FR-016), exactly as a workspace rule's is.
+ */
+export const ANTIGRAVITY_GLOBAL_RULE_RULE = {
+  ruleId: 'antigravity.global.rule',
+  tool: 'antigravity',
+  discoveryClass: 'static-candidate',
+  kind: 'rule',
+  sourceKinds: ['global'],
+  /**
+   * The `antigravity.global.rule` matcher, two programs of three segments:
+   * `['config', 'rules', /\.md$/u]` and `['antigravity-cli', 'rules', /\.md$/u]`.
+   *
+   * The two differ in their root alone: the page's general section gives
+   * `config/rules/` and its CLI section adds the terminal's own directory. No
+   * recursive step, because the page states that only a rules directory's
+   * immediate `.md` children are scanned.
+   */
+  matcher: {
+    base: { kind: 'global', member: 'antigravity' },
+    selectors: [
+      [
+        { kind: 'literal', value: 'config' },
+        { kind: 'literal', value: 'rules' },
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+      [
+        { kind: 'literal', value: 'antigravity-cli' },
+        { kind: 'literal', value: 'rules' },
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+    ],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? GLOBAL_POLICY_REFS : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'google.antigravity.rules',
+          url: 'https://antigravity.google/docs/rules/',
+          officialHost: 'antigravity.google',
+          sections: ['Global rules', 'Managing rules in Antigravity CLI'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Modular global rules live in ~/.gemini/config/rules/*.md, and the CLI also evaluates ~/.gemini/antigravity-cli/rules/*.md; only a rules directory’s immediate .md children are scanned.',
         },
       ]
     : [],
@@ -619,10 +588,10 @@ export const ANTIGRAVITY_GLOBAL_MCP_RULE = {
     ? [
         {
           sourceId: 'google.antigravity.cli-mcp',
-          url: 'https://antigravity.google/docs/cli/mcp/',
+          url: 'https://antigravity.google/docs/mcp/',
           officialHost: 'antigravity.google',
           sections: ['Global and Workspace Server Configs'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'Global MCP server setups are configured in ~/.gemini/config/mcp_config.json.',
         },
@@ -669,10 +638,10 @@ export const ANTIGRAVITY_GLOBAL_AGENT_FILE_RULE = {
     ? [
         {
           sourceId: 'google.antigravity.cli-subagents',
-          url: 'https://antigravity.google/docs/cli/subagents/',
+          url: 'https://antigravity.google/docs/subagents/',
           officialHost: 'antigravity.google',
           sections: ['Custom Agents (Markdown Format)'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes: 'Global custom agents are discovered in ~/.gemini/config/agents/.',
         },
         {
@@ -739,34 +708,28 @@ export const ANTIGRAVITY_GLOBAL_AGENT_DIRECTORY_RULE = {
 } as const satisfies InspectionRule;
 
 /**
- * A directory-shaped global skill below the consented home: a skill folder's
- * `SKILL.md` under `antigravity-cli/skills/` or under `config/skills/`.
+ * A global skill below the consented home: a skill folder's `SKILL.md` under
+ * `antigravity-cli/skills/` or under `config/skills/`.
  *
- * Two roots rather than one, because the pages that name a global skill
- * directory name different ones — the terminal's own page
- * `antigravity-cli/skills/`, the shared Agent Skills page `config/skills/`,
- * and the editor extensions' page a third this release does not admit. That
- * is not a disagreement to settle by choosing: the terminal takes both, having
+ * Two roots rather than one. The shared Agent Skills page gives the terminal's
+ * global skills at `antigravity-cli/skills/`, and gives `config/skills/` as
+ * the global location of the desktop application and the editor extensions
+ * rather than of the terminal. The terminal takes both nonetheless, having
  * appended its application data directory and, when the configuration
  * directory is available, that one too, then removed duplicate roots before
- * walking them (observed against `agy` 1.2.0; see the flat workspace rule
- * above for what that observation is and is not). The third directory stays
- * out because it belongs to a product this release does not support
- * (§ Surface boundary).
- *
- * A rule of its own rather than a third selector on the flat rule below, for
- * the reason the workspace pair are two rules: the two row units differ — one
- * names a folder whose entry point is `SKILL.md`, the other names a file —
- * and a rule's selectors admit paths for one row unit (research.md § 2).
+ * walking them (observed against `agy` 1.2.0; contracts/vendors/antigravity-cli.md
+ * § Known uncertainties item 6 records what that observation is and is not).
+ * The extensions' legacy `antigravity/skills/` stays out because it belongs to
+ * a product this release does not support (§ Surface boundary).
  */
-export const ANTIGRAVITY_GLOBAL_SKILL_DIRECTORY_RULE = {
-  ruleId: 'antigravity.global.skill.directory',
+export const ANTIGRAVITY_GLOBAL_SKILL_RULE = {
+  ruleId: 'antigravity.global.skill',
   tool: 'antigravity',
   discoveryClass: 'static-candidate',
   kind: 'skill',
   sourceKinds: ['global'],
   /**
-   * The `antigravity.global.skill.directory` matcher, two programs of four
+   * The `antigravity.global.skill` matcher, two programs of four
    * segments:
    * `['antigravity-cli', 'skills', ANY_NAME, 'SKILL.md']` and
    * `['config', 'skills', ANY_NAME, 'SKILL.md']`.
@@ -803,90 +766,14 @@ export const ANTIGRAVITY_GLOBAL_SKILL_DIRECTORY_RULE = {
           sourceId: 'google.antigravity.skills',
           url: 'https://antigravity.google/docs/skills/',
           officialHost: 'antigravity.google',
-          sections: ['Where skills live'],
-          reviewedOn: '2026-09-10',
+          sections: [
+            'CLI skill locations',
+            'Antigravity 2.0 skill locations',
+            'Antigravity IDE skill locations',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'A global skill, available across all workspaces, is a skill folder holding a SKILL.md at ~/.gemini/config/skills/<skill-folder>/.',
-        },
-        {
-          sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
-          officialHost: 'antigravity.google',
-          sections: ['Sharing global skills'],
-          reviewedOn: '2026-09-10',
-          establishes:
-            'Any skill placed in ~/.gemini/antigravity-cli/skills/ is automatically imported as a global slash command whenever agy launches in any directory, which is the second root a global skill folder is admitted at.',
-        },
-      ]
-    : [],
-} as const satisfies InspectionRule;
-
-/**
- * A flat global skill: the Markdown file the terminal's own page shows
- * directly under `antigravity-cli/skills/`.
- *
- * It carries the same conflict, and the same reason for admitting it anyway,
- * as the flat workspace rule above
- * (contracts/vendors/antigravity-cli.md § Known uncertainties item 6). Its row
- * is the file: this shape has no folder, so it occupies none and publishes no
- * companion census — enumerating the directory above it would publish every
- * other flat skill beside it, and the sibling `.md` files there, as one
- * skill's companions (spec.md § FR-004).
- *
- * `config/skills/` has no flat program. The page that shows a flat skill is
- * the terminal's own and shows it at the terminal's own root; the shared page
- * gives that directory the folder shape alone, and a rule for a location no
- * page establishes would be this product's own invention.
- */
-export const ANTIGRAVITY_GLOBAL_SKILL_FILE_RULE = {
-  ruleId: 'antigravity.global.skill.file',
-  tool: 'antigravity',
-  discoveryClass: 'static-candidate',
-  kind: 'skill',
-  sourceKinds: ['global'],
-  /**
-   * The `antigravity.global.skill.file` matcher, authored in the typed segment
-   * form the contract table shows:
-   * `['antigravity-cli', 'skills', /\.md$/u]`.
-   *
-   * Three segments, so what it admits is a direct child of the consented
-   * home's `antigravity-cli/skills/`. A `deploy/SKILL.md` inside that
-   * directory is four segments and belongs to the rule above, which is what
-   * keeps the two row units apart rather than letting one rule admit both.
-   */
-  matcher: {
-    base: { kind: 'global', member: 'antigravity' },
-    selectors: [
-      [
-        { kind: 'literal', value: 'antigravity-cli' },
-        { kind: 'literal', value: 'skills' },
-        { kind: 'regex', pattern: /\.md$/u },
-      ],
-    ],
-  },
-  policyRefs: SHIPS_MAINTENANCE_DATA ? GLOBAL_POLICY_REFS : [],
-  precedenceGroup: null,
-  documentationStatus: 'conflict',
-  lifecycleQualifiers: [],
-  evidence: SHIPS_MAINTENANCE_DATA
-    ? [
-        {
-          sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
-          officialHost: 'antigravity.google',
-          sections: ['Sharing global skills'],
-          reviewedOn: '2026-09-10',
-          establishes:
-            'Any skill placed in ~/.gemini/antigravity-cli/skills/ is automatically imported as a global slash command whenever agy launches in any directory.',
-        },
-        {
-          sourceId: 'google.antigravity.skills',
-          url: 'https://antigravity.google/docs/skills/',
-          officialHost: 'antigravity.google',
-          sections: ['Where skills live'],
-          reviewedOn: '2026-09-10',
-          establishes:
-            'A skill is a folder containing a SKILL.md file, which is the shape this page gives for a global skill and is why this rule is recorded as a conflict rather than as documented.',
+            'The CLI skill locations table gives a global skill, available in all workspaces, as a skill folder at ~/.gemini/antigravity-cli/skills/<skill-folder>/ — the first root this rule admits — while ~/.gemini/config/skills/<skill-folder>/, the second, is the global location the page gives Antigravity 2.0 and the standalone IDE rather than the terminal.',
         },
       ]
     : [],
@@ -920,10 +807,10 @@ export const ANTIGRAVITY_GLOBAL_SETTINGS_RULE = {
     ? [
         {
           sourceId: 'google.antigravity.cli-settings',
-          url: 'https://antigravity.google/docs/cli/settings/',
+          url: 'https://antigravity.google/docs/settings/',
           officialHost: 'antigravity.google',
           sections: ['Configuration file location'],
-          reviewedOn: '2026-09-10',
+          reviewedOn: '2026-09-24',
           establishes:
             'The persistent settings are saved in plain JSON at ~/.gemini/antigravity-cli/settings.json.',
         },
@@ -959,10 +846,10 @@ export const ANTIGRAVITY_GLOBAL_PERMISSIONS_RULE = {
     ? [
         {
           sourceId: 'google.antigravity.cli-permissions',
-          url: 'https://antigravity.google/docs/cli/permissions/',
+          url: 'https://antigravity.google/docs/permissions/',
           officialHost: 'antigravity.google',
-          sections: ['Fine-grained permissions'],
-          reviewedOn: '2026-09-10',
+          sections: ['CLI fine-grained permissions'],
+          reviewedOn: '2026-09-24',
           establishes:
             'Permissions are evaluated across the deny, ask, and allow access lists configured inside the global settings at ~/.gemini/antigravity-cli/settings.json.',
         },
@@ -973,9 +860,8 @@ export const ANTIGRAVITY_GLOBAL_PERMISSIONS_RULE = {
 /**
  * The consented home's standalone hook carrier, `config/hooks.json`: the user
  * tier's counterpart of `antigravity.repo.hooks`, at the vendor's shared
- * configuration directory rather than the terminal's own. Both are
- * `partially-documented`, because the page that gives the schema gives the
- * location as an example of a customization directory
+ * configuration directory rather than the terminal's own. The Hooks page names
+ * both as locations the terminal defines hooks at and gives the file's schema
  * (contracts/vendors/antigravity-cli.md § Known uncertainties item 8).
  */
 export const ANTIGRAVITY_GLOBAL_HOOKS_RULE = {
@@ -995,7 +881,7 @@ export const ANTIGRAVITY_GLOBAL_HOOKS_RULE = {
   },
   policyRefs: SHIPS_MAINTENANCE_DATA ? GLOBAL_POLICY_REFS : [],
   precedenceGroup: null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -1003,10 +889,10 @@ export const ANTIGRAVITY_GLOBAL_HOOKS_RULE = {
           sourceId: 'google.antigravity.hooks',
           url: 'https://antigravity.google/docs/hooks/',
           officialHost: 'antigravity.google',
-          sections: ['Configuration', 'Schema and File Format'],
-          reviewedOn: '2026-09-10',
+          sections: ['Managing hooks in Antigravity CLI', 'Schema and File Format'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Hooks are configured in a hooks.json file located in the customization directory, ~/.gemini/config/ being one, and that file maps a hook name to its event configurations, each holding matcher groups of command handlers.',
+            'The CLI defines global hooks in ~/.gemini/config/hooks.json, and that file maps a hook name to its event configurations, each holding the handlers that run for it.',
         },
       ]
     : [],
@@ -1041,31 +927,36 @@ export const ANTIGRAVITY_GLOBAL_HOOKS_INLINE_RULE = {
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
         {
-          sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
+          sourceId: 'google.antigravity.hooks',
+          url: 'https://antigravity.google/docs/hooks/',
           officialHost: 'antigravity.google',
-          sections: ['Managing hooks'],
-          reviewedOn: '2026-09-10',
+          sections: ['Managing hooks in Antigravity CLI'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Hooks are defined inside a plugin hooks.json or configured inside the primary settings.json file.',
+            'The CLI defines global hooks inside the primary ~/.gemini/antigravity-cli/settings.json file as well as in a standalone hooks.json, and gives no schema for the settings-file form.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
 
 /**
- * The workspace plugin directory and everything below it — `.agents/plugins/`
- * and the `_agents/plugins/` spelling beside it — with the skills, rules, MCP
- * definitions, and hooks inside them.
+ * The workspace plugin directory as a plugin — `.agents/plugins/` and the
+ * `_agents/plugins/` spelling beside it — with the skills, rules, MCP
+ * definitions, and hooks inside them. A `GEMINI.md` or `AGENTS.md` inside one
+ * is not excluded, and neither is a `.agents/rules/` there: they are the
+ * context files and the rules directory of the directory holding them, which
+ * `antigravity.repo.context` and `antigravity.repo.rule` admit as at any other
+ * depth, because the terminal loads them while walking up through that
+ * directory.
  *
  * The reason is not the installed-copy reason the rule below gives, which does
- * not reach a plugin authored in a repository: it is that no terminal page
- * names a workspace plugin directory at all. The vendor documents it in the
- * desktop application's and the editor extensions' trees, while the terminal's
- * own pages describe a plugin only as a bundle `agy` stages into the user
- * tier, so nothing cited here establishes that the terminal loads one from a
- * workspace (spec.md FR-003; contracts/vendors/antigravity-cli.md
- * § Surface boundary).
+ * not reach a plugin authored in a repository: it is that no page names a
+ * workspace plugin directory for the terminal. The Plugins page gives
+ * `.agents/plugins/` in its desktop-application and editor-extension sections,
+ * while its terminal section and the terminal's own pages describe a plugin
+ * only as a bundle `agy` stages into the user tier, so nothing cited here
+ * establishes that the terminal loads one from a workspace (spec.md FR-003;
+ * contracts/vendors/antigravity-cli.md § Surface boundary).
  */
 export const ANTIGRAVITY_EXCLUDED_WORKSPACE_PLUGINS_RULE = {
   ruleId: 'antigravity.excluded.workspace-plugins',
@@ -1084,12 +975,17 @@ export const ANTIGRAVITY_EXCLUDED_WORKSPACE_PLUGINS_RULE = {
     ? [
         {
           sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
+          url: 'https://antigravity.google/docs/plugins/',
           officialHost: 'antigravity.google',
-          sections: ['Antigravity plugins', 'Plugin filesystem structure'],
-          reviewedOn: '2026-09-10',
+          sections: [
+            'Manual plugin installation',
+            'CLI plugin management',
+            'CLI filesystem location',
+            'Standalone IDE plugin installation',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'The terminal stages a plugin it installs or imports within ~/.gemini/antigravity-cli/plugins/<plugin_name>/ and documents no workspace location a plugin can be authored at.',
+            'The page gives the workspace plugin folder .agents/plugins/ for Antigravity 2.0 and the standalone IDE, while its CLI section installs a plugin with agy plugin install, stages it within ~/.gemini/antigravity-cli/plugins/<plugin_name>/, and names no workspace location a plugin can be authored at for the terminal.',
         },
         {
           sourceId: 'google.antigravity.cli-features',
@@ -1128,12 +1024,12 @@ export const ANTIGRAVITY_EXCLUDED_PLUGINS_RULE = {
     ? [
         {
           sourceId: 'google.antigravity.cli-plugins-skills',
-          url: 'https://antigravity.google/docs/cli/plugins/',
+          url: 'https://antigravity.google/docs/plugins/',
           officialHost: 'antigravity.google',
-          sections: ['Antigravity plugins', 'Plugin filesystem structure'],
-          reviewedOn: '2026-09-10',
+          sections: ['Directory structure', 'CLI filesystem location'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Installing or importing a plugin stages the bundle files within ~/.gemini/antigravity-cli/plugins/<plugin_name>/, whose layout holds plugin.json and optionally mcp_config.json, hooks.json, skills/, agents/, and rules/ — so what the vendor loads there is a copy of a source this rule declines.',
+            'Installing a plugin has the CLI stage its assets within ~/.gemini/antigravity-cli/plugins/<plugin_name>/, and a plugin directory holds plugin.json and optionally mcp_config.json, hooks.json, skills/, agents/, and rules/ — so what the vendor loads there is a copy of a source this rule declines.',
         },
         {
           sourceId: 'google.antigravity.cli-features',
@@ -1193,16 +1089,14 @@ export const ANTIGRAVITY_INSPECTION_RULES: Readonly<Record<AntigravityRuleId, In
   [ANTIGRAVITY_GLOBAL_HOOKS_RULE.ruleId]: ANTIGRAVITY_GLOBAL_HOOKS_RULE,
   [ANTIGRAVITY_GLOBAL_MCP_RULE.ruleId]: ANTIGRAVITY_GLOBAL_MCP_RULE,
   [ANTIGRAVITY_GLOBAL_PERMISSIONS_RULE.ruleId]: ANTIGRAVITY_GLOBAL_PERMISSIONS_RULE,
+  [ANTIGRAVITY_GLOBAL_RULE_RULE.ruleId]: ANTIGRAVITY_GLOBAL_RULE_RULE,
   [ANTIGRAVITY_GLOBAL_SETTINGS_RULE.ruleId]: ANTIGRAVITY_GLOBAL_SETTINGS_RULE,
-  [ANTIGRAVITY_GLOBAL_SKILL_DIRECTORY_RULE.ruleId]: ANTIGRAVITY_GLOBAL_SKILL_DIRECTORY_RULE,
-  [ANTIGRAVITY_GLOBAL_SKILL_FILE_RULE.ruleId]: ANTIGRAVITY_GLOBAL_SKILL_FILE_RULE,
+  [ANTIGRAVITY_GLOBAL_SKILL_RULE.ruleId]: ANTIGRAVITY_GLOBAL_SKILL_RULE,
   [ANTIGRAVITY_REPO_AGENT_DIRECTORY_RULE.ruleId]: ANTIGRAVITY_REPO_AGENT_DIRECTORY_RULE,
   [ANTIGRAVITY_REPO_AGENT_FILE_RULE.ruleId]: ANTIGRAVITY_REPO_AGENT_FILE_RULE,
-  [ANTIGRAVITY_REPO_CONTEXT_AGENTS_ROOT_RULE.ruleId]: ANTIGRAVITY_REPO_CONTEXT_AGENTS_ROOT_RULE,
-  [ANTIGRAVITY_REPO_CONTEXT_GEMINI_ROOT_RULE.ruleId]: ANTIGRAVITY_REPO_CONTEXT_GEMINI_ROOT_RULE,
+  [ANTIGRAVITY_REPO_CONTEXT_RULE.ruleId]: ANTIGRAVITY_REPO_CONTEXT_RULE,
   [ANTIGRAVITY_REPO_HOOKS_RULE.ruleId]: ANTIGRAVITY_REPO_HOOKS_RULE,
   [ANTIGRAVITY_REPO_MCP_RULE.ruleId]: ANTIGRAVITY_REPO_MCP_RULE,
   [ANTIGRAVITY_REPO_RULE_RULE.ruleId]: ANTIGRAVITY_REPO_RULE_RULE,
-  [ANTIGRAVITY_REPO_SKILL_DIRECTORY_RULE.ruleId]: ANTIGRAVITY_REPO_SKILL_DIRECTORY_RULE,
-  [ANTIGRAVITY_REPO_SKILL_FILE_RULE.ruleId]: ANTIGRAVITY_REPO_SKILL_FILE_RULE,
+  [ANTIGRAVITY_REPO_SKILL_RULE.ruleId]: ANTIGRAVITY_REPO_SKILL_RULE,
 };

@@ -14,7 +14,7 @@
 
 | 種別 | 場所 |
 | --- | --- |
-| Instructions | `CLAUDE.md` と `CLAUDE.local.md`。任意のディレクトリ |
+| Instructions | `CLAUDE.md`、`CLAUDE.local.md`、`AGENTS.md`。任意のディレクトリ |
 | Skills | `.claude/skills/` ディレクトリ配下の各ディレクトリの `SKILL.md`。そのディレクトリがどこにあっても |
 | Agents | `.claude/agents/` 配下の任意の深さの `.md` |
 | Prompts / commands | `.claude/commands/` 配下の任意の深さの `.md` |
@@ -55,10 +55,10 @@
 
 | 種別 | 場所 |
 | --- | --- |
-| Instructions | ルートの `GEMINI.md` と `AGENTS.md` |
-| Skills | `.agents/skills/` または `.agent/skills/` 配下の各ディレクトリの `SKILL.md`。`.agents/skills/` 直下の `.md` |
+| Instructions | 任意のディレクトリ（ディレクトリの `.agents/` を含む）の `GEMINI.md` と `AGENTS.md` |
+| Skills | `.agents/skills/` または `.agent/skills/` 配下の各ディレクトリの `SKILL.md` |
 | Agents | `.agents/agents/` 直下の `.md`。`.agents/agents/` 配下の各ディレクトリの `agent.md` |
-| Rules | `.agents/rules/` または `.agent/rules/` 直下の `.md` |
+| Rules | 任意の深さにある `.agents/rules/` または `.agent/rules/` ディレクトリ直下の `.md` |
 | MCP | `.agents/mcp_config.json` |
 | Hooks | `.agents/hooks.json` |
 
@@ -115,9 +115,10 @@ agent home です。Consent ページは何も読む前にそのすべてを示�
 
 | 種別 | 場所 |
 | --- | --- |
-| Instructions | `GEMINI.md` |
-| Skills | `config/skills/` または `antigravity-cli/skills/` 配下の各ディレクトリの `SKILL.md`。`antigravity-cli/skills/` 直下の `.md` |
+| Instructions | `~/.gemini` 直下または `config/` 直下の `GEMINI.md` と `AGENTS.md` |
+| Skills | `config/skills/` または `antigravity-cli/skills/` 配下の各ディレクトリの `SKILL.md` |
 | Agents | `config/agents/` 直下の `.md`。`config/agents/` 配下の各ディレクトリの `agent.md` |
+| Rules | `config/rules/` または `antigravity-cli/rules/` 直下の `.md` |
 | MCP | `config/mcp_config.json` |
 | Hooks | `config/hooks.json` と `antigravity-cli/settings.json` |
 | Permissions / settings | `antigravity-cli/settings.json` |

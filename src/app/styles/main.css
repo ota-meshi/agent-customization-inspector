@@ -660,6 +660,10 @@ button[aria-disabled='true'] {
    gap, so the list reads as one column. */
 .aci-item {
   border-block-end: 1px solid var(--aci-hairline);
+  /* The row is the box its file lines ask whether their three columns fit
+     (§ .aci-row-file). A block list item takes its width from the list, so
+     containing its inline size changes nothing about how wide it is. */
+  container-type: inline-size;
 }
 
 .aci-item:last-child {
@@ -718,7 +722,21 @@ button[aria-disabled='true'] {
   border-block-start: 1px solid var(--aci-hairline);
   display: grid;
   gap: 0.625rem;
-  grid-template-columns: minmax(0, 1fr) max-content max-content;
+  /* The marks take their content's width where the row has it to give, and
+     wrap where it does not. A plain `max-content` track keeps the unwrapped
+     width whatever the box around it is: at 200% text a row naming several
+     products measured 917px inside a 654px row, and the page scrolled
+     sideways, which is content lost (WCAG 1.4.4, `accessibility.spec.ts`
+     § AUTO-1.4.4). The `minmax(0, …)` floor is what lets the track give way,
+     and it still takes max-content wherever that fits, so the column reads the
+     same at ordinary sizes.
+     The path keeps a floor of its own, because it is the column the row is
+     about and the only one that breaks anywhere: with a zero floor the marks
+     took their whole max-content first and a path four products read was left
+     0px wide. Twelve characters hold a context file's own name. The floor only
+     ever takes width from the marks, which wrap into it, because the row
+     stacks before three columns stop fitting (the container query below). */
+  grid-template-columns: minmax(min(12ch, 100%), 1fr) minmax(0, max-content) max-content;
   padding: 0.25rem 0.75rem 0.25rem 1.5rem;
 }
 
@@ -759,12 +777,22 @@ button[aria-disabled='true'] {
 
 /* Below the width where three columns fit, the row stacks. Two of them are
    `max-content` — the products with their documented surfaces, and the count
-   with its unit — so on a narrow viewport they take what they ask for and the
-   path, the only flexible column, is left with nothing: measured 0px at a
-   440px viewport, which draws an authored path one character per line. The
-   same threshold every other two-column region here reflows at
-   (WCAG 1.4.10). */
-@media (width < 52rem) {
+   with its unit — so in a narrow row they take what they ask for and the path,
+   the only flexible column, is left with nothing: measured 0px at a 440px
+   viewport, which draws an authored path one character per line
+   (WCAG 1.4.10).
+
+   The row's own width is what the query asks, not the viewport's, the reason
+   the header's search box gives for its own query (`App.vue` § .aci-app__search):
+   whether three columns fit turns on the row, and the columns' needs scale with
+   the text. A viewport query in `rem` reads the browser's initial font size,
+   so text enlarged on the page itself left it unmoved: at 200% text the row
+   kept three columns at every viewport up to 52rem's 832px, and the marks or
+   the path were squeezed to 0px. 35.6875rem is the row's width at the 832px
+   viewport where the viewport query switched, so at ordinary sizes the row
+   stacks exactly where it did, and at any text size the threshold scales with
+   the text. */
+@container (width < 35.6875rem) {
   .aci-row-file {
     grid-template-columns: minmax(0, 1fr);
   }

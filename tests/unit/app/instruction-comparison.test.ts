@@ -17,8 +17,9 @@
 // committed generation, the central client-data purge, and leaving the view.
 // What is under test is the data half of the kind's recognition metadata:
 // tool recognition compared per tool with its typed surfaces, the files'
-// declared metadata — one parse per kind (FR-028) — serialized once per side
-// into the canonical YAML document the diff mounts, and nothing fabricated —
+// declared metadata — one parse per kind (FR-028), and only where both
+// formats open with declarations — serialized once per side into the
+// canonical YAML document the diff mounts, and nothing fabricated —
 // relationship rows above all,
 // because an instruction file never publishes an edge for the wire to carry
 // (api-types.ts § FileDetailDto, T217/T238).
@@ -45,6 +46,10 @@ import type {
 /** The two readable instruction paths most cases compare. */
 const LEFT_PATH = 'AGENTS.md';
 const RIGHT_PATH = 'CLAUDE.md';
+
+/** Two path-specific instruction files, the one format that opens with declarations. */
+const LEFT_SPECIFIC_PATH = '.github/instructions/frontend.instructions.md';
+const RIGHT_SPECIFIC_PATH = '.github/instructions/backend.instructions.md';
 
 /** A committed snapshot holding the two readable instruction files. */
 function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
@@ -135,17 +140,42 @@ function dataResult<Data>(
 }
 
 /**
- * One readable instruction detail with the given parsed declarations, or —
- * with a null frontmatter — one whose extraction failed all-or-nothing
- * (FR-028): no presentation, the complete source still readable.
+ * One readable instruction detail of a format its products read whole — an
+ * `AGENTS.md`, a `CLAUDE.md` — which carries the file and nothing read out of
+ * it (api-types.ts § InstructionFileFormat).
  */
-function instructionDetail(
-  sourceRelativePath: string,
-  frontmatter: readonly DeclaredEntryDto[] | null = [],
-  sourceText = `source of ${sourceRelativePath}`,
-): FileDetailDto {
+function instructionDetail(sourceRelativePath: string): FileDetailDto {
+  const sourceText = `source of ${sourceRelativePath}`;
   return {
     kind: 'instructions',
+    format: 'whole-document',
+    file: {
+      sourceId: 'source-repository',
+      sourceRelativePath,
+      diagnosticIds: [],
+      encoding: 'utf-8',
+      hadLeadingBom: false,
+      sourceText,
+      sizeBytes: sourceText.length,
+    },
+    diagnostics: [],
+  };
+}
+
+/**
+ * One readable path-specific instruction detail — the format that opens with
+ * declarations — with the given parsed declarations, or, with a null
+ * frontmatter, one whose extraction failed all-or-nothing (FR-028): no
+ * presentation, the complete source still readable.
+ */
+function pathSpecificDetail(
+  sourceRelativePath: string,
+  frontmatter: readonly DeclaredEntryDto[] | null = [],
+): FileDetailDto {
+  const sourceText = `source of ${sourceRelativePath}`;
+  return {
+    kind: 'instructions',
+    format: 'frontmatter-led',
     file: {
       sourceId: 'source-repository',
       sourceRelativePath,
@@ -408,31 +438,30 @@ describe('instruction recognition comparison rows (T276)', () => {
   it('serializes both parsed sides to canonical YAML documents for the diff', () => {
     const comparison = new InstructionRecognitionComparison(
       side(
-        instructionDetail(LEFT_PATH, [
+        pathSpecificDetail(LEFT_SPECIFIC_PATH, [
           scalarEntry('scope', 'project'),
           scalarEntry('retries', '7', 'number'),
           scalarEntry('only_left', 'yes'),
         ]),
-        [COPILOT_ALL, CODEX],
+        [COPILOT_ALL],
       ),
       side(
-        instructionDetail(RIGHT_PATH, [
+        pathSpecificDetail(RIGHT_SPECIFIC_PATH, [
           scalarEntry('scope', 'workspace'),
           scalarEntry('retries', '7', 'number'),
         ]),
-        [COPILOT_ALL, CODEX],
+        [COPILOT_CLI],
       ),
     );
     expect(comparison.tools.map((row) => [row.tool, row.left, row.right])).toEqual([
       ['copilot', 'recognized', 'recognized'],
-      ['codex', 'recognized', 'recognized'],
     ]);
     // One canonical document per side — every key sorted, with no leading
     // identity pair, because an instruction file declares no identity this
-    // product reads — however many tools recognize both sides: the
+    // product reads — beside the tool rows rather than under them: the
     // declarations are the files' one parse, not any tool's, so no tool
     // repeats or captions them (research.md § 7, frontmatter-yaml.ts).
-    expect(comparison.frontmatterDiff).toEqual({
+    expect(comparison.declarations?.frontmatterDiff).toEqual({
       originalText: ['only_left: yes', 'retries: 7', 'scope: project', ''].join('\n'),
       modifiedText: ['retries: 7', 'scope: workspace', ''].join('\n'),
     });
@@ -454,15 +483,16 @@ describe('instruction recognition comparison rows (T276)', () => {
     expect(comparison.tools[0]!.rightSurfaces).toEqual(['copilot-cli']);
   });
 
-  it('states per-tool recognition apart from the files’ frontmatter diff', () => {
+  it('compares a pair read whole by its recognitions alone, with no declaration half', () => {
     // A configured fallback only Codex recognizes against a Claude-only
     // file: each tool's row states the side it does not recognize — with no
-    // surfaces, because there is no recognition to rest on — while the
-    // declared metadata still compares, because the declarations are the
-    // files' parses and both parsed (research.md § 7).
+    // surfaces, because there is no recognition to rest on — while no
+    // declared metadata is compared at all, because neither format declares
+    // anything: each file is read whole, and the source comparison is the
+    // whole of what the two say (api-types.ts § InstructionFileFormat).
     const comparison = new InstructionRecognitionComparison(
-      side(instructionDetail('TEAM_GUIDE.md', [scalarEntry('a', '1', 'number')]), [CODEX]),
-      side(instructionDetail('CLAUDE.local.md', [scalarEntry('a', '1', 'number')]), [CLAUDE]),
+      side(instructionDetail('TEAM_GUIDE.md'), [CODEX]),
+      side(instructionDetail('CLAUDE.local.md'), [CLAUDE]),
     );
     expect(comparison.tools.map((row) => [row.tool, row.left, row.right])).toEqual([
       ['claude', 'not-recognized', 'recognized'],
@@ -471,10 +501,20 @@ describe('instruction recognition comparison rows (T276)', () => {
     for (const row of comparison.tools) {
       expect(row.left === 'not-recognized' ? row.leftSurfaces : row.rightSurfaces).toEqual([]);
     }
-    expect(comparison.frontmatterDiff).toEqual({
-      originalText: 'a: 1\n',
-      modifiedText: 'a: 1\n',
-    });
+    expect(comparison.declarations).toBeNull();
+  });
+
+  it('compares no declarations when only one side’s format declares any', () => {
+    // A path-specific file applying to `**` shares the root row with the root
+    // `AGENTS.md`, so the pair is a real one. Only one of them has
+    // declarations, and a diff against a file that has none would read as
+    // that file declaring nothing, so neither half is built.
+    const comparison = new InstructionRecognitionComparison(
+      side(pathSpecificDetail(LEFT_SPECIFIC_PATH, [scalarEntry('applyTo', '**')]), [COPILOT_ALL]),
+      side(instructionDetail(LEFT_PATH), [COPILOT_ALL, CODEX]),
+    );
+    expect(comparison.tools.map((row) => row.tool)).toEqual(['copilot', 'codex']);
+    expect(comparison.declarations).toBeNull();
   });
 
   it('reads extraction failure off the file’s null presentation (FR-028)', () => {
@@ -483,36 +523,36 @@ describe('instruction recognition comparison rows (T276)', () => {
     // tool at once — the tool rows keep stating the recognitions, and the
     // unknown side serializes no document to diff against.
     const comparison = new InstructionRecognitionComparison(
-      side(instructionDetail(LEFT_PATH, null), [COPILOT_ALL, CODEX]),
-      side(instructionDetail(RIGHT_PATH, [scalarEntry('scope', 'project')]), [COPILOT_ALL]),
+      side(pathSpecificDetail(LEFT_SPECIFIC_PATH, null), [COPILOT_ALL]),
+      side(pathSpecificDetail(RIGHT_SPECIFIC_PATH, [scalarEntry('scope', 'project')]), [
+        COPILOT_CLI,
+      ]),
     );
     expect(comparison.tools.map((row) => [row.tool, row.left, row.right])).toEqual([
       ['copilot', 'recognized', 'recognized'],
-      ['codex', 'recognized', 'not-recognized'],
     ]);
-    expect(comparison.leftDeclarations).toBe('extraction-failed');
-    expect(comparison.rightDeclarations).toBe('parsed');
-    expect(comparison.frontmatterDiff).toBeNull();
+    expect(comparison.declarations?.left).toBe('extraction-failed');
+    expect(comparison.declarations?.right).toBe('parsed');
+    expect(comparison.declarations?.frontmatterDiff).toBeNull();
+    expect(comparison.declarations?.bodyDiff).toBeNull();
   });
 
   it('publishes descriptive rows only — no rank, no winner, no fabricated relationships', () => {
     // The comparison's whole shape is closed: per-tool side states with
-    // surfaces, per-side declaration states, and the two serialized
-    // documents. No field exists that could carry a relationship row, a
-    // precedence, or a verdict — an instruction file never publishes an
-    // edge (api-types.ts § FileDetailDto, T217/T238), and none may be
+    // surfaces, and a declaration half of per-side states and the two
+    // serialized documents. No field exists that could carry a relationship
+    // row, a precedence, or a verdict — an instruction file never publishes
+    // an edge (api-types.ts § FileDetailDto, T217/T238), and none may be
     // invented here (FR-012).
     const comparison = new InstructionRecognitionComparison(
-      side(instructionDetail(LEFT_PATH, [scalarEntry('scope', 'project')]), [CODEX]),
-      side(instructionDetail(RIGHT_PATH, [scalarEntry('scope', 'workspace')]), [CLAUDE]),
+      side(pathSpecificDetail(LEFT_SPECIFIC_PATH, [scalarEntry('scope', 'project')]), [
+        COPILOT_ALL,
+      ]),
+      side(pathSpecificDetail(RIGHT_SPECIFIC_PATH, [scalarEntry('scope', 'workspace')]), [
+        COPILOT_CLI,
+      ]),
     );
-    expect(Object.keys(comparison).sort()).toEqual([
-      'bodyDiff',
-      'frontmatterDiff',
-      'leftDeclarations',
-      'rightDeclarations',
-      'tools',
-    ]);
+    expect(Object.keys(comparison).sort()).toEqual(['declarations', 'tools']);
     for (const row of comparison.tools) {
       expect(Object.keys(row).sort()).toEqual([
         'left',
@@ -522,7 +562,13 @@ describe('instruction recognition comparison rows (T276)', () => {
         'tool',
       ]);
     }
-    expect(Object.keys(comparison.frontmatterDiff ?? {}).sort()).toEqual([
+    expect(Object.keys(comparison.declarations ?? {}).sort()).toEqual([
+      'bodyDiff',
+      'frontmatterDiff',
+      'left',
+      'right',
+    ]);
+    expect(Object.keys(comparison.declarations?.frontmatterDiff ?? {}).sort()).toEqual([
       'modifiedText',
       'originalText',
     ]);

@@ -1,10 +1,10 @@
-// T272: browser acceptance for the unified instructions inventory
+// T272, T1224: browser acceptance for the unified instructions inventory
 // (Phase 21). Launches the packaged CLI against the all-vendor instruction
-// fixture and verifies the rendered shared-file matrix — `AGENTS.md`
-// Codex+Copilot, root `CLAUDE.md` Claude+Copilot, nested `CLAUDE.md`
+// fixture and verifies the rendered shared-file matrix — root `AGENTS.md`
+// Claude+Codex+Copilot, root `CLAUDE.md` Claude+Copilot, nested `CLAUDE.md`
 // Claude-only, `CLAUDE.local.md` Claude-only — with the configured fallback
 // rows Phase 15 activated, the filters, the exclusions' absence, the
-// deterministic per-file diagnostics, and keyboard operability.
+// deterministic per-file diagnostic, and keyboard operability.
 //
 // The exact admitted sets, provenance, and read order are proven closer to
 // the code (tests/integration/repository-scan.test.ts, T270); what is
@@ -81,20 +81,23 @@ test('lists every range with each file’s recognizing products', async ({ page 
     'packages/api/.github/copilot-instructions.md',
     'packages/api/AGENTS.md',
     'packages/api/CLAUDE.md',
+    'packages/api/GEMINI.md',
     '.github/instructions/frontend.instructions.md',
     '.github/instructions/nested/backend.instructions.md',
     'packages/api/.github/instructions/api.instructions.md',
   ]);
 
   // The shared-file matrix, as the products listed beside each path: the
-  // root `AGENTS.md` is Codex's and Copilot's, the root `CLAUDE.md` Claude's
-  // and Copilot's, and the spellings beside them stay single-product —
+  // root `AGENTS.md` is Claude's, Codex's, and Copilot's, the root `CLAUDE.md`
+  // Claude's and Copilot's, and the spellings beside them stay single-product —
   // which is what makes each shared row a statement about the file.
   const entryFor = (path: string) =>
     fileEntries(page).filter({ has: page.getByText(path, { exact: true }) });
   await expect(entryFor('AGENTS.md')).toContainText('OpenAI Codex');
   await expect(entryFor('AGENTS.md')).toContainText('GitHub Copilot');
+  await expect(entryFor('AGENTS.md')).toContainText('Claude Code');
   await expect(entryFor('AGENTS.override.md')).toContainText('OpenAI Codex');
+  await expect(entryFor('AGENTS.override.md')).not.toContainText('Claude Code');
   await expect(entryFor('AGENTS.override.md')).not.toContainText('GitHub Copilot');
   await expect(entryFor('CLAUDE.md')).toContainText('Claude Code');
   await expect(entryFor('CLAUDE.md')).toContainText('GitHub Copilot');
@@ -109,13 +112,14 @@ test('lists every range with each file’s recognizing products', async ({ page 
   // promotes a nested file (Phase 21).
   await expect(entryFor('packages/api/CLAUDE.md')).toContainText('Claude Code');
   await expect(entryFor('packages/api/CLAUDE.md')).not.toContainText('OpenAI Codex');
-  // The root `GEMINI.md` is Copilot's root alternative and one of the two
-  // context files Antigravity CLI reads at the repository root. The nested one
-  // is nobody's: no shipped rule reads that filename below the root
-  // (specs/003-antigravity-cli-support FR-002).
+  // The root `GEMINI.md` is Copilot's root alternative and one of the
+  // context files Antigravity CLI reads at every depth. The nested one is
+  // Antigravity CLI's alone, because Copilot documents the root file only
+  // (specs/003-antigravity-cli-support FR-007).
   await expect(entryFor('GEMINI.md')).toContainText('GitHub Copilot');
   await expect(entryFor('GEMINI.md')).toContainText('Antigravity CLI');
-  expect(await page.locator('main').innerText()).not.toContain('packages/api/GEMINI.md');
+  await expect(entryFor('packages/api/GEMINI.md')).toContainText('Antigravity CLI');
+  await expect(entryFor('packages/api/GEMINI.md')).not.toContainText('GitHub Copilot');
 
   // What no rule admits is simply absent — the excluded Copilot locations,
   // the nested fallback variant, the absent declared name, and the carrier.
@@ -145,18 +149,15 @@ test('names no Source and offers no Source filter with one Source carried', asyn
   ).toHaveAttribute('aria-label', "Compare this range's files: **");
 });
 
-test('reports the deterministic failures on the files they happened to', async ({ page }) => {
+test('reports the deterministic failure on the file it happened to', async ({ page }) => {
   await page.goto(host.origin);
   await expect(instructionRows(page)).toHaveCount(5);
-  // The malformed frontmatter is confined to its file: the row keeps its
-  // place under `docs/**` with its own diagnostic, and no other file carries
-  // one (FR-028).
-  await expect(fileEntries(page).filter({ hasText: 'docs/CLAUDE.md' })).toContainText(
-    'This file could not be parsed',
-  );
-  await expect(fileEntries(page).filter({ hasText: 'AGENTS.md' }).first()).not.toContainText(
-    'This file could not be parsed',
-  );
+  // The block opening `docs/CLAUDE.md` is not YAML, and it is no failure:
+  // Claude Code reads the file whole, so the block is a line of its
+  // instructions and the file keeps its place under `docs/**` with no
+  // diagnostic, like every other instruction file here (FR-028, T1224).
+  await expect(fileEntries(page).filter({ hasText: 'docs/CLAUDE.md' })).toHaveCount(1);
+  await expect(page.getByRole('tabpanel')).not.toContainText('This file could not be parsed');
   // The binary candidate is in no kind's inventory; its own row under
   // "Files in no kind" states its path and read outcome, which is how the
   // `partial` generation names its other cause on this page.
@@ -180,11 +181,12 @@ test('narrows the matrix with the tool and path filters, keyboard-operably', asy
   await expect(fileEntries(page)).toHaveCount(4);
   await expect(fileEntries(page).filter({ hasText: 'TEAM_GUIDE.md' })).toBeVisible();
 
-  // Claude Code keeps its files at every depth while the shared root files
-  // drop their Copilot half rather than their row.
+  // Claude Code keeps its files at every depth — each directory's `AGENTS.md`
+  // among them — while the shared root files drop their Copilot half rather
+  // than their row.
   await page.getByLabel('Tool').selectOption('claude');
   await expect(instructionRows(page)).toHaveCount(3);
-  await expect(fileEntries(page)).toHaveCount(6);
+  await expect(fileEntries(page)).toHaveCount(9);
 
   // Reach the path filter in the page's real Tab order — arriving there is
   // part of the claim — then type the query with the keyboard alone. The
@@ -194,7 +196,7 @@ test('narrows the matrix with the tool and path filters, keyboard-operably', asy
   ).toBe(true);
   await page.keyboard.type('packages/api/');
   await expect(instructionRows(page)).toHaveCount(1);
-  await expect(fileEntries(page)).toHaveCount(2);
+  await expect(fileEntries(page)).toHaveCount(3);
   // The summary counts against everything the generation committed, not
   // against the tool-narrowed population.
   await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(

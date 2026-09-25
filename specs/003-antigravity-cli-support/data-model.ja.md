@@ -49,11 +49,12 @@ capture は3つの環境プロパティを固定順 `COPILOT_HOME`、`CLAUDE_CON
 ## Vendor registry record (Antigravity CLI)
 
 1つの vendor module ディレクトリが、既存3つと同じ形で、このツールの rule・behavior・strategy・
-relation を持つ。Repository の rule はルートの context の2つ、skill の2つの形、workspace の
+relation を持つ。Repository の rule はすべての深さの context の2つ、skill フォルダ、すべての深さの
 rules ディレクトリ、standalone の hooks carrier、custom agent の2つの形、MCP carrier を admit
 する。旧綴りの `.agent/` の後方互換をページが述べている2つは、それ用の selector を2本目に持つ。
-Global の rule は home の context file、その MCP carrier、standalone の hooks carrier、agents
-ディレクトリ、文書化された2つの global root にある両方の形の skill、settings carrier を admit し、
+Global の rule は home の4つの context file、その2つの rules ディレクトリ、その MCP carrier、
+standalone の hooks carrier、agents ディレクトリ、文書化された2つの global root にある skill
+フォルダ、settings carrier を admit し、
 最後のものは3つの rule の下に入る。
 excluded group は、インストール済み plugin コピーとそれを追跡する manifest、どの端末のページも
 文書化しない workspace の plugin ディレクトリ、および親が既に除外する credential・session と
@@ -61,11 +62,11 @@ history の state・cache・log を名指す。
 
 ## Compiled unit
 
-skill kind は、ディレクトリの形の compiled unit の隣にファイルの形の compiled unit を得て、2つは
-recognizer が判別する閉じた union をなす。ファイルの形の unit はそのファイル自身の parse を
-publish し、companion の census は publish しない。ディレクトリの形の unit は変わらない。他の
-kind は既に持つ compiled な形を再利用する。Markdown の instruction unit、Markdown の custom-agent
-unit、strict JSON の standalone carrier に対する共有の MCP server-map の読み、standalone の
+skill kind は、すべての vendor が共有する1つのフォルダの形の compiled unit を保つ。context file は
+2つの instruction unit を取る。vendor が2つの範囲を述べているからである。workspace のファイルは
+それを置くディレクトリ — `.agents/` の中にあるときはその `.agents/` を置くディレクトリ — を
+govern し、global のファイルはすべてのプロジェクトを等しく govern する。他の kind は既に持つ
+compiled な形を再利用する。Markdown の custom-agent unit、strict JSON の standalone carrier に対する共有の MCP server-map の読み、standalone の
 `hooks.json` と settings carrier の inline 宣言の双方に対する共有の hook event-map の読み、
 permissions の読み、settings carrier である。workspace の rule には専用の unit は要らない。
 `rule` は vendor unit が答えるべき kind に含まれないので、名指すファイルを publish する他の
@@ -73,30 +74,24 @@ kind と同じく、その vendor 自身の catalog entry を通して compile �
 
 ## skill の行と detail
 
-skill の行は1つの invocation 名のままで、ファイルごと・認識する製品ごとに1つの定義を持つ。よって
-名前を共有するファイルの形とディレクトリの形は行を共有する。ファイルの形の定義は companion
-ファイルを持たず、行は companion を持つ skill にだけそれを描く仕組みを既に備えている。
-
-ファイルの形の skill の detail は skill の panel だけを示す。file panel は出さない。その panel の
-主題はその skill が持たないディレクトリだからである。tab strip も出さない。tab が1つの strip は
-選択肢ではないからである。見出しは skill 自身のパスのままとする。それを読むすべての製品が共有する
-唯一の identity であり、各製品が呼び出す名前はそれぞれ異なるからである。その panel を落とすことが、そこで
-述べていたことを落とすことになってはならない。したがってその2つの事実は、残る panel の側へ移る。
-1つはファイル自身の本文で、単一ファイルの detail がどれも持つ `Source` viewer により、それらと
-同じ条件 — 読めるときであり、解析に成功したときではない — で示す。もう1つは読み取り結果の全体で、
-除去された byte-order mark を含み、panel の上の属性行がそれを運ぶ。file panel を持つページが
-そこに置く短い要約ではない。
+skill の行は1つの invocation 名のままで、ファイルごと・認識する製品ごとに1つの定義を持ち、
+`.agents/skills/` のフォルダはそれを3つ持つ。detail はどの skill も持つフォルダの detail である。
 
 ## Customization File と Tool Recognition
 
 形は変わらない。1つのファイルが他の製品の recognition の隣に Antigravity CLI の recognition を
-持ちうる。ルートの `GEMINI.md` とルートの `AGENTS.md` がどちらもそうである。
+持ちうる。ルートの `GEMINI.md` とすべての `AGENTS.md` がそうである。
 
 ## Parser format の表
 
 この vendor が必要とする形式は既に読まれており、parser は追加しない。共有の JSON reader が MCP
 carrier・settings carrier・2つの standalone な hook carrier を、共有の frontmatter の読みが
-context file・skill・custom agent を取る。その JSON reader はどの vendor のものでもあり、変わらない。動くのはこの vendor 自身の表の
+skill・custom agent を取る。context file と rule file はどの parser も通らない。Rules ページは
+`AGENTS.md` と `GEMINI.md` が frontmatter を使わず、内容全体を plain Markdown として扱うと述べているので、
+その先頭の `---` block は instructions の1行である。rule file は、`trigger` の block も含めて、author が
+書いた1つの document として公開される。どちらからも何も読み出さないので、どちらも読み出しに失敗しない
+（親の data model § ToolRecognition と、親の vendor contract の presentation allowlist）。その JSON reader は
+どの vendor のものでもあり、変わらない。動くのはこの vendor 自身の表の
 行であり、引用したページが strict JSON を文書化していること、そして vendor の読みと製品の読みの
 差異は他と同じくそこに記録することを述べる。
 

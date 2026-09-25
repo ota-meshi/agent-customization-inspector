@@ -64,6 +64,17 @@ export class ApplicabilityRange {
   }
 
   /**
+   * Whether a range is known at all, rather than this being the row whose files
+   * declare none — the question a surface answers with a prefix such as
+   * "Applies to". Distinct from {@link isDeclared}, which is about styling: a
+   * declared `applyTo: " "` is a range whose drawn spelling is `\u0020` rather
+   * than its own characters, and it still applies to something.
+   */
+  public get isKnown(): boolean {
+    return this.#declared !== null;
+  }
+
+  /**
    * Whether {@link text} is the file's own characters, which is what decides
    * the authored-text styling: that styling renders its own whitespace and
    * isolates its own bidi run, and both are wrong for this product's copy

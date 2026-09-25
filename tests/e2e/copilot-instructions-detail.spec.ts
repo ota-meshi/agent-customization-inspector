@@ -1,9 +1,12 @@
-// T263: browser acceptance for the Copilot instruction detail (Phase 20).
-// Launches the packaged CLI against an instruction-bearing fixture, opens a
-// Copilot instruction from the inventory, and verifies the complete inert
-// detail screen: the declarations the file wrote in authored order, the
-// instructions that follow them, the complete authored source, the
-// diagnostics, and the cleanup that takes the content away again.
+// T263, T1221, T1224: browser acceptance for the Copilot instruction detail
+// (Phase 20). Launches the packaged CLI against an instruction-bearing
+// fixture, opens a Copilot instruction from the inventory, and verifies the
+// complete inert detail screen in the shape each format takes: a path-specific
+// `*.instructions.md` — the one format Copilot documents a frontmatter for —
+// as the declarations it wrote in authored order and the instructions that
+// follow them, beside the complete authored source and its diagnostics; every
+// other file shown once and whole, a `---` block opening it a line of its
+// instructions; and the cleanup that takes the content away again.
 //
 // The claims here can only be made against a rendered page: that a credential
 // is shown exactly as written with no masking and no reveal control anywhere,
@@ -120,27 +123,29 @@ async function openInstruction(page: import('@playwright/test').Page, path: stri
 
 test('opens complete inert Copilot instruction detail from the inventory', async ({ page }) => {
   await openInstruction(page, '.github/copilot-instructions.md');
-  // The page is headed by the file's path — the row's own identity — with the
-  // recognizing product, the surfaces it documented reading the file on, and
-  // the kind beside it.
+  // The page is headed by the file's path — the row's own identity — and the
+  // recognizing product with the surfaces it documented reading the file on
+  // sits in the box for the range that put it there, one box per range
+  // (`instructions/detail` § aci-instruction-detail__ranges).
   await expect(page.locator('.aci-instruction-detail h2')).toHaveText(
     '.github/copilot-instructions.md',
   );
-  const attributes = page.locator('.aci-detail-attributes');
-  await expect(attributes).toContainText('GitHub Copilot');
-  await expect(attributes).toContainText('VS Code, CLI, Cloud agent');
-  // The declarations lead, in authored order — scope, endpoint, api_key is the
-  // file's own order, not a sort — with the credential and the environment
-  // reference exactly as written.
-  const declarations = page.locator('.aci-instruction-detail__declarations');
-  await expect(declarations).toContainText('scope');
-  await expect(declarations).toContainText(FIXTURE_SECRET);
-  await expect(declarations).toContainText(ENVIRONMENT_REFERENCE);
-  // The instructions follow: the body the frontmatter block was removed from,
-  // its reference-looking token staying source text.
-  const instructions = page.locator('.aci-instruction-detail__instructions');
-  await expect(instructions).toContainText('# House rules');
-  await expect(instructions).toContainText('See docs/setup.md before deploying.');
+  const recognitions = page.locator('.aci-instruction-detail__recognitions');
+  await expect(recognitions).toContainText('GitHub Copilot');
+  await expect(recognitions).toContainText('VS Code, CLI, Cloud agent');
+  // The repository-wide file is read whole: Copilot documents a frontmatter
+  // for `*.instructions.md` alone, so the block opening this one is a line of
+  // its instructions, shown once with the rest — the credential and the
+  // environment reference exactly as written, the reference-looking token
+  // staying source text — and no tab divides it (T1224).
+  const viewer = page.locator('.aci-instruction-detail .aci-source-viewer');
+  await expect(viewer).toHaveCount(1);
+  await expect(viewer).toContainText('scope: repository');
+  await expect(viewer).toContainText(FIXTURE_SECRET);
+  await expect(viewer).toContainText(ENVIRONMENT_REFERENCE);
+  await expect(viewer).toContainText('# House rules');
+  await expect(viewer).toContainText('See docs/setup.md before deploying.');
+  await expect(page.getByRole('tablist', { name: 'Instruction detail' })).toHaveCount(0);
 });
 
 test('separates the surfaces one documented filename is read from', async ({ page }) => {
@@ -149,11 +154,16 @@ test('separates the surfaces one documented filename is read from', async ({ pag
   // surfaces documented reading it. Nothing on either page says one is active,
   // enabled, or selected — that turns on runtime this product never observes.
   await openInstruction(page, 'packages/api/.github/copilot-instructions.md');
-  await expect(page.locator('.aci-detail-attributes')).toContainText('CLI');
+  // Exactly, not as a substring: the root copy's surfaces contain this one's,
+  // so a containment check would pass on either page and see nothing of the
+  // difference this case exists for.
+  await expect(page.locator('.aci-instruction-detail__surfaces')).toHaveText(['CLI']);
   // `GEMINI.md` is the other asymmetry: VS Code documents no such file, so the
   // editor is absent rather than assumed from the alternative beside it.
   await openInstruction(page, 'GEMINI.md');
-  await expect(page.locator('.aci-detail-attributes')).toContainText('CLI, Cloud agent');
+  await expect(page.locator('.aci-instruction-detail__recognitions')).toContainText(
+    'CLI, Cloud agent',
+  );
   const text = await page.locator('main').innerText();
   for (const claim of ['enabled', 'disabled', 'selected', 'active', 'wins']) {
     expect(text.toLowerCase(), claim).not.toContain(claim);
@@ -175,7 +185,10 @@ test('shows applyTo as an authored declaration and as the range its row is keyed
   ]);
   await openInstruction(page, '.github/instructions/frontend.instructions.md');
   // And the same value is on the detail as an ordinary declaration, published
-  // by the key the file wrote, beside a key this product has no opinion about.
+  // by the key the file wrote, beside a key this product has no opinion about:
+  // this is the format that opens with declarations, so the page is the parse
+  // and the file on two tabs.
+  await expect(page.getByRole('tablist', { name: 'Instruction detail' })).toBeVisible();
   const declarations = page.locator('.aci-instruction-detail__declarations');
   await expect(declarations).toContainText('applyTo');
   await expect(declarations).toContainText('src/frontend/**');
@@ -190,7 +203,9 @@ test('masks nothing, offers no reveal control, and resolves no environment refer
   page,
 }) => {
   await openInstruction(page, '.github/copilot-instructions.md');
-  await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(FIXTURE_SECRET);
+  await expect(page.locator('.aci-instruction-detail .aci-source-viewer')).toContainText(
+    FIXTURE_SECRET,
+  );
   const text = await page.locator('main').innerText();
   // The named variable is set in the host's environment, and its value still
   // appears nowhere: the authored `${...}` spelling is the whole display, and
@@ -202,7 +217,7 @@ test('masks nothing, offers no reveal control, and resolves no environment refer
 });
 
 test('serves the complete authored source on the file tab', async ({ page }) => {
-  await openInstruction(page, '.github/copilot-instructions.md');
+  await openInstruction(page, '.github/instructions/frontend.instructions.md');
   await page.getByRole('tab', { name: /^file$/iu }).click();
   // Scoped to the file panel: the instructions panel keeps its own viewer
   // mounted behind the tab strip, and this claim is about the complete file.
@@ -210,9 +225,8 @@ test('serves the complete authored source on the file tab', async ({ page }) => 
   await expect(viewer).toBeVisible();
   // The frontmatter's authored spelling lives here — the parse's two halves
   // are one tab over — together with the body, byte for byte.
-  await expect(viewer).toContainText('scope: repository');
-  await expect(viewer).toContainText(FIXTURE_SECRET);
-  await expect(viewer).toContainText('# House rules');
+  await expect(viewer).toContainText("applyTo: 'src/frontend/**'");
+  await expect(viewer).toContainText('# Frontend conventions');
 });
 
 test('renders no relationship section anywhere on the detail', async ({ page }) => {
@@ -245,10 +259,48 @@ test('reports an unparseable frontmatter with its diagnostic while the source st
 
 test('drops the content when the route leaves the file', async ({ page }) => {
   await openInstruction(page, '.github/copilot-instructions.md');
-  await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(FIXTURE_SECRET);
+  await expect(page.locator('.aci-instruction-detail .aci-source-viewer')).toContainText(
+    FIXTURE_SECRET,
+  );
   await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.locator('.aci-instruction-detail')).toHaveCount(0);
   // The detail-state cleanup took the authored content with it: nothing on
   // the inventory carries a value the reader navigated away from (FR-027).
   expect(await page.locator('main').innerText()).not.toContain(FIXTURE_SECRET);
+});
+
+test.describe('a range declared as whitespace alone', () => {
+  let spaceFixture: string;
+  let spaceHost: LaunchedHost;
+
+  test.beforeEach(async () => {
+    // `applyTo: " "` is a declared range: not empty, so it keys a row of its
+    // own, and drawn through this product's spelling because a space alone
+    // would draw nothing (spec.md § Clarifications, the instructions row).
+    spaceFixture = await mkdtemp(join(tmpdir(), 'aci-copilot-space-range-'));
+    await mkdir(join(spaceFixture, '.github/instructions'), { recursive: true });
+    await writeFile(
+      join(spaceFixture, '.github/instructions/space.instructions.md'),
+      '---\napplyTo: " "\n---\n\n# Space\n',
+      'utf8',
+    );
+    spaceHost = await launchHost(spaceFixture);
+  });
+
+  test.afterEach(async () => {
+    await stopHost(spaceHost);
+    await rm(spaceFixture, { recursive: true, force: true });
+  });
+
+  test('keeps the range’s prefix on the detail', async ({ page }) => {
+    // Whether a range is known decides "Applies to"; whether it is drawn as
+    // its own characters decides only the styling (T1221).
+    await page.goto(
+      new URL(
+        '/instructions/detail/repository/.github/instructions/space.instructions.md',
+        spaceHost.origin,
+      ).toString(),
+    );
+    await expect(page.locator('.aci-instruction-detail__range-head')).toContainText('Applies to');
+  });
 });

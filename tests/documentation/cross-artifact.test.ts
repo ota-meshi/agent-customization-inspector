@@ -150,7 +150,7 @@ const englishTasks = parseTasks(tasksEnglish);
 const japaneseTasks = parseTasks(tasksJapanese);
 
 /**
- * The declared task-ID space: T001 through T1211, less the ranges the withdrawn
+ * The declared task-ID space: T001 through T1228, less the ranges the withdrawn
  * phases left vacant (tasks.md T1041). Written out here and in the task text
  * both, because what this freezes is that a range nobody meant to change did
  * not change.
@@ -164,7 +164,7 @@ const VACANT_TASK_RANGES: readonly (readonly [number, number])[] = [
 ];
 
 /** Every task ID the current task set declares, in numeric order. */
-const DECLARED_TASK_IDS: readonly string[] = Array.from({ length: 1214 }, (_, index) => index + 1)
+const DECLARED_TASK_IDS: readonly string[] = Array.from({ length: 1228 }, (_, index) => index + 1)
   .filter((number) => !VACANT_TASK_RANGES.some(([from, to]) => number >= from && number <= to))
   .map((number) => `T${String(number).padStart(3, '0')}`);
 
@@ -359,9 +359,10 @@ describe('the missing-file page accounts for every location a rule reaches', () 
     // time. So the set is frozen instead — the page states the one that ships,
     // and a second cannot arrive without this failing and someone deciding
     // what the page now says (AGENTS.md § Implementation simplicity policy, on
-    // freezes). T059: the fourth vendor ships no derived rule, because no
-    // cited page documents a terminal setting that renames or relocates a
-    // workspace customization; this case was watched failing before the
+    // freezes). T059: the fourth vendor ships no derived rule, as this
+    // release's scope — the `.agents/rules.json` registration its terminal
+    // reads is not derived from (contracts/vendors/antigravity-cli.md
+    // § Derived Repository rules); this case was watched failing before the
     // literal below was written.
     const derived = [
       CLAUDE_INSPECTION_RULES,
@@ -478,24 +479,24 @@ describe('task set', () => {
     // a count nobody intended to change must not change unnoticed, so the
     // literals are written here and a phase or task added without deciding to
     // add one fails (AGENTS.md § Implementation simplicity policy; T1049).
-    expect(englishTasks.size).toBe(1126);
-    expect(japaneseTasks.size).toBe(1126);
-    expect(tasksEnglish.match(/^## Phase /gmu)).toHaveLength(119);
-    expect(tasksJapanese.match(/^## フェーズ /gmu)).toHaveLength(119);
+    expect(englishTasks.size).toBe(1140);
+    expect(japaneseTasks.size).toBe(1140);
+    expect(tasksEnglish.match(/^## Phase /gmu)).toHaveLength(120);
+    expect(tasksJapanese.match(/^## フェーズ /gmu)).toHaveLength(120);
   });
 
   it('freezes the Antigravity CLI feature’s task and phase counts in both languages', () => {
-    // The same freeze for specs/003-antigravity-cli-support (its T065):
-    // seventy-nine tasks in seven phases, spelled here and in the task files
+    // The same freeze for specs/003-antigravity-cli-support (its T065, grown by T082–T095):
+    // ninety-three tasks in eight phases, spelled here and in the task files
     // both, so a task or phase added without deciding to add one fails. Two
     // IDs in that range are vacant, which the task file states; the freeze
     // counts tasks rather than the highest ID for that reason.
     const antigravityEnglish = readArtifact('specs/003-antigravity-cli-support/tasks.md');
     const antigravityJapanese = readArtifact('specs/003-antigravity-cli-support/tasks.ja.md');
-    expect(parseTasks(antigravityEnglish).size).toBe(79);
-    expect(parseTasks(antigravityJapanese).size).toBe(79);
-    expect(antigravityEnglish.match(/^## Phase /gmu)).toHaveLength(7);
-    expect(antigravityJapanese.match(/^## Phase /gmu)).toHaveLength(7);
+    expect(parseTasks(antigravityEnglish).size).toBe(93);
+    expect(parseTasks(antigravityJapanese).size).toBe(93);
+    expect(antigravityEnglish.match(/^## Phase /gmu)).toHaveLength(8);
+    expect(antigravityJapanese.match(/^## Phase /gmu)).toHaveLength(8);
   });
 
   it('keeps every task self-contained, with no out-of-line amendment', () => {

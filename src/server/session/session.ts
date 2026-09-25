@@ -410,24 +410,15 @@ function projectSkillInventory(
       surfaces: surfacesOf(recognition),
       parseStatus: recognition.parseStatus,
       diagnosticIds: recognition.diagnosticIds,
-      // A directory-shaped skill's own directory: the entry point's path is
-      // where the files it ships are. A flat one ships none — its siblings are
-      // other skills rather than its companions — so it publishes an empty
-      // list rather than the folder above it (spec.md § FR-004). Which shape
-      // this is comes from the recognition, which carried it from the
-      // admitting rule; deriving it from the path here would be a second
-      // answer that could disagree with the rule's own.
-      rowUnit: recognition.details.rowUnit,
-      companionFiles:
-        recognition.details.rowUnit === 'file'
-          ? []
-          : directoryFilesOf(
-              recognition.sourceId,
-              path.slice(0, path.lastIndexOf('/') + 1),
-              files,
-              recognized,
-              censusEscapedRoots,
-            ),
+      // The skill's own directory: the entry point's path is where the files
+      // it ships are (spec.md § FR-004).
+      companionFiles: directoryFilesOf(
+        recognition.sourceId,
+        path.slice(0, path.lastIndexOf('/') + 1),
+        files,
+        recognized,
+        censusEscapedRoots,
+      ),
     });
   }
   // One collision gate per recognizing tool over the whole generation's
@@ -1748,16 +1739,25 @@ export class InspectionSession {
               diagnostics,
             };
           case 'instructions':
-            return {
-              kind: 'instructions',
-              file,
-              // The same all-or-nothing rule as the skill variant (FR-028).
-              presentation:
-                parseStatus === 'parsed'
-                  ? { frontmatter: details.frontmatter, bodyText: details.bodyText }
-                  : null,
-              diagnostics,
-            };
+            // The variant the format decides (api-types.ts
+            // § InstructionFileFormat). Any recognition of the file answers:
+            // the files read for their declarations are the `*.instructions.md`
+            // below Copilot's own instruction directories, where no other
+            // product's rule admits a file, so every recognition of one file
+            // reads it the same way.
+            return details.format === 'frontmatter-led'
+              ? {
+                  kind: 'instructions',
+                  format: 'frontmatter-led',
+                  file,
+                  // The same all-or-nothing rule as the skill variant (FR-028).
+                  presentation:
+                    parseStatus === 'parsed'
+                      ? { frontmatter: details.frontmatter, bodyText: details.bodyText }
+                      : null,
+                  diagnostics,
+                }
+              : { kind: 'instructions', format: 'whole-document', file, diagnostics };
           case 'prompt/command':
             // The file plus its own parse, in the two halves the kind shows
             // (api-types.ts § PromptPresentationDto).

@@ -34,13 +34,13 @@ the task would have built.
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
 | FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
-| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096 |
-| FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078 |
+| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096, T1215, T1219, T1220, T1222, T1225, T1227, T1228 |
+| FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078, T1215–T1216 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
-| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214 |
+| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214, T1223, T1224, T1227, T1228 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
 | FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
-| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
+| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209, T1220, T1221, T1224, T1227 |
 | FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
 | FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137, T1164 |
 | FR-014 | T930, T944–T947, T950–T951, T956–T959, T963–T964, T967–T968, T974–T975, T977–T978, T981–T982, T988–T989, T991, T993–T995, T997–T998, T1000–T1005, T1029, T1041, T1058, T1061–T1062, T1137, T1140 |
@@ -57,13 +57,13 @@ the task would have built.
 | FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069, T1169, T1207, T1209 |
 | FR-026 | T077, T085, T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925–T927, T995–T997, T1055 |
 | FR-027 | T084, T100, T102, T927, T1045, T1206–T1210 |
-| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163 |
+| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163, T1224, T1225, T1226 |
 | FR-029 | T015–T016, T020–T021, T023–T024, T026–T027, T031, T035, T037, T040, T046, T055, T067–T068, T141, T149, T217, T222–T223, T1085, T1087, T1090, T238, T242–T243, T915, T923–T924, T946, T958, T1006–T1008, T1013–T1014, T1017, T1021, T1023–T1024, T1029, T1041, T1043, T1046, T1054, T1058, T1062 |
 | FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082, T1149, T1151, T1152, T1180 |
 | FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
 | FR-032 | T004, T017, T028, T061, T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T916, T919, T926–T929, T995, T997, T1029, T1041–T1042, T1061, T1206–T1207 |
 | FR-033 | T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925, T927–T929, T1206–T1207 |
-| FR-034 | T226–T244, T440, T442, T477, T857–T877, T1042 |
+| FR-034 | T226–T244, T440, T442, T477, T857–T877, T1042, T1216 |
 | FR-035 | T205–T225, T944–T962, T1084–T1090 |
 | FR-036 | T226–T244, T963–T976 |
 | FR-037 | T245–T267 |
@@ -76,14 +76,14 @@ the task would have built.
 | QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062, T1208 |
 | QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201, T1204 |
-| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
-| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202 |
-| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203, T1211 |
+| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062, T1216, T1219, T1220, T1224 |
+| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202, T1218, T1219 |
+| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203, T1211, T1217 |
 | SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194, T1203, T1211 |
 | SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194, T1203, T1211 |
-| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202 |
+| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202, T1218, T1219 |
 | SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194, T1203, T1211 |
-| SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
+| SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193, T1221, T1222, T1223 |
 | Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200, T1205 |
 
 ---
@@ -1969,9 +1969,9 @@ the task would have built.
   exclusions, and an explicit configured-fallback-pending state with zero config rows in
   `tests/e2e/codex-instructions-inventory.spec.ts` *(amended 2026-08-17: T1088 activates the
   configured fallbacks in this same phase, so the suite asserts the activated fallback rows and the
-  carrier's complete absence.)* *(amended 2026-08-08: a detail shows the declarations the file
-  wrote, and what a vendor documents stays in its maintained contract, so no surface projects trust,
-  precedence, order, or uncertainty (FR-009, T091).)*
+  carrier's complete absence.)* *(amended 2026-08-08: what a vendor documents stays in its
+  maintained contract, so no surface projects trust, precedence, order, or uncertainty (FR-009,
+  T091).)*
 
 ### Implementation
 
@@ -2077,7 +2077,7 @@ the task would have built.
 
 **Independent Test**: Open static Codex instruction fixtures and verify that no reference is emitted — no official Codex page this repository cites establishes an import or reference syntax for `AGENTS.md`, so an authored `@path`-looking token is source text like any other (T217) — together with stale-ID behavior, diagnostics, and detail-state cleanup; separately verify the detail of a configured fallback instruction file that Phase 15's configuration read activated. What the vendor documents about selection order and instruction capacity stays in its maintained contract — nothing projects it onto a recognition or detail (T091).
 
-**Visible Checkpoint**: Selecting a Codex instruction opens complete inert detail — the file led by what it declares, its instructions, and its diagnostics — whether it is one of the exact static files or a name the repository's configuration adds.
+**Visible Checkpoint**: Selecting a Codex instruction opens complete inert detail — the file shown whole, with its diagnostics — whether it is one of the exact static files or a name the repository's configuration adds. *(amended 2026-09-25: Codex documents no frontmatter for an instruction file, so the detail is the file read whole rather than led by declarations (T1224).)*
 
 ### Tests first
 
@@ -2097,10 +2097,11 @@ the task would have built.
   documents discovery and fallback filenames only — so a Codex instruction file yields no
   `runtime-reference` until a cited page establishes one; the presentation allowlist's row permits
   the kind, it does not require an extractor to invent occurrences.)*
-- [X] T218 [P] [US2] Add failing detail/API tests for complete Codex instruction source, the
-  declarations the file wrote in authored order, fallbacks, an empty relationship set (T217),
-  diagnostics, environment-reference non-resolution, and stale IDs in
-  `tests/contract/http-api-files.test.ts` and `tests/unit/app/recognition-details.test.ts` *(amended
+- [X] T218 [P] [US2] Add failing detail/API tests for complete Codex instruction source read whole,
+  with no declaration set apart, fallbacks, an empty relationship set (T217), diagnostics,
+  environment-reference non-resolution, and stale IDs in `tests/contract/http-api-files.test.ts`
+  and `tests/unit/app/recognition-details.test.ts` *(amended 2026-09-25: a Codex instruction file is
+  read whole, so its detail publishes no declaration (T1224).)* *(amended
   2026-08-06: a vendor's documented selection stays in its maintained contract, and no surface
   states what a product would do, so nothing projects an order, a capacity, a condition, or an
   applicability (FR-009, T091).)*
@@ -2129,44 +2130,49 @@ the task would have built.
   exist and adding a strategy ID is forbidden.)* *(amended 2026-08-06: a vendor's documented
   selection stays in its maintained contract, and no surface states what a product would do, so
   nothing projects an order, a capacity, a condition, or an applicability (FR-009, T091).)*
-- [X] T222 [US2] Implement the instruction file's own presentation — the keys it declares in
-  authored order and the instructions that follow them, through the one frontmatter parse a skill
-  already uses — in `src/server/inspection/parsers/markdown.ts` and
-  `src/server/inspection/recognizers/candidate.ts`, which is what the detail leads with and what the
-  kind has had no payload for until now. No reference is emitted for a Codex instruction file: the
-  relationship extractor arrives with the vendor whose documentation establishes a syntax (Phase
-  18's Claude imports), and targets confer zero read authority wherever it does *(amended
+- [X] T222 [US2] Implement the instruction file's own presentation for a format that opens with
+  declarations — the keys it declares in authored order and the instructions that follow them,
+  through the one frontmatter parse a skill already uses — in
+  `src/server/inspection/parsers/markdown.ts` and `src/server/inspection/recognizers/candidate.ts`,
+  which is what such a file's detail leads with; a Codex instruction file is read whole and has
+  none. No reference is emitted for a Codex instruction file: the relationship extractor arrives
+  with the vendor whose documentation establishes a syntax (Phase 18's Claude imports), and targets
+  confer zero read authority wherever it does *(amended 2026-09-25: only Copilot's
+  `*.instructions.md` opens with declarations; every other instruction format, a Codex one among
+  them, is read whole (T1224).)* *(amended
   2026-08-17: no reference is extracted from a Codex instruction file, because no cited page
   documents a reference syntax for `AGENTS.md` (T217).)* *(amended 2026-08-21: the detail presents
   the frontmatter as one YAML document in the read-only viewer (frontmatter-yaml.ts), the block's
   own language, so a reader compares it against their file without translating.)*
-- [X] T223 [US2] Integrate Codex instruction exact resolved-value preservation, atomic parsing,
-  parser scratch/transient-semantic disposal while retaining complete authored source for
-  deterministic returned outcomes, and fallback provenance from the configuration read; let every
-  parser/relationship/assembly throw/rejection propagate unchanged without domain catch, cause
-  classification, retry, item/recognition/relationship/derived result/body/generation, retaining
-  only the prior commit in `src/server/inspection/scan.ts`; never recurse, expand, or read a
-  relationship target
-- [X] T224 [US2] Extend typed detail presentation for Codex instructions in that kind's own detail
-  route under `src/app/pages/`, and make the inventory reach it:
+- [X] T223 [US2] Integrate Codex instruction recognition — each file read whole, nothing extracted
+  from it, and its complete authored source retained for deterministic returned outcomes — and
+  fallback provenance from the configuration read; let every relationship/assembly throw/rejection
+  propagate unchanged without domain catch, cause classification, retry,
+  item/recognition/relationship/derived result/body/generation, retaining only the prior commit in
+  `src/server/inspection/scan.ts`; never recurse, expand, or read a relationship target *(amended
+  2026-09-25: a Codex instruction file is read whole, so no value is resolved out of it and no parse
+  runs (T1224).)*
+- [X] T224 [US2] Extend the detail for Codex instructions — the file shown whole — in that kind's
+  own detail route under `src/app/pages/`, and make the inventory reach it:
   `src/app/components/inventory/rows/InstructionRow.vue` links each recognizing product to that
   route, replacing the plain text it renders while no route exists.
   `src/app/components/inspection/RelationshipList.vue` is not this phase's — it arrives with the
-  vendor whose references are founded (T217, T222) *(amended 2026-08-17: the row link was named here
+  vendor whose references are founded (T217, T222) *(amended 2026-09-25: a Codex instruction file is
+  read whole, so its detail is the file on one page without tabs (T1224).)* *(amended 2026-08-17: the
+  row link was named here
   after a review found the checkpoint's "selecting an instruction opens its detail" reachable only
   by typing a URL.)* *(amended 2026-08-06: a vendor's documented selection stays in its maintained
   contract, and no surface states what a product would do, so nothing projects an order, a capacity,
   a condition, or an applicability (FR-009, T091).)*
 - [X] T225 [US2] Add English Codex instruction detail and fallback messages in the Vue components
-  that render them *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a
-  vendor documents stays in its maintained contract, so no surface projects trust, precedence,
-  order, or uncertainty (FR-009, T091).)*
+  that render them *(amended 2026-08-08: what a vendor documents stays in its maintained contract,
+  so no surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
 
 ---
 
 ## Phase 17: Claude Instructions Inventory
 
-**Purpose**: Add root and nested Claude instruction files without recognizing `AGENTS.md` by filename.
+**Purpose**: Add root and nested Claude instruction files. *(amended 2026-09-25: Claude Code reads `AGENTS.md` from 2.1.277, which Phase 116 adds to this kind.)*
 
 **Independent Test**: Inventory supported `CLAUDE.md`, `CLAUDE.local.md`, and every nested `.claude/CLAUDE.md` matched by `claude.repo.instructions`; verify deterministic provenance records and unchanged Codex instructions.
 
@@ -2174,9 +2180,10 @@ the task would have built.
 
 ### Fixtures and tests first
 
-- [X] T226 [US1] Create Claude instruction fixtures for root and nested `CLAUDE.md` and
-  `.claude/CLAUDE.md` candidates, filename-only `AGENTS.md`, imports, secrets, malformed content,
-  and near misses in `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-08:
+- [X] T226 [US1] Create Claude instruction fixtures for root and nested `CLAUDE.md`,
+  `.claude/CLAUDE.md`, and `AGENTS.md` candidates, imports, secrets, malformed content, and near
+  misses in `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-09-25: `AGENTS.md` is a
+  Claude candidate since Phase 116, whose T1215 adds the nested one.)* *(amended 2026-08-08:
   launch/ancestor/descendant name a file's relation to the vendor's runtime working directory, which
   the Inspector does not observe — the rule matches `CLAUDE.md` at every depth, and no per-file
   classification renders (FR-009, T091).)*
@@ -2186,9 +2193,10 @@ the task would have built.
   `tests/fixtures/conformance/inspection-rules.json`, and
   `tests/fixtures/conformance/runtime-composition.json`
 - [X] T228 [P] [US1] Add failing matcher and recognition tests proving nested `.claude/CLAUDE.md`
-  files are `claude.repo.instructions` candidates, filename-only `AGENTS.md` is not
-  Claude-recognized, and provenance is deterministic in `tests/unit/inspection/rules.test.ts` and
-  `tests/unit/inspection/recognizers.test.ts`
+  files and every `AGENTS.md` are `claude.repo.instructions` candidates and provenance is
+  deterministic in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-09-25: Claude Code reads `AGENTS.md`
+  from 2.1.277, which Phase 116 (T1215) adds.)*
 - [X] T229 [US1] Add failing scan tests for Claude instruction discovery, one read, deterministic
   order, isolated failures, and zero import-target reads in
   `tests/integration/repository-scan.test.ts`
@@ -2215,8 +2223,8 @@ the task would have built.
   working directory, which the Inspector does not observe — the rule matches `CLAUDE.md` at every
   depth, and no per-file classification renders (FR-009, T091).)* *(amended 2026-08-18:
   `src/server/inspection/recognizers/candidate.ts` needed no edit — it dispatches on the compiled
-  rule's product and kind, and the `instructions` kind's payload is the one Markdown parse both
-  kinds share, so a Claude admission recognizes through the same engine as a Codex one.)*
+  rule's product and kind, so a Claude admission recognizes through the same engine as a Codex
+  one.)*
 - [X] T235 [US1] Integrate Claude instruction classification without reading imports or changing
   Codex results in `src/server/inspection/scan.ts` *(amended 2026-08-18: scope emptied —
   `src/server/inspection/scan.ts` composes each vendor's compiled catalog, so a rule added to that
@@ -2300,7 +2308,7 @@ the task would have built.
 
 **Purpose**: Add complete literal Claude instruction detail. *(amended 2026-08-18: this product handles no import reference at all — a standing decision, not a deferral. It does not read references out of prose: Claude Code documents an `@path` import syntax, but where such a token ends is fixed by no official page, so every boundary rule would be this product's own invention and a wrong one would assert a reference the reader never wrote. The token stays source text, exactly as a Codex one does, and the relationship-only registry carries no import record (T217).)*
 
-**Independent Test**: Open a Claude instruction file at the repository root and in a subdirectory, and a malformed one, and verify exact resolved-value preservation, the complete authored source, diagnostics, and detail-state cleanup.
+**Independent Test**: Open a Claude instruction file at the repository root and in a subdirectory, and one opening with a block that is not YAML, and verify the complete authored source, that the block stays a line of the instructions and reading the file reports no diagnostic, and detail-state cleanup. *(amended 2026-09-25: Claude Code documents no frontmatter for an instruction file, so the file is read whole (T1224).)*
 
 **Visible Checkpoint**: Selecting a Claude instruction shows complete inert detail without opening the files it names.
 
@@ -2352,34 +2360,31 @@ the task would have built.
   `claude.instructions.layering` at `append`, which the shipped record already carries, and this
   task may add no strategy ID. This product handles no import reference, so there is no import
   coverage to record either. T239 gates the record against that row in both languages.)*
-- [X] T242 [US2] Extend Claude instruction recognition with exact metadata, complete direct one-hop
-  non-recursive relationships, source-value-free environment-failure diagnostics, and evidence in
-  `src/server/inspection/recognizers/candidate.ts`; relationship targets confer zero read authority
-  and nested/transitive projection is omitted before access *(amended 2026-08-06: an admission stays
-  a read-authorization record, and what a vendor documents stays in its maintained contract, so no
-  surface projects a condition, applicability, order, runtime state, provenance, or documentation
-  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-18: scope emptied — the `instructions`
-  payload the detail shows is the one Markdown parse T222 shipped and T1093's range, which T234
-  already recorded needs no Claude-specific edit; this product handles no import reference, so there
-  is no relationship, environment-failure Diagnostic, or evidence to add.)*
-- [X] T243 [US2] Integrate Claude instruction parsing, exact resolved-value extraction, complete
-  deterministic direct relationship-only imports subject only to environment capacity, and parser
-  scratch/transient-semantic disposal while retaining complete authored source for deterministic
-  returned outcomes; let every parser/relationship/assembly throw/rejection propagate unchanged
-  without domain catch, cause classification, retry, item/recognition/relationship/derived
-  result/body/generation, retaining only the prior commit in `src/server/inspection/scan.ts`; never
-  recurse, expand, or read a relationship target *(amended 2026-08-18: scope emptied — Phase 15/16
-  shipped the parse, the exact resolved-value preservation, the scratch disposal, and the unchanged
-  throw/rejection propagation, and T235 already recorded that a rule added to a vendor catalog
-  reaches the walk with no edit here; this product handles no import reference, so there is none to
-  integrate.)*
-- [X] T244 [US2] Extend typed detail and English Claude instruction relationship messages in that
-  kind's own detail route under `src/app/pages/` *(amended 2026-08-08: a detail shows the
-  declarations the file wrote, and what a vendor documents stays in its maintained contract, so no
-  surface projects trust, precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-18:
+- [X] T242 [US2] No Claude-specific recognition to add in
+  `src/server/inspection/recognizers/candidate.ts`: a Claude instruction file is recognized with no
+  extraction and carries T1093's range, through the engine T234 records needs no Claude-specific
+  edit *(amended 2026-08-06: an admission stays a read-authorization record, and what a vendor
+  documents stays in its maintained contract, so no surface projects a condition, applicability,
+  order, runtime state, provenance, or documentation status (FR-009; T091/T1068/T1042).)*
+  *(amended 2026-08-18: scope emptied — this product handles no import reference, so there is no
+  relationship, environment-failure Diagnostic, or evidence to add.)* *(amended 2026-09-25: a
+  Claude instruction file is read whole, so no metadata is extracted from it (T1224).)*
+- [X] T243 [US2] No Claude-specific scan integration in `src/server/inspection/scan.ts`: a Claude
+  instruction file is read whole with nothing extracted and its complete authored source retained,
+  the unchanged throw/rejection propagation is the walk's own, and a rule added to a vendor catalog
+  reaches the walk with no edit here (T235); nothing recurses into, expands, or reads a target
+  *(amended 2026-08-18: scope emptied — this product handles no import reference, so there is none
+  to integrate.)* *(amended 2026-09-25: a Claude instruction file is read whole, so no parse or
+  value extraction runs for it (T1224).)*
+- [X] T244 [US2] No Claude-specific detail or message to add: a Claude instruction file's detail is
+  the kind's own route under `src/app/pages/` (T224), showing the file whole *(amended 2026-08-08:
+  what a vendor documents stays in its maintained contract, so no surface projects trust,
+  precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-18:
   scope emptied — the detail route is this kind's own (T224) and the inventory row already links
   every recognizing product to it (T236), which T240 exercises for a root and a nested Claude file;
   this product handles no import reference, so there is no relationship message to write.)*
+  *(amended 2026-09-25: a Claude instruction file is read whole, so its detail is the file on one
+  page without tabs (T1224).)*
 
 ---
 
@@ -2512,8 +2517,10 @@ the task would have built.
   rows fix, this phase ships no authored relationship for an instruction file to carry, and the task
   may add no strategy ID. T262 gates each shipped record against its normative row in both
   languages.)*
-- [X] T265 [US2] Extend Copilot recognition with the declared keys its files write, relationships,
-  diagnostics, and evidence in `src/server/inspection/recognizers/candidate.ts` *(amended
+- [X] T265 [US2] Extend Copilot recognition with the declared keys its path-specific files write,
+  relationships, diagnostics, and evidence in `src/server/inspection/recognizers/candidate.ts`
+  *(amended 2026-09-25: a repository-wide `copilot-instructions.md` is read whole and declares
+  nothing (T1224).)* *(amended
   2026-08-05: nothing projects an applicability, a surface condition, or a condition reason (T091),
   so no test, registry extension, recognizer output, or UI surface plans one.)* *(amended
   2026-08-18: what this task ships is the declared-range branch Phase 17b left to it — a Copilot
@@ -2523,7 +2530,7 @@ the task would have built.
   `src/server/inspection/rules/copilot.ts` and the shared question in
   `src/server/inspection/rules/registry.ts` carry it. The published keys themselves needed no
   change: the one Markdown parse already publishes every declaration by the key the file wrote
-  (T222) A path-instruction file that declares nothing a row can be keyed by has no range — VS Code
+  (T222). A path-instruction file that declares nothing a row can be keyed by has no range — VS Code
   documents an undeclared file as not applied automatically — so it lists under the null-range row
   rather than under a range read off its path.)*
 - [X] T266 [US2] Integrate Copilot instruction parsing, exact resolved-value extraction, inert
@@ -2546,7 +2553,7 @@ the task would have built.
 
 ## Phase 21: Unified Instructions Inventory
 
-**Purpose**: Consolidate the priority-wave instruction baseline with the explicit shared-file matrix: `AGENTS.md` is Codex+Copilot, root `CLAUDE.md` is Claude+Copilot, nested `CLAUDE.md` is Claude-only — a configured Codex fallback is an entry name matched at the Repository root, so no nested file becomes one — and `CLAUDE.local.md` is Claude-only. *(amended 2026-08-17: Phase 15 activates the configured fallbacks, so this phase's matrix includes them and nothing here waits for a carrier.)*
+**Purpose**: Consolidate the priority-wave instruction baseline with the explicit shared-file matrix: the root `AGENTS.md` is Claude+Codex+Copilot+Antigravity CLI and a nested one Claude+Copilot+Antigravity CLI, root `CLAUDE.md` is Claude+Copilot, nested `CLAUDE.md` is Claude-only — a configured Codex fallback is an entry name matched at the Repository root, so no nested file becomes one — and `CLAUDE.local.md` is Claude-only. *(amended 2026-08-17: Phase 15 activates the configured fallbacks, so this phase's matrix includes them and nothing here waits for a carrier.)* *(amended 2026-09-25: Claude Code reads `AGENTS.md` from 2.1.277 (Phase 116) and Antigravity CLI reads it at every depth (specs/003-antigravity-cli-support FR-007), so the matrix names both.)*
 
 **Independent Test**: Use an all-vendor instruction fixture and verify the exact shared-file matrix, one physical item/read per admitted file, separate recognitions/provenances, no filename-based Codex promotion of nested `CLAUDE.md`, the configured fallback recognitions, deterministic order, filters, partial continuity for file-confined failures, and rescan cleanup.
 
@@ -2554,11 +2561,14 @@ the task would have built.
 
 ### Tests first
 
-- [X] T268 [US1] Finalize the all-vendor instruction fixture with `AGENTS.md` Codex+Copilot, root
+- [X] T268 [US1] Finalize the all-vendor instruction fixture with the root `AGENTS.md`
+  Claude+Codex+Copilot+Antigravity CLI and nested ones Claude+Copilot+Antigravity CLI, root
   `CLAUDE.md` Claude+Copilot, nested `CLAUDE.md` Claude-only plus a configured-fallback variant,
   Claude-only `CLAUDE.local.md`, every other selector, deterministic failures, secrets, exclusions,
   and injected thrown/rejected-operation failure cases in
-  `tests/fixtures/repositories/build-fixtures.ts`
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-09-25: Claude Code reads
+  `AGENTS.md` from 2.1.277 (Phase 116) and Antigravity CLI reads it at every depth
+  (specs/003-antigravity-cli-support FR-007).)*
 - [X] T269 [P] [US1] Add complete conformance tests for every registered static instruction selector
   and exclusion, the derived fallback rule as identity only, and the exact `AGENTS.md`/root
   `CLAUDE.md`/nested `CLAUDE.md`/`CLAUDE.local.md` recognition matrix in
@@ -2574,9 +2584,9 @@ the task would have built.
   badges, configured fallback rows, and rescan cleanup in `tests/unit/app/inventory.test.ts`
 - [X] T272 [US1] Add browser acceptance for the unified instruction inventory, filters, shared
   recognitions, configured fallback rows, exclusions, diagnostics, and keyboard use in
-  `tests/e2e/instructions-inventory.spec.ts` *(amended 2026-08-08: a detail shows the declarations
-  the file wrote, and what a vendor documents stays in its maintained contract, so no surface
-  projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+  `tests/e2e/instructions-inventory.spec.ts` *(amended 2026-08-08: what a vendor documents stays in
+  its maintained contract, so no surface projects trust, precedence, order, or uncertainty (FR-009,
+  T091).)*
 
 ### Implementation
 
@@ -2606,15 +2616,18 @@ the task would have built.
 
 **Purpose**: Design the instruction kind’s own comparison surface, following the skill comparison precedent, with literal and typed instruction differences.
 
-**Independent Test**: Compare exactly two readable current-generation instruction files and verify complete authored source plus the two sides' canonical serialized frontmatter documents and relationship differences without correctness claims or environment-reference resolution.
+**Independent Test**: Compare exactly two readable current-generation instruction files and verify complete authored source — plus the two sides' canonical serialized frontmatter documents where both are Copilot's path-specific `*.instructions.md` — and relationship differences without correctness claims or environment-reference resolution. *(amended 2026-09-25: only that format opens with declarations; a pair holding any other instruction file compares the recognizing products and the complete files (T1224).)*
 
 **Visible Checkpoint**: Users can compare two instruction files and understand their structure-level differences.
 
 ### Tests first
 
 - [X] T276 [US3] Add failing instruction comparison regressions for exactly two FileDetail inputs,
-  the canonical serialized frontmatter documents, and the absence of fabricated relationship rows,
-  without semantic correctness claims, in `tests/unit/app/instruction-comparison.test.ts` *(amended
+  the canonical serialized frontmatter documents where both sides are Copilot's path-specific
+  `*.instructions.md` and none otherwise, and the absence of fabricated relationship rows, without
+  semantic correctness claims, in `tests/unit/app/instruction-comparison.test.ts` *(amended
+  2026-09-25: every other instruction format is read whole, so a pair holding one compares no
+  declarations (T1224).)* *(amended
   2026-08-19: declared metadata is the file's one parse per kind, compared once per pair with tool
   recognition compared per tool beside it — a tool is not a coordinate of a declaration (research.md
   § 7).)* *(amended 2026-08-19: restated for the founded relationship model — an instruction file
@@ -2626,22 +2639,27 @@ the task would have built.
   canonical YAML document per side, `name` and `description` leading for skills and every key
   sorted, diffed in Monaco (frontmatter-yaml.ts), with tool recognition beside it as typed rows.)*
 - [X] T277 [US3] Add browser acceptance for the complete literal instruction diff including
-  credential/environment-reference differences, the canonical serialized declaration documents, no
-  masking/reveal or environment substitution, and typed layering/fallback differences in
-  `tests/e2e/instructions-comparison.spec.ts` *(amended 2026-08-21: the acceptance verifies the two
+  credential/environment-reference differences, the canonical serialized declaration documents of a
+  pair of path-specific `*.instructions.md`, no masking/reveal or environment substitution, and
+  typed layering/fallback differences in `tests/e2e/instructions-comparison.spec.ts` *(amended
+  2026-09-25: only that format opens with declarations, so a pair holding any other instruction file
+  shows none (T1224).)* *(amended 2026-08-21: the acceptance verifies the two
   sides' canonical serialized documents diffed in Monaco, the form every kind's declared-metadata
   comparison takes (research.md § 7).)*
 
 ### Implementation
 
 - [X] T278 [US3] Extend instruction comparison to serialize each side's declared metadata into one
-  canonical document diffed in Monaco while keeping typed layering/fallback state separate in
+  canonical document diffed in Monaco, where both sides are Copilot's path-specific
+  `*.instructions.md`, while keeping typed layering/fallback state separate in
   `src/app/components/instruction-comparison/RecognitionComparison.vue`, part of the kind’s own
   comparison surface this task designs and creates following the skill precedent
   (`src/app/pages/skills/compare/[family].vue`, `src/app/composables/skill-comparison.ts`,
   `src/app/components/skill-comparison/`), including the entry links that reach it from that kind's
   inventory row component under `src/app/components/inventory/rows/` and from that kind's detail
-  route under `src/app/pages/`, as T203 owns them for skills *(amended 2026-08-19: the surface this
+  route under `src/app/pages/`, as T203 owns them for skills *(amended 2026-09-25: only that format
+  opens with declarations; a pair holding any other instruction file compares the recognizing
+  products and the complete files (T1224).)* *(amended 2026-08-19: the surface this
   task created is `src/app/pages/instructions/compare/[family].vue`,
   `src/app/composables/instruction-comparison.ts`, and `src/app/components/instruction-comparison/`
   (`RecognitionComparison.vue`, `recognition-comparison.ts`) — named here so each file resolves to
@@ -7304,18 +7322,18 @@ the task would have built.
   `path.isAbsolute()` false is `relative`; every other value is `eligible` with its exact string
   frozen into each preview and carrying no read authority until consent. Cover the three exact,
   ordered, one-time environment reads, the one unconditional `node:os.homedir()` call, exact lexical
-  roots, complete environment-supported escaping, and the exact minimal four-entry frozen preview.
+  roots, complete environment-supported escaping, and the exact minimal five-entry frozen preview.
   Prove create-or-replace occurs only through the state-changing preview-creation operation, always
   from the retained startup inputs, while current-preview retrieval is non-mutating and neither path
   rereads process inputs. A thrown startup input-capture operation propagates unchanged and leaves no
-  capture, preview, or path authority in `tests/unit/host/global-consent.test.ts`
+  capture, preview, or path authority in `tests/unit/host/global-consent.test.ts` *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T933 [US4] Extend preview tests for immutable typed traversal-plan programs, the
   server-retained raw/display record behind the opaque `previewId`, stale/replayed invalidation, and
   the later enable-request material fixing `confirmedTools` exactly to
-  `[copilot, claude, codex, agents]` in closed order—including invalid frozen entries—with no
+  `[copilot, claude, codex, antigravity, agents]` in closed order—including invalid frozen entries—with no
   eligibility narrowing, reordering, or UI/API selector. Keep this Phase-95 test boundary
   preview-only: post-consent initial/retry work-set derivation belongs to T945–T946 after the enable
-  foundation exists in `tests/unit/host/global-consent.test.ts`
+  foundation exists in `tests/unit/host/global-consent.test.ts` *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T934 [P] [US4] Add failing contracts for the non-mutating consent-preview read function, which
   returns only the current frozen preview or the fixed `consent-preview-missing` rejection, and the
   state-changing argument-free consent-preview creation function of the session API contract
@@ -7395,7 +7413,7 @@ the task would have built.
 - [X] T945 [P] [US4] Add failing Global-enable function contracts (the session API contract,
   contracts/http-api.md) for `confirmed: true`, exact version/`previewId` binding, no tool selector,
   extra-key and false/stale/superseded-preview rejection, fixed
-  `confirmedTools: [copilot, claude, codex, agents]`, server-derived initial-all or exact
+  `confirmedTools: [copilot, claude, codex, antigravity, agents]`, server-derived initial-all or exact
   `retryableTools` set, including admitted-unpublished and same-preview rejected controls but
   excluding published, pending, and lexical new-preview-required controls, exact accepted/rejected
   partition, and zero-admitted `active-no-job` with null ID and no new job/Source/generation—initial
@@ -7410,7 +7428,7 @@ the task would have built.
   pre-acceptance failure not confined to one file: initial enable activates no consent/control/job,
   while retry leaves existing consent/control, Sources, and prior snapshot unchanged; require one
   retained terminal error with the shared non-null ID/no subset commit after acceptance in
-  `tests/contract/http-api-global.test.ts`
+  `tests/contract/http-api-global.test.ts` *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T946 [P] [US4] Add failing initial-enable/retry coordinator tests for atomic fixed-member
   control activation and admission partition, using only test-injected typed outcomes for member
   ports not yet production-bound; registered operation-ID continuation and settlement-entry checks; FIFO generation selection; conflicts;
@@ -7447,13 +7465,13 @@ the task would have built.
   in `tests/contract/vendor-behaviors.test.ts`, `tests/contract/inspection-rules.test.ts`, and
   `tests/contract/runtime-composition.test.ts`
 - [X] T950 [US4] Add browser acceptance for exact-preview submission with no tool selector, fixed
-  `[copilot, claude, codex, agents]` confirmation, and test-only injected typed outcomes for the
+  `[copilot, claude, codex, antigravity, agents]` confirmation, and test-only injected typed outcomes for the
   not-yet-bound Claude/Copilot ports; cover per-tool accepted/rejected controls tied to one shared
   batch/request ID, `active-no-job`, the ordinary batch failure error, safe deterministic boundary
   Diagnostics, zero new/provisional pre-commit Global Source/file rows for admitted missing-Source
   members while carried existing Sources remain visible, and retained Repository results. Keep the
   real Codex path production-backed and defer all-real-port browser completion to Phase 99 in
-  `tests/e2e/global-codex-admission.spec.ts`
+  `tests/e2e/global-codex-admission.spec.ts` *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 ### Implementation
 
@@ -7643,25 +7661,25 @@ This slice adds the real Claude port to the open Phase-96–99 composite milesto
 
 This slice adds the real Copilot port to the same open composite milestone; it is not independently green or releasable.
 
-**Purpose**: Land the four-member consent foundation, then add Copilot root admission and its contracted member selector set — instructions, skills, agents, hooks, settings, and MCP below `COPILOT_HOME`, and the shared-agent-home skill rule — as a separately identified Source candidate inside the same fixed-four `GlobalBatchScan`, while owning the exact Copilot and shared exclusions.
+**Purpose**: Land the member-keyed consent foundation, then add Copilot root admission and its contracted member selector set — instructions, skills, agents, hooks, settings, and MCP below `COPILOT_HOME`, and the shared-agent-home skill rule — as a separately identified Source candidate inside the same fixed-five `GlobalBatchScan`, while owning the exact Copilot and shared exclusions. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
-**Independent Test**: Partition valid and invalid `COPILOT_HOME` roots within the fixed-four operation, read only the contracted selectors, map the behavior partitions, and prove every admitted sibling Source appears together in one batch generation or none appears after a failure not confined to one file, with no independent Copilot job or commit.
+**Independent Test**: Partition valid and invalid `COPILOT_HOME` roots within the fixed-five operation, read only the contracted selectors, map the behavior partitions, and prove every admitted sibling Source appears together in one batch generation or none appears after a failure not confined to one file, with no independent Copilot job or commit. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 **Visible Checkpoint**: Global controls report Copilot's per-member outcome within the shared operation; no new/provisional Copilot Source appears before the one batch commit, while carried existing Sources remain visible.
 
-### Four-member foundation
+### Member-keyed foundation
 
-- [X] T1137 [US4] Turn the fixed-member consent operation into the fixed-four member operation
+- [X] T1137 [US4] Turn the fixed-member consent operation into the member-keyed operation
   FR-013 and FR-045 define, before any member widens: capture the three environment properties once
   at session startup, call the imported `node:os.homedir()` exactly once for that session, derive the
-  shared agent home as `node:path.join(capturedHomedir, '.agents')`, and freeze four preview entries in fixed
+  shared agent home as `node:path.join(capturedHomedir, '.agents')`, and freeze one preview entry per member in fixed
   order in `src/server/host/global-consent.ts`, bumping the
   `allowlistVersion`/`traversalPlanVersion` literals to `2026-08-27` — a widened selector set is a
   different consent, so the old version must stop matching — and pinning the new literals in
   `tests/contract/http-api-global.test.ts`. Make the member id the closed
-  `copilot | claude | codex | agents` union in `src/shared/api-types.ts` with its caption in
+  union of the supported tools and `agents` in `src/shared/api-types.ts` with its caption in
   `src/shared/api-text.ts`, key the preview entry, controls, and batch fields by member per the
-  amended contract (contracts/http-api.md), and let `SourceSelector` spell the fourth member as
+  amended contract (contracts/http-api.md), and let `SourceSelector` spell the shared agent home member as
   `global-agents` through `src/shared/registries/identifier-types.ts` and the client route and
   filter modules that parse it. Land the member itself with its Codex rules —
   `codex.global.agents-home.skill` and `codex.global.agents-home.marketplace` in
@@ -7672,22 +7690,22 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   realistic shared agent home — skills with near-miss neighbours, a personal
   `plugins/marketplace.json`, and excluded installed-plugin copies — following the README's
   candidate/near-miss rule, update the consent copy in `src/app/pages/global-consent.vue` and
-  `src/app/components/consent/GlobalConsentPreview.vue` to state the four directories and the
-  widened file set, and prove the four-entry preview, the always-derived fourth root, the version
+  `src/app/components/consent/GlobalConsentPreview.vue` to state the member directories and the
+  widened file set, and prove the preview's entry per member, the always-derived agent-home root, the version
   bump, and the `agents` member's admission end to end in `tests/contract/http-api-global.test.ts`,
-  `tests/unit/host/global-consent.test.ts`, and `tests/e2e/global-consent-preview.spec.ts`.
+  `tests/unit/host/global-consent.test.ts`, and `tests/e2e/global-consent-preview.spec.ts`. *(amended 2026-09-25: the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008), so they are named without a count.)*
 
 ### Tests first
 
 - [X] T977 [P] [US4] Add failing Copilot post-consent boundary tests for absent/default versus
   invalid overrides, canonical roots, raw-path identity, links read through their targets, and
-  missing/unreadable files inside the fixed-four operation. Require a missing or unreadable Copilot
+  missing/unreadable files inside the fixed-five operation. Require a missing or unreadable Copilot
   root to record that member as absent or failed without preventing sibling members from committing;
   require a file-confined failure inside an admitted Copilot root to yield that file's Diagnostic in
   a partial member result; and require any failure not confined to one file to propagate unchanged
   and abort the whole batch with no subset Source/generation; host consent code performs zero
   filesystem calls in `tests/unit/host/global-consent.test.ts` *(amended 2026-08-27: fixed-four —
-  the shared agent home joins the members (FR-045).)*
+  the shared agent home joins the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T978 [P] [US4] Add boundary tests for the contracted Copilot Global selector sets — the
   instruction pair, `skills/<name>/SKILL.md`, `agents/*.agent.md`, `hooks/*.json`, `settings.json`,
   `mcp-config.json`, and the shared-agent-home skills — zero operations on neighboring
@@ -7728,22 +7746,22 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   FR-015 through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
   amended vendor contracts.)*
 - [X] T981 [US4] Add browser acceptance for Copilot's confirmed/pending/retryable outcome within the
-  fixed-four controls, shared batch request/progress, deterministic invalid-override Diagnostics,
+  fixed-five controls, shared batch request/progress, deterministic invalid-override Diagnostics,
   the ordinary whole-batch failure error, zero new/provisional pre-commit Copilot Source/file rows
   while carried existing Sources remain visible, atomic sibling publication, and retained Repository
   results in `tests/e2e/global-copilot-admission.spec.ts` *(amended 2026-08-27: fixed-four — the
-  shared agent home joins the members (FR-045).)*
+  shared agent home joins the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 ### Implementation
 
-- [X] T982 [US4] Implement Copilot root-admission orchestration as one fixed-four member:
+- [X] T982 [US4] Implement Copilot root-admission orchestration as one fixed-five member:
   distinguish absent/default from invalid preview, submit the frozen root and compiled plan to the
   inspection module, consume only its typed admission outcome/context, retain raw provenance, and
   propagate a rejected call unchanged. Host code MUST issue no filesystem call and MUST NOT inspect
   or convert a Node error code; it may transfer an admitted unpublished context/IDs to the Copilot
   control only in the atomic decision feeding the one `GlobalBatchScan` in
   `src/server/host/global-consent.ts` *(amended 2026-08-27: fixed-four — the shared agent home joins
-  the members (FR-045).)*
+  the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T983 [US4] Update already-owned behaviors with the contracted reciprocal backlink sets:
   `copilot.behavior.cli.user.instructions.root` only to `copilot.global.instructions.root`;
   `copilot.behavior.cli.user.instructions.path` and `copilot.behavior.vscode.user.instructions` only
@@ -7810,12 +7828,12 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   across four member roots — FR-015 through FR-018 and FR-045 — so this task's member set, selector
   sets, and counts follow the amended vendor contracts.)*
 - [X] T989 [US4] Implement Copilot control/context outcome and retry state as projections of the one
-  serialized fixed-four admission/batch operation, not an independent job; share its
+  serialized fixed-five admission/batch operation, not an independent job; share its
   request/progress with admitted siblings, preserve prior state until the one atomic commit, and on
   any failure not confined to one file retain one ordinary terminal error for the shared ID with no
   new item/Source/result/generation or initial/retry stale overlay, then discard late work in
   `src/server/session/session.ts` *(amended 2026-08-27: fixed-four — the shared agent home joins the
-  members (FR-045).)*
+  members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T990 [US4] Add English messages for Copilot Global override, admission, exact exclusions,
   shared-batch progress, deterministic rejection/retry, and whole-batch failure, explicitly
   distinguishing no new/provisional pre-commit Source from carried existing Sources that remain
@@ -7826,11 +7844,11 @@ This slice adds the real Copilot port to the same open composite milestone; it i
 
 ## Phase 99: Atomic Global Batch Result Integration (Composite Closure 4/4)
 
-**Purpose**: Widen the shipped Claude and Codex members to their contracted kind sets, then close the composite milestone by binding all four real member-admission ports and integrating zero to four separately identified member Global Sources, each with one member/root, through exactly one initial/retry `GlobalBatchScan` commit without merging roots or exposing a per-member commit.
+**Purpose**: Widen the shipped Claude and Codex members to their contracted kind sets, then close the composite milestone by binding all five real member-admission ports and integrating zero to five separately identified member Global Sources, each with one member/root, through exactly one initial/retry `GlobalBatchScan` commit without merging roots or exposing a per-member commit. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
-**Independent Test**: Evaluate the fixed tuple, deterministically admit zero to four roots, and verify an empty subset creates no new job/generation while preserving carried Sources/controls and the prior snapshot, while a nonempty subset uses one request, working set, result, and Global generation to publish every admitted separately identified Source together; verify stable Source IDs, invalidation confined to the Global sequence while Repository generation and views stay untouched, exact 81-rule total, deterministic accepted/rejected partitioning, whole-batch abort on a failure not confined to one file, detail/comparison reuse, excluded-surface isolation, and the exact non-pending-unpublished-admitted plus same-preview-rejected `retryableTools` controls.
+**Independent Test**: Evaluate the fixed tuple, deterministically admit zero to five roots, and verify an empty subset creates no new job/generation while preserving carried Sources/controls and the prior snapshot, while a nonempty subset uses one request, working set, result, and Global generation to publish every admitted separately identified Source together; verify stable Source IDs, invalidation confined to the Global sequence while Repository generation and views stay untouched, exact 81-rule total, deterministic accepted/rejected partitioning, whole-batch abort on a failure not confined to one file, detail/comparison reuse, excluded-surface isolation, and the exact non-pending-unpublished-admitted plus same-preview-rejected `retryableTools` controls. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
-**Visible Checkpoint**: Admitted Codex, Claude, Copilot, and shared-agent-home Global Sources appear separately but simultaneously after one batch commit and can then be filtered, inspected, compared, and explicitly rescanned per Source.
+**Visible Checkpoint**: Admitted Codex, Claude, Copilot, Antigravity, and shared-agent-home Global Sources appear separately but simultaneously after one batch commit and can then be filtered, inspected, compared, and explicitly rescanned per Source. *(amended 2026-09-25: the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 ### Member widening
 
@@ -7894,8 +7912,8 @@ This slice adds the real Copilot port to the same open composite milestone; it i
 ### Tests first
 
 - [X] T991 [P] [US4] Add integrated boundary tests for the contracted member selector sets and one
-  fixed-four transaction: zero admitted roots allocate no new `scanRequestId`/job/Source/generation
-  and preserve all carried Sources/controls and the prior snapshot; one to four admitted roots yield
+  fixed-five transaction: zero admitted roots allocate no new `scanRequestId`/job/Source/generation
+  and preserve all carried Sources/controls and the prior snapshot; one to five admitted roots yield
   separately identified one-member/one-root Sources together in exactly one complete or partial
   generation; a member root that disappears or cannot be read is recorded as absent or failed while
   a file-confined outcome inside an admitted root contributes its per-file diagnostic to that
@@ -7907,7 +7925,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   `tests/integration/global-boundaries.test.ts` *(amended 2026-08-27: the Global scope widened from
   the instruction files to every documented user customization file across four member roots —
   FR-015 through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
-  amended vendor contracts.)*
+  amended vendor contracts.)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T992 [US4] Add final Global registry contracts proving exactly 81 rule IDs—the 49-ID
   pre-Global gate *(amended 2026-08-01: no rule derives skill metadata (Phase 6))* plus three vendor
   `*.excluded.user-runtime` records, `shared.excluded.managed-remote-state`, and twenty-eight Global
@@ -7963,7 +7981,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   expected-result bullet was not removed and stays where it is; extend it only if this suite reports
   something it does not already cover. The restored command lines are the one in the § Automated
   quality gates list and the one in § Inspect without activation.
-- [X] T997 [US4] Add browser acceptance for selector-free fixed-four enablement, `active-no-job`,
+- [X] T997 [US4] Add browser acceptance for selector-free fixed-five enablement, `active-no-job`,
   and one shared batch request; verify separately identified admitted Sources appear simultaneously
   after one generation, with escaped inert boundaries distinct from preview and Source-relative
   paths; filters, Diagnostics, exact readable literals including replacement characters,
@@ -7971,12 +7989,13 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   and cross-Source comparison. An unexpected batch failure must show only one ordinary batch failure
   error, publish no subset/generation or `StaleSourceFailure`, and preserve prior Repository/Global
   state and stable Source IDs in `tests/e2e/global-enable.spec.ts` *(amended 2026-08-27: fixed-four
-  — the shared agent home joins the members (FR-045).)*
+  — the shared agent home joins the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 ### Implementation
 
-- [X] T998 [US4] Finalize fixed-four post-consent admission by binding the real T951/T968/T982/T1137
-  Codex/Claude/Copilot/shared-agent-home ports as four one-root `GlobalToolControl` records and
+- [X] T998 [US4] Finalize fixed-five post-consent admission by binding the real T951/T968/T982/T1137
+  Codex/Claude/Copilot/shared-agent-home ports and the Antigravity home's port
+  (specs/003-antigravity-cli-support FR-008) as five one-root `GlobalToolControl` records and
   operation-local contexts, with initial evaluation of all members, server-derived exact
   `retryableTools` retry, including non-pending unpublished admitted and same-preview rejected
   controls while excluding published, pending, and lexical new-preview-required controls,
@@ -7987,7 +8006,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   `src/server/host/global-consent.ts` *(amended 2026-08-27: the Global scope widened from the
   instruction files to every documented user customization file across four member roots — FR-015
   through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
-  amended vendor contracts.)*
+  amended vendor contracts.)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T999 [US4] Finalize all Global behavior, exactly twenty-eight Global static candidate rules,
   the existing exact exclusions, strategy references, the evidence backlinks the amended contracts
   produce — recounted and frozen in the same gate — and the exact 81-rule total *(amended
@@ -8039,13 +8058,13 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   resolution had to stop; what remains here is the atomic batch publication and the `SourceDto`
   union.)* *(amended 2026-08-27: the publication is of member Global Sources — the shared agent home
   included (FR-045).)*
-- [X] T1002 [US4] Complete the Global-enable function responses for exact fixed-four
+- [X] T1002 [US4] Complete the Global-enable function responses for exact fixed-five
   accepted/rejected partitions, one shared request ID plus `queued` for a nonempty batch or null
   plus `active-no-job` for an empty subset, conflicts, retry state, and ordinary
   pre-/post-acceptance failure errors, while leaving every admitted-member Source publication to a
   later session poll after the one atomic batch commit and preserving carried existing Sources in
   `src/server/host/devframe-app.ts` *(amended 2026-08-27: fixed-four — the shared agent home joins
-  the members (FR-045).)*
+  the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T1003 [US4] Implement a Source-family filter — the selected repository, and the reader's own
   configuration directories as one — beside the tool filter, so the Source axis states where a file
   came from while the tool axis states which product recognized it and the selection can ride in
@@ -8067,18 +8086,18 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   otherwise identical on screen, while the ordinary session has one Source and needs no such line.
   The Source filter is rendered on the same terms, because one family is a question with one
   answer.)*
-- [X] T1004 [US4] Complete fixed-four confirmation and per-member outcome/retry controls tied to one
+- [X] T1004 [US4] Complete fixed-five confirmation and per-member outcome/retry controls tied to one
   shared batch request/progress, focus recovery, `active-no-job`, the ordinary whole-batch failure
   error, and simultaneous separate-Source outcome presentation in `src/app/pages/global-consent.vue`
   and `src/app/components/consent/GlobalSourceControls.vue`; reuse T071's on-demand-refresh
   contract for status *(amended 2026-08-27: fixed-four —
   the shared agent home joins the members (FR-045).)* *(amended 2026-09-04: the pause/resume
   half is dropped, because T071's own note records that no such control exists — nothing on
-  these pages updates automatically, so there is nothing to pause.)*
-- [X] T1005 [US4] Add English fixed-four/single-batch, one-root separate Source, accepted/rejected,
+  these pages updates automatically, so there is nothing to pause.)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
+- [X] T1005 [US4] Add English fixed-five/single-batch, one-root separate Source, accepted/rejected,
   `active-no-job`, whole-batch failure, retry with carried existing Sources kept visible,
   source/tool-filter, detail/comparison, and shared-progress messages in the Vue components that
-  render them *(amended 2026-08-27: fixed-four — the shared agent home joins the members (FR-045).)*
+  render them *(amended 2026-08-27: fixed-four — the shared agent home joins the members (FR-045).)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 
 ---
 
@@ -8296,7 +8315,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   what the product lists and that being listed is not being loaded; the verified launch line and
   every option the CLI accepts, exact `--root` included; the eleven customization kinds and the
   comparison surface, illustrated by `docs/images/inventory.png` and `docs/images/comparison.png`;
-  the fixed-four Global consent that `--inspect-personal-setup` confirms; per-file
+  the fixed-five Global consent that `--inspect-personal-setup` confirms; per-file
   `file-unreadable`/`file-content-binary`/`recognition-parse-failed` diagnostics and the
   source-scoped `root-unreadable` failure, whose failed explicit rescan retains the stale prior
   snapshot; the file-open targets; the Node and browser baseline; the contributor loop through
@@ -8310,7 +8329,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   projects condition, applicability, order, runtime state, provenance, or documentation status
   (FR-009; T091/T1068/T1042).)* *(amended 2026-08-30: this document is what a reader opens to run
   and read the tool, so it carries what that reader needs; a contract nobody consults here is one
-  its owning artifact already states.)*
+  its owning artifact already states.)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T1030 Build the SC-001/SC-006 evaluation material and keep it paired: create
   `tests/usability/sc001-sc006-study-kit.md` and `tests/usability/sc001-sc006-study-kit.ja.md`,
   and the bilingual bundle under `tests/usability/sc001-sc006-study-inputs/` — the guidance, the
@@ -8488,7 +8507,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   per-file diagnostics, one read per discovered file, and independent Source/attempt/generation
   reads; separate classification and constraint validation of the two exact FR-022 authorized
   internal loopback classes, zero prohibited direct product requests on every other surface, and
-  local-fixture zero-call semantics; replacement decoding; exact runtime-error ownership; fixed-four
+  local-fixture zero-call semantics; replacement decoding; exact runtime-error ownership; fixed-five
   Global work; FR-042 pre-purge/epoch/fence/recovery/error semantics with public-state
   Global-sequence discard versus unpublished-operation unchanged committed state, including
   unchanged-epoch/null-fence final gates for inspection-data success; non-authority, no semantic
@@ -8515,7 +8534,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   jobs too — leaving the documentation job verifying nothing those had not already verified, unless
   two projects carried an exclusion for one file. The restored command lines are the one in the §
   Automated quality gates list and the one in § Release package verification. *(amended 2026-08-10:
-  the checklist runs through T1090.)*
+  the checklist runs through T1090.)* *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - [X] T1042 [P] After T1041 passes, independently verify the T999 production registry and T1038
   conformance records already materialized before the gate, and add final tests for exactly 52
   source records, exactly 81 inspection-rule IDs *(amended 2026-08-26: the count follows the current
@@ -8962,11 +8981,13 @@ one, and a diagnostic stated by kind on its row with its explanation disclosed r
   `src/app/components/inventory/rows/RuleRow.vue`,
   `src/app/components/inventory/rows/PermissionsRow.vue`, and
   `src/app/components/inventory/rows/SettingsRow.vue` (FR-009)
-- [X] T1163 [US1] Mark a row that kept a diagnostic at all times and disclose what happened on
-  request, in `src/app/components/inventory/rows/RowDiagnostics.vue` and
-  `src/app/components/inventory/rows/UnclassifiedRow.vue` *(amended 2026-09-02: the mark is one
-  word, because a clause naming the outcome beside every affected path is more text than a row
-  being scanned for trouble needs)* (FR-028)
+- [X] T1163 [US1] Mark a row that kept a diagnostic at all times with the kind of problem it kept,
+  and disclose that kind's explanation on request, in
+  `src/app/components/inventory/rows/RowDiagnostics.vue` and
+  `src/app/components/inventory/rows/UnclassifiedRow.vue` *(amended 2026-09-25: the mark names the
+  kind, because FR-028 asks that the kind be learned without opening anything, and the kinds a row
+  can carry ask for different fixes; what keeps the row short is that the explanation stays
+  disclosed)* (FR-028)
 - [X] T1164 [US1] Name the personal-setup home a file came from on its row, rather than repeating
   its full path on a second line, in `src/app/components/inventory/SourceFamilySections.vue`
   (FR-013)
@@ -9527,6 +9548,191 @@ declares a `name`; `packages/api:deploy` still heads the nested row.
   `specs/001-inspect-agent-customizations/validation.ja.md` (spec.md § Release-Evidence
   Fixture Governance).
 
+## Phase 116: Claude Code Reads AGENTS.md
+
+**Purpose**: Recognize every repository `AGENTS.md` for Claude Code, which reads it from
+2.1.277 where and how it reads `CLAUDE.md` — at and above the working directory at session
+start, and in a subdirectory once it reads a file there — while stating nothing about whether a
+session reads it instead of the `CLAUDE.md` files or beside them (FR-004, FR-005, FR-009,
+spec.md § Clarifications Session 2026-09-24).
+
+**Independent Test**: Run `pnpm run test:unit`, `pnpm run test:contract`, and
+`npx playwright test --project=chromium tests/e2e/claude-instructions-inventory.spec.ts
+tests/e2e/instructions-inventory.spec.ts`; open the all-instructions fixture and find the root
+`AGENTS.md` badged for Claude Code beside OpenAI Codex, GitHub Copilot, and Antigravity CLI, and
+`packages/api/AGENTS.md` on the `packages/api/**` row badged for Claude Code and GitHub Copilot.
+
+**Visible Checkpoint**: Narrowing the instructions list to Claude Code keeps every `AGENTS.md`
+and drops `AGENTS.override.md`.
+
+### The rule's answer
+
+- [X] T1215 [US1] Add `[ANY_DIRECTORIES, 'AGENTS.md']` to `claude.repo.instructions` in
+  `src/shared/registries/claude/rules.ts`, add `AGENTS.md` and `.claude/AGENTS.md` to the launch
+  and ancestor lookups and `AGENTS.md` alone to the descendant lookup in
+  `src/shared/registries/claude/behaviors.ts`, record the
+  Project instructions filter and the repeat an import makes as `filter`, `append`, `deduplicate`
+  on `claude.instructions.layering` in `src/shared/registries/claude/strategies.ts`, and drop a
+  trailing `.claude` for `AGENTS.md` as for `CLAUDE.md` in
+  `src/server/inspection/rules/instructions/claude.ts`. Record at the rule why an `AGENTS.md`
+  under `.agents/` is admitted — the grammar excludes no directory name, and Claude Code 2.1.280
+  loads one there. Re-pin the admitted sets, provenance, ranges, and tool matrices in
+  `tests/unit/inspection/rules.test.ts`, `tests/contract/inspection-rules.test.ts`,
+  `tests/contract/runtime-composition.test.ts`, and `tests/integration/repository-scan.test.ts`,
+  extend `tests/fixtures/repositories/build-fixtures.ts` with a nested `AGENTS.md`, and
+  regenerate `tests/fixtures/conformance/` (FR-004, FR-005).
+
+### The record
+
+- [X] T1216 [US1] Record the decision in `specs/001-inspect-agent-customizations/spec.md` and
+  `specs/001-inspect-agent-customizations/spec.ja.md` (§ Clarifications Session 2026-09-24, the
+  supported-files table, FR-034), and restate the lookups, the matcher, the composition, and the
+  range in `data-model.md`, `contracts/vendors/claude-code.md`, and
+  `contracts/runtime-composition.md` with their Japanese companions, adding the version floor and
+  the `.agents/` measurement to the vendor contract's known ambiguities. Change the frozen
+  Claude Code Presentation Allowlist `instructions` row to name `AGENTS.md` and re-record both of
+  its digests in `contracts/official-sources.md`, `contracts/official-sources.ja.md`, and
+  `tests/contract/presentation-allowlist-freeze.test.ts`. Review every record citing
+  `anthropic.claude-code.memory.locations-load` against the page, correct what it no longer
+  establishes — user and project rules override neither the other — and advance `reviewedOn`.
+  Update `docs/which-files-are-listed.md` and `docs/which-files-are-listed.ja.md`, and add the
+  `.changeset/` entry a recognition change owes its users (FR-034, QR-005).
+
+### The browser suites and the release evidence
+
+- [X] T1217 [US1] Restate the rows in `tests/e2e/claude-instructions-inventory.spec.ts`,
+  `tests/e2e/discovery.spec.ts`, `tests/e2e/instructions-comparison.spec.ts`, and
+  `tests/e2e/instructions-inventory.spec.ts`. Name Claude Code among the recognizing tools of
+  `sc003.shared-file.repository-agents-md`, advance `tests/fixtures/outcomes/manifest.json` to
+  version 6, re-record its changed fixture digests and `tests/fixtures/outcomes/manifest.sha256`,
+  re-execute the cases the changed fixtures reach, and record the transition and the run in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` (spec.md § Release-Evidence Fixture
+  Governance).
+- [X] T1218 [US1] Name Claude Code among the designated `AGENTS.md`'s recognizing tools in
+  `tests/usability/sc001-sc006-study-inputs/ground-truth.json` and
+  `tests/usability/sc001-sc006-study-inputs/ground-truth.ja.json`, run the twenty agent-driven
+  SC-001/SC-006 sessions against the packed release candidate, and record the run in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` as an agent-driven run (spec.md
+  § SC-001, § SC-006).
+- [X] T1219 [US1] Resolve the review of this phase. Find a comparison's block by the range whose
+  rows hold both sides in `src/app/pages/instructions/compare/[family].vue`, search every range a
+  file sits in for its detail's comparison entry in
+  `src/app/pages/instructions/detail/[source]/[...path].vue`, and show a file two products give
+  two ranges on its detail as the designer decides; cover the `.claude/AGENTS.md` and
+  `.claude/CLAUDE.local.md` pair in `tests/e2e/claude-instructions-inventory.spec.ts`. Narrow
+  `managed-only` to launch in `claude.instructions.layering` and its contract rows, record the
+  ancestor `.claude/CLAUDE.md` the `AGENTS.md` section establishes on
+  `claude.behavior.repo.instructions.ancestor` and in the vendor contract, and register and cite
+  `anthropic.claude-code.changelog.agents-md` (§ 2.1.277) as the `AGENTS.md` version gate
+  (QR-005). Record every session of the superseded first-use attempts in `validation.md` and
+  `validation.ja.md`, and state in `tests/usability/sc001-sc006-study-kit.md` and its Japanese
+  companion that an apparatus defect supersedes an attempt and how the SC-006 screen is handed
+  over (SC-001, SC-006).
+- [X] T1220 [US1] Resolve the second review of this phase. State every product that reads a
+  compared file, gathered from every row that lists it, in
+  `src/app/pages/instructions/compare/[family].vue`, covering the `.claude/AGENTS.md` and
+  `.claude/CLAUDE.local.md` pair in `tests/e2e/instructions-comparison.spec.ts`, and replace the
+  one-range premise in `src/app/composables/instruction-comparison.ts` and `data-model.md` §
+  comparison routes. Record `claude.repo.instructions` as `partially-documented`, because its
+  `.agents/` admission rests on an observation the memory page contradicts, and
+  `claude.behavior.repo.instructions.descendant` as `documented`, in
+  `src/shared/registries/claude/` and `contracts/vendors/claude-code.md`; state the `AGENTS.md`
+  gate's provider and session conditions — not yet on Bedrock, Vertex, or Foundry at 2.1.277, and
+  before 2.1.281 not in some sessions — in the registry's evidence, the vendor contract, and
+  `contracts/official-sources.md`; correct T1215's descendant lookup to `AGENTS.md` alone; and
+  name the recognizer case in `tests/unit/inspection/recognizers.test.ts` for what it tests
+  (FR-004, FR-011, QR-005).
+- [X] T1221 [US1] Resolve the third review of this phase. Give a file line's path a floor of its
+  own in `src/app/styles/main.css` § .aci-row-file, so a file four products read keeps a readable
+  path at 200% text on a 1280px viewport, and assert that no path is squeezed in
+  `tests/e2e/accessibility.spec.ts` § AUTO-1.4.4; decide the "Applies to" prefix of an
+  instruction detail's range from whether a range is known rather than from whether it is drawn
+  as its own characters, in `src/app/components/applicability-range.ts` and
+  `src/app/pages/instructions/detail/[source]/[...path].vue`, covering `applyTo: " "` in
+  `tests/unit/app/authored-text-styling.test.ts` and `tests/e2e/copilot-instructions-detail.spec.ts`
+  (FR-011, SC-008).
+- [X] T1222 [US1] Resolve the fourth review of this phase. Decide whether a file line's three
+  columns fit from the row's own width with a container query on `.aci-item` in
+  `src/app/styles/main.css`, at the width the viewport query switched at, so neither the path
+  nor the marks is squeezed out at 200% text; run `tests/e2e/accessibility.spec.ts` § AUTO-1.4.4
+  at 832px too and assert that no marks are clipped; and restate User Story 1's acceptance
+  scenario 4 in `spec.md` and `spec.ja.md` for the root `AGENTS.md` four products recognize
+  (FR-004, SC-008).
+- [X] T1223 [US1] Resolve the fifth review of this phase. Pass the row a detail was entered
+  through — the `range` query on `src/app/pages/instructions/detail/[source]/[...path].vue`, the
+  `name` query on the skill, agent, prompt-and-command, and output-style details — as the heading
+  focus's selection, so a Previous or Next move between two rows of one file focuses the heading
+  rather than dropping focus with the link it removed, stating the coordinate in
+  `src/app/composables/detail-heading-focus.ts`; cover both directions in
+  `tests/e2e/claude-instructions-inventory.spec.ts` (FR-007, SC-008).
+- [X] T1224 [US1] Resolve the sixth review of this phase. Read every instruction format but
+  Copilot's `*.instructions.md` whole, because no product documents a frontmatter for
+  `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`, `CLAUDE.local.md`, `GEMINI.md`,
+  `copilot-instructions.md`, or a Codex fallback name, and Antigravity's Rules page says that
+  `AGENTS.md` and `GEMINI.md` use none: give each instruction unit its format in
+  `src/server/inspection/rules/instructions/`, split Copilot's unit into the repository-wide and
+  the path-specific one, recognize a file read whole with no extraction in
+  `src/server/inspection/recognizers/candidate.ts`, and discriminate `InstructionFileDetailDto`
+  by `format` in `src/shared/api-types.ts` and `contracts/http-api.md`. Show a file read whole as
+  one face without tabs on `src/app/pages/instructions/detail/[source]/[...path].vue`, stating a
+  removed byte-order mark on its attributes line, and compare declared metadata and instructions
+  in `src/app/components/instruction-comparison/` only when both sides declare, naming the
+  frontmatter in the source comparison's note only then; correct the section-order comments of
+  the instruction, custom-agent, and prompt comparison components. Record the format in
+  `data-model.md`, `research.md`, and `plan.md`; state in the Antigravity CLI vendor contract's
+  presentation allowlist that nothing is read out of a context file or a rule file, re-record
+  both of its digests, and advance `allowlistVersion`; cite § YAML frontmatter and activation
+  modes on `antigravity.behavior.repo.context`; and move the suites, their fixtures, and the
+  outcome manifest's digests onto the reading (FR-007, FR-011, FR-028, QR-005).
+- [X] T1225 [US1] Resolve the seventh review of this phase. Restate the completed tasks that left
+  Claude Code out of `AGENTS.md`'s recognition — Phase 17's purpose, T226, T228, T268, and
+  Phase 21's recognition matrix — for the recognition this phase gives it, and list `AGENTS.md`
+  among the Claude and Copilot instruction paths in `tests/fixtures/repositories/build-fixtures.ts`.
+  State a file's diagnostics wherever the file itself is shown, whichever kind's reading left
+  them, because whether a record can reach a file turns on every rule that admits its path
+  rather than on the kind in view: on the one face of
+  `src/app/pages/instructions/detail/[source]/[...path].vue`, on the rule and
+  settings-and-configuration details, and on `RuleRow.vue`, `SettingsRow.vue`, `SkillRow.vue`,
+  `PromptRow.vue`, and `OutputStyleRow.vue` in `src/app/components/inventory/rows/`, each
+  resolving the file's own references from `files[]`. Say each code once in a file's list in
+  `src/app/components/inspection/DetailDiagnostics.vue` and
+  `src/app/components/inventory/rows/RowDiagnostics.vue`; record both in `contracts/http-api.md`,
+  `data-model.md` § Diagnostic, and `src/shared/api-types.ts`; and cover a Codex fallback
+  `.mcp.json` holding a comment in `tests/e2e/codex-mcp-detail.spec.ts`, a settings document two
+  readings fail in `tests/e2e/claude-settings-detail.spec.ts` and
+  `tests/e2e/codex-config-detail.spec.ts`, and a rule file that is a command too in
+  `tests/e2e/claude-rules-detail.spec.ts` (FR-004, FR-028).
+- [X] T1226 [US1] Name the kind of problem on a row's diagnostic badge (2026-09-25), as FR-028
+  asks: a failed parse is fixed in the file's own text and an unreadable file by checking that it
+  is there and can be read, and one skill row can carry both. Give each code in
+  `src/shared/diagnostics.ts` the words its badge states — `Could not be parsed`,
+  `Could not be read`, `Binary` — beside its explanation, the words the files-in-no-kind row and a
+  detail's attributes already use for the same state, and render them in
+  `src/app/components/inventory/rows/RowDiagnostics.vue`, the files-in-no-kind row keeping its read
+  outcome and every badge keeping one colour; state the words in `data-model.md` § Diagnostic; pin
+  them in `tests/unit/shared/diagnostics.test.ts` and `tests/unit/shared/display-text.test.ts`;
+  assert a malformed command's badge, and a skill row carrying both kinds, in
+  `tests/e2e/inventory-rows.spec.ts`; and add the `.changeset/` entry the change owes its users
+  (FR-028).
+- [X] T1227 [US1] Resolve the eighth review of this phase. Rewrite the completed statements that
+  still had the instruction formats T1224 reads whole parsed for their declarations — Phase 16's
+  checkpoint, T218, and T222–T224; Phase 18's independent test; and Phase 22's independent test
+  and T276–T278 — to what they now require, each with a dated note, the comparison's declarations
+  named for a pair of Copilot's path-specific `*.instructions.md` alone. In `data-model.md`
+  § ToolRecognition, keep the tool union and order the parent was written with and point to the
+  feature data model that adds `antigravity` (`specs/003-antigravity-cli-support/data-model.md`
+  § SupportedTool), and let the Presentation Allowlist enumeration name the vendor contracts
+  through the official-source contract rather than by a count of its own, which disagreed with
+  that contract (FR-004, FR-007, FR-011).
+- [X] T1228 [US1] Resolve the ninth review of this phase. Rewrite the completed statements that
+  still described the Claude, Codex, and repository-wide Copilot instruction files T1224 reads whole
+  as parsed for their declarations: T242–T244 and T265 to what they now require, each with a dated
+  note, and the notes of T209, T225, T234, and T272 that credited a detail with the declarations the
+  file wrote or the kind with one shared Markdown parse, each keeping what stays true; drop the
+  attribution the Japanese T265 note alone carried (FR-004, FR-007).
+
 ## Story Coverage Matrix
 
 | Phase | Primary story coverage | Cumulative milestone |
@@ -9649,6 +9855,7 @@ declares a `name`; `packages/api:deploy` still heads the nested row.
 | 112 Convergence | shared prerequisite | The validation record reads as one account of this tree, and the story-label rule matches the phases that exist. |
 | 113 Convergence | shared prerequisite | The two records that name an artifact by its identity — the outcome manifest's digest and the readme's screenshots — name the artifact this tree holds. |
 | 115 Skill Rows Named as Claude Code Lists Them | US1 | A root skill's row is headed by the name Claude Code's own menus list it under, so one root file is one row across every product that reads it, and a nested skill keeps its directory-qualified command. |
+| 116 Claude Code Reads AGENTS.md | US1 | Every repository `AGENTS.md` names Claude Code among the products that read it, at the root and below it, and no row says whether a session reads it instead of `CLAUDE.md` or beside it. |
 
 ## Dependencies and Execution Order
 
@@ -9927,8 +10134,9 @@ frontmatter list and the complete `sourceText` (T090).
   `kind: 'skill'`, the file, `presentation` (the one scan-time parse: `frontmatter` and `bodyText`,
   null exactly for a failed extraction), and the file's diagnostics — beside
   `UnrecognizedFileDetailDto` (`kind: 'file'`) for a file no recognition owns. The per-tool
-  `recognitions` array leaves the wire: the parse is the file's fact — every shipped vendor reads
-  the same fixed YAML semantics — and the recognizing tools, invocation names, and parse states are
+  `recognitions` array leaves the wire: the parse is the file's fact — read under this product's one
+  fixed YAML semantics whichever rule admitted the file — and the recognizing tools, invocation
+  names, and parse states are
   the inventory's `definitions[]`, so the copies could only disagree; admissions stay internal
   records for the relationship phases. One extraction per kind is one failure record (FR-028),
   shared by the kind's failed definitions and listed once by the file. `ToolRecognition` and
@@ -10524,8 +10732,8 @@ they already state.
 
 1. Pass Repository Inventory, Detail, and Comparison Acceptance.
 2. Deliver no-I/O Global consent preview.
-3. Activate selector-free consent for fixed `[copilot, claude, codex, agents]`, evaluate all four on initial enable or exactly the complete fixed-order `retryableTools` projection—non-pending unpublished admitted plus same-preview rejected controls, excluding published, pending, and lexical new-preview-required controls—on retry, and validate their one-root controls without publishing tentative Sources.
-4. For a nonempty admitted subset, run exactly one shared-ID `GlobalBatchScan` and atomically publish zero to four separate member Sources together through one complete or partial Global generation, preserving carried Sources and never merging roots; an empty deterministic subset creates no job or generation.
+3. Activate selector-free consent for fixed `[copilot, claude, codex, antigravity, agents]`, evaluate all five on initial enable or exactly the complete fixed-order `retryableTools` projection—non-pending unpublished admitted plus same-preview rejected controls, excluding published, pending, and lexical new-preview-required controls—on retry, and validate their one-root controls without publishing tentative Sources. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
+4. For a nonempty admitted subset, run exactly one shared-ID `GlobalBatchScan` and atomically publish zero to five separate member Sources together through one complete or partial Global generation, preserving carried Sources and never merging roots; an empty deterministic subset creates no job or generation. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 5. Add Global rescan/recovery and the priority zero-I/O disable barrier.
 6. Complete documentation/evidence/dependency review, then run the cross-cutting suites against those completed artifacts; after every remediation, invalidate prior post-review results, rerun all applicable automated gates and affected evidence protocols, and repeat complete-diff/tarball review until it reports no concern.
 7. Record SC-001–SC-008 denominators, thresholds, and pass/fail results; the task material under `tests/usability/sc001-sc006-study-inputs/` and the ground truth the twenty agent-driven sessions scored against, recorded as an agent-driven run and never as a participant cohort (spec.md § Clarifications, Session 2026-09-01); the outcome-fixture manifest version and canonical digest; the final packed-candidate digest; the full Node.js engines contract plus exact lower-bound/browser certification samples; and residual risks. The capture kit is removed (spec.md § Clarifications, Session 2026-09-01; T1061, T1062), so nothing here runs or records it.
@@ -10555,7 +10763,7 @@ they already state.
 - Claude standalone hooks, Codex standalone MCP, hosted/organization/managed/remote inputs, Claude workflows and agent memory, Codex Repository prompts and plugin components, Copilot LSP/extensions/general `.vscode/settings.json`, and extra configured roots never receive List phases or read authority.
 - Contained Hook recognitions reuse their already admitted owner physical file and never create a synthetic file. MCP has no contained mechanism: only explicit carriers hold MCP recognitions. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
 - A marketplace catalog and the manifests below its entries' roots are one `plugin` kind: the catalog is the carrier, a validated local source names each plugin's root, and the census enumerates that root's files — no rule admits a plugin manifest and none derives one; components never recurse.
-- Global inspection has one fixed-four consent record, four controls, and zero to four separately identified Sources, at most one per member and exactly one root per Source. Tentative admission/scan work is not a Source. Initial enable or retry transfers every admitted context into one `GlobalBatchScan` with one request ID, authority, and working set, then publishes all admitted Sources together in one complete or partial generation of the independent Global sequence; no per-member intermediate commit exists, and a Global commit never touches Repository generation or views. A later explicit Global rescan remains a single-Source transaction. Source IDs remain process-lifetime stable, and file identities are Source-relative Paths, stable across generations.
+- Global inspection has one fixed-five consent record, five controls, and zero to five separately identified Sources, at most one per member and exactly one root per Source. Tentative admission/scan work is not a Source. Initial enable or retry transfers every admitted context into one `GlobalBatchScan` with one request ID, authority, and working set, then publishes all admitted Sources together in one complete or partial generation of the independent Global sequence; no per-member intermediate commit exists, and a Global commit never touches Repository generation or views. A later explicit Global rescan remains a single-Source transaction. Source IDs remain process-lifetime stable, and file identities are Source-relative Paths, stable across generations. *(amended 2026-09-25: fixed-five — the Antigravity home joins the members (specs/003-antigravity-cli-support FR-008).)*
 - Complete decoded authored source, exact metadata literals, and authored relationship targets remain available in the active session. The loopback-only session API returns them only through explicit detail requests; it has no acknowledgement or notice field, because neither exists anywhere (FR-027). The bundled browser issues those requests and renders their authored values directly, with nothing in front of or beside them. Credentials and environment-reference syntax are displayed unchanged; referenced process-environment values are never read or substituted; diagnostics and logs do not duplicate source values.
 - Credential detection, masking, redaction, and reveal controls are absent. No reveal, masking, or environment-resolution function exists in the session API, and no notice about authored content appears before or beside a source or comparison open.
 - Normal startup, scans, builds, and tests are offline with respect to official documentation. Only the explicit maintainer source-check command may access the network.

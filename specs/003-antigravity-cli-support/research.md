@@ -5,18 +5,20 @@
 **Feature**: [spec.md](spec.md) | **Date**: 2026-09-10
 
 Each section records one decision this feature's design rests on, why it holds, and what was
-rejected. Every vendor fact below was read on 2026-09-10 from `https://antigravity.google/docs/`.
+rejected. Every vendor fact below was read from `https://antigravity.google/docs/` on
+2026-09-10, and the Rules and skills pages' facts again on 2026-09-24.
 
 ## 1. Where Antigravity CLI reads customizations
 
-**Decision**: The repository locations are the root `GEMINI.md` and `AGENTS.md`,
-`.agents/skills/<name>.md` and `.agents/skills/<name>/SKILL.md`, `.agents/rules/<name>.md`,
-`.agents/hooks.json`, `.agents/agents/<name>.md` and `.agents/agents/<name>/agent.md`, and
-`.agents/mcp_config.json`, together with `.agent/skills/<name>/SKILL.md` and
-`.agent/rules/<name>.md` under the superseded spelling. The home locations below `~/.gemini`
-are `GEMINI.md`, `config/mcp_config.json`, `config/hooks.json`, `config/agents/`,
-`antigravity-cli/skills/<name>/SKILL.md`, `config/skills/<name>/SKILL.md`,
-`antigravity-cli/skills/<name>.md`, and `antigravity-cli/settings.json`.
+**Decision**: The repository locations are `GEMINI.md` and `AGENTS.md` in any directory,
+`.agents/` included; `.agents/skills/<name>/SKILL.md`; `<dir>/.agents/rules/<name>.md` at every
+depth; `.agents/hooks.json`; `.agents/agents/<name>.md` and `.agents/agents/<name>/agent.md`;
+and `.agents/mcp_config.json` — together with `.agent/skills/<name>/SKILL.md` and
+`<dir>/.agent/rules/<name>.md` under the superseded spelling. The home locations below
+`~/.gemini` are `GEMINI.md`, `AGENTS.md`, `config/GEMINI.md`, `config/AGENTS.md`,
+`config/rules/<name>.md`, `antigravity-cli/rules/<name>.md`, `config/mcp_config.json`,
+`config/hooks.json`, `config/agents/`, `antigravity-cli/skills/<name>/SKILL.md`,
+`config/skills/<name>/SKILL.md`, and `antigravity-cli/settings.json`.
 
 **Rationale**: The vendor's documentation is three product trees — Antigravity 2.0, Antigravity
 CLI, and Antigravity for IDEs — over two shared customization roots. The workspace's `.agents/`
@@ -26,8 +28,15 @@ product's own directory below `~/.gemini` differs: `antigravity` for the applica
 part of that documentation therefore establishes what lives at a shared root, and a page in
 another product's tree establishes only that product's private directory.
 
-Against that structure: the migration page states the workspace context files as the `GEMINI.md`
-and `AGENTS.md` of the active directory and the global one as `~/.gemini/GEMINI.md`; its skills
+Against that structure: the shared Rules page states that whenever the terminal reads or edits a
+file it walks up from that file's folder to the workspace root, loading `<dir>/AGENTS.md` or
+`<dir>/GEMINI.md` and `<dir>/.agents/AGENTS.md` or `<dir>/.agents/GEMINI.md` at each level, and
+the same for each level's `.agents/rules/*.md`, whose immediate children alone are scanned; it
+gives the global files as `~/.gemini/AGENTS.md`, `~/.gemini/GEMINI.md`, and the same pair below
+`~/.gemini/config/`, and the global rules as `~/.gemini/config/rules/*.md` and
+`~/.gemini/antigravity-cli/rules/*.md`. The migration page states the workspace context files as
+the `GEMINI.md` and `AGENTS.md` of the active directory and the global one as
+`~/.gemini/GEMINI.md`; its skills
 table states the workspace path as `.agents/skills/` and the global path as
 `~/.gemini/antigravity-cli/skills/`; its MCP section states the two `mcp_config.json`
 locations; and it states that workspace skills, rules, and MCP servers keep their support. The
@@ -41,100 +50,66 @@ your workspace or `~/.gemini/config/`)" while naming `~/.gemini/antigravity-cli`
 terminal's own application data directory — which is what makes it a page about the terminal
 as well.
 
-**Alternatives considered**: Reading the terminal's own page alone was rejected once the shared
-pages were compared against it: that reading admits `.agents/skills/deploy.md` and declines
-`.agents/skills/deploy/SKILL.md`, leaving a file this repository's own `.agents/skills/` is
-full of listed for two products and not for the third. Admitting `.agents/plugins/` was
-rejected in the other direction: it is documented only in the application's and the extensions'
-trees, no terminal page names it, and the terminal's own pages describe a plugin only as a
-bundle `agy` stages into the home. Admitting a workspace settings file was rejected because no
+**Alternatives considered**: Admitting `.agents/plugins/` was rejected: it is documented only
+in the application's and the extensions' trees, no terminal page names it, and the terminal's
+own pages describe a plugin only as a bundle `agy` stages into the home. Admitting a workspace settings file was rejected because no
 page of any tree documents one.
 
-## 2. A skill is a file here as well as a directory, so the file shape is its own compiled unit
+## 2. A skill is its folder, and a flat Markdown file below `skills/` is admitted nowhere
 
-**Decision**: The skill kind gains a second compiled shape whose row unit is one Markdown file.
-It is a unit of its own rather than a widened version of the directory-shaped one, and the two
-are a closed union the recognizer discriminates. A file-shaped skill publishes no companion
-census, because it has no directory to hold companions. This vendor admits both shapes at both
-its workspace and its global skill locations, which is two rules naming two units rather than
-one rule naming a widened one — the arrangement the two custom-agent shapes already have.
+**Decision**: This vendor's skills are admitted in the folder shape alone — a `SKILL.md` inside
+its own folder — at the workspace location, under the superseded spelling, and at both global
+roots. A Markdown file directly below a `skills/` directory is a near miss everywhere. The
+skill kind therefore keeps the one folder-shaped compiled unit every vendor shares, and no
+field tells a file-shaped skill from a folder-shaped one. An unnamed skill is named by its
+folder. Both global skill roots are admitted rather than ranked.
 
-**Rationale**: The repository's own rule is that a list's row unit belongs to the thing being
-listed, and that widening one shape with optional fields until it fits another produces a type
-whose invariants hold for neither. A directory-shaped skill's record is about a directory: its
-entry point, the companion files beside it, the escaped directory path the detail heads with. A
-file-shaped skill has none of those; it has a path and a parse. Two units, one union, is what
-that policy asks for.
+**Rationale**: Every page that gives a terminal skill location shows the folder: the terminal's
+own skills page and the shared Agent Skills page alike. The shipped terminal agrees. A static
+analysis of the published `agy` 1.2.0 Linux x64 binary — traced from the terminal's own
+`GetSkills` into the shared discovery, not from strings — found the skill customization kind to
+be the subdirectory kind rather than the file kind, so a plain file below `skills/` is filtered
+out before a name is read. A rule for the flat shape would admit a file no page documents and
+the terminal does not discover.
 
-**Alternatives considered**: Giving the directory record an optional `companionFiles` and an
-optional directory path was rejected by the policy above. Treating a file-shaped skill as an
-instruction file was rejected because the vendor documents it as a skill that becomes a slash
-command, and the kind a row belongs to is the vendor's claim rather than the shape's. Collapsing
-the two shapes into one rule with two selectors was rejected because a rule's selectors admit
-paths for one row unit, and these two units differ: one names a file, the other names a
-directory whose entry point is `SKILL.md`.
+Since no rule admits the file shape, a field telling the two shapes apart would have nothing to
+distinguish: a discriminant that can take one value is a second state for the fact that every
+skill is its folder, which the simplicity policy deletes rather than keeps.
 
-## 2a. The shipped binary discovers only the folder shape, and the flat rule stays anyway
+The naming follows the folder. Read statically, an absent `name` is filled from the file's own
+name with `.md` removed, which for a `SKILL.md` would be `SKILL` — but `GetSkillsCreatePath` in
+the same binary builds `{workspace}/.agents/skills/{skill_name}/SKILL.md`, so the terminal
+treats the folder as carrying the name and a `SKILL` fallback would collide every unnamed skill
+it created. The page, the two products that read the same file, and that path builder agree on
+the folder. A row named `SKILL` is also a name no author wrote, and publishing it would put one
+file on two rows under two names — which reads as this product's defect rather than as the
+vendor's fact. The divergence is recorded on the contract instead (§ Known uncertainties item
+7).
 
-**Decision**: The flat rule stays. The documentation conflict it rests on is recorded on the
-vendor contract with the build it was measured against, and the rule goes when a page or a
-later build settles it. One thing follows the measurement instead of the pages: both documented
-global skill roots are admitted rather than ranked. The naming does not — an unnamed folder is
-named by its folder, and an unnamed flat file by its own file name.
-
-**Rationale**: A static analysis of the published `agy` 1.2.0 Linux x64 binary — traced from
-the terminal's own `GetSkills` into the shared discovery, not from strings — found the skill
-customization kind to be the subdirectory kind rather than the file kind, so a plain file below
-`skills/` is filtered out before a name is read, and `GetSkillsCreatePath` builds
-`{workspace}/.agents/skills/{skill_name}/SKILL.md`. The terminal's own plugins and skills page
-is the only source in the vendor's documentation that says otherwise; five others and a Google
-codelab written for this terminal agree with the binary.
-
-The flat rule stays because the two errors are not symmetric. A reader who followed the
-vendor's own instructions has that file; declining it shows them nothing about it, which is the
-failure this product exists to prevent, while admitting it costs one row the vendor's own page
-supports. The analysis covers one platform's 1.2.0 build under the default directory
-configuration, so "not auto-discovered there" is not "never read".
-
-The global roots go the other way, because that is not a question of which page is right at
+The global roots follow the binary, because that is not a question of which page is right at
 all: the terminal appends its application data directory and the configuration directory both,
 then removes duplicate roots, so the two pages' different global directories are both admitted.
 
-The naming does not. Read statically, an absent `name` is filled from the file's own name with
-`.md` removed, which for a `SKILL.md` would be `SKILL` — but `GetSkillsCreatePath` in the same
-binary builds `{workspace}/.agents/skills/{skill_name}/SKILL.md`, so the terminal treats the
-folder as carrying the name and a `SKILL` fallback would collide every unnamed skill it created.
-The page, the two products that read the same file, and that path builder agree on the folder.
-A row named `SKILL` is also a name no author wrote, and publishing it would put one file on two
-rows under two names — which reads as this product's defect rather than as the vendor's fact.
-So the folder is the fallback for a folder, the file name for a flat file, and the divergence is
-recorded on the contract instead (§ Known uncertainties item 7).
-
-**Alternatives considered**: Dropping the flat rule was rejected for the asymmetry above.
+**Alternatives considered**: Keeping a flat rule so that a reader who wrote a flat file sees it
+was rejected: the row would name the terminal as the file's reader when no page says so and the
+terminal does not read it, which is the false statement this product exists not to make.
 Naming an unnamed skill `SKILL`, the fallback the binary itself reads, was rejected for the
-collision above: every unnamed skill the terminal creates would land on one row named after a
-file rather than after anything an author wrote, and the same `SKILL.md` would sit on two rows
-under two names for the two products that resolve it by its folder. Recording the observation
-as an `EvidenceCitation` was rejected: the evidence
+collision above. Recording the observation as an `EvidenceCitation` was rejected: the evidence
 records are documentation's, and the Codex contract's `plugin@marketplace` spelling is the
 precedent for putting an observed behavior in the contract's prose with its version instead.
 
-## 3. The two shapes share one row when they share a name
+## 3. A shared skill folder is one row with three readers
 
-**Decision**: `.agents/skills/deploy.md` and `.agents/skills/deploy/SKILL.md` are one inventory
-row. The row's definitions carry one entry per file per recognizing product, and no precedence
-between the shapes is stated.
+**Decision**: `.agents/skills/deploy/SKILL.md` is one inventory row whose definitions carry one
+entry per recognizing product: OpenAI Codex, GitHub Copilot, and Antigravity CLI.
 
 **Rationale**: A skill row is already one name as each product resolves it, which is what puts
 `.agents/skills/x/SKILL.md` and `.claude/skills/x/SKILL.md` on one row today. The existing
-grouping answers this without a new mechanism. Precedence cannot be stated because this product
-observes no runtime — and here the vendor states none either: the terminal's page documents the
-file shape, the shared page documents the directory shape, and neither says which the terminal
-takes when a name is spelled in both. That silence is recorded as a known uncertainty rather
-than resolved by a rule.
+grouping answers this without a new mechanism, and the folder fallback is what keeps an unnamed
+folder on one row for all three.
 
-**Alternatives considered**: A per-shape badge on the row was rejected: the paths already differ
-visibly, and a badge marks a distinction no reader acts on.
+**Alternatives considered**: A per-product badge on the row was rejected: the row's product
+marks already state who reads it.
 
 ## 4. The member's root is derived from the home directory, so the descriptor table loses a field
 
@@ -180,10 +155,12 @@ inline one, named the way Codex's already are — `antigravity.repo.hooks` and
 `antigravity.global.hooks` for the files, `antigravity.global.hooks.inline` for the carrier
 that is a settings document first.
 
-**Rationale**: The shared Hooks page places a `hooks.json` "in your customization directory
-(e.g., `.agents/` in your workspace or `~/.gemini/config/`)" and gives the file's own shape: a
-map from a hook name to its event configurations, each event holding matcher groups of
-handlers, with an optional `enabled` flag per hook. That is the event-map reading the shared
+**Rationale**: The shared Hooks page's terminal section names where the terminal defines hooks —
+`.agents/hooks.json` at the project root, `~/.gemini/config/hooks.json`, and inside the primary
+`~/.gemini/antigravity-cli/settings.json` — and gives the file's own shape: a map from a hook
+name to its event configurations, the tool events `PreToolUse` and `PostToolUse` holding matcher
+groups of handlers and `PreInvocation`, `PostInvocation`, and `Stop` a list of handlers directly,
+with an optional `enabled` flag per hook. That is the event-map reading the shared
 hook unit already performs. The page is a page about the terminal as well as the application:
 its transcript field names `~/.gemini/antigravity-cli` as the terminal's application data
 directory beside `~/.gemini/antigravity` for the application.
@@ -195,9 +172,9 @@ hook rules can read this one's.
 
 **Alternatives considered**: One rule with both standalone selectors was rejected because the
 two sit at different boundaries — one Repository, one Global — and a rule's `sourceKinds` is
-not a place to blur that. Publishing the shared page's `hooks.json` as `documented` was
-rejected: the page gives the location as an example rather than as the terminal's stated
-lookup, so both standalone rules are `partially-documented`.
+not a place to blur that. The two standalone rules are `documented`, because the page names
+both locations as the terminal's own; the inline rule is `partially-documented`, because the page
+gives no schema for the settings-file form.
 
 ## 6. MCP is a standalone strict-JSON carrier
 
@@ -225,36 +202,40 @@ the agent presentation already carries.
 
 **Alternatives considered**: None; the vendor documents one format.
 
-## 7a. Workspace rules are the rule kind, and their activation is shown rather than evaluated
+## 7a. Rules are the rule kind, and their activation is shown rather than evaluated
 
-**Decision**: `.agents/rules/<name>.md` and `.agent/rules/<name>.md` are admitted under the
-`rule` kind, one row per Markdown file, directly below the rules directory. The activation the
-file declares — manual, always on, model decision, or a glob — is shown as written. The
-composition is recorded as one strategy, `antigravity.rules.activation`, whose one operation is
-`filter`.
+**Decision**: `<dir>/.agents/rules/<name>.md` and `<dir>/.agent/rules/<name>.md` at every
+depth, and the home's `config/rules/<name>.md` and `antigravity-cli/rules/<name>.md`, are
+admitted under the `rule` kind, one row per Markdown file directly in a rules directory. The
+activation the file declares — manual, always on, model decision, or a glob — is shown as
+written. The composition is recorded as one strategy, `antigravity.rules.activation`, whose
+operations are `filter`, `concatenate`, and `select-closest`.
 
-**Rationale**: The shared Rules page states that workspace rules live in the `.agents/rules`
-folder of the workspace or git root, states `~/.gemini/GEMINI.md` as the global counterpart —
-which this release already admits as the home context file rather than as a second rule — and
-states the four activation modes and a 12,000-character limit per file. The terminal's own
+**Rationale**: The shared Rules page states that the terminal evaluates `.agents/rules/*.md` at
+the repository root and in subdirectories, walking up from each file it reads or edits, with
+the legacy `.agent/rules/*.md` still loaded and only a rules directory's immediate `.md`
+children scanned; it states the modular global rules below `~/.gemini/config/rules/` and
+`~/.gemini/antigravity-cli/rules/`, and the four activation modes and a 24,000-byte limit
+per file. The terminal's own
 migration page corroborates the location by stating that workspace skills, rules, and MCP
 servers keep their support, which is what makes this a terminal behavior rather than the
 application's alone.
 
-`filter` is the operation the page establishes and the only one: a glob decides which files a
-rule applies to and a description decides whether the model applies it, both of which narrow a
-set. The page states no order between two rules and no precedence against the context files, so
-the strategy is `partially-documented` and the order is a known uncertainty rather than an
+A glob decides which files a rule applies to and a description decides whether the model
+applies it, both of which narrow a set (`filter`); the page states that rules are cumulative
+rather than replacing each other (`concatenate`) and that the more specific directory's take
+priority in a conflict (`select-closest`). It states no order among the rules of one directory,
+so the strategy is `partially-documented` and that order is a known uncertainty rather than an
 invented `append`.
 
 **Alternatives considered**: Publishing a rules file as `instructions` was rejected: the kind a
 row belongs to is the vendor's claim, and the vendor calls these rules and gives them an
-activation model the context files do not have. Admitting a nested `.agents/rules/` below the
-repository root was rejected because the page names the workspace or git root, which is the
-selected root this product reasons in, and admitting depth would rest on an inference — the
-same reason § 1's context files stop at the root. Admitting a `rules/` subdirectory inside the
-rules directory was rejected for the same reason: the page shows no depth, and Claude's
-recursive rules directory is documented as recursive where this one is not.
+activation model the context files do not have. Admitting a rules directory's subdirectories was
+rejected as this release's scope rather than the vendor's: the terminal scans only a rules
+directory's immediate `.md` children unless `.agents/rules.json` registers more, and reading
+that registration — whose entries can point outside `.agents/` and whose `inherits` names other
+`rules.json` files — is a configuration-read derivation this release does not ship for this
+vendor (contracts/vendors/antigravity-cli.md § Derived Repository rules).
 
 ## 8. The mark comes from a bundled collection, and which glyph is a measurement
 
@@ -307,7 +288,7 @@ from the black, the orange, and the teal beside it. Nothing on screen competes w
 **Decision**: The rule, behavior, strategy, and relationship counts, the Global rule-ID list, the
 presentation-allowlist digests, the outcome manifest, and the release gate's task and phase
 counts are all re-recorded against what ships. The parent specification's first-use evaluation
-is run again, because the designated file's recognizing tools move from two to three.
+is run again, because this tool reads the designated file and so adds a recognizing tool to it.
 
 **Rationale**: Those freezes exist so a count nobody intended to change cannot change unnoticed,
 which means the change that intends it re-records it in the same commit. The evaluation's

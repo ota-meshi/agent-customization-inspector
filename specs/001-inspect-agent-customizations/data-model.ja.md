@@ -983,12 +983,17 @@ pathで名指して述べる: customizationのdirectory内で失敗したreadは
 Instruction rowの適用範囲は、ほとんどのfileでは、fileのSource相対Pathから導出するのであって、vendorのruntimeからでは
 ない: 範囲はfileが置かれたdirectoryであり、認識した製品がinstruction fileを置くためのdirectoryを
 末尾から取り除いたうえで、Repository root相対のglobとして綴る。Claude Codeは`.claude`を
-`CLAUDE.md`にだけ持つ — ページはproject instructionの唯一の場所として`./CLAUDE.md`**または**
-`./.claude/CLAUDE.md`を挙げる一方、local instructionは`./CLAUDE.local.md`だけを挙げる — ため、
-`.claude/CLAUDE.md`とrootの`CLAUDE.md`は1つの範囲を導出して1 rowを共有し、
+`CLAUDE.md`と`AGENTS.md`にだけ持つ — ページはproject instructionの唯一の場所として`./CLAUDE.md`
+**または**`./.claude/CLAUDE.md`を挙げ、各directoryの`AGENTS.md`と`.claude/AGENTS.md`を同じように
+readする一方、local instructionは`./CLAUDE.local.md`だけを挙げる — ため、`.claude/CLAUDE.md`、
+`.claude/AGENTS.md`、rootの`CLAUDE.md`と`AGENTS.md`は1つの範囲を導出して1 rowを共有し、
 `packages/api/.claude/CLAUDE.md`は`packages/api/**`を導出し、`.claude/CLAUDE.local.md`は自身の
 directoryを保って`.claude/**`を導出する。そうしたdirectoryが何を意味するかはその製品自身の
 事実であるため、共有の導出が読む一覧を宣言するのではなく、各製品が自身のruleについて答える。
+したがって範囲は認識ごとのものであり、1つのfileが2つの範囲を担当し得る。`.claude/AGENTS.md`は
+Claude Codeにとって`**`、GitHub Copilotにとって`.claude/**`である。そのfileは両方のrowに載り、各rowは
+それをそこに置いた認識だけを持つ。詳細は範囲ごとに1つの箱を示し、各箱がその範囲の製品、比較、
+他のfileを持つ。比較のblockは、両方のsideを含むrowの範囲である。
 
 導出した範囲はliteralから組み立てたpatternであるため、各directory名はglobがsyntaxとして読む
 箇所をescapeする — wildcard、character classとbraceの区切り、extended groupの括弧、先頭の
@@ -1066,7 +1071,7 @@ skill ruleを出荷する作業が、そのstrategyと記述を一緒に出荷�
 Recognitionはcommit済みgenerationの内部recordであり、どのsession responseも運ばない
 （FR-027）: inventory rowもdetailもこれらからprojectされる — 定義は1 recognitionの
 `(file, tool)` identityであり、detailの`presentation`は1つのMarkdown recognition —
-skillまたはinstruction file — のparseである。コード上は、recognizerが唯一のproduction構築場所であるclassとし、recognize seam
+skillまたはfrontmatter-ledなinstruction file — のparseである。コード上は、recognizerが唯一のproduction構築場所であるclassとし、recognize seam
 （`CandidateRecognition`）はテストがliteral doubleで満たすinterfaceのままとする。
 
 Recognition recordのdetailsは`kind`で判別する。Recognitionを識別する情報はkindごとに異なり、1つの共有
@@ -1075,9 +1080,20 @@ optional fieldには収まらないからである: skillは単一の`name`を�
 宣言された`name`、nestedなClaude Code skillではdirectory-qualifiedなcommand — を運び、
 emptyになることはない（FR-007、FR-027）: Fileが宣言しないか空で宣言するrowは、代わりにその
 skill directory名で名付けられる。
-Instruction recognitionのdetailsは同じ1回のparse — 書かれた順の宣言済みkeyとblockを
-除いたbody — を運び、名前は意図的に持たない: recognitionを識別するのはそれが見つかったfile
-であるため、recognitionが既に運ぶSource-relative Pathがidentityの全体である。これは
+Instruction recognitionのdetailsは、admitしたruleがfileを読む形式を運び、名前は意図的に
+持たない: recognitionを識別するのはそれが見つかったfileであるため、recognitionが既に運ぶ
+Source-relative Pathがidentityの全体である。形式が宣言で始まる場合 — `applyTo`で適用先の
+fileを名指すCopilotのpath-specificな`*.instructions.md` — は、detailsは同じ1回のparse、
+すなわち書かれた順の宣言済みkeyとblockを除いたbodyを運ぶ。それ以外のすべてのinstruction
+形式は全体をそのまま読む: `AGENTS.md`、`AGENTS.override.md`、`CLAUDE.md`、`CLAUDE.local.md`、
+`GEMINI.md`、`copilot-instructions.md`、Codexのfallback名を読むどのproductも、それらに
+frontmatterを文書化しておらず、AntigravityのRules pageは`AGENTS.md`と`GEMINI.md`が
+frontmatterを使わず全体をplain Markdownとして読まれると述べている。そうしたdetailsは範囲だけを
+運び、extractionは試みない（`not-attempted`）: それらのfileの先頭の`---` blockはinstructionsの
+1行なので、YAMLとして正しいblockも宣言を公開せず、正しくないblockも何も失敗させない。形式は
+admitしたruleの事実であり、1つのfileのrecognitionがそれについて食い違うことはない。宣言の
+ために読まれるfileはCopilot自身のinstruction directoryの下にある`*.instructions.md`であり、
+他のproductのruleはそこにあるfileをadmitしないからである。これは
 recognitionのidentityであってrowの単位ではない — instructions一覧はこれらのrecordが運ぶ適用範囲で
 groupingする（§ 一覧の単位） — 。2つは別の問いのままである: 範囲を導出するのはadmitしたruleで1度きり
 であり、そのvendorがそのfile名をどこから読むかを知るのはその単位だけだからである。Recordが範囲を
@@ -1111,9 +1127,9 @@ inventoryにも現れない。一方、ruleが独立にadmitするpath — 別�
 |---|---|---|
 | `sourceRelativePath` | `SourceRelativePath` | Recognitionが付くfileをそのidentityで名指す（FR-030）。複数recognitionが1 physical fileを参照可能 |
 | `provenances` | ordered admission record[] | 共有tool/kind解釈についてのrule/path admissionのsort済み非空set。各recordは読み取りを認可したcompiled ruleを保持して`ruleId`と`RuleDiscoveryClass`をそこから導出し、matched `SourceRelativePath`を傍らに持つ — それ以上は持たない |
-| `tool` | `copilot \| claude \| codex` | 必須 |
+| `tool` | `copilot \| claude \| codex` | 必須。機能自身の data model が member と、閉じた tool 順でのその位置を加える: `specs/003-antigravity-cli-support/data-model.md` § SupportedTool は `antigravity` を加える |
 | `details` | kind判別payload | 認識されたkindと、そのkindのrecognitionを識別するもの — skillなら宣言名。1 fieldであるため、射影はkindごとの再構成ではなくcopyで済む |
-| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当。`failed`は`(file, kind)`ごとにall-or-nothing: Markdown kindは1回のextractionを全recognizing toolで共有し、MCP kindは1つのdecoded text上で各recognizing tool自身のdocumented readingを実行する（§ Field reading）。それらのreadingはparser familyを共有するため、一方が拒むtextは全readingを失敗させ、失敗の単位は`(file, kind)`の組に留まる |
+| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted`はallowlist extractorが非該当 — 全体をそのまま読むinstruction fileもこれに当たる（§ ToolRecognition）。`failed`は`(file, kind)`ごとにall-or-nothing: Markdown kindは1回のextractionを全recognizing toolで共有し、MCP kindは1つのdecoded text上で各recognizing tool自身のdocumented readingを実行する（§ Field reading）。それらのreadingはparser familyを共有するため、一方が拒むtextは全readingを失敗させ、失敗の単位は`(file, kind)`の組に留まる |
 | `diagnosticIds` | opaque string[] | そのkindのextraction失敗record（FR-028）: `(file, kind)`ごとに1件で、そのkindの失敗した各recognitionが参照し、fileは1回だけ列挙する |
 
 維持管理するsupported-customization文書を規範的なpresentation allowlistとする。Supportedな各`(tool, kind)`について、
@@ -1123,9 +1139,9 @@ occurrenceを定義する場合だけeligibleとする。1つのrowに複数sour
 別formへ移したりしない。どちらかのgateを満たさないauthored field/referenceは完全な`sourceText`内でだけ表示し、
 公開値または`Relationship`を作らない。Parserはshape/nameから同等のものを推論しない。
 
-規範的な列挙は、[GitHub Copilot](contracts/vendors/github-copilot.ja.md)、[Claude Code](contracts/vendors/claude-code.ja.md)、
-[OpenAI Codex](contracts/vendors/openai-codex.ja.md) contractのPresentation Allowlist sectionとし、決定的な6件のtable digestと
-抽出algorithmは[official-source contract](contracts/official-sources.ja.md)に記録する。依存するimplementation開始前に
+規範的な列挙は、`contracts/vendors/`配下のvendor contractのPresentation Allowlist sectionとし、決定的なtable digestと
+抽出algorithmは、それらが対象とするcontractをすべて名指す[official-source contract](contracts/official-sources.ja.md)に
+記録する。依存するimplementation開始前に
 frozen design inputとし、implementation gateは再計算とverifyだけを行う。Implementation開始後にfield、relationship kind、
 source form、extractor applicability、allowlist membershipの変更が必要になった場合、production registry mutationより前に
 dependent workを停止し、影響する英日specification、research、plan、quickstart、contract、data-model artifactをすべて同期して、
@@ -1159,7 +1175,9 @@ File間のdeclaration comparisonは、sideごとに1つのcanonical serialized d
 Extractorは、認識したkindが公開する宣言を、そのformatのparserが解決した結果 — admit済みsource formごとに
 文書化された決定的なreading 1つ、JSON familyについては`(tool, path)`ごとに1つ — として報告する:
 Markdown fileのfrontmatterはYAML 1.2 core schema、`.codex/config.toml`のcarrierはTOML 1.0、
-JSON carrierはいずれも`JSON.parse`である。そのparseは、readingのclient自身がcommentを受け付ける場合を除いて
+JSON carrierはいずれも`JSON.parse`である。全体をそのまま読む形式にはreadingがそもそもない:
+Copilotの`*.instructions.md`以外のinstruction fileはどのparserも通らないので、その先頭の
+`---` blockは宣言でも失敗でもない（§ ToolRecognition）。そのparseは、readingのclient自身がcommentを受け付ける場合を除いて
 strictである。受け付けるのはCopilotのeditorであり、`.vscode/mcp.json`、rootの`.mcp.json`、
 `.claude/settings.json`と`.claude/settings.local.json`のpair、`.github/hooks/*.json`に対するそのreadingでは、
 commentとtrailing commaを空白化してから同じparseへ渡す。それ以外のsyntax errorは依然としてdocument全体を
@@ -1246,7 +1264,8 @@ skillの宣言と指示のすべての下に沈むからである。
 
 Parse自体はdetail responseのskill variant（`SkillFileDetailDto.presentation`、
 contracts/http-api.md § get-file-detail）に1回だけ公開される: parseはfileの事実であり —
-shippedな全vendorが同じ固定YAML semanticsを読む — toolごとのcopyはwireに存在しない。
+どのruleがfileをadmitしても、宣言はこのproductの1つの固定YAML semanticsで読まれる
+（§ Field reading） — toolごとのcopyはwireに存在しない。
 内部の`ToolRecognition.details`は`skill` kindについて次を運ぶ。
 
 | Field | Type | Rule |
@@ -1322,7 +1341,7 @@ Opaque IDはorderに使わない。Relationshipの構築または保持中にtar
 | Field | Type | Rule |
 |---|---|---|
 | `diagnosticId` | opaque ASCII string | Server生成でgeneration/session内unique |
-| `code` | stable closed code | Objective testとdocumentation linkに利用可能。Shared registryが各codeのscope、severity、実行可能な英語message/next-step textを固定するため、いずれもserializeしない |
+| `code` | stable closed code | Objective testとdocumentation linkに利用可能。Shared registryが各codeのscope、severity、種類を名指す語、実行可能な英語message/next-step textを固定するため、いずれもserializeしない |
 | `severity` | `info \| warning \| error` | `code`によりregistry固定でserializeしない。Vendor validationを意味しない |
 | `scope` | `file \| source` | `code`によりregistry固定でserializeしない。必須attachment discriminator。Generation scopeかsession-lifecycleかというlifetimeとは独立 |
 | `sourceId` | opaque ASCII ID | どちらのscopeでも必須。この製品が生成するdiagnosticはすべてSourceに属するため、path-lessなものは存在しない |
@@ -1337,7 +1356,8 @@ Legalなattachment shapeは正確に次の2つだけである。`file`はnon-nul
 source scopeまたはfile scopeであり、そのどちらであるかはcommit済みgeneration内に存在するかどうかを何も語らない。
 
 Closed diagnostic-code registryはshared moduleでclosed code unionのそばに置き、各codeのseverity、
-attachment scope、問題と実用的な次stepを示す1つの実行可能な英語messageを固定する。Serverとbrowserは
+attachment scope、種類を名指す語（一覧のrowが影響pathの傍らに常に述べる語。FR-028）、
+問題と実用的な次stepを示す1つの実行可能な英語messageを固定する。Serverとbrowserは
 同じregistryを読み、client message catalogまたはlocalized/bilingualなruntime variantは存在しない。
 `lifecycleOwnerKey`は1 lifecycle instanceの識別子で、serializeしない。
 Candidateは
@@ -1346,6 +1366,8 @@ emitter occurrence順でemitする。Opaque Source ID自体をsort orderに使�
 各emitterは各observationを正確に1回作成し、正当に繰り返されるrecordが存在する — extraction失敗は
 `(file, kind)`につき1 recordであり（FR-028）、1 fileの2つのkindがそれぞれfailすると全public fieldを
 共有する2 recordになる — ため、dedup passはなく、二重emitはtests/reviewが受け持つ通常の実装バグでありruntime filterではない。
+Recordは2つのままであり、1つのfileのrecordを列挙するsurfaceは各codeのmessageを1回だけ述べる: messageは
+どちらの読み取りも名指さないので、2つ目の写しは1つ目が伝えた以上のことを読者に何も伝えない。
 
 Scan candidateは1つのcommit済みgenerationに属する。Commit不能なfatal scan attemptを含むout-of-generation lifecycle
 candidateはsessionだけに属し、generation/Source ID listへ入れない。Malformed request、その他client起因
@@ -1439,8 +1461,9 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   行の定義であり、読み手が開いた行が比較される行のままで、その3つ目のcopyはroute自身のswitcherに
   残る。導出した行はgenerationが先に公開した方になり、それを取り落とす。Instruction routeは、先頭に立つSource familyと、side
   ごとのSourceと`sourceRelativePath` identityを名指す（FR-030）。ペアの所有者は、1つのapplicability
-  rangeがそのfamilyに対して保持するblockである — skillの前例の行がここではblockになり、fileはちょうど
-  1つのrangeを統治するため、そのrangeは2つのidentityから導出される — 。したがってペアはconsentされた
+  rangeがそのfamilyに対して保持するblockである — skillの前例の行がここではblockになり、そのrangeは
+  2つのidentityから、両方のfileを載せるblockのrangeとして導出される。fileを読む製品がそれぞれ異なる
+  rangeを述べると、1つのfileは複数のrangeに属しうるためである — 。したがってペアはconsentされた
   2つのhomeのfileを持ちうるが、2つのfamilyにまたがることはない。0件またはreadableなfile 2つへ解決される:
   instruction fileはそれ自体で完結するため、どちらの側も明示された不在にはならず、所有するblockが
   保持しないペアは比較されずに報告される。MCP routeは
@@ -1569,7 +1592,7 @@ ready/partial -- accepted per-source rescan --> scanning --> ready/partial
                                                        \-> failed/stale（own entryを作成）
 failed/stale -- accepted per-source rescan --> scanning --> ready/partial（own entry + diagnosticをclear）
                                                        \-> failed/stale（own entry + diagnosticを置換）
-active Global control（0..4 Source） -- disable --> disabling barrier --> inactive / 0 Source（Global sequenceをdiscardし、何もcommitしない）
+active Global control（0..5 Source） -- disable --> disabling barrier --> inactive / 0 Source（Global sequenceをdiscardし、何もcommitしない）
                                                                     \-> failed + retained error --> retry disable
 initial enableだけ -- disable --> cleanup-only barrier --> inactive / 0 Source（committed state不変）
                                                 \-> failed + retained error --> retry disable

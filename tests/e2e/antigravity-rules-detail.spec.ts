@@ -20,17 +20,17 @@ test.beforeAll(async () => {
   await mkdir(join(fixture, '.agent/rules'), { recursive: true });
   await writeFile(
     join(fixture, '.agents/rules/typescript.md'),
-    '---\nactivation: glob\nglob: "src/**/*.ts"\n---\n\nNo `any`. Narrow with a discriminant.\n',
+    '---\ntrigger: glob\nglobs: src/**/*.ts\n---\n\nNo `any`. Narrow with a discriminant.\n',
     'utf8',
   );
   await writeFile(
     join(fixture, '.agents/rules/house-style.md'),
-    '---\nactivation: always\n---\n\nPrefer the longer name that is always understandable.\n',
+    '---\ntrigger: always_on\n---\n\nPrefer the longer name that is always understandable.\n',
     'utf8',
   );
   await writeFile(
     join(fixture, '.agent/rules/legacy-imports.md'),
-    '---\nactivation: manual\n---\n\nImport from the package root.\n',
+    '---\ntrigger: manual\n---\n\nImport from the package root.\n',
     'utf8',
   );
   // Near misses: a non-Markdown sibling, and a second level the page shows no
@@ -39,7 +39,7 @@ test.beforeAll(async () => {
   await writeFile(join(fixture, '.agents/rules/README.txt'), 'not markdown\n', 'utf8');
   await writeFile(
     join(fixture, '.agents/rules/frontend/components.md'),
-    '---\nactivation: always\n---\n',
+    '---\ntrigger: always_on\n---\n',
     'utf8',
   );
   host = await launchHost(fixture);
@@ -72,7 +72,7 @@ test('shows the declared activation as the file wrote it, evaluating nothing', a
   await expect(page.locator('.aci-detail-attributes')).toContainText('Antigravity CLI');
   // The whole document its author wrote, frontmatter block included: the
   // activation is text on the page, never a decision this product makes.
-  await expect(main).toContainText('activation: glob');
+  await expect(main).toContainText('trigger: glob');
   await expect(main).toContainText('src/**/*.ts');
   await expect(main).toContainText('No `any`.');
   await expect(page.getByRole('button', { name: /apply|activate|enable|match|run/iu })).toHaveCount(

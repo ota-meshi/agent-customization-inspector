@@ -34,11 +34,7 @@ import {
 import { authoredSkillNameOf } from '../../../src/server/inspection/rules/skills/invocation-name';
 import { runTraversalScan } from '../../../src/server/inspection/traversal';
 import { assembleScanPublication } from '../../../src/server/inspection/scan';
-import {
-  CODEX_REPO_INSTRUCTIONS_RULE,
-  CODEX_REPO_SKILL_RULE,
-} from '../../../src/shared/registries/codex/rules';
-import { CodexCompiledInstructionRule } from '../../../src/server/inspection/rules/instructions/codex';
+import { CODEX_REPO_SKILL_RULE } from '../../../src/shared/registries/codex/rules';
 import { CODEX_RULE_RELATIONS } from '../../../src/shared/registries/codex/relations';
 import type { RecognitionParseStatus } from '../../../src/shared/api-types';
 import { RecognitionExtraction } from '../../../src/server/inspection/parsers/extraction';
@@ -75,9 +71,6 @@ function codexSkillRule(plan: TraversalPlan): CompiledStaticSkillRule {
     relations: CODEX_RULE_RELATIONS['codex.repo.skill'],
     tool: 'codex',
     kind: 'skill',
-    // The shape this stand-in speaks for: Codex documents the folder holding
-    // an entry point, which is what the census enumerates from.
-    skillRowUnit: 'directory',
     plan,
     // Stated rather than derived from the relations beside it: a stand-in
     // supplies the identity a candidate carries, and Codex's one surface is
@@ -91,14 +84,9 @@ function codexSkillRule(plan: TraversalPlan): CompiledStaticSkillRule {
   };
 }
 
-const AGENTS_RULES: readonly CompiledStaticSkillRule[] = [codexSkillRule(AGENTS_PLAN)];
+const AGENTS_SKILL_RULE = codexSkillRule(AGENTS_PLAN);
 
-// The shipped Codex instruction rule, compiled as itself: the stand-in
-// recognitions below are of the `instructions` kind, and an instruction
-// recognition's range is answered by the rule that admitted it, so the
-// admission has to be a rule that can answer. Its own plan is irrelevant here —
-// the traversal runs `AGENTS_RULES` above.
-const INSTRUCTION_ADMISSION_RULE = new CodexCompiledInstructionRule(CODEX_REPO_INSTRUCTIONS_RULE);
+const AGENTS_RULES: readonly CompiledStaticSkillRule[] = [AGENTS_SKILL_RULE];
 
 // A recognizer stand-in for the FR-028 parse-failure arm. The shipped Codex
 // recognizer reaches `failed` only through a malformed `SKILL.md`, so the
@@ -115,16 +103,16 @@ function fakeRecognition(
   // is driven through the same extraction seam production runs — a throwing
   // extractor is `failed`, an extractor with nothing to return is `parsed`,
   // none is `not-attempted` — because the status is the extraction's own
-  // fact, not a field to set. The kind is the one the fixture's `AGENTS.md`
-  // actually is; a failed recognition publishes no metadata at all, and this
-  // stand-in extracts nothing in the first place (FR-028). It still carries an
-  // admission, because a recognition exists only where a rule admitted the
-  // file, and an instruction recognition asks that rule what the file
-  // governs.
+  // fact, not a field to set. The kind is the one the stand-in rule above
+  // admits the fixture's `AGENTS.md` as, and the admission is that rule's: a
+  // recognition exists only where a rule admitted the file, and a skill
+  // recognition asks that rule what the file is invoked by. A failed
+  // recognition publishes no metadata at all, and this stand-in extracts
+  // nothing in the first place (FR-028).
   // Typed as the factory's own extraction parameter: the Markdown
   // presentation class is the recognizer module's private, so the stand-in
   // names the type through the signature it satisfies.
-  const extraction: Parameters<typeof ToolRecognition.recognizeInstructions>[2] =
+  const extraction: Parameters<typeof ToolRecognition.recognizeSkill>[2] =
     parseStatus === 'failed'
       ? RecognitionExtraction.run('', () => {
           throw new Error('fixture extraction failure');
@@ -132,8 +120,8 @@ function fakeRecognition(
       : parseStatus === 'parsed'
         ? RecognitionExtraction.run('', () => undefined)
         : RecognitionExtraction.run('', null);
-  return ToolRecognition.recognizeInstructions(sourceRelativePath, tool, extraction, [
-    { compiled: INSTRUCTION_ADMISSION_RULE, origin: { planIndex: 0, selectorIndex: 0 } },
+  return ToolRecognition.recognizeSkill(sourceRelativePath, tool, extraction, [
+    { compiled: AGENTS_SKILL_RULE, origin: { planIndex: 0, selectorIndex: 0 } },
   ]);
 }
 
@@ -333,8 +321,10 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
                   fakeRecognition(matchedPath, 'copilot', 'parsed'),
                 ]
               : [],
-          // This stand-in is an instructions recognizer, and an instructions
-          // file is one file rather than a directory, so it has no census.
+          // The census is the production recognizer's
+          // (companion-census.ts), and this matrix is about publication
+          // outcomes rather than about what a directory holds, so the
+          // stand-in enumerates none.
           directories: [],
         }),
       });

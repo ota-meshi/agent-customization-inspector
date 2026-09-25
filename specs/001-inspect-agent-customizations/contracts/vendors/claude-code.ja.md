@@ -2,9 +2,9 @@
 
 [English](claude-code.md)
 
-**契約バージョン**: 2026-08-27
+**契約バージョン**: 2026-09-24
 
-**公式ソース再確認日**: 2026-08-27
+**公式ソース再確認日**: 2026-09-24
 
 **ベンダー**: Anthropic Claude Code
 
@@ -46,8 +46,7 @@ canonical valueは`documentationStatus: documented`、`lifecycleQualifiers: []`�
 
 | Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
 |---|---|---|---|
-| `claude.behavior.repo.instructions.ancestor` | `partially-documented` | `[]` | Ancestor walkは`.claude/CLAUDE.md` variantを確立しない |
-| `claude.behavior.repo.instructions.descendant` | `partially-documented` | `[]` | Lazy descendant discoveryは`.claude/CLAUDE.md` variantを確立しない |
+| `claude.repo.instructions` | `partially-documented` | `[]` | Memory pageは`.agents/` directory配下のものはreadしないと挙げるが、ruleはClaude Code 2.1.280の観測された挙動に基づき、そこにある`AGENTS.md`も他の深さと同じようにadmitする（§ 既知の曖昧さとversion-sensitive fact 項目14） |
 | `claude.behavior.repo.rules` | `partially-documented` | `[]` | Nested rules directoryのon-demand load triggerとancestor-layer `paths` baseが不完全 |
 | `claude.behavior.user.rules` | `partially-documented` | `[]` | 再帰の記述はprojectの`.claude/rules/`について書かれている。User-level節はdirectoryとload順を述べ、平坦な2 fileを例示するだけで、nested subdirectoryの探索は記載されない |
 | `claude.global.rules` | `partially-documented` | `[]` | User rule directoryのnested-subdirectory discoveryは記述がないため、ruleは文書化された直下の子だけをadmitする |
@@ -68,9 +67,9 @@ Composition列は[runtime composition](../runtime-composition.ja.md#claude-code-
 
 | Behavior ID | Surface | Base | Relative locator | Traversal / trigger | Composition strategy | Status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `claude.behavior.repo.instructions.launch` | Shared core | `<launch-cwd>` | `./CLAUDE.md`、`./.claude/CLAUDE.md`、`./CLAUDE.local.md` | 正確なlaunch directory。Session開始時にload | `claude.instructions.layering` | documented | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.sdk.setting-sources` |
-| `claude.behavior.repo.instructions.ancestor` | Shared core | `<launch-cwd>`より上の各`<ancestor-dir>` | `./CLAUDE.md`、`./CLAUDE.local.md` | Filesystem rootへ向かってparentを探索。Ancestor walkには`./.claude/CLAUDE.md`が記載されていない | `claude.instructions.layering` | documented（記載したnegative boundaryを含む） | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.sdk.setting-sources` |
-| `claude.behavior.repo.instructions.descendant` | Shared core | `<launch-cwd>`配下の`<descendant-dir>` | `./CLAUDE.md`、`./CLAUDE.local.md` | Lazy。そのdescendant subtreeのfileをClaudeがreadした後にload。Descendantの`./.claude/CLAUDE.md`は未文書化 | `claude.instructions.layering` | documented（記載したnegative boundaryを含む） | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.sdk.setting-sources` |
+| `claude.behavior.repo.instructions.launch` | Shared core | `<launch-cwd>` | `./CLAUDE.md`、`./.claude/CLAUDE.md`、`./CLAUDE.local.md`、`./AGENTS.md`、`./.claude/AGENTS.md` | 正確なlaunch directory。Session開始時にload — `AGENTS.md`の組は`CLAUDE.md` fileの代わりに、またはその横にloadされ、どちらになるかはcomposition strategyが決める。`AGENTS.md`の形はClaude Code 2.1.277以降で、§ 既知の曖昧さとversion-sensitive fact の項目13が述べるsession条件の下にある（changelog § 2.1.277） | `claude.instructions.layering` | documented | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.changelog.agents-md`、`anthropic.claude-code.sdk.setting-sources` |
+| `claude.behavior.repo.instructions.ancestor` | Shared core | `<launch-cwd>`より上の各`<ancestor-dir>` | `./CLAUDE.md`、`./.claude/CLAUDE.md`、`./CLAUDE.local.md`、`./AGENTS.md`、`./.claude/AGENTS.md` | Filesystem rootへ向かってparentを探索。load sectionはbareな`CLAUDE.md`のfile名を挙げ、`AGENTS.md` sectionがancestorの`./.claude/CLAUDE.md`を、`AGENTS.md`の代わりにClaudeが読むfileとして数えることで確立する。`AGENTS.md`の形はClaude Code 2.1.277以降で、§ 既知の曖昧さとversion-sensitive fact の項目13が述べるsession条件の下にある（changelog § 2.1.277） | `claude.instructions.layering` | documented | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.changelog.agents-md`、`anthropic.claude-code.sdk.setting-sources` |
+| `claude.behavior.repo.instructions.descendant` | Shared core | `<launch-cwd>`配下の`<descendant-dir>` | `./CLAUDE.md`、`./CLAUDE.local.md`、`./AGENTS.md` | Lazy。そのdescendant subtreeのfileをClaudeがreadした後にload。Descendantの`./.claude/CLAUDE.md`は未文書化で、descendantの`./.claude/AGENTS.md`も未文書化。`AGENTS.md`の形はClaude Code 2.1.277以降で、§ 既知の曖昧さとversion-sensitive fact の項目13が述べるsession条件の下にある（changelog § 2.1.277） | `claude.instructions.layering` | documented（記載したnegative boundaryを含む） | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.changelog.agents-md`、`anthropic.claude-code.sdk.setting-sources` |
 | `claude.behavior.repo.rules` | Shared core | `<launch-cwd>`からparentまでの、文書化された各rule layer | `./.claude/rules/**/*.md` | 各rule directory内のMarkdown fileを再帰探索。`paths` ruleはmatching fileがreadされたときに適用可能になる。Working directory配下のnestedな`.claude/rules/` directoryはon demandでloadされる | `claude.rules.layering` | partially documented。Nested rules directoryのon-demand load triggerとancestor layer由来`paths` globのbaseは明記されていない | `anthropic.claude-code.memory.locations-load` |
 | `claude.behavior.repo.skills` | CLIはfull、IDEはsubset | `<launch-cwd>`からGit repository rootまでの各`<skill-layer>` | `./.claude/skills/<skill-name>/SKILL.md` | Startupでancestor layerを発見し、fileへのaccessに応じてnested descendant skill directoryをon demandで発見（nested discoveryはClaude Code 2.1.6+、changelog § 2.1.6） | `claude.skills.selection` | documented | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.changelog.nested-skill-discovery`、`anthropic.claude-code.large-codebases.start-directory` |
 | `claude.behavior.repo.skills-directory-plugin` | CLI、IDE availabilityはconditional | `<launch-cwd>/.claude/skills/<plugin-name>` | `./.claude-plugin/plugin.json` | 正確なlaunch-`cwd`のskills directoryだけ。Plain skillと異なり、このplugin解釈ではancestor skill directoryを探索しない。Workspace trustが適用される | `claude.plugins.activation` | documented | `anthropic.claude-code.plugins.components-scopes` |
@@ -132,7 +131,7 @@ on-demand load — だけである。Runtime cwd chain上でしか文書化さ�
 
 | Rule ID | Base | Selector program | Expansion | Class | Behavior refs | Runtime/documentation status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `claude.repo.instructions` | Repository | `[ANY_DIRECTORIES, 'CLAUDE.md']`、`[ANY_DIRECTORIES, 'CLAUDE.local.md']` | どちらも`descendant-inventory`（rootと全descendantを含み`ANY_DIRECTORIES`は0 segmentも含む）。ページはproject instructionの場所として`./CLAUDE.md`**または**`./.claude/CLAUDE.md`を挙げるが、任意深さの`CLAUDE.md` programがrootでも各深さでも`./.claude/CLAUDE.md`をすでにadmitするため、`.claude`専用のselectorは最初のprogramが到達済みのfileに2つ目のadmissionを足すだけになる | `static-candidate` | `claude.behavior.repo.instructions.launch`、`claude.behavior.repo.instructions.ancestor`、`claude.behavior.repo.instructions.descendant` | Eligibilityはlaunch `cwd`、ancestry、read対象subtreeに依存。Nested `.claude/CLAUDE.md`はlaunch directory直下の正確な`.claude` fileである場合だけeligibleで、documented lazy-descendant formではない | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.sdk.setting-sources` |
+| `claude.repo.instructions` | Repository | `[ANY_DIRECTORIES, 'CLAUDE.md']`、`[ANY_DIRECTORIES, 'CLAUDE.local.md']`、`[ANY_DIRECTORIES, 'AGENTS.md']` | 3つとも`descendant-inventory`（rootと全descendantを含み`ANY_DIRECTORIES`は0 segmentも含む）。ページはproject instructionの場所として`./CLAUDE.md`**または**`./.claude/CLAUDE.md`を挙げ、`./AGENTS.md`と`./.claude/AGENTS.md`も同じようにreadするが、任意深さのprogramがrootでも各深さでも各`.claude` formをすでにadmitするため、`.claude`専用のselectorはprogramが到達済みのfileに2つ目のadmissionを足すだけになる。`AGENTS.md`の形はClaude Code 2.1.277以降で、§ 既知の曖昧さとversion-sensitive fact の項目13が述べるsession条件の下にある（changelog § 2.1.277） | `static-candidate` | `claude.behavior.repo.instructions.launch`、`claude.behavior.repo.instructions.ancestor`、`claude.behavior.repo.instructions.descendant` | Eligibilityはlaunch `cwd`、ancestry、read対象subtreeに依存し、`AGENTS.md`ではさらに同じpath上の`CLAUDE.md` family fileの有無とuser-levelのProject instructions設定にも依存する（`claude.instructions.layering`）。Nested `.claude/CLAUDE.md`はlaunch directoryまたはancestorの正確な`.claude` fileである場合だけeligibleで、documented lazy-descendant formではない | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.changelog.agents-md`、`anthropic.claude-code.sdk.setting-sources` |
 | `claude.repo.rules` | Repository | `[ANY_DIRECTORIES, '.claude', 'rules', ANY_DIRECTORIES, /\.md$/u]` | `descendant-inventory` — nestedな`.claude/rules/` directoryのon-demand loadが文書化されている — と各fixed rules directory内`recursive-subtree` | `static-candidate` | `claude.behavior.repo.rules` | Nested rules directoryのon-demand load triggerとancestor-layer `paths` baseはpartially documentedのまま | `anthropic.claude-code.memory.locations-load` |
 | `claude.repo.skill` | Repository | `[ANY_DIRECTORIES, '.claude', 'skills', ANY_NAME, 'SKILL.md']` | `descendant-inventory` — nestedな`.claude/skills/` directoryのon-demand loadが文書化されている — plus `direct-child`。Skill nameは正確に1 direct child | `static-candidate` | `claude.behavior.repo.skills` | Plain-skill ancestor/lazy discoveryと、正確なlaunch-`cwd`だけのskills-directory plugin discoveryは異なる | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.plugins.components-scopes` |
 | `claude.repo.command` | Repository | `['.claude', 'commands', ANY_DIRECTORIES, /\.md$/u]` | Rootの固定commands directory内の`recursive-subtree` | `static-candidate` | `claude.behavior.repo.commands` | Skill同等のancestor/lazy-descendant command traversalは未文書化のため、project command scopeが寄与するのは全sessionが共有する唯一のruntime-chainメンバーであるselected rootだけであり、サブディレクトリの`.claude/commands`はcandidateにならない | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.changelog.legacy-command-nesting` |
@@ -254,7 +253,7 @@ import、installation、activationのauthorityを一切与えない。
 
 | `ToolRecognition.kind` | Eligibleな`Relationship.kind` value | Initial-release source form |
 |---|---|---|
-| `instructions` | — | 受理済み`CLAUDE.md`または`CLAUDE.local.md`。Authored `@path` tokenはsource textであり、抽出されるreferenceではない |
+| `instructions` | — | 受理済み`CLAUDE.md`、`CLAUDE.local.md`、または`AGENTS.md`。Authored `@path` tokenはsource textであり、抽出されるreferenceではない |
 | `rule` | — | 何も読み出さない: 受理済みのrules Markdown file — Repositoryの`.claude/rules/**/*.md`またはconsent済みuserの`rules/*.md` — はauthorが書いた1つのdocumentとして、frontmatter blockごと公開される。したがってそこから値は読み出さず、宣言された`paths` globも他の行と同じsource textである |
 | `skill` | `skill-resource`<br>`agent-reference`<br>`context-inheritance` | 受理済み`SKILL.md`の正確なfrontmatter value/item occurrence。`hooks`はskill自身のfrontmatter宣言であってhook recognitionを所有せず、skill frontmatterに所有すべきMCP fieldは存在しない |
 | `agent` | `agent-reference`<br>`context-inheritance`<br>`runtime-reference` | 受理済みagents Markdown file — Repositoryの`.claude/agents/**/*.md`またはconsent済みuserの`agents/**/*.md` — の正確なfrontmatter value/item occurrence。`hooks`と`mcpServers`はsubagent自身のfrontmatter宣言であり、hook recognitionもMCP recognitionも所有しない |
@@ -282,9 +281,10 @@ group化される名前、`instructions` rowがgroup化される範囲 — の�
 
 ## 既知の曖昧さとversion-sensitive fact
 
-1. 文書化されたupward instruction walkが挙げるのは`CLAUDE.md`と`CLAUDE.local.md`であり、ancestor
-   `.claude/CLAUDE.md`は確立していない。Lazy descendantの説明もdescendant
-   `.claude/CLAUDE.md`を確立していない。
+1. Lazy descendantの説明が挙げるのは`CLAUDE.md`と`CLAUDE.local.md`であり、descendant
+   `.claude/CLAUDE.md`は確立しておらず、on-demandの`AGENTS.md` readもsubdirectoryの`AGENTS.md`を
+   挙げるだけで、その`.claude/AGENTS.md`は挙げない。Ancestorの形は`AGENTS.md` sectionが確立し、
+   working directoryより上の任意のdirectoryにある`.claude/CLAUDE.md`を数える。
 2. Ancestor layerのrule directoryは文書化されているが、ancestor rule内の`paths` globを評価する
    baseは明記されていない。Descendant `.claude/rules` directoryのlazy discoveryも確立していない。
 3. Legacy commandの再帰とnamespaceは文書化されているが、plain skillの全ancestor/lazy-descendant
@@ -314,6 +314,18 @@ group化される名前、`instructions` rowがgroup化される範囲 — の�
     どのrecordも固定の深さを述べない。
 12. Upstream pageはversion付きURLなしで変化する。再確認ではURL到達性だけでなく、保存したsemantic
     assertionとsectionを比較しなければならない。
+13. Claude Codeが`AGENTS.md`をreadするのは2.1.277以降であり、それらのversionのすべてのsessionではない。
+    2.1.277のchangelog entryは、この対応がBedrock、Vertex、Foundryではまだ提供されないと述べ、memory page
+    は、2.1.281より前には一部のsession — Amazon Bedrock上のものやtelemetryを無効にしたものなど — が
+    `CLAUDE.md` fileだけをreadすると述べる。それより前のversion、built-inの`agents-md` pluginを無効にした
+    session、upgrade後の一部の最初のsessionも`CLAUDE.md`だけをreadする。Version、provider、それらの設定は
+    このproductが観測しないreaderのsessionのruntime入力であり（`engine-version`、`settings-inputs`）、
+    `AGENTS.md`のadmissionはどれが当てはまるかを決めず、それらを各行のgateとして述べる。
+14. Memory pageは`.agents/` directory配下のものはreadしないと挙げるが、`claude.repo.instructions`は
+    そこにある`AGENTS.md`も他の深さと同じようにadmitする。Selector grammarには1つのdirectory名を除外する
+    stepが無く、2026-09-24に計測したClaude Code 2.1.280は、そのdirectoryのfileをreadした時点で
+    `.agents/skills/<name>/AGENTS.md`をloadした — productが実際に行うのはその一文ではなくadmissionの
+    とおりである。
 
 ## 公式Evidence
 

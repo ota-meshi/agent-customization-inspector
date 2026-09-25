@@ -25,12 +25,14 @@ import type { VendorBehaviorStatement } from '../behavior-types';
 /**
  * Claude instruction discovery in the exact runtime working directory:
  * `CLAUDE.md`, `.claude/CLAUDE.md`, and `CLAUDE.local.md` there are loaded in
- * full at session start.
+ * full at session start, and so are `AGENTS.md` and `.claude/AGENTS.md` —
+ * instead of the `CLAUDE.md` files or beside them, which is the layering
+ * strategy's to say rather than this lookup's.
  *
- * The `.claude/CLAUDE.md` form is documented for this scope alone — the
- * ancestor walk and the lazy descendant discovery below name the bare
- * filenames only — which is what makes those two statements
- * `partially-documented` rather than this one.
+ * The `.claude/CLAUDE.md` form is documented here and for the ancestor walk,
+ * whose `AGENTS.md` section counts a `.claude/CLAUDE.md` in any directory
+ * above; the lazy descendant discovery below names the bare filenames only,
+ * which is why its locator names no `.claude` form.
  */
 export const CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR = {
   behaviorId: 'claude.behavior.repo.instructions.launch',
@@ -40,7 +42,8 @@ export const CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR = {
     ? {
         vendorScope: 'repository',
         lookupBase: 'runtime-cwd',
-        relativeSelector: 'CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md',
+        relativeSelector:
+          'CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md; AGENTS.md; .claude/AGENTS.md',
         traversal: 'exact',
       }
     : null,
@@ -52,10 +55,23 @@ export const CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR = {
           sourceId: 'anthropic.claude-code.memory.locations-load',
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
-          sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
-          reviewedOn: '2026-08-27',
+          sections: [
+            'Choose where to put CLAUDE.md files',
+            'How CLAUDE.md files load',
+            'When Claude Code reads AGENTS.md',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch.',
+            'Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch. At session start Claude Code also reads every AGENTS.md and .claude/AGENTS.md in the working directory and the directories above it.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.agents-md',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['2.1.277'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
@@ -72,13 +88,14 @@ export const CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR = {
 
 /**
  * Claude instruction discovery above the runtime working directory: each
- * parent directory in turn is checked for `CLAUDE.md` and `CLAUDE.local.md`,
+ * parent directory in turn is checked for `CLAUDE.md`, `.claude/CLAUDE.md`,
+ * and `CLAUDE.local.md`, and for `AGENTS.md` and `.claude/AGENTS.md`,
  * continuing toward the filesystem root.
  *
- * `partially-documented` because the walk is stated for the bare filenames
- * only: no cited section establishes a `.claude/CLAUDE.md` variant on an
- * ancestor directory (contracts/vendors/claude-code.md § Canonical
- * evidence-assessment index).
+ * The load section names the bare `CLAUDE.md` filenames for the walk; the
+ * `AGENTS.md` section is what establishes the `.claude/CLAUDE.md` form on an
+ * ancestor, by counting one in any directory above the working directory as a
+ * file Claude reads instead of `AGENTS.md`.
  */
 export const CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR = {
   behaviorId: 'claude.behavior.repo.instructions.ancestor',
@@ -88,14 +105,15 @@ export const CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR = {
     ? {
         vendorScope: 'repository',
         lookupBase: 'runtime-cwd',
-        relativeSelector: 'CLAUDE.md; CLAUDE.local.md',
+        relativeSelector:
+          'CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md; AGENTS.md; .claude/AGENTS.md',
         // Upward and deliberately not repository-bounded: the page describes
         // walking up the directory tree without naming a repository root as
         // the stop, unlike the skill layers above (see `VendorTraversal`).
         traversal: 'ancestor-chain-to-filesystem-root',
       }
     : null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -103,10 +121,19 @@ export const CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR = {
           sourceId: 'anthropic.claude-code.memory.locations-load',
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
-          sections: ['How CLAUDE.md files load'],
-          reviewedOn: '2026-08-27',
+          sections: ['How CLAUDE.md files load', 'When Claude Code reads AGENTS.md'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md; the walk names no repository root as its stop, and it names no .claude/CLAUDE.md variant on an ancestor directory.',
+            'Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md, and the walk names no repository root as its stop. A CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md in any directory above the working directory counts as a file Claude reads instead of AGENTS.md, and the AGENTS.md read at session start covers every AGENTS.md and .claude/AGENTS.md in those directories too.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.agents-md',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['2.1.277'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
@@ -123,13 +150,17 @@ export const CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR = {
 
 /**
  * Claude instruction discovery below the runtime working directory:
- * `CLAUDE.md` and `CLAUDE.local.md` in a subdirectory join the session when
- * Claude reads a file in that subtree, rather than at launch.
+ * `CLAUDE.md`, `CLAUDE.local.md`, and `AGENTS.md` in a subdirectory join the
+ * session when Claude reads a file in that subtree, rather than at launch.
  *
  * This on-demand half is why the Inspector's rule expands to descendant
  * inventory: a file under any subdirectory is one Claude can genuinely load.
- * `partially-documented` for the same reason as the ancestor walk — the
- * descendant form is stated for the bare filenames only.
+ *
+ * `documented`: the page states the on-demand read for exactly the three
+ * bare filenames this locator names. It names no `.claude/CLAUDE.md` or
+ * `.claude/AGENTS.md` for a subdirectory, and the locator claims neither, so
+ * that silence is a boundary of the statement rather than a gap in it
+ * (contracts/vendors/claude-code.md § Documented Repository lookup).
  */
 export const CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR = {
   behaviorId: 'claude.behavior.repo.instructions.descendant',
@@ -139,11 +170,11 @@ export const CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR = {
     ? {
         vendorScope: 'repository',
         lookupBase: 'runtime-cwd',
-        relativeSelector: 'CLAUDE.md; CLAUDE.local.md',
+        relativeSelector: 'CLAUDE.md; CLAUDE.local.md; AGENTS.md',
         traversal: 'lazy-descendant',
       }
     : null,
-  documentationStatus: 'partially-documented',
+  documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
     ? [
@@ -151,10 +182,23 @@ export const CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR = {
           sourceId: 'anthropic.claude-code.memory.locations-load',
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
-          sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
-          reviewedOn: '2026-08-27',
+          sections: [
+            'Choose where to put CLAUDE.md files',
+            'How CLAUDE.md files load',
+            'When Claude Code reads AGENTS.md',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case.',
+            'Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case. A subdirectory’s AGENTS.md is read the same way, once Claude opens a file there with the Read tool.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.agents-md',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['2.1.277'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
@@ -198,10 +242,10 @@ export const CLAUDE_USER_COMMANDS_BEHAVIOR = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live', 'How a skill gets its command name'],
-          reviewedOn: '2026-08-27',
+          sections: ['Choose where skills load', 'How a skill gets its command name'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'The personal scope is the home configuration directory — the page places personal skills at ~/.claude/skills/<skill-name>/SKILL.md and says they apply to all your projects — and the same page says command files in .claude/commands/ work the way skills do and are invoked by their file name. That pairing is what makes <claude-config-dir>/commands/ the personal command directory; the page states no traversal for it, which the changelog entry beside this one supplies.',
+            'The personal scope is the home configuration directory — the page places personal skills at ~/.claude/skills/<skill-name>/SKILL.md, loaded in all your projects on this machine — and the same section says a command file in .claude/commands/ is the older format of a skill and still works, while the command-name table names one by its file name. That pairing is what makes <claude-config-dir>/commands/ the personal command directory; the page states no traversal for it, which the changelog entry beside this one supplies.',
         },
         {
           sourceId: 'anthropic.claude-code.changelog.legacy-command-nesting',
@@ -248,7 +292,7 @@ export const CLAUDE_USER_INSTRUCTIONS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Choose where to put CLAUDE.md files'],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
             'User instructions live at ~/.claude/CLAUDE.md and hold personal preferences for all projects, one of the scopes the documented broadest-to-most-specific load order spans.',
         },
@@ -367,13 +411,14 @@ export const CLAUDE_REPO_COMMANDS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: [
-            'Where skills live',
-            'Discovery from parent and nested directories',
+            'Choose where skills load',
+            'Load skills in monorepos and subdirectories',
+            'Resolve skills that share a name',
             'How a skill gets its command name',
           ],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Custom commands are merged into skills: a .claude/commands/deploy.md and a .claude/skills/deploy/SKILL.md both create /deploy, existing .claude/commands/ files keep working, and a skill outranks a command of the same name. A command file supports the same frontmatter as a skill except name and paths, which Claude Code ignores in one, and is invoked by its file name without the extension. The page says command files work the way skills do but writes its nested-directory sentence about .claude/skills/ alone, so no skill-equivalent ancestor or lazy-descendant command traversal is stated independently.',
+            'A command file in .claude/commands/ is the older format of a skill and still works, and when a skill and a command file share a name the skill runs. A command file supports the same frontmatter as a skill except name and paths, and is invoked by its file name without the extension. The page writes its parent and nested discovery about .claude/skills/ alone, so no skill-equivalent ancestor or lazy-descendant command traversal is stated independently.',
         },
         {
           sourceId: 'anthropic.claude-code.changelog.legacy-command-nesting',
@@ -668,8 +713,8 @@ export const CLAUDE_REPO_SKILLS_BEHAVIOR = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live', 'Discovery from parent and nested directories'],
-          reviewedOn: '2026-08-27',
+          sections: ['Choose where skills load', 'Load skills in monorepos and subdirectories'],
+          reviewedOn: '2026-09-24',
           establishes:
             'Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, loading them from the start directory and every parent up to the repository root, while a nested descendant skill directory loads the first time Claude reads or edits a file inside it.',
         },
@@ -824,8 +869,8 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live'],
-          reviewedOn: '2026-08-27',
+          sections: ['Choose where skills load'],
+          reviewedOn: '2026-09-24',
           establishes:
             'Claude Code additionally discovers user skills at ~/.claude/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across.',
         },
@@ -891,7 +936,7 @@ export const CLAUDE_REPO_RULES_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Organize rules with .claude/rules/'],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
             "Markdown files placed in a project's .claude/rules/ directory are all discovered recursively, so rules may be organized into subdirectories; a rule without paths frontmatter loads at launch with the same priority as .claude/CLAUDE.md, while a rule with paths applies only when Claude works with a file matching one of its glob patterns. The section states neither the trigger that loads a nested .claude/rules/ directory on demand nor the base an ancestor layer resolves its paths globs against.",
         },
@@ -1082,9 +1127,9 @@ export const CLAUDE_USER_RULES_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Organize rules with .claude/rules/'],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Personal rules in ~/.claude/rules/ apply to every project on the machine and are loaded before project rules, which gives project rules the higher priority.',
+            'Personal rules in ~/.claude/rules/ apply to every project on the machine and are loaded before project rules, and neither set overrides the other.',
         },
       ]
     : [],
@@ -1277,7 +1322,7 @@ export const CLAUDE_USER_AUTO_MEMORY_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Auto memory'],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
             'Auto memory keeps its files under the Claude configuration directory per project and loads a startup prefix with topic files fetched on demand.',
         },

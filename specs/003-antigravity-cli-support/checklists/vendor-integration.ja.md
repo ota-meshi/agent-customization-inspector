@@ -17,7 +17,7 @@
 - [x] CHK003 このツールが publish する kind が行の単位 — ファイル、宣言された名前、宣言された server 名 — とともに名指され、publish しない kind が触れられないままではなく列挙されているか [Completeness, Spec §FR-004–FR-006, §FR-011, §FR-012; Data Model §Compiled unit]
 - [x] CHK004 FR-014 が、このリリースがサポートしない製品を名指してはならない artifact の種類 — vendor module、contract、registry record、fixture、文書の節、label、mark、evidence record — をすべて名指し、凍結された件数にも届いているか [Completeness, Spec §FR-014; Plan §Implementation Boundaries]
 - [x] CHK006 FR-001 が変わる親仕様の条項を列挙し、research § 11 が同じ集合を挙げ、片方にしか名指されない artifact がないか [Completeness, Spec §FR-001; Research §11]
-- [x] CHK007 ファイルの形の skill の detail の要件 — file panel を出さない、tab strip を出さない、見出しは変えない — が、要件の裏付けのない表示上の判断のままではなく述べられているか [Completeness, Spec §FR-004, §Clarifications; Data Model §skill の行と detail]
+- [x] CHK007 admit される1つの形 — file panel と tab strip を持つフォルダ — の skill の detail が、要件の裏付けのない表示上の判断のままではなく述べられているか [Completeness, Spec §FR-004, §Clarifications; Data Model §skill の行と detail] — 2026-09-24 に修正: フラットな skill を文書化するページは無い (Spec § Clarifications Session 2026-09-24)。
 - [x] CHK008 contract が名指す各 strategy が operation と引用済みの根拠を持ち、ページが解決を述べないものも含めて記録されているか [Completeness, Contract §Canonical evidence-assessment index, §文書化済み Repository behavior]
 
 ## 要件の明確さ
@@ -25,10 +25,10 @@
 - [x] CHK009 「このリリースがサポートしない製品をどの surface も名指さない」が確認可能に書かれているか。SC-006 が探索対象 — 識別子、label、mark、contract、凍結件数 — を定義し、「痕跡なし」を判断に委ねていないか [Clarity, Spec §FR-001, §FR-014, §SC-006]
 - [x] CHK010 member の label が1つの綴りに固定され、隣に表示される root パスとは別のものとして述べられ、2つが1つの field と読まれないか [Clarity, Spec §FR-008, §Clarifications]
 - [x] CHK011 member に環境プロパティがないことが、読み手が推し量るべき欠落ではなく、理由を伴う要件として書かれているか [Clarity, Spec §FR-008; Research §4]
-- [x] CHK012 ファイルの形の skill の命名規則が正確か。frontmatter の `name`、なければファイル自身の名前、そして拡張子が名前に含まれるかどうかを含む — 2026-09-10 に、代替の名前が拡張子を除いたファイル自身の名前であることを FR-004 に述べて充足した [Clarity, Spec §FR-004]
+- [x] CHK012 skill の命名規則が正確か。frontmatter の `name`、無ければ skill フォルダ [Clarity, Spec §FR-004] — 2026-09-24 に修正: フラットな skill を文書化するページが無いので、フォルダが唯一の fallback である。
 - [x] CHK013 home の settings ファイルについて「1つの carrier が3回 recognize される」ことが述べられ、ファイルとしては1度だけ現れ、重複行なしに3つの kind に届くと読み手が分かるか [Clarity, Spec §FR-011]
 - [x] CHK014 `Antigravity CLI` がどの surface でも唯一の表示綴りとして固定され、ユーザー向けテキストの要件に別の綴りが現れないか [Clarity, Spec §FR-001]
-- [x] CHK015 ルートのみの context の規則が、ネストした `GEMINI.md` や `AGENTS.md` を admit すると読めない形で書かれ、深さが確定した vendor の事実ではなく既知の不確実性として記録されているか [Clarity, Spec §FR-007; Contract §既知の不確実性 項目 1]
+- [x] CHK015 context の規則が、ディレクトリの `.agents/` を含むすべての深さで `GEMINI.md` と `AGENTS.md` を admit すると読み手に分かる形で書かれ、同じディレクトリでの2つの名前の選択が述べられていないことが、確定した vendor の事実ではなく既知の不確実性として記録されているか [Clarity, Spec §FR-007; Contract §既知の不確実性 項目 1] — 2026-09-24 に修正: Rules ページが階層を文書化している (Spec § Clarifications Session 2026-09-24)。
 - [x] CHK016 legacy の MCP key の扱いが、製品が行わない検証としてではなく、書かれたものを分類せずに示すこととして述べられているか [Clarity, Spec §FR-005]
 
 ## 要件の一貫性
@@ -38,8 +38,8 @@
 - [x] CHK019 FR-012 が挙げる「このツールが1つも publish しない kind」が、contract の presentation allowlist が持つ kind と整合するか [Consistency, Spec §FR-012; Contract §Initial release の規範的 presentation allowlist]
 - [x] CHK020 member の記述が FR-008、data model の tuple、quickstart の consent の手順で5つに揃っているか [Consistency, Spec §FR-008; Data Model §GlobalMemberId と member の tuple; Quickstart §5つ目の member を見る]
 - [x] CHK021 FR-013 が Copilot の root の recognition を変わらないものとして述べ、この機能が Copilot の record を編集すると示唆していないか [Consistency, Spec §FR-013]
-- [x] CHK022 skill の行の決定が FR-004、User Story 3、data model で一致しているか。1つの名前に1行、両方の定義、優先順位なし [Consistency, Spec §FR-004, §US3; Data Model §skill の行と detail]
-- [x] CHK023 member id と label が動くことを踏まえて、plan の「DTO の形は変わらない」という主張が data model と整合するか [Consistency, Plan §Constitution Check; Data Model §GlobalMemberId と member の tuple]
+- [x] CHK022 skill の行の決定が FR-004、User Story 3、data model で一致しているか。1つの名前に1行、ファイルごと・認識する製品ごとに1つの定義、フラットなファイルはどの行にも載らない [Consistency, Spec §FR-004, §US3; Data Model §skill の行と detail] — 2026-09-24 に修正: フラットな skill を文書化するページは無い。
+- [x] CHK023 どの DTO の形が変わるかについての plan の記述が data model と整合するか。member id と label が動き、skill の定義は行の単位の field を持たない [Consistency, Plan §Constitution Check; Data Model §GlobalMemberId と member の tuple] — 2026-09-24 に修正: どの skill もそのフォルダなので、行の単位の field は無い。
 
 ## 受け入れ基準の品質
 

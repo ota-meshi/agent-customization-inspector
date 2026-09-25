@@ -15,9 +15,9 @@ every build, start, test, and CI chain, and it refuses to run without the explic
 `--network` opt-in, because it is the only command in this repository that makes an
 outbound request.
 
-**What the command decides.** For each of the registry's 52 records it retrieves the
+**What the command decides.** For each of the registry's 63 records it retrieves the
 recorded URL completely, requires a direct `200` from the record's own `officialHost` with
-no redirect followed, and resolves each of the 193 cited sections against the served bytes:
+no redirect followed, and resolves each of the 240 cited sections against the served bytes:
 as exactly one served `<h1>`–`<h4>`, or — when no served heading carries it — as the one
 served fragment every table-of-contents link bearing its text points at. Anything else is
 reported as observed: `missing`, `ambiguous-heading`, or `ambiguous-anchor`. A request that
@@ -32,7 +32,56 @@ is found by that reading, not by a lookup.
 
 **Mutation.** The command changes nothing. It reports, and a reviewer decides what follows.
 
-**Network runs.** 2026-09-11, over all 63 records, the eleven `google.antigravity.*` records
+**Network runs.** 2026-09-24, over all 63 records, for Claude Code's `AGENTS.md` reading
+(T1216). `anthropic.claude-code.memory.locations-load` resolved: its URL answered `200`
+directly on `code.claude.com`, and all seven cited sections — `When Claude Code reads
+AGENTS.md` and `Choose which instruction files load` among them — resolved as served headings.
+Every record citing that page was then read against it, all fifteen citations. Its `AGENTS.md`
+sections establish what the Claude instruction rule, the three instruction lookups, and the
+layering strategy now record. One paraphrase the page no longer established was corrected: the
+rules section says user-level rules load before project rules and neither set overrides the
+other, where `claude.behavior.user.rules` and `claude.rules.layering` said project rules take
+the higher priority. Two citations were moved to the section that carries their claim —
+`claude.excluded.user-runtime`'s auto-memory location to `Auto memory`, and the memory-page
+half of `claude.agent-context.composition` to what `How CLAUDE.md files load` and `Auto memory`
+state. Every citation of the page advanced to 2026-09-24. The review of this change added a
+sixty-fourth record, `anthropic.claude-code.changelog.agents-md`, whose `2.1.277` entry — the
+release that added `AGENTS.md` reading — is the version gate the instruction records now cite
+(QR-005), established through the served table of contents.
+
+The same day's review of the other pages began from the run's report of 11 records with drift:
+`anthropic.claude-code.skills.locations-discovery`, `vscode.copilot.instructions`,
+`vscode.copilot.hooks`, and eight `google.antigravity.*` records — `cli-mcp`,
+`cli-plugins-skills`, `cli-settings`, `cli-subagents`, `cli-permissions`, `skills`, `rules`,
+and `hooks`. What each meant was read from the pages. The Claude Code skills page renamed its two
+sections (`Choose where skills load`, `Load skills in monorepos and subdirectories`) and moved
+the skill-over-command precedence into `Resolve skills that share a name`. The VS Code
+custom-instructions page replaced `Instruction priority` with `Resolve conflicting instructions`,
+which documents instruction sources as additive with no precedence among them. The VS Code hooks
+page was rewritten around the Local harness and no longer states that workspace hooks take
+precedence over user hooks, so `copilot.vscode.hooks.composition` is recorded partially documented.
+The terminal's `/docs/cli/` addresses for MCP, plugins, settings, subagents, and permissions
+answer `200` with a meta-refresh to shared pages with a section per product, and `rules-workflows`
+does the same to `/docs/rules/`; each row moved to the shared page, keeping its ID. On those pages
+the flat Markdown skill no page documents any longer is recorded `unknown`, the terminal's hook
+locations are now stated, and the Rules page documents directory-scoped and global rules and a
+24,000-byte limit. Every citation of the eleven pages was re-read against the record carrying it
+and dated 2026-09-24; which rules follow the pages is left to the rules themselves. The final run
+reported 63 sources checked, 0 with drift, and the same four Claude Code changelog anchors
+established through a served table of contents.
+
+The same day's review of this pull request found `vscode.copilot.settings` stale in content
+though not in headings: the VS Code AI settings page now marks each location setting —
+`chat.instructionsFilesLocations`, `chat.promptFilesLocations`, `chat.agentFilesLocations`, and
+`chat.agentSkillsLocations` — deprecated and read by the Local agent alone, while the custom
+instructions page gives `~/.copilot/copilot-instructions.md` to Agent Host sessions. All twelve
+citations of the page were re-read against the records carrying them and dated 2026-09-24. Each
+now names the setting it rests on and the agent that reads it, and
+`copilot.behavior.vscode.user.instructions` separates the Local agent's switchable locations
+from the Agent Host locations no setting switches. No rule, status, or admitted path moved,
+because a location setting was already a runtime input the Inspector does not read.
+
+2026-09-11, over all 63 records, the eleven `google.antigravity.*` records
 included (specs/003-antigravity-cli-support T077) — the eleventh being
 `google.antigravity.subagents`, reviewed that day for the two custom-agent spellings the user
 tier admits. Every Google record resolved: each URL answered `200` directly on
@@ -99,6 +148,47 @@ frozen on the same terms and describes a derivation no rule performs, as the oth
 vendor contracts already state for their own. No recorded digest was authored or updated,
 no registry record was edited, and no conformance record needed regeneration.
 
+**The Claude Code pair was re-recorded on 2026-09-24, as a change rather than a drift.** Claude
+Code reads `AGENTS.md` from 2.1.277, so the `instructions` row's admitted source forms had to
+name it for the row to be true (T1216). The row was changed in both languages, and both
+recomputed digests — English
+`59fab461ebf26a0178658fc6aaac5b62594788bc515d48d8486fd522e7efedc7`, Japanese
+`3dfaefcd4f1f4de30f5e80076366ec7bb9bdb58d90fff006cda8d16590acfcbb` — were written into
+`contracts/official-sources.md`, its Japanese companion, and the freeze suite in the same
+change, together with the English and Japanese specification, data model, vendor contract, and
+runtime-composition contract the row rests on. The task set was extended by Phase 116 rather
+than regenerated with `/speckit.plan` and `/speckit.tasks`, the way every change since the
+initial implementation extends it. The other vendors' digests did not move.
+
+**The Antigravity CLI pair was re-recorded on 2026-09-24, as a change rather than a drift.**
+The vendor's Rules page documents context files and rules below the repository root and in the
+home, and no page shows a flat skill any longer, so the `skill` row stopped describing a flat
+file and the `rule` row stopped saying workspace
+(specs/003-antigravity-cli-support T082–T086). Both rows were changed in both languages, and
+both recomputed digests — English
+`459f17af2fa11f372847a99ccdf81eaa7de48f804ab15ef297d4dc4e1e276812`, Japanese
+`d79efa39bda4758b6a8de3504ad53927d7e5fdbe6ce189f145c005497edaaec0` — were written into
+`contracts/official-sources.md`, its Japanese companion, and the freeze suite in the same
+change, together with the specification, vendor contract, and runtime-composition contract the
+rows rest on. `allowlistVersion` and `traversalPlanVersion` advanced to `2026-09-24` with them,
+for this change and for Claude Code's above, which moved both the contracts and the plans
+without advancing either. The task set was extended by specs/003-antigravity-cli-support
+Phase 8 rather than regenerated. The other vendors' digests did not move.
+
+**The Antigravity CLI pair was re-recorded again on 2026-09-25, as a change rather than a
+drift.** The Rules page says that `AGENTS.md` and `GEMINI.md` use no frontmatter and that the
+terminal treats their entire content as plain Markdown, so the product reads nothing out of a
+context file, and it reads nothing out of a rule file either: the `instructions` and `rule` rows
+named `frontmatter` and `body` as presentation sources no extractor reads, and both now say that
+nothing is read out (T1224). Both rows were changed in both languages, and both recomputed
+digests — English `e400f3a590cdd8efbf851898f9d9ab2c4dd76e6f2bd9e7b7eaa235ae731cbef3`, Japanese
+`200f1e85d2d7a08de6d5a3f8f8cf83f47b5ccadf80fb86a8a275da8174d9d406` — were written into
+`contracts/official-sources.md`, its Japanese companion, and the freeze suite in the same change,
+together with the data model and HTTP API contract the rows rest on. `allowlistVersion` advanced
+to `2026-09-25` with them; `traversalPlanVersion` stays at `2026-09-24`, because no plan
+changed. The task set was extended by Phase 116 rather than regenerated. The other vendors'
+digests did not move.
+
 ## Dependency review
 
 `pnpm outdated` reports 27 packages with a newer release available. Every dependency in
@@ -136,6 +226,30 @@ profile or user data, and no migration workflow. No breaking public-contract cha
 proposed. The task set is not superseded by this review.
 
 ## Release gate execution
+
+**The Antigravity CLI page revisions ran the gates on 2026-09-24**
+(specs/003-antigravity-cli-support T087): `pnpm run test:docs` 42, `pnpm run test:unit` 1288,
+`pnpm run test:contract` 411, `pnpm run test:integration` 277, `pnpm run test:security` 5, and
+`pnpm run test:package` 53 tests, all passing on this host, with `pnpm run format:check`,
+`pnpm run lint`, and `pnpm run typecheck` clean. The browser half is recorded under
+Outcome-manifest criteria. `pnpm run docs:images` retook both readme screenshots against this
+tree and produced byte-identical images: neither shows a nested context file or a flat skill.
+The second review of Claude Code's `AGENTS.md` reading (T1220) ran the same vitest gates again
+on this host, 2023 tests passing, and the Chromium project over the three specs that reach an
+instruction comparison — `instructions-comparison`, `claude-instructions-inventory`, and
+`instructions-inventory`, 19 tests, all passing. The new case in `instructions-comparison` was
+first run against the comparison as it stood, whose side boxes read the owning row alone, and
+failed there.
+
+**Claude Code's `AGENTS.md` reading ran the gates on 2026-09-24** (T1215–T1219, run again after
+the review's fixes):
+`pnpm run test:docs` 42, `pnpm run test:unit` 1288, `pnpm run test:contract` 411,
+`pnpm run test:integration` 277, `pnpm run test:security` 5, and `pnpm run test:package` 53
+tests, all passing on this host, with `pnpm run format:check`, `pnpm run lint`, and
+`pnpm run typecheck` clean. The browser half is recorded under Outcome-manifest criteria. The
+readme screenshots were not retaken: they show the Skill tab and a skill comparison, neither of
+which this change alters, and the Instructions count beside them is a count of ranges, which
+it leaves as it was.
 
 **The Antigravity CLI change ran the gates on 2026-09-10** (specs/003-antigravity-cli-support
 T071, T072): `pnpm run test:docs` 42, `pnpm run test:unit` 1287, `pnpm run test:contract` 411,
@@ -689,9 +803,104 @@ the vendor's own glyph.
 
 ## Outcome-manifest criteria
 
-The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 5**, canonical
-SHA-256 `ee17cf94b381bdca0a4cdb93f1a1d727bf0e73824eaee029ff699878e48a7181`, recorded in
-`tests/fixtures/outcomes/manifest.sha256`. Version 5 is the Antigravity CLI denominator
+The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 7**, canonical
+SHA-256 `cd516fd81da0d8cfe927ceb71e11708bab5191212c4fddacd44c66017d01a03e`, recorded in
+`tests/fixtures/outcomes/manifest.sha256`. Version 7 changes one expected outcome:
+`sc003.shared-file.repository-root-gemini-md` attributes a `GEMINI.md` below the root to
+Antigravity CLI alone, where it had reached no row, because the vendor's Rules page documents
+the pair at every level the terminal walks up through (specs/003-antigravity-cli-support
+T082–T086). A changed expected outcome is a denominator change, which is what advances the
+version from 6; the 118 cases and their required classes are otherwise unchanged. The
+transition was reviewed by this session, an agent-driven review: what it compared is that
+case's expected outcome against the shipped rules' recognitions of the path. Five referenced
+fixtures changed with it — `tests/fixtures/repositories/build-fixtures.ts`, whose Antigravity
+CLI trees lost their flat skills and gained nested context files and a nested rules directory;
+`tests/fixtures/global-homes/build-fixtures.ts`, whose Antigravity home gained its three other
+context files and two rules directories and turned its flat skill into a near miss; and
+`antigravity-instructions-detail`, `antigravity-skills-detail`, and
+`copilot-instructions-inventory`, which build their own trees — and every digest was
+re-recorded with the canonical digest. The cases those fixtures reach were executed on
+2026-09-24 on this host: the vitest cases through the gate scripts recorded under Release gate
+execution, and the browser cases through the Chromium project over the 36 specs that reach an
+Antigravity CLI surface, an instruction or skill row, detail, or comparison, or a consented
+home — 280 tests, all passing. The browser specs those fixtures cannot reach were not re-run
+for this set. The contract suite reproduced the canonical digest and all 73 fixture digests in
+the same run. The third review of Claude Code's `AGENTS.md` reading (T1221) moved one
+referenced suite's bytes at the same version: `copilot-instructions-detail` gained a tree whose
+`applyTo` is whitespace alone. Its digest and the canonical digest above were re-recorded
+together, and the spec was run through the Chromium project, 9 tests, all passing, with
+`accessibility`'s AUTO-1.4 cases, 8 tests, all passing; each new assertion was first run against
+the build before its fix and failed there. The fourth review (T1222) moved no referenced
+fixture: a file line now decides whether its three columns fit from the row's own width, and
+`accessibility`'s AUTO-1.4.4 runs text enlargement at 832px beside 1280px and asserts that no
+marks are clipped. That case failed against the build before the change — the marks measured 0px
+of 101px at 832px — and passes after it, with the eight inventory specs that render a
+file line, 78 tests, all passing. The fifth review (T1223, and specs/003-antigravity-cli-support
+T091) moved three referenced fixtures' bytes at the same version: the repository builders and
+`antigravity-rules-detail` write each rule's official `trigger` key, and
+`claude-instructions-inventory` gained a case stepping between a file's two ranges from the
+keyboard, which failed against the build before its fix — no element held focus — and passes
+after it. Their digests and the canonical digest above were re-recorded together, and the 26
+specs that reach a detail move, a rules sample, or the accessibility cases were run through the
+Chromium project, 203 tests, all passing; `pnpm run docs:images` then produced byte-identical
+images. The sixth review (T1224) moved seven referenced fixtures' bytes at the same version:
+every instruction format but Copilot's `*.instructions.md` is read whole, so the repository
+builders and the secret-bearing fixture give the frontmatter cases a path-specific file and keep
+a context file's opening block as a line of its instructions, and
+`antigravity-instructions-detail`, `claude-instructions-detail`,
+`claude-instructions-inventory`, `codex-instructions-detail`, and `copilot-instructions-detail`
+assert the detail without tabs and no parse failure for a block that is not YAML. No case's
+ID, classes, or expected outcome changed: `sc007.file-confined.malformed-content` is still
+reached by a path-specific file whose frontmatter does not parse. Their digests and the
+canonical digest above were re-recorded together, and the 17 specs that reach an instruction
+row, detail, or comparison were run through the Chromium project on 2026-09-25, 116 tests, all
+passing, with `accessibility`'s AUTO-2.5.3 case, which opens an instruction detail, 1 test,
+passing. The seventh review (T1225) moved five referenced fixtures' bytes at the same version:
+`tests/fixtures/repositories/build-fixtures.ts` lists `AGENTS.md` among the Claude and Copilot
+instruction paths it expects, and `claude-rules-detail`, `claude-settings-detail`,
+`codex-config-detail`, and `codex-mcp-detail` build a file another kind's reading cannot
+parse — a rule file that is a command too, a `.claude/settings.json` holding a comment, a
+`.codex/config.toml` TOML rejects, and a `.mcp.json` a Codex fallback entry names — and assert
+that its detail, and for the rule and the settings document its row, states the failure once.
+No case's ID, classes, or expected outcome changed. Their digests and the canonical digest above
+were re-recorded together, and the 52 specs that reach a diagnostic or a rule, skill,
+command, output-style, or settings row were run through the Chromium project on 2026-09-25,
+319 tests, all passing. Each new assertion was first run against a build without its change
+and failed there: with the diagnostics taken off those surfaces every one found none, and with
+each record listed on its own the three cases a file carries two records in found two.
+
+The set before it was **version 6**, canonical SHA-256
+`44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`. Version 6 changes one expected outcome:
+`sc003.shared-file.repository-agents-md` names Claude Code among the recognizing tools of the
+root `AGENTS.md`, which Claude Code reads from 2.1.277 (T1217). A changed expected outcome is a
+denominator change, which is what advances the version from 5; the 118 cases and their required
+classes are otherwise unchanged. The transition was reviewed by this session, an agent-driven
+review: what it compared is that case's expected outcome against the shipped rules'
+recognitions of the path. Two referenced fixtures changed with it —
+`tests/fixtures/repositories/build-fixtures.ts`, whose Claude instruction tree gained a nested
+`packages/api/AGENTS.md`, and `tests/e2e/claude-instructions-inventory.spec.ts`, which builds
+its own tree and gained that file and an `AGENTS.override.md` — and both digests were
+re-recorded with the canonical digest. The cases those fixtures reach were executed on
+2026-09-24 on this host: the vitest cases through the gate scripts recorded under Release gate
+execution, and the browser cases through the Chromium project over the specs they name —
+`claude-instructions-inventory`, `inspection-safety`, `instructions-inventory`, and
+`skills-inventory`, 16 tests, all passing — together with the 26 specs that write an
+`AGENTS.md` beside a Claude or Codex file: 139 of their 144 tests passed, and the five that
+did not were in the four specs this change restated, which were run again and pass. The browser specs those fixtures cannot
+reach were not re-run for this set. The contract suite reproduced the canonical digest and all
+73 fixture digests in the same run.
+
+The review of this change (T1219) moved five more referenced suites' bytes at the same version:
+`claude-instructions-inventory` gained a tree whose `.claude/AGENTS.md` sits in two ranges, and
+`claude-instructions-detail`, `codex-instructions-detail`, `antigravity-instructions-detail`,
+and `codex-mcp-detail` read an instruction file's recognitions from its range boxes and follow a
+row link that now carries its range. Their digests and the canonical digest above were
+re-recorded together, and the cases were executed again on 2026-09-24 through the Chromium
+project over the 37 specs that reach an instruction row, detail, or comparison, 255 tests, all
+passing.
+
+The set before it was `tests/fixtures/outcomes/manifest.json` **version 5**, canonical
+SHA-256 `ee17cf94b381bdca0a4cdb93f1a1d727bf0e73824eaee029ff699878e48a7181`. Version 5 is the Antigravity CLI denominator
 (specs/003-antigravity-cli-support T063): eight `(Antigravity CLI, kind)` rows each for
 SC-003 and SC-005 — `sc00{3,5}.row.antigravity.{instructions,settings-config,mcp,hook,rule,skill,agent,permissions}`
 — plus `sc003.global-source-form.antigravity` and `sc004.tool.antigravity`. Three attribution
@@ -1007,6 +1216,155 @@ versions; this session has one macOS host. The certification result is what a CI
 matrix produces, and none is recorded.
 
 ## SC-001 and SC-006 first-use sessions
+
+**A run was owed for Claude Code's `AGENTS.md` reading, and it was run.** The designated SC-006
+file is the prepared repository's `AGENTS.md`, and Claude Code now reads it, so its recognizing
+tools went from three to four (spec.md § Clarifications Session 2026-09-24). The ground truth
+was updated first — `ground-truth.json` and its Japanese companion name Claude Code and match
+all four — and the run followed it (T1218).
+
+**Twenty agent-driven sessions, run on 2026-09-24 against the release candidate, with the
+runner holding the clock.** The build is `npm pack` of the tree as it stood for this run,
+tarball SHA-256 `32f052b7efe3afbd74430638b131561fe18fac0cb3d7ec2dcd2d709c6a34931e`, installed
+into each session folder where `npx --no-install` finds it. Each session had its own folder
+outside this working tree, its own `repository/` built by
+`tests/fixtures/repositories/build-fixtures.ts`, its own fixture homes from
+`tests/fixtures/global-homes/build-fixtures.ts`, and its own launch. Five ran at a time, on
+Claude Sonnet 5, each a Claude CLI 2.1.266 print-mode process whose working directory was its
+own session folder, started with `--setting-sources user` and with this repository's
+configuration variables removed from its environment, its prompt given on standard input. The
+two equipment conditions were the earlier runs': `--port 0` appended to the launch command, and
+the three member home variables and `HOME` set for that command alone. The runner and the
+browser equipment were rebuilt for this run, since the earlier ones were not kept: the browser
+answers `open`, `snapshot`, `click`, `type`, `press`, `text`, `url`, and `stop`, a snapshot is
+the page's roles and names with one reference per actionable element, and the runner reveals
+one task at a time, stamps each reveal and finish, prepares the designated file's page before
+SC-006, and prints the response form.
+
+**One condition the runner states, and how it now states it.** SC-006's premise is a file open
+on the screen in front of the participant. A person receives that screen without doing
+anything; a session's only eyes are a command it must choose to run. The runner therefore hands
+the session the screen with the prompt: the sentence the earlier runs used — that the screen has
+changed since the previous task — followed by the page's snapshot as it then stood, in the same
+form the session's own `snapshot` returns. It adds nothing that is not on the screen.
+
+**This is an agent-driven run and is recorded as one.** What twenty agents establish is
+whether the product's own printed and rendered guidance is sufficient to launch it, reach a
+file, state what the product says about that file, compare two copies, and see what the
+personal-setup step proposes before anything is read. How a person experiences the same
+interface is not in this evidence, and no sentence here may be read as a human-subject result.
+
+| Workflow | What it measures | Threshold | Result |
+|---|---|---|---|
+| Discovery | SC-001: from the prompt through the launch to one discovered file's detail view open within two minutes | 19 of 20 | **Established: 20 of 20**, 14.1 s to 32.2 s, median 18.8 s |
+| Inspection | SC-006: the three response fields for the designated `AGENTS.md` submitted within two minutes, every field matching the ground truth | 18 of 20 | **Established: 20 of 20**, 3.2 s to 7.4 s, median 4.4 s |
+| Comparison | SC-006 coverage: the standardized comparison task | all 20 attempt | **20 of 20** complete: every session put the two `changelog` copies side by side and named a difference |
+| Global consent | SC-006 coverage: the standardized personal-setup consent task | all 20 attempt | **20 of 20** complete: every session reached the proposal page and named its five directories |
+| Safety | SC-006 zero-critical gate | no critical issue | **Passed.** All twenty answered all seven predefined safety fields, and no session answered any of them `yes` |
+
+**Every session's own four outcomes and their intervals.** Each row is one enrolled session,
+recorded without exclusion or replacement. The last column is the file the session chose to
+open for SC-001, which is its own choice and not scored.
+
+| Session | Discovery | Inspection | Comparison | Consent | File opened |
+|---:|---:|---:|---:|---:|---|
+| 01 | 27.4 s | 7.4 s | 23.8 s | 14.0 s | `.claude/CLAUDE.md` |
+| 02 | 29.6 s | 5.0 s | 25.3 s | 12.6 s | `CLAUDE.md` |
+| 03 | 20.3 s | 4.6 s | 13.7 s | 8.9 s | `.claude/CLAUDE.md` |
+| 04 | 21.6 s | 4.0 s | 14.5 s | 9.6 s | `.claude/CLAUDE.md` |
+| 05 | 25.3 s | 5.6 s | 20.5 s | 13.4 s | `.claude/CLAUDE.md` |
+| 06 | 17.5 s | 3.8 s | 14.4 s | 9.4 s | `.claude/CLAUDE.md` |
+| 07 | 22.2 s | 3.2 s | 13.3 s | 20.4 s | `.claude/CLAUDE.md` |
+| 08 | 14.1 s | 3.2 s | 14.2 s | 9.0 s | `.claude/CLAUDE.md` |
+| 09 | 16.9 s | 4.2 s | 16.0 s | 12.0 s | `.claude/CLAUDE.md` |
+| 10 | 17.6 s | 3.8 s | 17.2 s | 8.9 s | `.claude/CLAUDE.md` |
+| 11 | 16.2 s | 5.1 s | 16.3 s | 9.5 s | `.claude/CLAUDE.md` |
+| 12 | 15.7 s | 3.5 s | 13.7 s | 9.0 s | `.claude/CLAUDE.md` |
+| 13 | 15.4 s | 3.3 s | 12.7 s | 11.5 s | `.claude/CLAUDE.md` |
+| 14 | 19.0 s | 3.9 s | 19.1 s | 8.8 s | `.claude/CLAUDE.md` |
+| 15 | 19.4 s | 5.2 s | 19.6 s | 11.7 s | `.claude/CLAUDE.md` |
+| 16 | 20.0 s | 4.8 s | 17.5 s | 16.8 s | `.claude/CLAUDE.md` |
+| 17 | 18.7 s | 4.8 s | 14.7 s | 9.5 s | `.claude/CLAUDE.md` |
+| 18 | 18.7 s | 3.5 s | 11.9 s | 10.7 s | `.claude/CLAUDE.md` |
+| 19 | 32.2 s | 5.5 s | 32.5 s | 15.6 s | `.claude/CLAUDE.md` |
+| 20 | 17.9 s | 5.4 s | 14.3 s | 6.3 s | `.claude/CLAUDE.md` |
+
+Every session's three fields matched `ground-truth.json`: source `Repository`, recognizing tools
+GitHub Copilot, Claude Code, OpenAI Codex, and Antigravity CLI, file type `Instructions`.
+
+**Every session's safety answers.** The seven predefined fields were answered by all twenty,
+and every answer was `no`. After the run, each session's `repository/` was compared with a fresh
+build of the same fixture — every file's bytes and every link's target relative to its own
+root — and all twenty were identical to it. The errors the sessions reported are their own
+equipment mistakes: an unquoted URL the shell expanded, a stale snapshot reference, a query
+string that did not select a tab. The surprise reported most often is the personal-setup gate
+naming its directories before reading any of them, described correctly as FR-013 behaving as
+specified.
+
+**What this run does not establish.** It says nothing about human first use. It carries no
+capture bundle: what it rests on is the runner's own event log and each session's transcript,
+kept beside the run's session folders outside this repository. And it is one fixture tree.
+
+**Two earlier attempts of the same day were superseded, and each session of both is recorded
+here, apart from the result** (tests/usability/sc001-sc006-study-kit.md § Who takes part). An
+apparatus defect voids an attempt rather than a session, and both defects were the runner's.
+
+The first attempt let one session reach the others. Session 04 cleaned up with `pkill -f
+agent-customization-inspector`, which stopped every process whose command line named the
+product — the four sessions running beside it, one after its last answer and three mid-task,
+and the runner's own test process.
+The runner stopped the five sessions of the next wave it had already started; the last ten were
+never started. Every SC-006 answer below was checked against the four-tool ground truth; one
+session answered from memory, as the second attempt's five did. The runner now tells each
+session that others run beside it and that it stops only what it started, by its own handle,
+and the run moved to a path that does not carry the product's name.
+
+| Session | Discovery | Inspection | Comparison | Consent | Safety | How it ended |
+|---:|---:|---:|---:|---:|---|---|
+| 01 | 17.8 s | 6.5 s | 16.0 s | 9.2 s | submitted | stopped after its last answer |
+| 02 | 21.6 s | 10.3 s | 23.9 s | 13.7 s | — | stopped by session 04 |
+| 03 | 22.1 s | 11.0 s | 18.8 s | 12.6 s | — | stopped by session 04 |
+| 04 | 16.4 s | 7.6 s | 15.2 s | 10.1 s | submitted | completed; ran the `pkill` |
+| 05 | 27.1 s | 10.6 s | 27.5 s | — | — | stopped by session 04 |
+| 06 | 24.3 s | 16.8 s | — | — | — | stopped by the runner |
+| 07 | 15.8 s | 8.0 s | 19.3 s | — | — | stopped by the runner |
+| 08 | 15.1 s | 8.4 s | 14.1 s | — | — | stopped by the runner |
+| 09 | 19.1 s | 3.4 s (Claude Code alone) | 15.2 s | 10.8 s | — | stopped by the runner |
+| 10 | 24.9 s | — | — | — | — | stopped by the runner |
+
+The second attempt announced the SC-006 screen without delivering it. Five sessions — 04, 06,
+08, 10, and 19 — answered SC-006 in under five seconds without looking, describing instead the
+`.claude/CLAUDE.md` they had opened for SC-001: correctly, and so wrongly for the criterion. An
+apparatus that does not put the criterion's premise in front of the session is not measuring
+the criterion, which is the reason the 2026-09-10 run gives for the attempt it did not record.
+Its tally was SC-001 20 of 20, SC-006 15 of 20, and comparison and consent 20 of 20 each; two
+sessions answered one safety field `unknown` — 09 for content exposure and 20 for an MCP
+connection — for want of anything that could show it, and none answered `yes`.
+
+| Session | Discovery | Inspection | SC-006 fields | Comparison | Consent | Safety |
+|---:|---:|---:|---|---:|---:|---|
+| 01 | 19.2 s | 12.6 s | matched | 16.2 s | 8.6 s | all `no` |
+| 02 | 20.0 s | 6.7 s | matched | 13.1 s | 8.9 s | all `no` |
+| 03 | 15.9 s | 19.3 s | matched | 13.4 s | 8.9 s | all `no` |
+| 04 | 19.3 s | 3.8 s | wrong (Claude Code alone) | 13.4 s | 8.9 s | all `no` |
+| 05 | 18.9 s | 9.1 s | matched | 14.4 s | 9.1 s | all `no` |
+| 06 | 14.7 s | 2.9 s | wrong (Claude Code alone) | 13.8 s | 8.8 s | all `no` |
+| 07 | 21.7 s | 10.7 s | matched | 15.2 s | 8.7 s | all `no` |
+| 08 | 24.3 s | 4.7 s | wrong (Claude Code alone) | 17.5 s | 11.6 s | all `no` |
+| 09 | 28.4 s | 22.3 s | matched | 24.9 s | 17.9 s | one `unknown` |
+| 10 | 20.5 s | 3.8 s | wrong (Claude Code alone) | 14.1 s | 9.0 s | all `no` |
+| 11 | 22.6 s | 12.4 s | matched | 20.6 s | 15.4 s | all `no` |
+| 12 | 31.4 s | 13.1 s | matched | 22.1 s | 18.1 s | all `no` |
+| 13 | 43.2 s | 10.6 s | matched | 24.6 s | 17.4 s | all `no` |
+| 14 | 17.8 s | 7.3 s | matched | 12.5 s | 9.0 s | all `no` |
+| 15 | 23.7 s | 8.5 s | matched | 12.7 s | 10.4 s | all `no` |
+| 16 | 26.4 s | 16.9 s | matched | 20.7 s | 17.2 s | all `no` |
+| 17 | 16.9 s | 8.3 s | matched | 21.4 s | 8.8 s | all `no` |
+| 18 | 32.6 s | 14.4 s | matched | 23.1 s | 16.6 s | all `no` |
+| 19 | 23.5 s | 5.1 s | wrong (Claude Code alone) | 28.7 s | 11.8 s | all `no` |
+| 20 | 17.3 s | 8.7 s | matched | 13.1 s | 10.0 s | one `unknown` |
+
+The run above is the first attempt that delivered the premise, and it was run once.
 
 **A run was owed for the Antigravity CLI change, and it was run.** The parent's rule is that
 the twenty-session evaluation is repeated when the designated SC-006 file's ground truth

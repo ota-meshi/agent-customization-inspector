@@ -77,7 +77,6 @@ function definition(
     parseStatus,
     diagnosticIds: [],
     companionFiles: [],
-    rowUnit: 'directory',
   };
 }
 
@@ -167,13 +166,13 @@ describe('recognition and declared-metadata comparison', () => {
   it('declares nothing for a companion that is its own recognition of another kind', () => {
     // An `AGENTS.md` inside a skill directory is a census companion here and a
     // Copilot instruction file in its own right, so `get-file-detail` answers
-    // with the instructions variant and its parse (session.ts § fileDetail).
-    // No skill definition owns it, so it declares nothing on this surface —
-    // taking the parse would publish an instruction file's declarations as the
-    // skill's declared metadata.
+    // with the instructions variant (session.ts § fileDetail). No skill
+    // definition owns it, so it declares nothing on this surface: another
+    // kind's reading of the file is never the skill's declared metadata.
     const path = '.agents/skills/alpha/AGENTS.md';
     const asInstructions: FileDetailDto = {
       kind: 'instructions',
+      format: 'whole-document',
       file: {
         sourceId: 'source-repository',
         sourceRelativePath: path,
@@ -184,7 +183,6 @@ describe('recognition and declared-metadata comparison', () => {
         sizeBytes: 14,
       },
       diagnostics: [],
-      presentation: { frontmatter: [scalar('applyTo', '**')], bodyText: 'body' },
     };
     const comparison = new SkillRecognitionComparison(
       side(asInstructions, []),

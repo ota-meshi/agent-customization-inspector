@@ -1,6 +1,6 @@
-// T021/T022/T036/T037/T040/T051: what each Antigravity CLI compiled unit
+// T021/T022/T036/T037/T040/T051/T085: what each Antigravity CLI compiled unit
 // answers about a file its rule admitted — the name a skill is invoked by in
-// each of the two admitted shapes, the declarations an MCP carrier and the two
+// its folder, the declarations an MCP carrier and the two
 // hook carriers publish, the policy the settings document declares, the name a
 // custom agent declares, and the rows a workspace rules file and the home's
 // carriers reach (FR-007, FR-009, FR-020, FR-026, FR-028).
@@ -19,12 +19,12 @@ import {
   ANTIGRAVITY_REPOSITORY_RULES,
   AntigravityCompiledOtherKindRule,
 } from '../../../src/server/inspection/rules/antigravity';
-import { AntigravityCompiledInstructionRule } from '../../../src/server/inspection/rules/instructions/antigravity';
-import { AntigravityCompiledAgentRule } from '../../../src/server/inspection/rules/agents/antigravity';
 import {
-  AntigravityCompiledFileSkillRule,
-  AntigravityCompiledSkillRule,
-} from '../../../src/server/inspection/rules/skills/antigravity';
+  AntigravityCompiledGlobalInstructionRule,
+  AntigravityCompiledInstructionRule,
+} from '../../../src/server/inspection/rules/instructions/antigravity';
+import { AntigravityCompiledAgentRule } from '../../../src/server/inspection/rules/agents/antigravity';
+import { AntigravityCompiledSkillRule } from '../../../src/server/inspection/rules/skills/antigravity';
 import {
   AntigravityCompiledInlineHookRule,
   AntigravityCompiledStandaloneHookRule,
@@ -97,10 +97,10 @@ async function recognize(
   return recognition;
 }
 
-describe('the two skill shapes one location admits (T022)', () => {
+describe('the skill folder the workspace location admits (T022)', () => {
   it('names a skill folder by its declared name', async () => {
     const recognition = await recognize(
-      repositoryRule('antigravity.repo.skill.directory'),
+      repositoryRule('antigravity.repo.skill'),
       '.agents/skills/release-notes/SKILL.md',
       '---\nname: notes\ndescription: Assemble the notes.\n---\n\nGroup by area.\n',
     );
@@ -118,52 +118,18 @@ describe('the two skill shapes one location admits (T022)', () => {
     // binary's `GetSkillsCreatePath` treats the folder as carrying the name
     // (contracts/vendors/antigravity-cli.md § Known uncertainties item 7).
     const recognition = await recognize(
-      repositoryRule('antigravity.repo.skill.directory'),
+      repositoryRule('antigravity.repo.skill'),
       '.agents/skills/release-notes/SKILL.md',
       '---\ndescription: Assemble the notes.\n---\n\nGroup by area.\n',
     );
     expect(recognition.details.kind === 'skill' && recognition.details.invocationName).toBe(
       'release-notes',
     );
-    expect(recognition.details.kind === 'skill' && recognition.details.rowUnit).toBe('directory');
   });
 
-  it('falls a flat skill declaring no name back to its own file name', async () => {
-    // The counterpart fallback: this shape has no folder to take one from, so
-    // the file's own name without the extension is the only answer it has.
-    const recognition = await recognize(
-      repositoryRule('antigravity.repo.skill.file'),
-      '.agents/skills/x.md',
-      '---\ndescription: Expand the selected expression.\n---\n\nOne step at a time.\n',
-    );
-    expect(recognition.details.kind === 'skill' && recognition.details.invocationName).toBe('x');
-  });
-
-  it('gives the two shapes different row units, and censuses only the folder', async () => {
-    // The discriminant the recognizer publishes rather than a shape re-derived
-    // from the path, and what follows from it: a flat skill occupies no
-    // directory, so nothing is enumerated for it — its siblings are other
-    // skills rather than its own companions (spec.md § FR-004).
-    const flat = await recognizeCandidateForVendors(
-      {
-        matchedPath: '.agents/skills/deploy.md',
-        absolutePath: join(root, '.agents/skills/deploy.md'),
-        sourceRoot: root,
-        admissions: [
-          {
-            compiled: repositoryRule('antigravity.repo.skill.file'),
-            origin: { planIndex: 0, selectorIndex: 0 },
-          },
-        ],
-        sourceText: '---\nname: deploy\n---\n\nDeploy the branch.\n',
-      },
-      ['antigravity'],
-    );
-    expect(
-      flat.recognitions[0]?.details.kind === 'skill' && flat.recognitions[0].details.rowUnit,
-    ).toBe('file');
-    expect(flat.directories).toEqual([]);
-
+  it('censuses the folder a skill occupies', async () => {
+    // The skill is its folder, so what ships beside its `SKILL.md` is that
+    // skill's companions (spec.md § FR-004).
     const folder = await recognizeCandidateForVendors(
       {
         matchedPath: '.agents/skills/release-notes/SKILL.md',
@@ -171,7 +137,7 @@ describe('the two skill shapes one location admits (T022)', () => {
         sourceRoot: root,
         admissions: [
           {
-            compiled: repositoryRule('antigravity.repo.skill.directory'),
+            compiled: repositoryRule('antigravity.repo.skill'),
             origin: { planIndex: 0, selectorIndex: 0 },
           },
         ],
@@ -180,6 +146,31 @@ describe('the two skill shapes one location admits (T022)', () => {
       ['antigravity'],
     );
     expect(folder.directories).toEqual(['.agents/skills/release-notes/']);
+  });
+});
+
+describe('the range a context file governs (T085)', () => {
+  it('answers the directory holding a workspace file, `.agents` included', () => {
+    // The terminal loads a directory's pair at each level it walks up
+    // through, whether the pair sits in the directory or in its `.agents/`
+    // (google.antigravity.rules § Directory-scoped rules).
+    const compiled = repositoryRule('antigravity.repo.context');
+    expect(compiled).toBeInstanceOf(AntigravityCompiledInstructionRule);
+    if (compiled.kind !== 'instructions' || compiled.format !== 'whole-document') {
+      throw new Error('expected the workspace context rule to compile to a whole-document unit');
+    }
+    expect(compiled.applicabilityRangeOf('GEMINI.md')).toBe('**');
+    expect(compiled.applicabilityRangeOf('packages/api/AGENTS.md')).toBe('packages/api/**');
+    expect(compiled.applicabilityRangeOf('docs/.agents/GEMINI.md')).toBe('docs/**');
+  });
+
+  it('answers the whole boundary for every global file', () => {
+    const compiled = globalRule('antigravity.global.context');
+    expect(compiled).toBeInstanceOf(AntigravityCompiledGlobalInstructionRule);
+    if (compiled.kind !== 'instructions' || compiled.format !== 'whole-document') {
+      throw new Error('expected the global context rule to compile to a whole-document unit');
+    }
+    expect(compiled.applicabilityRangeOf('config/AGENTS.md')).toBe('**');
   });
 });
 
@@ -195,7 +186,7 @@ describe('the workspace rules file the catalog answers for (T037)', () => {
     const recognition = await recognize(
       compiled,
       '.agents/rules/typescript.md',
-      '---\nactivation: glob\nglob: "src/**/*.ts"\n---\n\nNo `any`.\n',
+      '---\ntrigger: glob\nglobs: src/**/*.ts\n---\n\nNo `any`.\n',
     );
     expect(recognition.details.kind).toBe('rule');
     expect(recognition.parseStatus).toBe('not-attempted');
@@ -390,41 +381,13 @@ describe('the custom agent and the settings document’s policy (T021, T040)', (
 });
 
 describe('the Global units the consented home scan executes (T040)', () => {
-  it('compiles the home’s two skill shapes to the two units their rows are', async () => {
-    // Two rules at the consented home for the reason the workspace has two:
-    // the row units differ, and the unit is the rule's own declared fact. A
-    // single rule carrying all three selectors gave the flat file the folder's
-    // unit, so `antigravity-cli/skills/refactor.md` and `triage.md` resolved to
-    // one row named after the directory they share and the census published
-    // every other file in it — a `notes.txt` beside them included — as one
-    // skill's companions (spec.md § FR-004).
-    const directory = globalRule('antigravity.global.skill.directory');
+  it('compiles the home’s skill roots to one folder-shaped unit', async () => {
+    const directory = globalRule('antigravity.global.skill');
     expect(directory).toBeInstanceOf(AntigravityCompiledSkillRule);
     expect(directory.kind).toBe('skill');
     // The terminal's own root and the shared configuration directory's, both
     // folder-shaped.
     expect(directory.plan.selectors).toHaveLength(2);
-
-    const file = globalRule('antigravity.global.skill.file');
-    expect(file).toBeInstanceOf(AntigravityCompiledFileSkillRule);
-    expect(file.kind).toBe('skill');
-    expect(file.plan.selectors).toHaveLength(1);
-
-    const flat = await recognizeCandidateForVendors(
-      {
-        matchedPath: 'antigravity-cli/skills/refactor.md',
-        absolutePath: join(root, 'antigravity-cli/skills/refactor.md'),
-        sourceRoot: root,
-        admissions: [{ compiled: file, origin: { planIndex: 0, selectorIndex: 0 } }],
-        sourceText: '---\nname: refactor\n---\n\nExtract the function.\n',
-      },
-      ['antigravity'],
-    );
-    expect(
-      flat.recognitions[0]?.details.kind === 'skill' && flat.recognitions[0].details.rowUnit,
-    ).toBe('file');
-    // Nothing is enumerated for it, so the files beside it stay other rows.
-    expect(flat.directories).toEqual([]);
 
     const folder = await recognizeCandidateForVendors(
       {
@@ -436,9 +399,6 @@ describe('the Global units the consented home scan executes (T040)', () => {
       },
       ['antigravity'],
     );
-    expect(
-      folder.recognitions[0]?.details.kind === 'skill' && folder.recognitions[0].details.rowUnit,
-    ).toBe('directory');
     expect(folder.directories).toEqual(['antigravity-cli/skills/release-notes/']);
   });
 
@@ -464,8 +424,9 @@ describe('the Global units the consented home scan executes (T040)', () => {
       AntigravityCompiledPermissionsCarrierRule,
     );
     expect(globalRule('antigravity.global.context')).toBeInstanceOf(
-      AntigravityCompiledInstructionRule,
+      AntigravityCompiledGlobalInstructionRule,
     );
+    expect(globalRule('antigravity.global.rule')).toBeInstanceOf(AntigravityCompiledOtherKindRule);
     expect(globalRule('antigravity.global.settings')).toBeInstanceOf(
       AntigravityCompiledOtherKindRule,
     );

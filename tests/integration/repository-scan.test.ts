@@ -453,7 +453,6 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
           diagnosticIds: [],
           // All three read this file as its folder's entry point, so all
           // three publish the folder's census (spec.md § FR-004).
-          rowUnit: 'directory',
           companionFiles,
         },
         {
@@ -463,7 +462,6 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
           surfaces: ['codex-local-clients'],
           parseStatus: 'parsed',
           diagnosticIds: [],
-          rowUnit: 'directory',
           companionFiles,
         },
         {
@@ -473,7 +471,6 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
           surfaces: ['antigravity-cli'],
           parseStatus: 'parsed',
           diagnosticIds: [],
-          rowUnit: 'directory',
           companionFiles,
         },
       ],
@@ -831,13 +828,6 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
       'companionFiles',
       'diagnosticIds',
       'parseStatus',
-      // Whether this definition's row unit is its directory or the file
-      // itself, carried from the admitting rule: one vendor admits a skill in
-      // both shapes at one location, and what follows from the shape — the
-      // companion census, and whether the detail has a file panel at all — is
-      // read from this rather than re-derived from the path
-      // (spec.md § FR-004).
-      'rowUnit',
       // The Source holding the file — the other half of its identity, now
       // that a consented member can hold this kind too (FR-030).
       'sourceId',
@@ -1276,7 +1266,7 @@ describe('the Copilot recognition matrix (T156)', () => {
     ).toEqual([
       { tool: 'copilot', ruleIds: ['copilot.repo.skill'] },
       { tool: 'codex', ruleIds: ['codex.repo.skill'] },
-      { tool: 'antigravity', ruleIds: ['antigravity.repo.skill.directory'] },
+      { tool: 'antigravity', ruleIds: ['antigravity.repo.skill'] },
     ]);
   });
 
@@ -2055,12 +2045,14 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     // declared basename with no on-disk file derives nothing — the ordinary
     // negative, no diagnostic.
     //
-    // `AGENTS.md` is Copilot's too, at the root and at the depth the fixture's
-    // near miss sits at: Codex's rule is anchored at the root, while Copilot's
-    // reaches every depth because all three of its surfaces document reaching a
-    // nested file, each in its own way (T255). The nested file is therefore not
-    // a near miss for every product — it is a Copilot row of its own range, and
-    // the Codex rows beside it are unchanged.
+    // `AGENTS.md` is Copilot's and Claude Code's too, at the root and at the
+    // depth the fixture's near miss sits at: Codex's rule is anchored at the
+    // root, while Copilot's reaches every depth because all three of its
+    // surfaces document reaching a nested file, each in its own way (T255),
+    // and Claude Code reads a subdirectory's `AGENTS.md` once it reads a file
+    // there. The nested file is therefore not a near miss for every product —
+    // it is a row of its own range, and the Codex rows beside it are
+    // unchanged.
     expectRepositoryInstructionSources(snapshot);
     expect(normalizedInstructions(snapshot)).toEqual([
       {
@@ -2068,7 +2060,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
           { sourceRelativePath: 'AGENTS.override.md', recognitions: [CODEX_ONLY] },
           { sourceRelativePath: 'GUIDE.codex.md', recognitions: [CODEX_ONLY] },
@@ -2077,7 +2069,12 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       },
       {
         applicabilityRange: 'docs/**',
-        files: [{ sourceRelativePath: 'docs/AGENTS.md', recognitions: [COPILOT_ALL_SURFACES] }],
+        files: [
+          {
+            sourceRelativePath: 'docs/AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, ANTIGRAVITY_ONLY],
+          },
+        ],
       },
     ]);
     // The carrier publishes like any candidate since its own candidacy
@@ -2262,7 +2259,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
         ],
       },
@@ -2330,11 +2327,11 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     expect([...mcpDiagnosticIds, ...hookDiagnosticIds].toSorted()).toEqual(
       [...carrier!.diagnosticIds].toSorted(),
     );
-    // The settings row of the same file is untouched by that failure: nothing
-    // is read out of the document for it, so nothing can fail to be read and
-    // the row carries no diagnostic list at all, while the file entry above
-    // carries the MCP and hook kinds' records (FR-028). What the row opens is
-    // the bytes the author wrote, malformed or not.
+    // The settings entry of the same file publishes no diagnostic list of its
+    // own: nothing is read out of the document for it, so its reading cannot
+    // fail, and the MCP and hook kinds' records are the file entry's above,
+    // which is where the row and the detail resolve them from (FR-028). What
+    // the row opens is the bytes the author wrote, malformed or not.
     expect(snapshot.settings).toEqual([
       {
         sourceId: context.session.repositorySourceId,
@@ -2415,7 +2412,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
           { sourceRelativePath: 'TEAM_GUIDE.md', recognitions: [CODEX_ONLY] },
         ],
@@ -2933,7 +2930,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         files: [
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
         ],
       },
@@ -3074,16 +3071,19 @@ describe('the committed Claude instructions inventory (T229)', () => {
     // `AGENTS.md` beside the Claude files — which is the grouping this phase
     // exists for — and `.claude/CLAUDE.md` lands there too, because `.claude`
     // is the rule's own container rather than what the file governs.
-    // `AGENTS.md` gains no Claude recognition: Claude Code reads `CLAUDE.md`,
-    // not `AGENTS.md`. No row states which documented layer a file belongs
-    // to, because that is a relation to a working directory this product does
-    // not observe (FR-009).
+    // `AGENTS.md` is Claude's as well as Codex's, and the nested
+    // `packages/api/AGENTS.md` joins its own directory's row: Claude reads
+    // `AGENTS.md` where and how it reads `CLAUDE.md`. No row states which
+    // documented layer a file belongs to, or whether a session reads the
+    // `CLAUDE.md` files or the `AGENTS.md` beside them, because both are
+    // relations to a working directory and a setting this product does not
+    // observe (FR-009).
     //
-    // The two shared root files carry a Copilot recognition too, and the
-    // Claude-only ones show why that is a statement rather than a filename
-    // rule: Copilot documents its `CLAUDE.md` alternative at the repository
-    // root alone, so `.claude/CLAUDE.md`, `CLAUDE.local.md`, and every nested
-    // `CLAUDE.md` stay Claude's (T256).
+    // The shared files carry a Copilot recognition too, and the Claude-only
+    // ones show why that is a statement rather than a filename rule: Copilot
+    // documents its `CLAUDE.md` alternative at the repository root alone, so
+    // `.claude/CLAUDE.md`, `CLAUDE.local.md`, and every nested `CLAUDE.md` stay
+    // Claude's (T256).
     expectRepositoryInstructionSources(snapshot);
     expect(normalizedInstructions(snapshot)).toEqual([
       {
@@ -3095,7 +3095,7 @@ describe('the committed Claude instructions inventory (T229)', () => {
           },
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
           {
             sourceRelativePath: 'CLAUDE.local.md',
@@ -3124,6 +3124,10 @@ describe('the committed Claude instructions inventory (T229)', () => {
             recognitions: [CLAUDE_ONLY],
           },
           {
+            sourceRelativePath: 'packages/api/AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, ANTIGRAVITY_ONLY],
+          },
+          {
             sourceRelativePath: 'packages/api/CLAUDE.md',
             recognitions: [CLAUDE_ONLY],
           },
@@ -3142,7 +3146,12 @@ describe('the committed Claude instructions inventory (T229)', () => {
         .join('/'),
     );
     expect([...opened].sort()).toEqual(
-      [...fixture.expectedClaudeInstructionPaths, ...fixture.expectedCodexInstructionPaths].sort(),
+      [
+        ...new Set([
+          ...fixture.expectedClaudeInstructionPaths,
+          ...fixture.expectedCodexInstructionPaths,
+        ]),
+      ].sort(),
     );
     expect(new Set(opened).size).toBe(opened.length);
     for (const nearMiss of fixture.nearMissPaths) {
@@ -3163,8 +3172,8 @@ describe('the committed Claude instructions inventory (T229)', () => {
     expect(serialized).not.toContain('@docs/setup.md');
   });
 
-  it('confines the malformed file to its own diagnostic and a partial outcome', async () => {
-    const fixture = buildClaudeInstructionFixture('inspector-scan-claude-instructions-partial');
+  it('reads a block that is not YAML as instructions, committing a complete generation', async () => {
+    const fixture = buildClaudeInstructionFixture('inspector-scan-claude-instructions-block');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
 
@@ -3172,31 +3181,26 @@ describe('the committed Claude instructions inventory (T229)', () => {
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
     }
-    // A frontmatter block no parser can read is that recognition's `failed`
-    // state: extraction is all-or-nothing, the file keeps its row and its
-    // complete readable source, and the failure makes the generation
-    // `partial` without touching any other file (FR-028).
-    expect(publication.outcome).toBe('partial');
+    // Claude Code reads a `CLAUDE.md` whole, so a `---` block opening one is
+    // a line of its instructions: nothing parses it, so nothing can fail, and
+    // the file keeps its row and its complete source with no diagnostic
+    // (T1224; api-types.ts § InstructionFileFormat).
+    expect(publication.outcome).toBe('complete');
     const snapshot = context.session.snapshot();
-    expect(snapshot.diagnostics).toHaveLength(1);
-    expect(snapshot.diagnostics[0]!.code).toBe('recognition-parse-failed');
-    const malformed = snapshot.files.find(
-      (file) => file.sourceRelativePath === fixture.malformedInstructionPath,
-    );
-    expect(malformed?.diagnosticIds).toEqual([snapshot.diagnostics[0]!.diagnosticId]);
-    for (const file of snapshot.files) {
-      if (file.sourceRelativePath !== fixture.malformedInstructionPath) {
-        expect(file.diagnosticIds, file.sourceRelativePath).toEqual([]);
-      }
-    }
-    // The failure changes no grouping: a range comes from where a file sits,
-    // not from what parsed, so the three ranges and their seven files stay.
+    expect(snapshot.diagnostics).toEqual([]);
+    expect(
+      snapshot.files.find(
+        (file) => file.sourceRelativePath === fixture.unparseableBlockInstructionPath,
+      )?.diagnosticIds,
+    ).toEqual([]);
+    // A range comes from where a file sits, so the three ranges and their
+    // eight files stand.
     expect(snapshot.instructions.map((entry) => entry.applicabilityRange)).toEqual([
       '**',
       'docs/**',
       'packages/api/**',
     ]);
-    expect(snapshot.instructions.flatMap((entry) => entry.files)).toHaveLength(7);
+    expect(snapshot.instructions.flatMap((entry) => entry.files)).toHaveLength(8);
   });
 });
 
@@ -3240,7 +3244,7 @@ describe('the committed Copilot instructions inventory (T248)', () => {
           },
           {
             sourceRelativePath: 'AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
           },
           { sourceRelativePath: 'CLAUDE.local.md', recognitions: [CLAUDE_ONLY] },
           { sourceRelativePath: 'CLAUDE.md', recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY] },
@@ -3267,13 +3271,14 @@ describe('the committed Copilot instructions inventory (T248)', () => {
           },
           {
             sourceRelativePath: 'packages/api/AGENTS.md',
-            recognitions: [COPILOT_ALL_SURFACES],
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, ANTIGRAVITY_ONLY],
           },
           { sourceRelativePath: 'packages/api/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
-          // The nested `GEMINI.md` is nobody's: Copilot documents the root
-          // alternative only, and Antigravity CLI's rule is anchored at the
-          // repository root because the migration page names the active
-          // directory's file and states no depth (spec.md § FR-007).
+          // The nested `GEMINI.md` is Antigravity CLI's alone: Copilot
+          // documents the root alternative only, and the terminal loads the
+          // pair of every directory it walks up through
+          // (specs/003-antigravity-cli-support/spec.md § FR-007).
+          { sourceRelativePath: 'packages/api/GEMINI.md', recognitions: [ANTIGRAVITY_ONLY] },
         ],
       },
       {
@@ -3973,7 +3978,7 @@ describe('the unified instructions inventory (T270)', () => {
         : [
             {
               sourceRelativePath: 'AGENTS.md',
-              recognitions: [COPILOT_ALL_SURFACES, CODEX_ONLY, ANTIGRAVITY_ONLY],
+              recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, CODEX_ONLY, ANTIGRAVITY_ONLY],
             },
           ]),
       { sourceRelativePath: 'AGENTS.override.md', recognitions: [CODEX_ONLY] },
@@ -3998,10 +4003,14 @@ describe('the unified instructions inventory (T270)', () => {
       {
         applicabilityRange: 'docs/**',
         files: [
-          { sourceRelativePath: 'docs/AGENTS.md', recognitions: [COPILOT_ALL_SURFACES] },
-          // The malformed file keeps its row: what failed is reading its
-          // declarations, and a path-derived range comes from where the file
-          // sits (FR-028, T1093).
+          {
+            sourceRelativePath: 'docs/AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, ANTIGRAVITY_ONLY],
+          },
+          // A block that is not YAML opens this file, and nothing fails:
+          // Claude Code reads a `CLAUDE.md` whole, so the block is a line of
+          // its instructions and the range comes from where the file sits
+          // (T1224).
           { sourceRelativePath: 'docs/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
         ],
       },
@@ -4013,13 +4022,18 @@ describe('the unified instructions inventory (T270)', () => {
             sourceRelativePath: 'packages/api/.github/copilot-instructions.md',
             recognitions: [COPILOT_CLI_ONLY],
           },
-          { sourceRelativePath: 'packages/api/AGENTS.md', recognitions: [COPILOT_ALL_SURFACES] },
+          {
+            sourceRelativePath: 'packages/api/AGENTS.md',
+            recognitions: [COPILOT_ALL_SURFACES, CLAUDE_ONLY, ANTIGRAVITY_ONLY],
+          },
           // The nested `CLAUDE.md` the configuration does not name: Claude's
           // alone, with zero Codex recognition — a configured fallback is an
           // entry name matched at the Repository root, and no filename
           // inference promotes a nested file (Phase 21).
           { sourceRelativePath: 'packages/api/CLAUDE.md', recognitions: [CLAUDE_ONLY] },
-          // The nested `GEMINI.md` is nobody's, for the reason above.
+          // The nested `GEMINI.md` is Antigravity CLI's alone, for the reason
+          // above.
+          { sourceRelativePath: 'packages/api/GEMINI.md', recognitions: [ANTIGRAVITY_ONLY] },
         ],
       },
       {
@@ -4098,14 +4112,20 @@ describe('the unified instructions inventory (T270)', () => {
       ).toBe(false);
     }
 
-    // Partial publication only after complete traversal: the two
-    // deterministic file-confined outcomes — the malformed frontmatter and
-    // the binary candidate — are the generation's only diagnostics, and both
-    // files stay published under their own facts (FR-028).
+    // Partial publication only after complete traversal: the deterministic
+    // file-confined outcome — the binary candidate — is the generation's only
+    // diagnostic, and the file stays published under its own facts (FR-028).
+    // The `CLAUDE.md` opening with a block that is not YAML carries none: it
+    // is read whole, so nothing parsed it to fail (T1224).
     expect(publication.outcome).toBe('partial');
     expect(snapshot.diagnostics.map((diagnostic) => diagnostic.sourceRelativePath).sort()).toEqual(
-      [fixture.malformedInstructionPath, ...fixture.diagnosticOnlyPaths].sort(),
+      [...fixture.diagnosticOnlyPaths].sort(),
     );
+    expect(
+      snapshot.files.find(
+        (file) => file.sourceRelativePath === fixture.unparseableBlockInstructionPath,
+      )?.diagnosticIds,
+    ).toEqual([]);
     const binary = snapshot.files.find(
       (file) => file.sourceRelativePath === fixture.diagnosticOnlyPaths[0],
     );
@@ -4140,13 +4160,9 @@ describe('the unified instructions inventory (T270)', () => {
     expect(publication.outcome).toBe('partial');
     const snapshot = context.session.snapshot();
     expect(snapshot.repositoryGeneration).toBe(1);
-    // Only the injected file's diagnostic joins the two deterministic ones.
+    // Only the injected file's diagnostic joins the deterministic one.
     expect(snapshot.diagnostics.map((diagnostic) => diagnostic.sourceRelativePath).sort()).toEqual(
-      [
-        fixture.injectionTargetPath,
-        fixture.malformedInstructionPath,
-        ...fixture.diagnosticOnlyPaths,
-      ].sort(),
+      [fixture.injectionTargetPath, ...fixture.diagnosticOnlyPaths].sort(),
     );
     // The complete published set is retained — the unreadable target keeps
     // its diagnostic-only item — while its row alone drops out of the matrix.
@@ -5006,8 +5022,8 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
     expect(snapshot.instructions.map((entry) => entry.applicabilityRange)).toEqual([
       '.claude/agents/**',
     ]);
-    // Each route asks for its own kind and receives that kind's parse of the
-    // one file, in the shape that variant publishes it (session.ts
+    // Each route asks for its own kind and receives that kind's reading of
+    // the one file, in the shape that variant publishes it (session.ts
     // § fileDetail).
     const asAgent = context.session.fileDetail('.claude/agents/CLAUDE.md', 'repository', 'agent');
     if (asAgent?.kind !== 'agent' || asAgent.presentation === null) {
@@ -5023,14 +5039,16 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
       'repository',
       'instructions',
     );
-    if (asInstructions?.kind !== 'instructions' || asInstructions.presentation === null) {
-      throw new Error('expected a parsed instructions detail');
-    }
-    expect(asInstructions.presentation.frontmatter.map((entry) => entry.key)).toEqual([
-      'name',
-      'description',
-    ]);
-    expect(asInstructions.presentation.bodyText).toBe('\n# Body\n');
+    // As an instruction file it is read whole: Claude Code documents no
+    // frontmatter for a `CLAUDE.md`, so the block the agent reading splits off
+    // is a line of the instructions here, and nothing is read out of it
+    // (api-types.ts § InstructionFileFormat).
+    expect(asInstructions).toMatchObject({
+      kind: 'instructions',
+      format: 'whole-document',
+      diagnostics: [],
+    });
+    expect(asInstructions).not.toHaveProperty('presentation');
   });
 
   it('serves the two halves of a subagent detail and no MCP row for its frontmatter', async () => {
@@ -5216,12 +5234,12 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
     //
     // The root context pair first, each carrying this vendor's recognition
     // beside the ones it already had — `GEMINI.md` Copilot's, `AGENTS.md`
-    // Copilot's and Codex's — in the order the vendor catalogs are composed
-    // (spec.md § FR-007).
+    // Copilot's, Claude Code's, and Codex's — in the order the vendor catalogs
+    // are composed (spec.md § FR-007).
     const rootRow = snapshot.instructions.find((entry) => entry.applicabilityRange === '**')!;
     for (const [path, tools] of [
       ['GEMINI.md', ['copilot', 'antigravity']],
-      ['AGENTS.md', ['copilot', 'codex', 'antigravity']],
+      ['AGENTS.md', ['copilot', 'claude', 'codex', 'antigravity']],
     ] as const) {
       expect(
         rootRow.files
@@ -5267,8 +5285,8 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
     }
 
     // A skill folder in the shared `.agents/skills/` carries all three
-    // products that read the shape, and the flat file beside it carries this
-    // vendor alone (spec.md § FR-004).
+    // products that read the shape, and a flat Markdown file beside it is no
+    // product's skill (spec.md § FR-004).
     expect(
       snapshot.skills
         .find((entry) => entry.name === 'changelog')!
@@ -5277,33 +5295,8 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
         )
         .map((definition) => definition.tool),
     ).toEqual(['copilot', 'codex', 'antigravity']);
-    expect(
-      snapshot.skills
-        .find((entry) => entry.name === 'x')!
-        .definitions.map((definition) => definition.tool),
-    ).toEqual(['antigravity']);
-
-    // A name spelled in both shapes is one row carrying both definitions —
-    // one per file per recognizing product — and states no precedence between
-    // them, because no cited page says which the terminal prefers
-    // (spec.md § FR-004; contracts/vendors/antigravity-cli.md § Known
-    // uncertainties item 6). The row unit travels with each definition, so the
-    // two shapes stay distinguishable inside the one row (T053, T055).
-    const deploy = snapshot.skills.find((entry) => entry.name === 'deploy')!;
-    expect(
-      deploy.definitions.map((definition) => [
-        definition.sourceRelativePath,
-        definition.tool,
-        definition.rowUnit,
-      ]),
-    ).toEqual([
-      ['.agents/skills/deploy.md', 'antigravity', 'file'],
-      ['.agents/skills/deploy/SKILL.md', 'copilot', 'directory'],
-      ['.agents/skills/deploy/SKILL.md', 'codex', 'directory'],
-      ['.agents/skills/deploy/SKILL.md', 'antigravity', 'directory'],
-    ]);
-    expect(deploy.sameNameResolutions.map((resolution) => resolution.tool)).not.toContain(
-      'antigravity',
+    expect(snapshot.files.map((file) => file.sourceRelativePath)).not.toContain(
+      '.agents/skills/deploy.md',
     );
 
     // And both custom-agent shapes.
@@ -5314,19 +5307,29 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
       ).toContain('antigravity');
     }
 
-    // A context file below the root is not this vendor's: the migration page
-    // states the workspace pair at the active directory and no depth under it,
-    // so `packages/api/AGENTS.md` reaches the inventory as Copilot's alone and
-    // `packages/api/GEMINI.md`, which no other product documents there,
-    // reaches it not at all (contracts/vendors/antigravity-cli.md § Known
-    // uncertainties item 1).
-    const nestedAgents = snapshot.instructions
-      .flatMap((entry) => entry.files)
-      .find((file) => file.sourceRelativePath === 'packages/api/AGENTS.md');
-    expect(nestedAgents?.recognitions.map((recognition) => recognition.tool)).toEqual(['copilot']);
+    // A context file below the root is this vendor's too, governing the
+    // directory holding it: the terminal loads the pair of every level it
+    // walks up through (specs/003-antigravity-cli-support/spec.md § FR-007).
+    // `packages/api/AGENTS.md` carries it beside Copilot's and Claude Code's,
+    // and `packages/api/GEMINI.md`, which no other product documents there,
+    // carries it alone.
+    const nestedFiles = snapshot.instructions.flatMap((entry) => entry.files);
+    for (const [path, tools] of [
+      ['packages/api/AGENTS.md', ['copilot', 'claude', 'antigravity']],
+      ['packages/api/GEMINI.md', ['antigravity']],
+    ] as const) {
+      expect(
+        nestedFiles
+          .find((file) => file.sourceRelativePath === path)
+          ?.recognitions.map((recognition) => recognition.tool),
+        path,
+      ).toEqual(tools);
+    }
     expect(
-      snapshot.files.some((file) => file.sourceRelativePath === 'packages/api/GEMINI.md'),
-    ).toBe(false);
+      snapshot.instructions.find((entry) =>
+        entry.files.some((file) => file.sourceRelativePath === 'packages/api/GEMINI.md'),
+      )?.applicabilityRange,
+    ).toBe('packages/api/**');
   });
 });
 

@@ -17,7 +17,7 @@
 - [x] CHK003 Are the kinds this tool publishes named together with their row unit — the file, the declared name, the declared server name — and are the kinds it publishes none of enumerated rather than left unmentioned? [Completeness, Spec §FR-004–FR-006, §FR-011, §FR-012; Data Model §Compiled units]
 - [x] CHK004 Does FR-014 name every artifact class that may not name a product this release does not support — vendor module, contract, registry record, fixture, documentation section, label, mark, evidence record — and does it reach the frozen counts? [Completeness, Spec §FR-014; Plan §Implementation Boundaries]
 - [x] CHK006 Does FR-001 enumerate the parent-specification clauses that change, and does research § 11 list the same set with no artifact named in only one place? [Completeness, Spec §FR-001; Research §11]
-- [x] CHK007 Are the requirements for a file-shaped skill's detail stated — no file panel, no tab strip, heading unchanged — rather than left as a presentation decision with no requirement behind it? [Completeness, Spec §FR-004, §Clarifications; Data Model §Skill row and detail]
+- [x] CHK007 Is the skill detail stated for the one shape admitted — the folder, with its file panel and tab strip — rather than left as a presentation decision with no requirement behind it? [Completeness, Spec §FR-004, §Clarifications; Data Model §Skill row and detail] — amended 2026-09-24: no page documents a flat skill (Spec § Clarifications Session 2026-09-24).
 - [x] CHK008 Does each strategy the contract names carry operations and a cited basis, including those whose resolution the pages leave unstated? [Completeness, Contract §Canonical evidence-assessment index, §Documented Repository behavior]
 
 ## Requirement Clarity
@@ -25,10 +25,10 @@
 - [x] CHK009 Is "no surface names a product this release does not support" written so it can be checked — does SC-006 define the search set (identifier, label, mark, contract, frozen count) rather than leaving "no trace" to judgment? [Clarity, Spec §FR-001, §FR-014, §SC-006]
 - [x] CHK010 Is the member's label fixed as one spelling, and is it stated separately from the root path shown beside it, so the two are not read as one field? [Clarity, Spec §FR-008, §Clarifications]
 - [x] CHK011 Is the absence of an environment property for the member written as a requirement with its reason, rather than as an omission a reader must infer? [Clarity, Spec §FR-008; Research §4]
-- [x] CHK012 Is the skill naming rule exact for the file shape — the frontmatter `name`, the file's own name otherwise — including whether the extension is part of the name? — satisfied 2026-09-10 by stating in FR-004 that the fallback name is the file's own name without its extension [Clarity, Spec §FR-004]
+- [x] CHK012 Is the skill naming rule exact — the frontmatter `name`, or the skill folder when it declares none? [Clarity, Spec §FR-004] — amended 2026-09-24: no page documents a flat skill, so the folder is the only fallback.
 - [x] CHK013 Is "one carrier recognized three times" stated for the home settings file, so a reader knows it appears once as a file and reaches three kinds without a duplicate row? [Clarity, Spec §FR-011]
 - [x] CHK014 Is `Antigravity CLI` fixed as the one display spelling on every surface, with no alternative appearing in any user-facing text requirement? [Clarity, Spec §FR-001]
-- [x] CHK015 Is the root-only context rule written so it cannot be read as admitting a nested `GEMINI.md` or `AGENTS.md`, and is the depth recorded as a known uncertainty rather than as a settled vendor fact? [Clarity, Spec §FR-007; Contract §Known uncertainties item 1]
+- [x] CHK015 Is the context rule written so a reader knows it admits `GEMINI.md` and `AGENTS.md` at every depth, a directory's `.agents/` included, and is the unstated same-directory choice between the two names recorded as a known uncertainty rather than as a settled vendor fact? [Clarity, Spec §FR-007; Contract §Known uncertainties item 1] — amended 2026-09-24: the Rules page documents the hierarchy (Spec § Clarifications Session 2026-09-24).
 - [x] CHK016 Is the treatment of a legacy MCP key stated as showing what is written without classifying it, rather than as validation the product does not perform? [Clarity, Spec §FR-005]
 
 ## Requirement Consistency
@@ -38,8 +38,8 @@
 - [x] CHK019 Does FR-012's list of kinds this tool publishes none of agree with the kinds the contract's presentation allowlist carries? [Consistency, Spec §FR-012; Contract §Normative initial-release presentation allowlist]
 - [x] CHK020 Do the member statements agree at five across FR-008, the data model's tuple, and the quickstart's consent walkthrough? [Consistency, Spec §FR-008; Data Model §GlobalMemberId and the member tuple; Quickstart §See the fifth member]
 - [x] CHK021 Does FR-013 describe Copilot's root recognition as unchanged, without implying that this feature edits a Copilot record? [Consistency, Spec §FR-013]
-- [x] CHK022 Do the skill row decisions agree across FR-004, User Story 3, and the data model — one row per name, both definitions, no precedence? [Consistency, Spec §FR-004, §US3; Data Model §Skill row and detail]
-- [x] CHK023 Does the plan's claim that no DTO shape changes agree with the data model, given that a member id and a label move? [Consistency, Plan §Constitution Check; Data Model §GlobalMemberId and the member tuple]
+- [x] CHK022 Do the skill row decisions agree across FR-004, User Story 3, and the data model — one row per name, one definition per file per recognizing product, and a flat file on no row? [Consistency, Spec §FR-004, §US3; Data Model §Skill row and detail] — amended 2026-09-24: no page documents a flat skill.
+- [x] CHK023 Does the plan's statement of which DTO shapes change agree with the data model — a member id and a label move, and a skill definition carries no row-unit field? [Consistency, Plan §Constitution Check; Data Model §GlobalMemberId and the member tuple] — amended 2026-09-24: every skill is its folder, so the row-unit field is gone.
 
 ## Acceptance Criteria Quality
 

@@ -734,7 +734,9 @@ documentを並べて比較する。例外はcarrier自身が宣言であるside�
 productがあることを述べるのがそのrowだからである。両sideがcarrier file そのものであるkindでは
 side ごとに1行とする。あるfileを読むproductはそのfile自身の事実であり、2行が既にそれを担うからである。
 1行に収まらないlistはpageを広げず折り返す。その背後のparseは、Markdown系kindについては`(file, kind)`ごとに
-1回である。shippedな全vendorが同じ固定YAML semanticsで読むためである。custom-agent kindは
+1回である。どのruleがfileをadmitしても、このproductはその宣言を1つの固定YAML semanticsで読むためである
+（data-model.md § Field reading）。productが全体をそのまま読むinstruction fileは何も宣言しないので、
+parseは1回も行わない。custom-agent kindは
 例外で`(file, tool)`ごとに1回になる。agent fileがどこで分割されるかはadmitしたrule自身の
 読み取りであり、Codexのagentは`developer_instructions`のstringがproseであるTOMLだからである。Markdown系kindのfrontmatterは
 YAML — blockそのものの言語 — へserializeし、各comparisonはそのkindについてvendorが文書化して
@@ -1015,7 +1017,7 @@ Session-wide consent 1件で5 member全てを固定し、frozen preview entryご
 blockせずそのtoolのabsent/failed outcomeとして記録する（FR-014）。1つのtoolのrootに限定されない
 unexpected failureは全transactionをowning request
 boundary経由でabortする。Validationがrootを1つもadmitしない場合、`active-no-job`はretry/disable用controlを保持し、
-Source/job/generationをpublishしない。1つから4つをadmitした場合、provisional batch scan 1件が各rootの独立したSourceを
+Source/job/generationをpublishしない。1つから5つをadmitした場合、provisional batch scan 1件が各rootの独立したSourceを
 正確に1つのGlobal generation — Global sequenceを作るenable commit — でまとめてpublishし、tool別commitは観測できない。Active-consent retryのvalidation/admissionは
 operation-localで、新たにvisibleとなるのは`globalEnableInProgress`だけとし、`pendingTools`、`retryableTools`、`batchStatus`、
 Diagnostic、control、Source、prior snapshotはexactなpre-operation projectionを維持する。Atomic queued acceptanceだけが
@@ -1101,7 +1103,7 @@ recursive-directory segment）を拒否し、exact/direct-child/explicit descend
 authored manifest inventory、FR-015からFR-018およびFR-045の外へのGlobal read 0件を扱う。
 さらに、member Global Sourceが0から5つで各member最大1つ、各Sourceが正確に1つのrootとSource-relative Path
 namespaceを持つこと、literal credentialのexact表示、reveal controlがないこと、環境変数を置換しないことを
-検証する。Lifecycle fixtureは全4 Sourceの未解決failure共存、Source別clear/replace/removal、自動初回failureの
+検証する。Lifecycle fixtureは複数Sourceにまたがる未解決failure共存、Source別clear/replace/removal、自動初回failureの
 current stateを扱う。Browser fixtureはordinaryなrequest rejectionがrequest-localに留まること、transportが報告する
 channel loss、session mismatchを伴うport再利用、page-lifecycle listener/purge/refetchが存在しないこと、
 continuously idleでvisibleなpage上のprocess lossにwall-clock保証がないこと、scan commit/disable barrierを

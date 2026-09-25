@@ -167,10 +167,6 @@ describe('Copilot skill invocation name', () => {
       'frontmatter',
       'invocationName',
       'kind',
-      // The row unit the admitting rule declared, carried so the census does
-      // not re-derive a skill's shape from its path
-      // (`rules/skills/compiled-rule.ts` § skillRowUnit).
-      'rowUnit',
     ]);
     expect(recognition.details.frontmatter).toEqual([
       {
@@ -228,7 +224,6 @@ describe('Copilot skill invocation name', () => {
         'frontmatter',
         'invocationName',
         'kind',
-        'rowUnit',
       ]);
     }
     expect(ship.provenances.map((provenance) => provenance.matchedPath)).toEqual([
@@ -409,8 +404,11 @@ describe('Copilot instruction declarations (T261)', () => {
       '.github/instructions/frontend.instructions.md',
       'copilot.repo.instructions.path',
     );
-    if (recognition.details.kind !== 'instructions') {
-      throw new Error('expected an instructions recognition');
+    if (
+      recognition.details.kind !== 'instructions' ||
+      recognition.details.format !== 'frontmatter-led'
+    ) {
+      throw new Error('expected a frontmatter-led instructions recognition');
     }
     expect(recognition.details.frontmatter.map((entry) => entry.key)).toEqual([
       'applyTo',
@@ -442,8 +440,8 @@ describe('Copilot instruction declarations (T261)', () => {
     try {
       const recognition = await recognizeInstruction(
         `---\ntoken: ${CONTENT_FIXTURE_SECRET}\nendpoint: \${ACI_T261_METADATA}/v1\n---\n\n# Repository\n`,
-        '.github/copilot-instructions.md',
-        'copilot.repo.instructions.repository',
+        '.github/instructions/deploy.instructions.md',
+        'copilot.repo.instructions.path',
       );
       const serialized = JSON.stringify(recognition);
       expect(serialized).toContain(CONTENT_FIXTURE_SECRET);
@@ -1345,14 +1343,14 @@ describe('the Copilot hook reading and its surface facts (T888)', () => {
   });
 
   it('records each surface’s documented composition as its own strategy', () => {
-    // The editor resolves one event's workspace and User hooks with the
-    // workspace winning, then runs the applicable agent and plugin hooks in
-    // addition — `select-first` and `append` in one record, with `filter` for
-    // the settings and preview gates that decide which sources participate.
+    // The editor runs every applicable user, workspace, plugin, and
+    // agent-scoped hook for an event, with `filter` for the settings and
+    // preview gates that decide which sources participate; its page states no
+    // precedence or order between them, so no same-event winner is recorded.
     expect(COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY.operations).toEqual([
       'filter',
-      'select-first',
       'append',
+      'unknown-order',
     ]);
     expect(COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY.lifecycleQualifiers).toEqual(['preview']);
     // The CLI composes instead of selecting: every entry of every active source

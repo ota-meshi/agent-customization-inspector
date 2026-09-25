@@ -215,7 +215,7 @@ const rowCount = computed(() => ROW_COUNT_BY_KIND[props.kind](props));
           :member-key="(entry) => fileIdentityKey(entry.sourceId, entry.sourceRelativePath)"
         >
           <template #member="{ member }">
-            <RuleRow :entry="member" />
+            <RuleRow :entry="member" :files-by-source="filesBySource" :diagnostics="diagnostics" />
           </template>
         </SourceFamilySections>
       </template>
@@ -268,6 +268,7 @@ const rowCount = computed(() => ROW_COUNT_BY_KIND[props.kind](props));
           v-for="entry in outputStyleRows"
           :key="entry.name"
           :entry="entry"
+          :files-by-source="filesBySource"
           :diagnostics="diagnostics"
         />
       </template>
@@ -281,7 +282,11 @@ const rowCount = computed(() => ROW_COUNT_BY_KIND[props.kind](props));
           :member-key="(entry) => fileIdentityKey(entry.sourceId, entry.sourceRelativePath)"
         >
           <template #member="{ member }">
-            <SettingsRow :entry="member" />
+            <SettingsRow
+              :entry="member"
+              :files-by-source="filesBySource"
+              :diagnostics="diagnostics"
+            />
           </template>
         </SourceFamilySections>
       </template>

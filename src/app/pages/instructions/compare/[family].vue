@@ -18,8 +18,11 @@
 // `/instructions/compare/<family>?leftSource=…&left=…&rightSource=…&right=…` —
 // the two files named by their whole identity, each its own Source and
 // Source-relative Path (FR-030), inside the family they are both of. The owning
-// range is derived from them, because a file governs exactly one range within
-// its Source.
+// range is derived from them: it is the range whose block lists both files. A
+// file can sit in more than one range, because each product states its own —
+// `.claude/AGENTS.md` governs `**` for Claude Code and `.claude/**` for
+// Copilot — so the block is found by holding both sides, never by looking one
+// file's range up.
 //
 // The family is the boundary, not one Source: a family can hold two consented
 // homes, and comparing what each of them says is the point of grouping them
@@ -72,6 +75,7 @@ import {
   escapeControlCharacters,
   FILE_ENCODING_TEXT,
   isReadableFile,
+  SUPPORTED_TOOL_ORDER,
 } from '../../../../shared/entities';
 import { FILE_DETAIL_KIND_TEXT } from '../../../../shared/api-text';
 import type {
@@ -226,9 +230,12 @@ function isComparable(side: ComparisonSide | null): boolean {
  * two ranges or two families, one file twice, or an identity the current scan
  * does not hold is not a comparison this model expresses (FR-011).
  *
- * A file governs exactly one range within its Source, so at most one range can
- * hold both sides — and the family narrows it to the one block a reader clicked
- * from.
+ * A file can sit in two ranges of its Source when two products derive
+ * different ones for it — a `.claude/AGENTS.md` is Claude Code's `**` and
+ * GitHub Copilot's `.claude/**` — so the block is found by the range whose rows
+ * hold both sides rather than by the first row holding either. At most one
+ * range does: only such a file carries two, and one directory holds one of
+ * it, so two files can share both of theirs only by being one file.
  */
 const owningBlock = computed<readonly InstructionInventoryEntryDto[]>(() => {
   const left = currentLeft.value;
@@ -244,27 +251,23 @@ const owningBlock = computed<readonly InstructionInventoryEntryDto[]>(() => {
   const holds = (entry: InstructionInventoryEntryDto, side: ComparisonSide): boolean =>
     sourceIdOf(snapshot.value?.sources ?? [], side.source) === entry.sourceId &&
     entry.files.some((file) => file.sourceRelativePath === side.sourceRelativePath);
-  for (const entry of snapshot.value?.instructions ?? []) {
-    if (familyBySourceId.value.get(entry.sourceId) !== family.value) {
-      // Another family's row. Its files may carry these very paths, and
-      // comparing them under this address would show one family's files under
-      // the other's (FR-030).
-      continue;
-    }
-    if (!holds(entry, left) && !holds(entry, right)) {
-      continue;
-    }
-    // The block is every row of this family at that range, because the pair may
-    // span two of its Sources.
-    const block = (snapshot.value?.instructions ?? []).filter(
-      (candidate) =>
-        candidate.applicabilityRange === entry.applicabilityRange &&
-        familyBySourceId.value.get(candidate.sourceId) === family.value,
-    );
-    return block.some((candidate) => holds(candidate, left)) &&
+  // Another family's rows are left out: their files may carry these very
+  // paths, and comparing them under this address would show one family's files
+  // under the other's (FR-030). A block is every row of this family at one
+  // range, because the pair may span two of its Sources.
+  const blocks = Map.groupBy(
+    (snapshot.value?.instructions ?? []).filter(
+      (entry) => familyBySourceId.value.get(entry.sourceId) === family.value,
+    ),
+    (entry) => entry.applicabilityRange,
+  );
+  for (const block of blocks.values()) {
+    if (
+      block.some((candidate) => holds(candidate, left)) &&
       block.some((candidate) => holds(candidate, right))
-      ? block
-      : [];
+    ) {
+      return block;
+    }
   }
   return [];
 });
@@ -454,22 +457,28 @@ const readyView = computed(() => {
   if (!isReadableFile(left.file) || !isReadableFile(right.file)) {
     return null;
   }
-  // The inventory's recognitions of one compared file, resolved from the
-  // owning row the pair already stands on: the row is where the facts live
-  // (FR-030), so no second per-path lookup is built beside it.
-  const recognitionsOf = (file: FileDetailDto['file']): readonly FileRecognitionDto[] => {
-    for (const entry of owningBlock.value) {
-      if (entry.sourceId !== file.sourceId) {
-        continue;
-      }
-      for (const listed of entry.files) {
-        if (listed.sourceRelativePath === file.sourceRelativePath) {
-          return listed.recognitions;
-        }
-      }
-    }
-    return [];
-  };
+  // The inventory's recognitions of one compared file, gathered from every
+  // row that lists it rather than from the owning block alone. A row carries
+  // only the recognitions that give the file that row's range, and one file
+  // can sit in two ranges — `.claude/AGENTS.md` governs `**` for Claude Code
+  // and `.claude/**` for Copilot — so the owning block alone would state
+  // "Not recognized" for a product that reads the file. The pair still
+  // stands on its owning block; what a side box states is a fact about the
+  // file. Each product gives a file one range, so the rows hold no product
+  // twice, and the union is put back in the closed tool order the rows use
+  // (data-model.md § ToolRecognition).
+  const recognitionsOf = (file: FileDetailDto['file']): readonly FileRecognitionDto[] =>
+    (snapshot.value?.instructions ?? [])
+      .filter((entry) => entry.sourceId === file.sourceId)
+      .flatMap((entry) =>
+        entry.files.flatMap((listed) =>
+          listed.sourceRelativePath === file.sourceRelativePath ? listed.recognitions : [],
+        ),
+      )
+      .toSorted(
+        (left, right) =>
+          SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool),
+      );
   // Read once and used twice — beside each side's path, and as the
   // recognition comparison's side input — so the products a side box names
   // and the products its rows compare cannot disagree (AGENTS.md
@@ -871,9 +880,9 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- The component owns the section order — the recognitions, the
-           declarations, the body, and last the complete files it takes below
-           through the `source` slot (research.md § 7). What the source diff is
-           stays this page's. -->
+           declarations and the body where both formats declare, and last the
+           complete files it takes below through the `source` slot
+           (research.md § 7). What the source diff is stays this page's. -->
       <RecognitionComparison
         :comparison="readyView.recognition"
         :left-path="readyView.sides[0].path"
@@ -884,8 +893,15 @@ onBeforeUnmount(() => {
             <h3 class="aci-compare-block-title">Source comparison</h3>
             <!-- What the diff holds, said before it, as each block above says
                  what its own two sides are: this one is the files themselves,
-                 with nothing removed or reordered (FR-027). -->
-            <p class="aci-note">Each side is the file exactly as written, frontmatter included.</p>
+                 with nothing removed or reordered (FR-027). The frontmatter is
+                 named only beside the blocks that took it apart: where the
+                 formats declare nothing, a block opening a file is a line of
+                 its instructions, and naming it would say otherwise
+                 (api-types.ts § InstructionFileFormat). -->
+            <p v-if="readyView.recognition.declarations !== null" class="aci-note">
+              Each side is the file exactly as written, frontmatter included.
+            </p>
+            <p v-else class="aci-note">Each side is the file exactly as written.</p>
             <SourceDiff
               v-bind="readyView.diff"
               :register-content-owner="registerComparisonContentOwner"

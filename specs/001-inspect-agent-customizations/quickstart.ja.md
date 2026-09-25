@@ -156,7 +156,7 @@ CLIは呼び出し時の`process.cwd()`を1回だけcaptureする。省略時は
 受理し（反復指定はparserのlast valueへ解決）、absolute optionはそのまま保持し、relative optionはcaptureした呼び出しdirectoryに対してresolveする。
 明示的なempty valueはsessionまたはbrowser attemptより前に固定actionableかつsource-value-freeなoutputを出して終了し、
 valueの欠落は同じboundaryでGunshiのtyped argument validationによりrejectされる。Editor launcherの探索と
-session作成より前に、CLIは文書化された4つのtool-home環境プロパティを固定順で1回ずつcaptureし、
+session作成より前に、CLIは文書化された3つのtool-home環境プロパティを固定順で1回ずつcaptureし、
 `node:os.homedir()`を無条件で1回callする。そのretained captureをlauncher lookupから除外するeligibleな
 personal rootとすべてのpreviewに使う。Selectionは`process.chdir()`を呼ばず、startupのinput capture、
 classification、またはdisplay escapeのfailureはsessionやbrowserが存在する前にlaunchを終了させ、
@@ -615,9 +615,9 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    retainedされたままになり得る。どちらのfailureもauthorityやjobを作らず、`scanRequestId`を発行しない。
 3. Opt-in後は文書化されたmember candidateだけが0から5つの別識別member Global Sourceに表示される。
    Copilot、Claude、Codex、Antigravity CLI、共有agent homeごとに最大1つで、各Sourceは正確に1つのrootを持つ。
-   Antigravity CLI homeは`GEMINI.md`、`config/mcp_config.json`、`config/hooks.json`、`config/agents/*.md`と
-   `config/agents/*/agent.md`、
-   `config/skills/*/SKILL.md`、2つのadmitされた形での端末自身の`antigravity-cli/skills/`、そしてsettings・
+   Antigravity CLI homeは`GEMINI.md`と`AGENTS.md`、`config/`配下の同じ組、`config/rules/*.md`と
+   `antigravity-cli/rules/*.md`、`config/mcp_config.json`、`config/hooks.json`、`config/agents/*.md`と
+   `config/agents/*/agent.md`、`config/skills/*/SKILL.md`と`antigravity-cli/skills/*/SKILL.md`、そしてsettings・
    permissions・hookの各rowに載る`antigravity-cli/settings.json`をpublishし、その他は何もpublishしない
    （specs/003-antigravity-cli-support/spec.md FR-009）。Initial/retry transactionでadmitされた
    全Sourceは、観測可能なper-tool commitなしに1つのatomicなGlobal generationへ一緒に現れる — enable commitは
@@ -629,7 +629,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    作らずdefaultへ黙ってfallbackしない。設定がabsentの場合だけdefaultを使う。Consent済みrootがmissingまたは
    readableなdirectoryでない場合は、他のtoolのcommitを妨げずそのtoolをabsentまたはfailedとして記録する。
    Eligibleなabsolute rootは通常のhome外でもeligibleであり、その場所だけを理由にrejectしたりconsent前I/O authorityを
-   与えたりしない。All-invalid preview、またはconsent後に4 rootすべてがabsentと判明するeligible previewも
+   与えたりしない。All-invalid preview、またはconsent後に5 rootすべてがabsentと判明するeligible previewも
    all-tools confirmationを1回受けてよく、deterministicallyに
    `active-no-job`になる。
 5. 注入したunexpectedなadmission failureはtransaction全体をabortさせる。Initial enableはそのfailureの

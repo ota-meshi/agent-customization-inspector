@@ -77,26 +77,6 @@ test.beforeEach(async () => {
     join(fixture, '.agents/skills/shared/logo.png'),
     Buffer.from('PNG\u0000bytes\n', 'latin1'),
   );
-  // A second name spelled in both admitted shapes of one `.agents/skills/`:
-  // the flat file has no directory, so it ships no census companion, and the
-  // folder beside it ships one (spec.md § FR-004). What the pair of them can
-  // step to is what T057 asks of this surface.
-  await mkdir(join(fixture, '.agents/skills/tide/agents'), { recursive: true });
-  await writeFile(
-    join(fixture, '.agents/skills/tide.md'),
-    '---\nname: tide\n---\n\n# flat tide\n',
-    'utf8',
-  );
-  await writeFile(
-    join(fixture, '.agents/skills/tide/SKILL.md'),
-    '---\nname: tide\n---\n\n# folder tide\n',
-    'utf8',
-  );
-  await writeFile(
-    join(fixture, '.agents/skills/tide/agents/openai.yaml'),
-    `api_key: ${AGENTS_SECRET}\n`,
-    'utf8',
-  );
   host = await launchHost(fixture);
 });
 
@@ -239,27 +219,4 @@ test('drops the content when the route leaves the comparison', async ({ page }) 
   const text = await page.locator('main').innerText();
   expect(text).not.toContain(AGENTS_SECRET);
   expect(text).not.toContain(CLAUDE_SECRET);
-});
-
-test('offers no companion where one copy of the pair has no directory', async ({ page }) => {
-  // A copy that is one file has no census of its own, so a pair holding one
-  // has no corresponding-file axis: the folder copy's companion belongs to
-  // that copy and has no counterpart to stand opposite (spec.md § FR-004).
-  // The pair is the two entry files, and nothing offers to step it.
-  await page.goto(host.origin);
-  await page
-    .locator('.aci-item')
-    .filter({ hasText: '.agents/skills/tide.md' })
-    .getByRole('link', { name: "Compare this skill's files" })
-    .click();
-  await page.waitForURL(/\/skills\/compare\/repository\?/u);
-  await expect(page.getByRole('combobox', { name: 'Compared file' })).toHaveCount(0);
-  const diff = page.locator('.aci-skill-compare__source .aci-source-diff');
-  await expect(diff).toContainText('flat tide');
-  await expect(diff).toContainText('folder tide');
-  // The folder's own companion — and the credential in it — stays off this
-  // pair's surface, because no side of this pair holds it.
-  const text = await page.locator('main').innerText();
-  expect(text).not.toContain('openai.yaml');
-  expect(text).not.toContain(AGENTS_SECRET);
 });

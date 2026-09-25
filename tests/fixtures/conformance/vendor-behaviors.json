@@ -14,10 +14,10 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.cli-subagents",
-        "url": "https://antigravity.google/docs/cli/subagents/",
+        "url": "https://antigravity.google/docs/subagents/",
         "officialHost": "antigravity.google",
         "sections": ["Custom Agents (Markdown Format)"],
-        "reviewedOn": "2026-09-10",
+        "reviewedOn": "2026-09-24",
         "establishes": "The CLI automatically discovers custom agents defined in Markdown format with YAML frontmatter: workspace agents at .agents/agents/<name>.md or .agents/agents/<name>/agent.md, and global agents in ~/.gemini/config/agents/; an agent with subagent: true set in its frontmatter can be invoked by the primary agent."
       },
       {
@@ -36,13 +36,25 @@
     "surfaces": ["antigravity-cli"],
     "locator": {
       "vendorScope": "repository",
-      "lookupBase": "repository-root",
-      "relativeSelector": "GEMINI.md; AGENTS.md",
-      "traversal": "exact"
+      "lookupBase": "target-path-chain",
+      "relativeSelector": "GEMINI.md; AGENTS.md; .agents/GEMINI.md; .agents/AGENTS.md",
+      "traversal": "ancestor-chain-to-repository-root"
     },
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
+      {
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules/",
+        "officialHost": "antigravity.google",
+        "sections": [
+          "Directory-scoped rules",
+          "YAML frontmatter and activation modes",
+          "Managing rules in Antigravity CLI"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The CLI evaluates AGENTS.md and GEMINI.md at the repository root and in subdirectories: whenever it reads or edits a file it walks up from that file’s folder to the workspace root, loading <dir>/AGENTS.md or <dir>/GEMINI.md and <dir>/.agents/AGENTS.md or <dir>/.agents/GEMINI.md at each level; neither file uses frontmatter — the terminal treats its entire content as plain Markdown — and each is always active for its directory scope."
+      },
       {
         "sourceId": "google.antigravity.cli-migration",
         "url": "https://antigravity.google/docs/cli/gcli-migration/",
@@ -63,16 +75,21 @@
       "relativeSelector": ".agents/hooks.json",
       "traversal": "exact"
     },
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
         "sourceId": "google.antigravity.hooks",
         "url": "https://antigravity.google/docs/hooks/",
         "officialHost": "antigravity.google",
-        "sections": ["Configuration", "Schema and File Format", "Hook Handler Configuration"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "Hooks are configured in a hooks.json file located in the customization directory — .agents/ in the workspace or ~/.gemini/config/ — and that file maps a hook name to its event configurations, each event holding matcher groups whose handlers carry a command and an optional timeout, with an optional per-hook enabled flag."
+        "sections": [
+          "Managing hooks in Antigravity CLI",
+          "Schema and File Format",
+          "Hook Definition Fields",
+          "Hook Handler Configuration"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The CLI defines workspace hooks in .agents/hooks.json at the project root, and that file maps a hook name to its event configurations — the tool events holding matcher groups, the others a list of handlers directly — whose handlers carry a command and an optional timeout, with an optional per-hook enabled flag."
       }
     ]
   },
@@ -91,14 +108,14 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.cli-mcp",
-        "url": "https://antigravity.google/docs/cli/mcp/",
+        "url": "https://antigravity.google/docs/mcp/",
         "officialHost": "antigravity.google",
         "sections": [
           "Global and Workspace Server Configs",
           "MCP Configuration Structure",
           "MCP Configuration Properties"
         ],
-        "reviewedOn": "2026-09-10",
+        "reviewedOn": "2026-09-24",
         "establishes": "Antigravity CLI separates MCP definitions into dedicated configurations — global setups in ~/.gemini/config/mcp_config.json and workspace local setups in .agents/mcp_config.json — each a single mcpServers object whose entries declare command or serverUrl with optional args, env, cwd, and headers."
       },
       {
@@ -117,20 +134,27 @@
     "surfaces": ["antigravity-cli"],
     "locator": {
       "vendorScope": "repository",
-      "lookupBase": "repository-root",
+      "lookupBase": "target-path-chain",
       "relativeSelector": ".agents/rules/<name>.md, .agent/rules/<name>.md",
-      "traversal": "exact"
+      "traversal": "ancestor-chain-to-repository-root"
     },
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
         "sourceId": "google.antigravity.rules",
-        "url": "https://antigravity.google/docs/rules-workflows/",
+        "url": "https://antigravity.google/docs/rules/",
         "officialHost": "antigravity.google",
-        "sections": ["Rules", "Workspace Rules", "Global Rules"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "A rule is a Markdown file limited to 12,000 characters; workspace rules live in the .agents/rules folder of the workspace or git root with backward support for .agent/rules, global rules live in ~/.gemini/GEMINI.md, and each rule declares whether it activates manually, always, by model decision, or by a glob pattern."
+        "sections": [
+          "Where rules are stored",
+          "Directory-scoped rules",
+          "Global rules",
+          "Activation modes",
+          "Size limits and token budgets",
+          "Managing rules in Antigravity CLI"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The CLI evaluates AGENTS.md, GEMINI.md, and .agents/rules/*.md at the repository root and in subdirectories, walking up from the folder of a file it reads or edits to the workspace root, with the legacy .agent/rules/*.md still loaded and only a rules directory’s immediate .md children scanned; its global rules are ~/.gemini/AGENTS.md, ~/.gemini/GEMINI.md, ~/.gemini/config/rules/*.md, and ~/.gemini/antigravity-cli/rules/*.md. Each file in a rules directory declares a trigger — always_on, model_decision, glob, or manual — a rule file over 24,000 bytes is truncated, and rules are cumulative, with the more specific directory rule taking priority when two conflict."
       },
       {
         "sourceId": "google.antigravity.cli-migration",
@@ -149,20 +173,12 @@
     "locator": {
       "vendorScope": "repository",
       "lookupBase": "repository-root",
-      "relativeSelector": ".agents/skills/<name>.md, .agents/skills/<name>/SKILL.md, .agent/skills/<name>/SKILL.md",
+      "relativeSelector": ".agents/skills/<name>/SKILL.md, .agent/skills/<name>/SKILL.md",
       "traversal": "exact"
     },
-    "documentationStatus": "conflict",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
-      {
-        "sourceId": "google.antigravity.cli-plugins-skills",
-        "url": "https://antigravity.google/docs/cli/plugins/",
-        "officialHost": "antigravity.google",
-        "sections": ["Creating local workspace skills"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "To deploy workspace-specific skills, create a directory named .agents/skills/ at the project root and draft a markdown file with a .md extension whose frontmatter defines name and description; when you run agy in that directory the skill is compiled and becomes a slash command."
-      },
       {
         "sourceId": "google.antigravity.cli-migration",
         "url": "https://antigravity.google/docs/cli/gcli-migration/",
@@ -175,9 +191,15 @@
         "sourceId": "google.antigravity.skills",
         "url": "https://antigravity.google/docs/skills/",
         "officialHost": "antigravity.google",
-        "sections": ["Where skills live", "Creating a skill", "Skill folder structure"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "A skill is a folder containing a SKILL.md file; a workspace-specific one lives at <workspace-root>/.agents/skills/<skill-folder>/, .agents/skills is the current default with backward support for .agent/skills, and SKILL.md is the only required file beside optional scripts, examples, and resources."
+        "sections": [
+          "What are skills?",
+          "Anatomy of a skill",
+          "Frontmatter fields",
+          "CLI skill locations",
+          "Slash command conversion"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "A skill is a folder containing a SKILL.md file, the only required file beside optional scripts, examples, and resources; the terminal’s workspace skills live at <workspace-root>/.agents/skills/<skill-folder>/, .agents/skills is the default with backward compatibility for .agent/skills, the frontmatter requires a description and defaults name to the folder name, and the CLI turns every skill into a slash command."
       }
     ]
   },
@@ -196,10 +218,10 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.cli-subagents",
-        "url": "https://antigravity.google/docs/cli/subagents/",
+        "url": "https://antigravity.google/docs/subagents/",
         "officialHost": "antigravity.google",
         "sections": ["Custom Agents (Markdown Format)"],
-        "reviewedOn": "2026-09-10",
+        "reviewedOn": "2026-09-24",
         "establishes": "Global custom agents are discovered in ~/.gemini/config/agents/."
       },
       {
@@ -219,12 +241,20 @@
     "locator": {
       "vendorScope": "user",
       "lookupBase": "tool-home",
-      "relativeSelector": "GEMINI.md",
+      "relativeSelector": "GEMINI.md; AGENTS.md; config/GEMINI.md; config/AGENTS.md",
       "traversal": "exact"
     },
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
+      {
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules/",
+        "officialHost": "antigravity.google",
+        "sections": ["Global rules", "Managing rules in Antigravity CLI"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The standalone global files ~/.gemini/AGENTS.md, ~/.gemini/GEMINI.md, ~/.gemini/config/AGENTS.md, and ~/.gemini/config/GEMINI.md apply across all projects, need no frontmatter, and are always active, and the CLI section names the first two among its global rules."
+      },
       {
         "sourceId": "google.antigravity.cli-migration",
         "url": "https://antigravity.google/docs/cli/gcli-migration/",
@@ -250,10 +280,10 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.cli-settings",
-        "url": "https://antigravity.google/docs/cli/settings/",
+        "url": "https://antigravity.google/docs/settings/",
         "officialHost": "antigravity.google",
         "sections": ["Configuration file location"],
-        "reviewedOn": "2026-09-10",
+        "reviewedOn": "2026-09-24",
         "establishes": "Antigravity CLI stores user preferences in a plain JSON configuration profile at ~/.gemini/antigravity-cli/settings.json."
       },
       {
@@ -280,20 +310,16 @@
     "lifecycleQualifiers": [],
     "evidence": [
       {
-        "sourceId": "google.antigravity.cli-plugins-skills",
-        "url": "https://antigravity.google/docs/cli/plugins/",
-        "officialHost": "antigravity.google",
-        "sections": ["Managing hooks"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "Hooks intercept agent actions right before or immediately after execution and are defined inside a plugin hooks.json or configured inside the primary settings.json file."
-      },
-      {
         "sourceId": "google.antigravity.hooks",
         "url": "https://antigravity.google/docs/hooks/",
         "officialHost": "antigravity.google",
-        "sections": ["Configuration", "Schema and File Format", "Common Input Fields"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "Hooks are configured in a hooks.json file located in the customization directory — .agents/ in the workspace or ~/.gemini/config/ — and the transcript a hook receives lives under ~/.gemini/antigravity-cli for the CLI, beside ~/.gemini/antigravity for Antigravity 2.0."
+        "sections": [
+          "Managing hooks in Antigravity CLI",
+          "Schema and File Format",
+          "Common Input Fields"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The CLI defines hooks in the workspace .agents/hooks.json, globally in ~/.gemini/config/hooks.json or inside the primary ~/.gemini/antigravity-cli/settings.json file, and inside an installed plugin’s hooks.json; the page gives the standalone file’s schema and none for the settings-file form, and the transcript a hook receives lives under ~/.gemini/antigravity-cli for the CLI."
       }
     ]
   },
@@ -312,10 +338,10 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.cli-mcp",
-        "url": "https://antigravity.google/docs/cli/mcp/",
+        "url": "https://antigravity.google/docs/mcp/",
         "officialHost": "antigravity.google",
         "sections": ["Global and Workspace Server Configs"],
-        "reviewedOn": "2026-09-10",
+        "reviewedOn": "2026-09-24",
         "establishes": "Global MCP server setups are configured in ~/.gemini/config/mcp_config.json, and workspace local setups in the active project under .agents/mcp_config.json."
       }
     ]
@@ -335,10 +361,10 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.cli-permissions",
-        "url": "https://antigravity.google/docs/cli/permissions/",
+        "url": "https://antigravity.google/docs/permissions/",
         "officialHost": "antigravity.google",
-        "sections": ["Fine-grained permissions", "Supported actions & matching rules"],
-        "reviewedOn": "2026-09-10",
+        "sections": ["CLI fine-grained permissions", "Supported CLI actions and matching rules"],
+        "reviewedOn": "2026-09-24",
         "establishes": "Every sensitive operation is a permission resource formatted as action(target), evaluated across the deny, ask, and allow lists configured inside the global settings at ~/.gemini/antigravity-cli/settings.json, with conflicting rules resolved in the order deny, then ask, then allow."
       }
     ]
@@ -358,11 +384,11 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.cli-plugins-skills",
-        "url": "https://antigravity.google/docs/cli/plugins/",
+        "url": "https://antigravity.google/docs/plugins/",
         "officialHost": "antigravity.google",
-        "sections": ["Antigravity plugins", "Plugin filesystem structure"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "When you install or import a plugin the CLI stages the bundle files within the global configuration path ~/.gemini/antigravity-cli/plugins/<plugin_name>/, whose documented layout holds plugin.json, and optionally mcp_config.json, hooks.json, skills/, agents/, and rules/."
+        "sections": ["Directory structure", "CLI filesystem location"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "When you install a plugin the CLI stages its assets within the global configuration directory at ~/.gemini/antigravity-cli/plugins/<plugin_name>/, and a plugin directory holds a required plugin.json and optionally mcp_config.json, hooks.json, skills/, agents/, and rules/."
       },
       {
         "sourceId": "google.antigravity.cli-features",
@@ -371,6 +397,29 @@
         "sections": ["Plugins"],
         "reviewedOn": "2026-09-10",
         "establishes": "Plugins are namespaced bundles containing skills, agents, rules, MCP servers, and hooks; installing one stages the files under ~/.gemini/antigravity-cli/plugins/<plugin_name>/ beside an import_manifest.json tracking manifest."
+      }
+    ]
+  },
+  {
+    "behaviorId": "antigravity.behavior.user.rules",
+    "tool": "antigravity",
+    "surfaces": ["antigravity-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "config/rules/<name>.md, antigravity-cli/rules/<name>.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.rules",
+        "url": "https://antigravity.google/docs/rules/",
+        "officialHost": "antigravity.google",
+        "sections": ["Global rules", "Activation modes", "Managing rules in Antigravity CLI"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Modular global rules live in ~/.gemini/config/rules/*.md and need YAML frontmatter declaring a trigger, the CLI also evaluates ~/.gemini/antigravity-cli/rules/*.md, and only a rules directory’s immediate .md children are scanned."
       }
     ]
   },
@@ -389,10 +438,10 @@
     "evidence": [
       {
         "sourceId": "google.antigravity.cli-settings",
-        "url": "https://antigravity.google/docs/cli/settings/",
+        "url": "https://antigravity.google/docs/settings/",
         "officialHost": "antigravity.google",
         "sections": ["Setting up preferences", "Configuration file location"],
-        "reviewedOn": "2026-09-10",
+        "reviewedOn": "2026-09-24",
         "establishes": "The persistent settings are saved in plain JSON at ~/.gemini/antigravity-cli/settings.json, written sparsely so that only values differing from their defaults reach disk."
       },
       {
@@ -412,27 +461,24 @@
     "locator": {
       "vendorScope": "user",
       "lookupBase": "tool-home",
-      "relativeSelector": "antigravity-cli/skills/<name>/SKILL.md, config/skills/<name>/SKILL.md, antigravity-cli/skills/<name>.md",
+      "relativeSelector": "antigravity-cli/skills/<name>/SKILL.md, config/skills/<name>/SKILL.md",
       "traversal": "exact"
     },
-    "documentationStatus": "conflict",
+    "documentationStatus": "partially-documented",
     "lifecycleQualifiers": [],
     "evidence": [
-      {
-        "sourceId": "google.antigravity.cli-plugins-skills",
-        "url": "https://antigravity.google/docs/cli/plugins/",
-        "officialHost": "antigravity.google",
-        "sections": ["Sharing global skills"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "To share skills across all workspaces, place the target markdown files inside the global configuration path ~/.gemini/antigravity-cli/skills/; any markdown skill there is automatically imported as a global slash command whenever agy launches in any directory."
-      },
       {
         "sourceId": "google.antigravity.skills",
         "url": "https://antigravity.google/docs/skills/",
         "officialHost": "antigravity.google",
-        "sections": ["Where skills live"],
-        "reviewedOn": "2026-09-10",
-        "establishes": "A global skill, available across all workspaces, is a skill folder holding a SKILL.md at ~/.gemini/config/skills/<skill-folder>/ — a different directory and a different shape from the one the terminal page gives for the same scope."
+        "sections": [
+          "CLI skill locations",
+          "Slash command conversion",
+          "Antigravity 2.0 skill locations",
+          "Antigravity IDE skill locations"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The CLI skill locations table gives the terminal’s global skills, available in all workspaces, as skill folders at ~/.gemini/antigravity-cli/skills/<skill-folder>/ beside plugin-provided skills, and the CLI turns every skill into a slash command; ~/.gemini/config/skills/<skill-folder>/ is the global location the page gives Antigravity 2.0 and the standalone IDE."
       }
     ]
   },
@@ -523,12 +569,13 @@
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
         "sections": [
-          "Where skills live",
-          "Discovery from parent and nested directories",
+          "Choose where skills load",
+          "Load skills in monorepos and subdirectories",
+          "Resolve skills that share a name",
           "How a skill gets its command name"
         ],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Custom commands are merged into skills: a .claude/commands/deploy.md and a .claude/skills/deploy/SKILL.md both create /deploy, existing .claude/commands/ files keep working, and a skill outranks a command of the same name. A command file supports the same frontmatter as a skill except name and paths, which Claude Code ignores in one, and is invoked by its file name without the extension. The page says command files work the way skills do but writes its nested-directory sentence about .claude/skills/ alone, so no skill-equivalent ancestor or lazy-descendant command traversal is stated independently."
+        "reviewedOn": "2026-09-24",
+        "establishes": "A command file in .claude/commands/ is the older format of a skill and still works, and when a skill and a command file share a name the skill runs. A command file supports the same frontmatter as a skill except name and paths, and is invoked by its file name without the extension. The page writes its parent and nested discovery about .claude/skills/ alone, so no skill-equivalent ancestor or lazy-descendant command traversal is stated independently."
       },
       {
         "sourceId": "anthropic.claude-code.changelog.legacy-command-nesting",
@@ -578,19 +625,27 @@
     "locator": {
       "vendorScope": "repository",
       "lookupBase": "runtime-cwd",
-      "relativeSelector": "CLAUDE.md; CLAUDE.local.md",
+      "relativeSelector": "CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md; AGENTS.md; .claude/AGENTS.md",
       "traversal": "ancestor-chain-to-filesystem-root"
     },
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
         "sourceId": "anthropic.claude-code.memory.locations-load",
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
-        "sections": ["How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md; the walk names no repository root as its stop, and it names no .claude/CLAUDE.md variant on an ancestor directory."
+        "sections": ["How CLAUDE.md files load", "When Claude Code reads AGENTS.md"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md, and the walk names no repository root as its stop. A CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md in any directory above the working directory counts as a file Claude reads instead of AGENTS.md, and the AGENTS.md read at session start covers every AGENTS.md and .claude/AGENTS.md in those directories too."
+      },
+      {
+        "sourceId": "anthropic.claude-code.changelog.agents-md",
+        "url": "https://code.claude.com/docs/en/changelog",
+        "officialHost": "code.claude.com",
+        "sections": ["2.1.277"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005)."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",
@@ -609,19 +664,31 @@
     "locator": {
       "vendorScope": "repository",
       "lookupBase": "runtime-cwd",
-      "relativeSelector": "CLAUDE.md; CLAUDE.local.md",
+      "relativeSelector": "CLAUDE.md; CLAUDE.local.md; AGENTS.md",
       "traversal": "lazy-descendant"
     },
-    "documentationStatus": "partially-documented",
+    "documentationStatus": "documented",
     "lifecycleQualifiers": [],
     "evidence": [
       {
         "sourceId": "anthropic.claude-code.memory.locations-load",
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
-        "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case."
+        "sections": [
+          "Choose where to put CLAUDE.md files",
+          "How CLAUDE.md files load",
+          "When Claude Code reads AGENTS.md"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case. A subdirectory’s AGENTS.md is read the same way, once Claude opens a file there with the Read tool."
+      },
+      {
+        "sourceId": "anthropic.claude-code.changelog.agents-md",
+        "url": "https://code.claude.com/docs/en/changelog",
+        "officialHost": "code.claude.com",
+        "sections": ["2.1.277"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005)."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",
@@ -640,7 +707,7 @@
     "locator": {
       "vendorScope": "repository",
       "lookupBase": "runtime-cwd",
-      "relativeSelector": "CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md",
+      "relativeSelector": "CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md; AGENTS.md; .claude/AGENTS.md",
       "traversal": "exact"
     },
     "documentationStatus": "documented",
@@ -650,9 +717,21 @@
         "sourceId": "anthropic.claude-code.memory.locations-load",
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
-        "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch."
+        "sections": [
+          "Choose where to put CLAUDE.md files",
+          "How CLAUDE.md files load",
+          "When Claude Code reads AGENTS.md"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch. At session start Claude Code also reads every AGENTS.md and .claude/AGENTS.md in the working directory and the directories above it."
+      },
+      {
+        "sourceId": "anthropic.claude-code.changelog.agents-md",
+        "url": "https://code.claude.com/docs/en/changelog",
+        "officialHost": "code.claude.com",
+        "sections": ["2.1.277"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "Release 2.1.277 added AGENTS.md support, reading AGENTS.md in a project with no CLAUDE.md and changing that under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the AGENTS.md half of this lookup (QR-005)."
       },
       {
         "sourceId": "anthropic.claude-code.sdk.setting-sources",
@@ -786,7 +865,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Organize rules with .claude/rules/"],
-        "reviewedOn": "2026-08-27",
+        "reviewedOn": "2026-09-24",
         "establishes": "Markdown files placed in a project's .claude/rules/ directory are all discovered recursively, so rules may be organized into subdirectories; a rule without paths frontmatter loads at launch with the same priority as .claude/CLAUDE.md, while a rule with paths applies only when Claude works with a file matching one of its glob patterns. The section states neither the trigger that loads a nested .claude/rules/ directory on demand nor the base an ancestor layer resolves its paths globs against."
       }
     ]
@@ -860,8 +939,8 @@
         "sourceId": "anthropic.claude-code.skills.locations-discovery",
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
-        "sections": ["Where skills live", "Discovery from parent and nested directories"],
-        "reviewedOn": "2026-08-27",
+        "sections": ["Choose where skills load", "Load skills in monorepos and subdirectories"],
+        "reviewedOn": "2026-09-24",
         "establishes": "Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, loading them from the start directory and every parent up to the repository root, while a nested descendant skill directory loads the first time Claude reads or edits a file inside it."
       },
       {
@@ -969,7 +1048,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Auto memory"],
-        "reviewedOn": "2026-08-27",
+        "reviewedOn": "2026-09-24",
         "establishes": "Auto memory keeps its files under the Claude configuration directory per project and loads a startup prefix with topic files fetched on demand."
       },
       {
@@ -999,9 +1078,9 @@
         "sourceId": "anthropic.claude-code.skills.locations-discovery",
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
-        "sections": ["Where skills live", "How a skill gets its command name"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "The personal scope is the home configuration directory — the page places personal skills at ~/.claude/skills/<skill-name>/SKILL.md and says they apply to all your projects — and the same page says command files in .claude/commands/ work the way skills do and are invoked by their file name. That pairing is what makes <claude-config-dir>/commands/ the personal command directory; the page states no traversal for it, which the changelog entry beside this one supplies."
+        "sections": ["Choose where skills load", "How a skill gets its command name"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The personal scope is the home configuration directory — the page places personal skills at ~/.claude/skills/<skill-name>/SKILL.md, loaded in all your projects on this machine — and the same section says a command file in .claude/commands/ is the older format of a skill and still works, while the command-name table names one by its file name. That pairing is what makes <claude-config-dir>/commands/ the personal command directory; the page states no traversal for it, which the changelog entry beside this one supplies."
       },
       {
         "sourceId": "anthropic.claude-code.changelog.legacy-command-nesting",
@@ -1031,7 +1110,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Choose where to put CLAUDE.md files"],
-        "reviewedOn": "2026-08-27",
+        "reviewedOn": "2026-09-24",
         "establishes": "User instructions live at ~/.claude/CLAUDE.md and hold personal preferences for all projects, one of the scopes the documented broadest-to-most-specific load order spans."
       },
       {
@@ -1170,8 +1249,8 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Organize rules with .claude/rules/"],
-        "reviewedOn": "2026-08-27",
-        "establishes": "Personal rules in ~/.claude/rules/ apply to every project on the machine and are loaded before project rules, which gives project rules the higher priority."
+        "reviewedOn": "2026-09-24",
+        "establishes": "Personal rules in ~/.claude/rules/ apply to every project on the machine and are loaded before project rules, and neither set overrides the other."
       }
     ]
   },
@@ -1215,8 +1294,8 @@
         "sourceId": "anthropic.claude-code.skills.locations-discovery",
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
-        "sections": ["Where skills live"],
-        "reviewedOn": "2026-08-27",
+        "sections": ["Choose where skills load"],
+        "reviewedOn": "2026-09-24",
         "establishes": "Claude Code additionally discovers user skills at ~/.claude/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across."
       },
       {
@@ -2722,8 +2801,8 @@
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
         "sections": ["Custom agents settings"],
-        "reviewedOn": "2026-08-19",
-        "establishes": "Custom-agent discovery locations are setting-controlled, which keeps enablement and any additional configured location a runtime condition rather than part of the documented default lookup."
+        "reviewedOn": "2026-09-24",
+        "establishes": "Custom-agent locations for the Local agent come from chat.agentFilesLocations, a deprecated setting for that agent alone, and github.copilot.chat.cli.customAgents.enabled switches custom agents in Copilot sessions, which keeps enablement and any configured location runtime conditions rather than part of the documented default lookup."
       },
       {
         "sourceId": "github.copilot.custom-agents",
@@ -2752,9 +2831,13 @@
         "sourceId": "vscode.copilot.hooks",
         "url": "https://code.visualstudio.com/docs/agent-customization/hooks",
         "officialHost": "code.visualstudio.com",
-        "sections": ["Hook file locations", "Hook configuration format", "Agent-scoped hooks"],
-        "reviewedOn": "2026-08-26",
-        "establishes": "VS Code loads workspace hooks from .github/hooks/*.json and, in the Claude format, from .claude/settings.json and .claude/settings.local.json; workspace hooks take precedence over user hooks for the same event type. A hook configuration file is JSON with a hooks object holding an array of hook commands per event, the same format Claude Code and Copilot CLI use. A custom agent may add a hooks field to its frontmatter, whose hooks run in addition to the workspace and user hooks for the same event."
+        "sections": [
+          "Local hook file locations",
+          "Local hook configuration formats",
+          "Agent-scoped hooks for Local"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The Local harness loads workspace hooks from .github/hooks/*.json and, in the Claude format behind the off-by-default chat.useClaudeHooks setting, from .claude/settings.json and .claude/settings.local.json. A hook file is JSON with a hooks object holding an array of commands per event, and the Local parser also accepts the Copilot and Claude formats. A custom agent may declare hooks in its frontmatter, which run in addition to the applicable user, workspace, and plugin hooks."
       }
     ]
   },
@@ -2776,15 +2859,15 @@
         "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
         "officialHost": "code.visualstudio.com",
         "sections": ["Use an AGENTS.md file", "Use multiple AGENTS.md files"],
-        "reviewedOn": "2026-09-04",
-        "establishes": "VS Code automatically applies the workspace-root AGENTS.md to all chat requests when its setting is on, and nested files are an experimental, disabled-by-default setting under which VS Code searches every subfolder and leaves the choice of applicable instructions to the model."
+        "reviewedOn": "2026-09-24",
+        "establishes": "VS Code takes the primary AGENTS.md at the repository root, which the Local agent reads while its setting is on, and nested AGENTS.md files are a disabled-by-default Local agent setting under which VS Code lists them with their folder locations and the agent loads the instructions relevant to its task."
       },
       {
         "sourceId": "vscode.copilot.settings",
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
         "sections": ["Chat settings"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-09-24",
         "establishes": "The chat.useAgentsMdFile setting defaults to on and the experimental chat.useNestedAgentsMdFiles setting defaults to off, which is what makes the root file read by default and the nested tier a disabled-by-default opt-in."
       },
       {
@@ -2815,8 +2898,8 @@
         "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
         "officialHost": "code.visualstudio.com",
         "sections": ["Use a CLAUDE.md file"],
-        "reviewedOn": "2026-09-04",
-        "establishes": "With the chat.useClaudeMdFile setting enabled, VS Code applies CLAUDE.md as always-on instructions from its documented locations: the workspace root, the .claude folder, the user home, and the local CLAUDE.local.md variant."
+        "reviewedOn": "2026-09-24",
+        "establishes": "With the chat.useClaudeMdFile setting enabled, the Local agent searches for CLAUDE.md in its documented locations: the workspace root, the .claude folder, the user home, and the local CLAUDE.local.md variant."
       }
     ]
   },
@@ -2842,7 +2925,7 @@
           "Instructions file locations",
           "Use a CLAUDE.md file"
         ],
-        "reviewedOn": "2026-09-04",
+        "reviewedOn": "2026-09-24",
         "establishes": "File-based .instructions.md files apply when the applyTo pattern in their header matches what the agent works on, the default workspace location .github/instructions and the Claude-format .claude/rules folder are searched recursively, and a .claude/rules file declares its patterns with a paths property that defaults to every file when omitted."
       },
       {
@@ -2850,8 +2933,8 @@
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
         "sections": ["Custom instructions settings"],
-        "reviewedOn": "2026-08-19",
-        "establishes": "Which instruction locations participate is setting-controlled, so an additional configured location is a runtime input rather than part of the documented default lookup."
+        "reviewedOn": "2026-09-24",
+        "establishes": "Additional instruction locations come from chat.instructionsFilesLocations, a deprecated setting that configures the Local agent alone, so a configured location is a runtime input of that agent rather than part of the documented default lookup, and chat.includeApplyingInstructions decides whether a file whose applyTo matches is added at all."
       }
     ]
   },
@@ -2873,8 +2956,8 @@
         "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
         "officialHost": "code.visualstudio.com",
         "sections": ["Use a .github/copilot-instructions.md file"],
-        "reviewedOn": "2026-09-04",
-        "establishes": "VS Code automatically detects the one repository-wide instruction file at the workspace root and applies it to all chat requests within that workspace."
+        "reviewedOn": "2026-09-24",
+        "establishes": "VS Code uses the one repository-wide instruction file in the .github folder at the repository root for project-wide guidance in Copilot sessions, and the Local agent also discovers it while its setting is on."
       },
       {
         "sourceId": "vscode.copilot.customization",
@@ -2971,8 +3054,8 @@
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
         "sections": ["Reusable prompt files settings"],
-        "reviewedOn": "2026-08-19",
-        "establishes": "The chat.promptFilesLocations setting searches the locations it lists and defaults to { \".github/prompts\": true }, which is both why the located default is what this statement records and why the configured extras are a runtime input it does not."
+        "reviewedOn": "2026-09-24",
+        "establishes": "The chat.promptFilesLocations setting configures prompt file locations for the Local agent, is deprecated with that agent, and defaults to { \".github/prompts\": true }, which is both why the located default is what this statement records and why the configured extras are a runtime input it does not."
       }
     ]
   },
@@ -3025,8 +3108,8 @@
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
         "sections": ["Agent skills settings"],
-        "reviewedOn": "2026-08-19",
-        "establishes": "Skill discovery locations are setting-controlled, which keeps enablement and any additional configured location a runtime condition rather than part of the documented default lookup."
+        "reviewedOn": "2026-09-24",
+        "establishes": "chat.useAgentSkills switches skills on, and additional skill locations come from chat.agentSkillsLocations, a deprecated setting that configures the Local agent alone, which keeps enablement and any configured location runtime conditions rather than part of the documented default lookup."
       }
     ]
   },
@@ -3048,8 +3131,8 @@
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
         "sections": ["Custom agents settings"],
-        "reviewedOn": "2026-08-19",
-        "establishes": "Custom-agent locations are setting-controlled, so the personal and profile locations a workspace session also loads are configuration rather than a fixed list; duplicate-name precedence against workspace, organization, and plugin agents is not established, which is the partially-documented remainder."
+        "reviewedOn": "2026-09-24",
+        "establishes": "Custom-agent locations are configuration rather than a fixed list — chat.agentFilesLocations, deprecated and configuring the Local agent alone, and github.copilot.chat.cli.customAgents.enabled for Copilot sessions; duplicate-name precedence against workspace, organization, and plugin agents is not established, which is the partially-documented remainder."
       }
     ]
   },
@@ -3071,7 +3154,7 @@
         "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
         "officialHost": "code.visualstudio.com",
         "sections": ["Use a CLAUDE.md file"],
-        "reviewedOn": "2026-09-04",
+        "reviewedOn": "2026-09-24",
         "establishes": "The CLAUDE.md location table names the user-home file as personal instructions across all projects."
       }
     ]
@@ -3093,9 +3176,9 @@
         "sourceId": "vscode.copilot.hooks",
         "url": "https://code.visualstudio.com/docs/agent-customization/hooks",
         "officialHost": "code.visualstudio.com",
-        "sections": ["Hook file locations"],
-        "reviewedOn": "2026-08-26",
-        "establishes": "The user scope of the hook-locations table names ~/.copilot/hooks and ~/.claude/settings.json, and the default chat.hookFilesLocations value includes the user Claude settings document."
+        "sections": ["Local hook file locations"],
+        "reviewedOn": "2026-09-24",
+        "establishes": "The user scope of the Local harness hook-locations table names ~/.copilot/hooks/*.json and, behind the chat.useClaudeHooks setting, ~/.claude/settings.json."
       }
     ]
   },
@@ -3106,7 +3189,7 @@
     "locator": {
       "vendorScope": "user",
       "lookupBase": "profile-data",
-      "relativeSelector": ".copilot/instructions/<name>.instructions.md; .claude/rules/<name>.md; profile instruction files",
+      "relativeSelector": ".copilot/copilot-instructions.md; .copilot/instructions/<name>.instructions.md; .claude/rules/<name>.md; profile instruction files",
       "traversal": "recursive-under-base"
     },
     "documentationStatus": "documented",
@@ -3116,17 +3199,22 @@
         "sourceId": "vscode.copilot.instructions",
         "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
         "officialHost": "code.visualstudio.com",
-        "sections": ["Instructions file locations", "Instruction priority"],
-        "reviewedOn": "2026-09-04",
-        "establishes": "User-level instruction files live in the documented user locations such as ~/.copilot/instructions and ~/.claude/rules, apply across workspaces, and personal instructions take the highest priority in the documented order while every applicable set is still provided."
+        "sections": [
+          "Choose a scope",
+          "Use a .github/copilot-instructions.md file",
+          "Instructions file locations",
+          "Resolve conflicting instructions"
+        ],
+        "reviewedOn": "2026-09-24",
+        "establishes": "User-level instruction files live in the documented user locations — ~/.copilot/copilot-instructions.md for personal always-on instructions and ~/.copilot/instructions and ~/.claude/rules for Agent Host sessions, VS Code profile storage for the Local agent — and serve personal preferences across projects; applicable instruction sources are additive, and the page documents no precedence among them."
       },
       {
         "sourceId": "vscode.copilot.settings",
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
         "sections": ["Custom instructions settings"],
-        "reviewedOn": "2026-08-19",
-        "establishes": "The same location setting enables or disables each instruction location, so participation is a runtime input rather than a fixed part of the lookup."
+        "reviewedOn": "2026-09-24",
+        "establishes": "chat.instructionsFilesLocations, deprecated and configuring the Local agent alone, enables or disables that agent’s instruction locations, ~/.copilot/instructions and ~/.claude/rules among its defaults, so their participation there is a runtime input; the page names no setting that switches an Agent Host session’s locations, ~/.copilot/copilot-instructions.md included."
       }
     ]
   },
@@ -3256,8 +3344,8 @@
         "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
         "officialHost": "code.visualstudio.com",
         "sections": ["Agent skills settings"],
-        "reviewedOn": "2026-08-19",
-        "establishes": "User skill locations participate in the same setting-controlled discovery configuration as workspace locations."
+        "reviewedOn": "2026-09-24",
+        "establishes": "User skill locations participate in the same configuration as workspace ones: chat.useAgentSkills switches skills on, and chat.agentSkillsLocations, deprecated and configuring the Local agent alone, lists that agent’s locations."
       }
     ]
   }

@@ -251,18 +251,6 @@ function directoryOf(path: string): string {
 }
 
 /**
- * Whether this skill has a directory at all. A flat skill — one Markdown file
- * with no folder, which one product documents at a location three others read
- * only as folders (spec.md § FR-004) — has none, so the file panel has no
- * subject and the strip has one tab, which is not a choice.
- *
- * Read from the definition rather than from the census being empty: a folder
- * holding only its entry point also ships no companion, and the two are
- * different things (`api-types.ts` § SkillDefinitionDto.rowUnit).
- */
-const hasDirectory = computed(() => owner.value?.definition.rowUnit !== 'file');
-
-/**
  * The Source-relative Path of every file of that skill: the entry point
  * first, then its census in the order the census published.
  *
@@ -607,18 +595,11 @@ const listNeighbours = computed(() => {
 });
 
 /**
- * The path that names this skill: its directory where it has one, and its own
- * file where it does not.
- *
- * A folder-shaped skill is its directory (FR-007), which is the one identity
- * every product reading it shares where the names they invoke it by differ. A
- * file-shaped skill has no directory of its own, and the one it sits in holds
- * every other flat skill beside it (spec.md § FR-004) — heading the page with
- * that would give two skills the same heading, so the file is what names it.
+ * The path that names this skill: its directory. A skill is its directory
+ * (FR-007), which is the one identity every product reading it shares where
+ * the names they invoke it by differ.
  */
-const skillSubjectPath = computed(() =>
-  hasDirectory.value ? treeDirectory.value : (treeFiles.value[0] ?? ''),
-);
+const skillSubjectPath = computed(() => treeDirectory.value);
 
 /**
  * That path escaped for presentation, which heads the page. Empty only before
@@ -782,17 +763,7 @@ watch(
     // history step to another of its files changing the URL and the tree's
     // marking while the panel holding that file stayed hidden. Selecting one
     // inside the panel is already there, so this moves nobody who clicked.
-    //
-    // A skill with no directory of its own has no files panel to select
-    // (FR-004): its one panel is the skill itself, standalone. Selecting a
-    // panel nothing renders left the page with no panel at all and no strip
-    // to come back with — and took the attributes line with it, which is
-    // drawn only while the skill panel is the active one, so the file's read
-    // outcome, its recognitions, and the command that opens it went too.
-    if (!hasDirectory.value) {
-      subjectTabs.select('skill');
-      return;
-    }
+
     // A failed extraction is the same answer for a different reason: the skill
     // panel has nothing in it — no declarations and no instructions — while the
     // complete source is one tab away, and opening on an empty panel would read
@@ -848,8 +819,9 @@ const openFilePathText = computed(() =>
 
 /**
  * The diagnostics of the file on screen. The detail response states each
- * record once — a failed extraction is one (file, kind) record (FR-028) — so
- * the list renders as published.
+ * record once — a failed extraction is one (file, kind) record (FR-028) — and
+ * the list says each code once (`DetailDiagnostics.vue`), so it is passed as
+ * published.
  */
 const openFileDiagnostics = computed(() => {
   const detail = openCompanion.value ?? entryDetail.value;
@@ -862,13 +834,14 @@ const openFileDiagnostics = computed(() => {
  * visible while a companion owns the files pane (FR-028). Empty whenever a
  * presentation exists: the parsed panel needs no failure story.
  *
- * That emptiness loses nothing for a skill with no directory, which has no
- * files pane to state the rest on. A readable candidate carries exactly one
- * diagnostic — the failed recognition parse (`scan.ts`) — and a decode that
- * replaced invalid UTF-8 carries none at all, being readable and complete
- * (spec.md § SC-007); the binary and unreadable outcomes produce no skill
- * recognition, so they never reach this page. The failure this shows is
- * therefore the whole of what the entry point can hold.
+ * A readable candidate's records are its failed parses, one per kind that
+ * reads it (`scan.ts`) — a `.claude/skills/<name>/SKILL.md` below
+ * `.claude/commands/` is a command too, and the two readings of its
+ * frontmatter fail together — while a decode that replaced invalid UTF-8
+ * carries none at all, being readable and complete (spec.md § SC-007); the
+ * binary and unreadable outcomes produce no skill recognition, so they never
+ * reach this page. What this shows is therefore the whole of what the entry
+ * point can hold.
  */
 const entryDiagnostics = computed(() => {
   const detail = entryDetail.value;
@@ -1052,7 +1025,7 @@ watch(
     :accessible-text="headingAccessibleText"
     :open-path="headingPath"
     :open-source="openSource"
-    :selection="null"
+    :selection="originRowName"
     :subject-resolved="selectionResolved"
     :missing-text="missingText"
     :failure-text="detailFailure"
@@ -1093,28 +1066,16 @@ watch(
            selected file's own path and facts on the viewer's line above it,
            and this line states the `SKILL.md`'s: with both on screen a reader
            selecting a companion read two sizes stacked and could not tell
-           which one the page was about.
-
-           A skill with no directory has no files tab, so its panel is the one
-           in view for the page's whole life and this line is always drawn —
-           the flat shape loses no read outcome, no recognition, and no command
-           that opens the file. What the condition needs is the guard beside
-           `subjectTabs` above, which keeps a panel nothing renders from being
-           selected; without it a flat skill whose extraction failed selected
-           the absent files tab and took this line with it. -->
+           which one the page was about. -->
       <!-- The removed byte-order mark belongs to whichever line states the read
-           outcome in full (`DetailAttributes.vue` § statesByteOrderMark). For
-           a skill with a directory that is the files tab's own line, beside
-           the text the mark was removed from, so this one carries the short
-           summary and the page never states the mark twice. A skill without a
-           directory has no such line, so this is the one it has: without it a
-           file that is nothing but a mark read as three bytes of empty source
-           with nothing saying where they went. -->
+           outcome in full (`DetailAttributes.vue` § statesByteOrderMark): the
+           files tab's own line, beside the text the mark was removed from, so
+           this one carries the short summary and the page never states the
+           mark twice. -->
       <DetailAttributes
         v-if="subjectTabs.activeTab === 'skill'"
         :file="entryDetail.file"
         :source="openSource"
-        :states-byte-order-mark="!hasDirectory"
       >
         <span class="aci-path aci-authored-text">{{ entryFileNameText }}</span>
         <!-- No count here. The files tab states how many the directory holds,
@@ -1217,7 +1178,7 @@ watch(
            for the strip to be usable at all (QR-004,
            contracts/accessibility-acceptance.md) — which obliges the roving
            tabindex and arrow keys the WAI-ARIA tabs pattern specifies. -->
-      <SubjectTabStrip v-if="hasDirectory" :tabs="subjectTabs" label="Skill detail">
+      <SubjectTabStrip :tabs="subjectTabs" label="Skill detail">
         <template #tab="{ tab }">
           {{ SKILL_DETAIL_TAB_TEXT[tab] }}
           <span v-if="tab === 'files'" class="aci-tab-count">{{ treeFiles.length }}</span>
@@ -1229,7 +1190,7 @@ watch(
            tab switch. Every tab therefore names its panel: both IDREFs resolve,
            and omitting one would drop a relationship assistive technology
            uses to move from a tab to what it controls. -->
-      <SubjectTabPanel :tabs="subjectTabs" tab="skill" :standalone="!hasDirectory">
+      <SubjectTabPanel :tabs="subjectTabs" tab="skill">
         <!-- The skill itself: what it declares and what it tells the product to
            do. The `SKILL.md` carries both, and showing only its bytes would
            leave the reader to find the seam — so the two are shown apart,
@@ -1277,26 +1238,9 @@ watch(
             content-label="Instructions of"
           />
         </div>
-
-        <!-- The file's own text, which every other single-file detail shows
-             under this same label and on this same condition — readable, never
-             parsed successfully (`rules`, `instructions`, `prompts and
-             commands`, `output styles`, and four more). A skill with a
-             directory already has it in the files tab, where the tree decides
-             which file it is; a skill without one has no such tab, so showing
-             it only when the extraction failed would make this the one page
-             that takes the source away from a reader whose file is fine.
-             Only the readable variants carry text, and an unreadable file's
-             diagnostic above says why it has none. -->
-        <SourceViewer
-          v-if="!hasDirectory && isReadableFile(entryDetail.file)"
-          panel-label="Source"
-          :source-text="entryDetail.file.sourceText"
-          :source-relative-path="entryDetail.file.sourceRelativePath"
-        />
       </SubjectTabPanel>
 
-      <SubjectTabPanel v-if="hasDirectory" :tabs="subjectTabs" tab="files">
+      <SubjectTabPanel :tabs="subjectTabs" tab="files">
         <SkipLink target-id="aci-skill-detail-file-contents" />
 
         <div class="aci-skill-detail__layout">

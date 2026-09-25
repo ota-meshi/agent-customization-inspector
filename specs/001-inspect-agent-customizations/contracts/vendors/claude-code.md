@@ -2,9 +2,9 @@
 
 [日本語](claude-code.ja.md)
 
-**Contract version**: 2026-08-27
+**Contract version**: 2026-09-24
 
-**Official-source revalidation**: 2026-08-27
+**Official-source revalidation**: 2026-09-24
 
 **Vendor**: Anthropic Claude Code
 
@@ -54,8 +54,7 @@ document are rationale or Inspector state, not serialized scalar enums.
 
 | Subject ID | `documentationStatus` | `lifecycleQualifiers` | Assessment basis |
 |---|---|---|---|
-| `claude.behavior.repo.instructions.ancestor` | `partially-documented` | `[]` | The ancestor walk does not establish the `.claude/CLAUDE.md` variant |
-| `claude.behavior.repo.instructions.descendant` | `partially-documented` | `[]` | Lazy descendant discovery does not establish the `.claude/CLAUDE.md` variant |
+| `claude.repo.instructions` | `partially-documented` | `[]` | The memory page lists anything under a `.agents/` directory as not read, while the rule admits an `AGENTS.md` there as at any other depth on Claude Code 2.1.280's observed behavior (§ Known ambiguities and version-sensitive facts item 14) |
 | `claude.behavior.repo.rules` | `partially-documented` | `[]` | The on-demand load trigger for nested rules directories and the ancestor-layer `paths` base are incomplete |
 | `claude.behavior.user.rules` | `partially-documented` | `[]` | The recursion sentence is written about a project's `.claude/rules/`; the User-level section names the directory and its load order and shows a flat pair of files, leaving nested-subdirectory discovery unstated |
 | `claude.global.rules` | `partially-documented` | `[]` | The user rule directory's nested-subdirectory discovery is unstated, so the rule admits the documented direct children only |
@@ -76,9 +75,9 @@ The composition column references only strategy IDs from
 
 | Behavior ID | Surface | Base | Relative locator | Traversal / trigger | Composition strategy | Status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `claude.behavior.repo.instructions.launch` | Shared core | `<launch-cwd>` | `./CLAUDE.md`; `./.claude/CLAUDE.md`; `./CLAUDE.local.md` | Exact launch directory; loaded at session start | `claude.instructions.layering` | documented | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.sdk.setting-sources` |
-| `claude.behavior.repo.instructions.ancestor` | Shared core | Each `<ancestor-dir>` above `<launch-cwd>` | `./CLAUDE.md`; `./CLAUDE.local.md` | Walk parents toward the filesystem root; the ancestor walk does not document `./.claude/CLAUDE.md` | `claude.instructions.layering` | documented, with the noted negative boundary | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.sdk.setting-sources` |
-| `claude.behavior.repo.instructions.descendant` | Shared core | A `<descendant-dir>` below `<launch-cwd>` | `./CLAUDE.md`; `./CLAUDE.local.md` | Lazy: loaded after Claude reads a file in that descendant subtree; descendant `./.claude/CLAUDE.md` is not documented | `claude.instructions.layering` | documented, with the noted negative boundary | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.sdk.setting-sources` |
+| `claude.behavior.repo.instructions.launch` | Shared core | `<launch-cwd>` | `./CLAUDE.md`; `./.claude/CLAUDE.md`; `./CLAUDE.local.md`; `./AGENTS.md`; `./.claude/AGENTS.md` | Exact launch directory; loaded at session start — the `AGENTS.md` pair instead of the `CLAUDE.md` files or beside them, as the composition strategy decides; the `AGENTS.md` forms are Claude Code 2.1.277+, under the session conditions § Known ambiguities and version-sensitive facts item 13 states (changelog § 2.1.277) | `claude.instructions.layering` | documented | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.changelog.agents-md`; `anthropic.claude-code.sdk.setting-sources` |
+| `claude.behavior.repo.instructions.ancestor` | Shared core | Each `<ancestor-dir>` above `<launch-cwd>` | `./CLAUDE.md`; `./.claude/CLAUDE.md`; `./CLAUDE.local.md`; `./AGENTS.md`; `./.claude/AGENTS.md` | Walk parents toward the filesystem root; the load section names the bare `CLAUDE.md` filenames, and the `AGENTS.md` section establishes `./.claude/CLAUDE.md` on an ancestor by counting it as a file Claude reads instead of `AGENTS.md`; the `AGENTS.md` forms are Claude Code 2.1.277+, under the session conditions § Known ambiguities and version-sensitive facts item 13 states (changelog § 2.1.277) | `claude.instructions.layering` | documented | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.changelog.agents-md`; `anthropic.claude-code.sdk.setting-sources` |
+| `claude.behavior.repo.instructions.descendant` | Shared core | A `<descendant-dir>` below `<launch-cwd>` | `./CLAUDE.md`; `./CLAUDE.local.md`; `./AGENTS.md` | Lazy: loaded after Claude reads a file in that descendant subtree; descendant `./.claude/CLAUDE.md` is not documented, and neither is descendant `./.claude/AGENTS.md`; the `AGENTS.md` forms are Claude Code 2.1.277+, under the session conditions § Known ambiguities and version-sensitive facts item 13 states (changelog § 2.1.277) | `claude.instructions.layering` | documented, with the noted negative boundary | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.changelog.agents-md`; `anthropic.claude-code.sdk.setting-sources` |
 | `claude.behavior.repo.rules` | Shared core | Each documented rule layer from `<launch-cwd>` through its parents | `./.claude/rules/**/*.md` | Discover Markdown files recursively within each rule directory; a `paths` rule becomes applicable when a matching file is read; nested `.claude/rules/` directories below the working directory load on demand | `claude.rules.layering` | partially documented: the on-demand load trigger for nested rules directories and the base for ancestor-layer `paths` globs are not explicit | `anthropic.claude-code.memory.locations-load` |
 | `claude.behavior.repo.skills` | CLI full; IDE subset | Each `<skill-layer>` from `<launch-cwd>` through the Git repository root | `./.claude/skills/<skill-name>/SKILL.md` | Discover ancestor layers at startup and nested descendant skill directories on demand as files are accessed (nested discovery is Claude Code 2.1.6+, changelog § 2.1.6) | `claude.skills.selection` | documented | `anthropic.claude-code.skills.locations-discovery`; `anthropic.claude-code.changelog.nested-skill-discovery`; `anthropic.claude-code.large-codebases.start-directory` |
 | `claude.behavior.repo.skills-directory-plugin` | CLI; IDE availability conditional | `<launch-cwd>/.claude/skills/<plugin-name>` | `./.claude-plugin/plugin.json` | Exact launch-`cwd` skills directory only; unlike plain skills, do not walk ancestor skill directories for this plugin interpretation; workspace trust applies | `claude.plugins.activation` | documented | `anthropic.claude-code.plugins.components-scopes` |
@@ -147,7 +146,7 @@ unless a narrower exclusion or Global requirement is stated below.
 
 | Rule ID | Base | Selector program | Expansion | Class | Behavior refs | Runtime/documentation status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `claude.repo.instructions` | Repository | `[ANY_DIRECTORIES, 'CLAUDE.md']`; `[ANY_DIRECTORIES, 'CLAUDE.local.md']` | `descendant-inventory` for both: root and all descendants, and `ANY_DIRECTORIES` includes zero segments. The page names `./CLAUDE.md` **or** `./.claude/CLAUDE.md` as the project instruction location, and the any-depth `CLAUDE.md` program already admits `./.claude/CLAUDE.md` at the root and at every depth, so a separate `.claude` selector would only add a second admission of a file the first program already reached | `static-candidate` | `claude.behavior.repo.instructions.launch`; `claude.behavior.repo.instructions.ancestor`; `claude.behavior.repo.instructions.descendant` | Eligibility depends on launch `cwd`, ancestry, and the file subtree read. A nested `.claude/CLAUDE.md` is eligible only when it is the launch directory's exact `.claude` file; it is not a documented lazy-descendant form | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.sdk.setting-sources` |
+| `claude.repo.instructions` | Repository | `[ANY_DIRECTORIES, 'CLAUDE.md']`; `[ANY_DIRECTORIES, 'CLAUDE.local.md']`; `[ANY_DIRECTORIES, 'AGENTS.md']` | `descendant-inventory` for all three: root and all descendants, and `ANY_DIRECTORIES` includes zero segments. The page names `./CLAUDE.md` **or** `./.claude/CLAUDE.md` as the project instruction location and reads `./AGENTS.md` and `./.claude/AGENTS.md` alike, and the any-depth programs already admit each `.claude` form at the root and at every depth, so a separate `.claude` selector would only add a second admission of a file a program already reached; the `AGENTS.md` forms are Claude Code 2.1.277+, under the session conditions § Known ambiguities and version-sensitive facts item 13 states (changelog § 2.1.277) | `static-candidate` | `claude.behavior.repo.instructions.launch`; `claude.behavior.repo.instructions.ancestor`; `claude.behavior.repo.instructions.descendant` | Eligibility depends on launch `cwd`, ancestry, and the file subtree read, and for an `AGENTS.md` also on whether a `CLAUDE.md`-family file sits on the same path and on the user-level Project instructions setting (`claude.instructions.layering`). A nested `.claude/CLAUDE.md` is eligible only when it is the launch directory's or an ancestor's exact `.claude` file; it is not a documented lazy-descendant form | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.changelog.agents-md`; `anthropic.claude-code.sdk.setting-sources` |
 | `claude.repo.rules` | Repository | `[ANY_DIRECTORIES, '.claude', 'rules', ANY_DIRECTORIES, /\.md$/u]` | `descendant-inventory` — nested `.claude/rules/` directories are documented to load on demand — plus `recursive-subtree` inside each fixed rules directory | `static-candidate` | `claude.behavior.repo.rules` | The on-demand load trigger for a nested rules directory and the ancestor-layer `paths` base remain partially documented | `anthropic.claude-code.memory.locations-load` |
 | `claude.repo.skill` | Repository | `[ANY_DIRECTORIES, '.claude', 'skills', ANY_NAME, 'SKILL.md']` | `descendant-inventory` — nested `.claude/skills/` directories are documented to load on demand — plus `direct-child`; skill name is exactly one direct child | `static-candidate` | `claude.behavior.repo.skills` | Plain-skill ancestor/lazy discovery differs from exact-launch-`cwd` skills-directory plugin discovery | `anthropic.claude-code.skills.locations-discovery`; `anthropic.claude-code.plugins.components-scopes` |
 | `claude.repo.command` | Repository | `['.claude', 'commands', ANY_DIRECTORIES, /\.md$/u]` | `recursive-subtree` within the root's fixed commands directory | `static-candidate` | `claude.behavior.repo.commands` | No skill-equivalent ancestor or lazy-descendant command traversal is documented, so the project command scope contributes at the selected root — the one runtime-chain member every session shares — and a subdirectory `.claude/commands` is never a candidate | `anthropic.claude-code.skills.locations-discovery`; `anthropic.claude-code.changelog.legacy-command-nesting` |
@@ -284,7 +283,7 @@ read, connection, execution, import, installation, or activation authority.
 
 | `ToolRecognition.kind` | Eligible `Relationship.kind` values | Initial-release source forms |
 |---|---|---|
-| `instructions` | — | An accepted `CLAUDE.md` or `CLAUDE.local.md`; an authored `@path` token is source text, never an extracted reference |
+| `instructions` | — | An accepted `CLAUDE.md`, `CLAUDE.local.md`, or `AGENTS.md`; an authored `@path` token is source text, never an extracted reference |
 | `rule` | — | Nothing: an accepted rules Markdown file — repository `.claude/rules/**/*.md` or consented user `rules/*.md` — is published as the one document its author wrote, frontmatter block included, so no value is read out of it and a declared `paths` glob is source text like every other line |
 | `skill` | `skill-resource`<br>`agent-reference`<br>`context-inheritance` | Exact frontmatter value/item occurrences in an accepted `SKILL.md`; `hooks` is the skill's own frontmatter declaration and owns no hook recognition, and no MCP field exists in a skill frontmatter to own |
 | `agent` | `agent-reference`<br>`context-inheritance`<br>`runtime-reference` | Exact frontmatter value/item occurrences in an accepted agents Markdown file — repository `.claude/agents/**/*.md` or consented user `agents/**/*.md`; `hooks` and `mcpServers` are the subagent's own frontmatter declarations, owning neither a hook nor an MCP recognition |
@@ -316,9 +315,11 @@ a file, and what a product would select, trust, or default to, no surface states
 
 ## Known ambiguities and version-sensitive facts
 
-1. The documented upward instruction walk names `CLAUDE.md` and `CLAUDE.local.md`; it does
-   not establish ancestor `.claude/CLAUDE.md`. The lazy descendant description likewise
-   does not establish descendant `.claude/CLAUDE.md`.
+1. The lazy descendant description names `CLAUDE.md` and `CLAUDE.local.md`; it does not
+   establish descendant `.claude/CLAUDE.md`, and the on-demand `AGENTS.md` read names a
+   subdirectory's `AGENTS.md` without its `.claude/AGENTS.md`. The ancestor form is
+   established by the `AGENTS.md` section, which counts a `.claude/CLAUDE.md` in any
+   directory above the working directory.
 2. Rule directories on ancestor layers are documented, but the base against which a
    `paths` glob in an ancestor rule is evaluated is not explicit. Lazy discovery of a
    descendant `.claude/rules` directory is also not established.
@@ -351,6 +352,21 @@ a file, and what a product would select, trust, or default to, no surface states
     statement is stale and must not return, and no record states a fixed depth.
 12. Upstream pages change without a versioned URL. Revalidation must compare the stored
     semantic assertion and section, not just URL reachability.
+13. Claude Code reads `AGENTS.md` from 2.1.277, and not in every session of those versions. The
+    2.1.277 changelog entry states the support is not yet on Bedrock, Vertex, or Foundry, and
+    the memory page states that before 2.1.281 some sessions — those on Amazon Bedrock or with
+    telemetry disabled among them — read `CLAUDE.md` files only. Earlier versions, a session
+    whose built-in `agents-md` plugin is disabled, and some first sessions after an upgrade
+    read `CLAUDE.md` alone too. The version, the provider, and those settings are runtime
+    inputs of the reader's session that this product does not observe (`engine-version`,
+    `settings-inputs`), so the `AGENTS.md` admission states them as the rows' gate rather
+    than deciding which applies.
+14. The memory page lists anything under a `.agents/` directory as not read, and
+    `claude.repo.instructions` admits an `AGENTS.md` there like at any other depth: the
+    selector grammar has no step that excludes one directory name, and Claude Code 2.1.280,
+    measured on 2026-09-24, loaded `.agents/skills/<name>/AGENTS.md` once it read a file in
+    that directory — the product does what the admission says rather than what that
+    sentence says.
 
 ## Official evidence
 

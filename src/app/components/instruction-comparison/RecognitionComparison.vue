@@ -3,10 +3,13 @@
 // data decisions — which tools recognize which side, what each side's
 // frontmatter serializes to — live in `recognition-comparison.ts`; this
 // component only draws the comparison it is given, as its two facts: the
-// per-tool recognition rows, and the files' frontmatter serialized to two
-// canonical YAML documents and compared side by side — the declarations are the
-// file's one parse for the kind, so no tool captions them (research.md § 7,
-// frontmatter-yaml.ts).
+// per-tool recognition rows, and — where both files' formats open with
+// declarations — the files' frontmatter serialized to two canonical YAML
+// documents and compared side by side, with the instructions below each block
+// beside them. The declarations are the file's one parse for the kind, so no
+// tool captions them (research.md § 7, frontmatter-yaml.ts); a pair holding a
+// file its products read whole has no parse to compare, so it shows neither
+// half (api-types.ts § InstructionFileFormat).
 //
 // Beside each recognized state this kind draws the typed layering fact its
 // inventory publishes: the surfaces a recognition rests on, stated per side
@@ -55,10 +58,13 @@ function surfacesText(surfaces: readonly VendorSurface[]): string {
 
 <template>
   <div class="aci-instruction-recognition-comparison">
-    <!-- The sections stand in the order a reader needs them: what each file
-         declares, what each file says, then the complete files the page
-         supplies, and last the recognitions — which tool reads which side is
-         context for the rest rather than the subject of the comparison. -->
+    <!-- The sections stand in the order a reader needs them: which products
+         read each side, then what each file declares, what each file says, and
+         last the complete files the page supplies. The recognitions lead
+         because they say who the difference below is a difference for — and
+         because they are the only place a comparison can state that a product
+         reads neither side, which the side cards can only leave unsaid. The
+         two middle sections stand only where both formats declare anything. -->
     <p v-if="comparison.tools.length === 0" class="aci-note">
       No compared file here carries a recognition, so there is no tool recognition or declared
       metadata to compare. The source comparison below is the whole comparison.
@@ -115,78 +121,86 @@ function surfacesText(surfaces: readonly VendorSurface[]): string {
           </table>
         </div>
       </section>
-      <section>
-        <h3 class="aci-compare-block-title">Declared metadata</h3>
-        <!-- The files' declared metadata, not any tool's: the declarations
-             are the file's one scan-time parse for the kind (FR-028), so
-             they are compared once, under no tool caption (research.md
-             § 7). A side without parsed declarations is stated instead of
-             being diffed against (FR-028). -->
-        <p
-          v-if="INSTRUCTION_DECLARATION_SIDE_STATE_TEXT[comparison.leftDeclarations] !== ''"
-          class="aci-note"
-        >
-          First file {{ INSTRUCTION_DECLARATION_SIDE_STATE_TEXT[comparison.leftDeclarations] }}
-        </p>
-        <p
-          v-if="INSTRUCTION_DECLARATION_SIDE_STATE_TEXT[comparison.rightDeclarations] !== ''"
-          class="aci-note"
-        >
-          Second file {{ INSTRUCTION_DECLARATION_SIDE_STATE_TEXT[comparison.rightDeclarations] }}
-        </p>
-        <template v-if="comparison.frontmatterDiff !== null">
-          <!-- What the diff holds, said before it: both sides are the
-               canonical serialization of the frontmatter, not the files'
-               own spellings — those stay in the source comparison below
-               (FR-007). The canonical key order is stated too, because a
-               reader comparing against their own file would otherwise read
-               the order as authored. -->
+      <!-- Only where both files' formats open with declarations: a file its
+           products read whole declares nothing, so "declared metadata" and
+           "the instructions below the block" would each name a thing that
+           file does not have, and its whole text is the source comparison
+           below (api-types.ts § InstructionFileFormat). -->
+      <template v-if="comparison.declarations !== null">
+        <section>
+          <h3 class="aci-compare-block-title">Declared metadata</h3>
+          <!-- The files' declared metadata, not any tool's: the declarations
+               are the file's one scan-time parse for the kind (FR-028), so
+               they are compared once, under no tool caption (research.md
+               § 7). A side without parsed declarations is stated instead of
+               being diffed against (FR-028). -->
+          <p
+            v-if="INSTRUCTION_DECLARATION_SIDE_STATE_TEXT[comparison.declarations.left] !== ''"
+            class="aci-note"
+          >
+            First file {{ INSTRUCTION_DECLARATION_SIDE_STATE_TEXT[comparison.declarations.left] }}
+          </p>
+          <p
+            v-if="INSTRUCTION_DECLARATION_SIDE_STATE_TEXT[comparison.declarations.right] !== ''"
+            class="aci-note"
+          >
+            Second file {{ INSTRUCTION_DECLARATION_SIDE_STATE_TEXT[comparison.declarations.right] }}
+          </p>
+          <template v-if="comparison.declarations.frontmatterDiff !== null">
+            <!-- What the diff holds, said before it: both sides are the
+                 canonical serialization of the frontmatter, not the files'
+                 own spellings — those stay in the source comparison below
+                 (FR-007). The canonical key order is stated too, because a
+                 reader comparing against their own file would otherwise read
+                 the order as authored. -->
+            <p class="aci-note">
+              Each side is the file's frontmatter serialized as YAML with its keys in one canonical
+              order; the files' own spelling and key order stay in the source comparison below.
+            </p>
+            <SourceDiff
+              :original-text="comparison.declarations.frontmatterDiff.originalText"
+              :original-path="leftPath"
+              :modified-text="comparison.declarations.frontmatterDiff.modifiedText"
+              :modified-path="rightPath"
+              content-language="yaml"
+              content-label="frontmatter of"
+              :register-content-owner="registerComparisonContentOwner"
+            />
+          </template>
+        </section>
+        <section v-if="comparison.declarations.bodyDiff !== null">
+          <h3 class="aci-compare-block-title">Instructions</h3>
+          <!-- The other half of the same one parse, diffed on its own: the
+               declarations align key by key whatever order each file wrote them
+               in, and the body aligns line by line without the frontmatter block
+               above it moving the lines. Normalizing one half and leaving the
+               other only inside the source comparison would privilege it
+               (FR-007). -->
           <p class="aci-note">
-            Each side is the file's frontmatter serialized as YAML with its keys in one canonical
-            order; the files' own spelling and key order stay in the source comparison below.
+            Each side is the instructions left once that file's frontmatter block is removed; the
+            block itself is above, and each file whole is in the source comparison below.
           </p>
           <SourceDiff
-            :original-text="comparison.frontmatterDiff.originalText"
+            :original-text="comparison.declarations.bodyDiff.originalText"
             :original-path="leftPath"
-            :modified-text="comparison.frontmatterDiff.modifiedText"
+            :modified-text="comparison.declarations.bodyDiff.modifiedText"
             :modified-path="rightPath"
-            content-language="yaml"
-            content-label="frontmatter of"
+            content-language="markdown"
+            content-label="instructions of"
             :register-content-owner="registerComparisonContentOwner"
           />
-        </template>
-      </section>
-      <section v-if="comparison.bodyDiff !== null">
-        <h3 class="aci-compare-block-title">Instructions</h3>
-        <!-- The other half of the same one parse, diffed on its own: the
-             declarations align key by key whatever order each file wrote them
-             in, and the body aligns line by line without the frontmatter block
-             above it moving the lines. Normalizing one half and leaving the
-             other only inside the source comparison would privilege it
-             (FR-007). -->
-        <p class="aci-note">
-          Each side is the instructions left once that file's frontmatter block is removed; the
-          block itself is above, and each file whole is in the source comparison below.
-        </p>
-        <SourceDiff
-          :original-text="comparison.bodyDiff.originalText"
-          :original-path="leftPath"
-          :modified-text="comparison.bodyDiff.modifiedText"
-          :modified-path="rightPath"
-          content-language="markdown"
-          content-label="instructions of"
-          :register-content-owner="registerComparisonContentOwner"
-        />
-      </section>
+        </section>
+      </template>
     </template>
-    <!-- Where the page's complete authored sources land: below the two
-         halves they were split into and above the recognitions. The page owns
-         what that is, because it differs by kind — one diff where both sides
-         share a format, two independent viewers for the custom-agent kind,
-         whose two formats have no meaningful byte-for-byte alignment — while
-         the order is this component's, so every kind's comparison reads the
-         same way. Outside the recognition branch above, because a file every
-         tool fails to recognize still shows its bytes (FR-027). -->
+    <!-- Where the page's complete authored sources land: last, below the
+         recognitions and, where both formats declare, the two halves the
+         sources were split into. The page owns what that is, because it
+         differs by kind — one diff where both sides share a format, two
+         independent viewers for the custom-agent kind, whose two formats have
+         no meaningful byte-for-byte alignment — while the order is this
+         component's, so every kind's comparison reads the same way. Outside
+         the recognition branch above, because a file every tool fails to
+         recognize still shows its bytes (FR-027). -->
     <slot name="source" />
   </div>
 </template>

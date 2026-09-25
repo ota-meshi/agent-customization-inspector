@@ -37,11 +37,11 @@ export type RecognitionParseStatus =
 
 /**
  * One declared value as a detail surface shows it — a frontmatter value of a
- * skill or an instruction file, or a field value of an MCP server declaration
- * (data-model.md § Skill presentation). One shape for every producing format,
- * because each parser resolves into the same structure: the shape mirrors
- * what the parser resolved, so a mapping is shown as a mapping and a list as
- * a list rather than as a summary of one.
+ * skill or a path-specific instruction file, or a field value of an MCP server
+ * declaration (data-model.md § Skill presentation). One shape for every
+ * producing format, because each parser resolves into the same structure: the
+ * shape mirrors what the parser resolved, so a mapping is shown as a mapping
+ * and a list as a list rather than as a summary of one.
  */
 export type DeclaredValueDto =
   /** A string, number, or boolean the syntax resolved to one value. */
@@ -123,10 +123,10 @@ export type DeclaredKeyKind =
 
 /**
  * One parsed declaration entry, as the detail surfaces show it — a
- * frontmatter entry of a skill or an instruction file, or a field of an MCP
- * server declaration (data-model.md § Skill presentation): the key and value
- * carry what the parser resolved, while a file's authored spelling stays in
- * the complete `sourceText` where one is served.
+ * frontmatter entry of a skill or a path-specific instruction file, or a field
+ * of an MCP server declaration (data-model.md § Skill presentation): the key
+ * and value carry what the parser resolved, while a file's authored spelling
+ * stays in the complete `sourceText` where one is served.
  *
  * The key is the file's own, never a vendor catalog's: this is the reader's
  * declaration shown back to them, so a key the product has no opinion about is
@@ -222,28 +222,11 @@ export interface SkillDefinitionDto {
    * offers the customization's own directory. The row shows how many there are
    * and the detail view shows which; the count is `length` rather than a second
    * field, because two states can disagree and one cannot. Empty when the
-   * entry point sits alone in its directory, and empty for every definition
-   * whose {@link SkillDefinitionDto.rowUnit} is `file` — that shape has no
-   * directory to enumerate. The census is the file's, so every definition of
-   * one file — across tools and across entries — carries the same list.
+   * entry point sits alone in its directory. The census is the file's, so
+   * every definition of one file — across tools and across entries — carries
+   * the same list.
    */
   readonly companionFiles: readonly string[];
-  /**
-   * What this definition's row unit is: the directory whose entry point the
-   * admitting rule matched, or the matched file itself.
-   *
-   * Carried from that rule rather than derived from the path, so a surface
-   * cannot reach a second answer that disagrees with the one the census used
-   * (`rules/skills/compiled-rule.ts` § skillRowUnit). Three of the four
-   * products document one shape and always say `directory`; Antigravity CLI
-   * admits both at one location (spec.md § FR-004).
-   *
-   * What a surface does with it: a `file` definition has no directory, so its
-   * detail shows the skill alone — no file panel, whose subject would be a
-   * directory the skill does not have, and no tab strip, because a strip
-   * offering one tab is not a choice.
-   */
-  readonly rowUnit: 'directory' | 'file';
 }
 
 /**
@@ -775,10 +758,13 @@ export interface PermissionsInventoryEntryDto {
  * (FR-027) — and the file's own read outcome, size, and diagnostics stay on
  * its `files[]` entry.
  *
- * There is no extraction diagnostic list, for the reason
- * {@link RuleInventoryEntryDto} has none: nothing is read out of the document
- * this row publishes, so nothing can fail to be read (FR-028). A file whose
- * bytes were never accepted gains no recognition and is no row here at all.
+ * There is no diagnostic list of the row's own: nothing is read out of the
+ * document for this row, so its reading cannot fail. The records the same
+ * document's other readings leave — a `.claude/settings.json` holding a
+ * comment fails the permission policy's and the hooks' strict readings — are
+ * the file's, on its `files[]` entry, which is where the row resolves them
+ * from (FR-028). A file whose bytes were never accepted gains no recognition
+ * and is no row here at all.
  *
  * A row is never a claim that a product applied the settings: a project layer
  * applies only to a trusted project, the layers outside this Source resolve
@@ -999,8 +985,8 @@ export interface SameNameSkillResolutionDto {
 
 /**
  * What the one scan-time parse resolved out of a frontmatter-led Markdown
- * customization file — a skill entry point or an instruction file — as its
- * detail surface shows it (data-model.md § Skill presentation): every
+ * customization file — a skill entry point or a path-specific instruction file
+ * — as its detail surface shows it (data-model.md § Skill presentation): every
  * declaration by the key the file wrote, and the instructions the frontmatter
  * block was removed from. Published rather than re-parsed in the browser,
  * because the inventory row's name comes from the same parse — a second
@@ -1063,17 +1049,60 @@ interface FileDetailBase {
 }
 
 /**
- * Detail of a recognized instruction file: the file plus what the one
- * scan-time parse resolved (contracts/http-api.md § get-file-detail). A
- * detail is addressed by the file even though the inventory groups rows by
- * applicability range (data-model.md § Inventory unit), and no per-tool
- * identity exists here: which tools recognize the file is the instructions
- * inventory's fact, and the parse — the same fixed YAML semantics every
- * vendor reads — is published once as the file's.
+ * How the products recognizing an instruction file read it: whether the format
+ * opens with declarations they read, or is instructions from its first line to
+ * its last (contracts/http-api.md § get-file-detail). The one fact an
+ * instruction file's detail and comparison are shaped by — a parse beside the
+ * file, or the file alone.
+ *
+ * A fact of the format, which the admitting rule knows, never of the bytes: a
+ * `---` line opening an `AGENTS.md` is a line of its instructions, because no
+ * product that reads the filename documents frontmatter for it.
  */
-export interface InstructionFileDetailDto extends FileDetailBase {
+export type InstructionFileFormat =
+  /**
+   * GitHub Copilot's path-specific `*.instructions.md`, whose frontmatter
+   * names the files it applies to (`applyTo`): the one shipped instruction
+   * format with declarations of its own. Produced for a file every recognizing
+   * rule reads that way, and split by the one scan-time parse into the
+   * declarations and the instructions below them.
+   */
+  | 'frontmatter-led'
+  /**
+   * Every other instruction format — `AGENTS.md`, `AGENTS.override.md`,
+   * `CLAUDE.md`, `CLAUDE.local.md`, `GEMINI.md`, `copilot-instructions.md`,
+   * and a Codex fallback name. No product that reads one documents
+   * frontmatter for it, and Antigravity's own page says that `AGENTS.md` and
+   * `GEMINI.md` use none and are read as plain Markdown throughout
+   * (google.antigravity.rules § YAML frontmatter and activation modes), so
+   * nothing is read out of the file: a block
+   * that opens one is part of its instructions, and nothing can fail to be
+   * read.
+   */
+  | 'whole-document';
+
+/**
+ * Detail of a recognized instruction file (contracts/http-api.md
+ * § get-file-detail), in the variant its format decides
+ * ({@link InstructionFileFormat}). A detail is addressed by the file even
+ * though the inventory groups rows by applicability range (data-model.md
+ * § Inventory unit), and no per-tool identity exists here: which tools
+ * recognize the file is the instructions inventory's fact.
+ */
+export type InstructionFileDetailDto =
+  FrontmatterLedInstructionFileDetailDto | WholeDocumentInstructionFileDetailDto;
+
+/**
+ * Detail of an instruction file whose format opens with declarations: the file
+ * plus what the one scan-time parse resolved. The parse is published once as
+ * the file's: its declarations are read under this product's one fixed YAML
+ * semantics whichever rule admitted the file (data-model.md § Field reading).
+ */
+export interface FrontmatterLedInstructionFileDetailDto extends FileDetailBase {
   /** Discriminant: the file is a recognized instruction file. */
   readonly kind: 'instructions';
+  /** Discriminant within the kind; see {@link InstructionFileFormat}. */
+  readonly format: 'frontmatter-led';
   /**
    * The parsed declarations and instructions, or null exactly when extraction
    * failed all-or-nothing (FR-028): nothing was parsed, the failure's
@@ -1084,13 +1113,37 @@ export interface InstructionFileDetailDto extends FileDetailBase {
 }
 
 /**
+ * Detail of an instruction file its products read whole: the file, and
+ * nothing derived from it.
+ *
+ * No `presentation`, for the reason {@link RuleFileDetailDto} has none: the
+ * products read the file as the one document its author wrote, so nothing is
+ * read out of it to set beside the file — and with nothing read out, nothing
+ * can fail to be read, so this reading produces no extraction diagnostic. A
+ * presentation of no declarations and the whole file as its body would say
+ * the same thing in a shape that asks where the declarations went.
+ *
+ * `diagnostics` still lists what the file's other readings recorded: a
+ * `.mcp.json` a Codex fallback name names is an MCP carrier besides, and a
+ * failed MCP parse is the file's (FR-028).
+ */
+export interface WholeDocumentInstructionFileDetailDto extends FileDetailBase {
+  /** Discriminant: the file is a recognized instruction file. */
+  readonly kind: 'instructions';
+  /** Discriminant within the kind; see {@link InstructionFileFormat}. */
+  readonly format: 'whole-document';
+}
+
+/**
  * Detail of a skill entry point: the file plus what the one scan-time parse
  * resolved (contracts/http-api.md § get-file-detail). The parse is a fact of
- * the file, not of a recognizing tool — every vendor reads the same fixed
- * YAML semantics — so it is published once; which tools recognize the file,
- * and the name each invokes it by, are the inventory's facts
- * (`skills[].definitions[]` under the row each name keys), which the detail
- * surface reads off the rows holding the file rather than from this response.
+ * the file, not of a recognizing tool — its declarations are read under this
+ * product's one fixed YAML semantics whichever rule admitted the file
+ * (data-model.md § Field reading) — so it is published once; which tools
+ * recognize the file, and the name each invokes it by, are the inventory's
+ * facts (`skills[].definitions[]` under the row each name keys), which the
+ * detail surface reads off the rows holding the file rather than from this
+ * response.
  */
 export interface SkillFileDetailDto extends FileDetailBase {
   /** Discriminant: the file is a recognized skill entry point. */
@@ -1194,14 +1247,18 @@ export interface PromptFileDetailDto extends FileDetailBase {
  * (contracts/http-api.md § get-file-detail).
  *
  * No `presentation`: a rule file is published as the one document its author
- * wrote, so nothing is read out of it to set beside the file. A Claude rule
- * is Markdown and reaches the page whole, frontmatter block included, because
+ * wrote, so nothing is read out of it to set beside the file. A rule is
+ * Markdown and reaches the page whole, frontmatter block included — a Claude
+ * rule's `paths` and an Antigravity CLI rule's `trigger` alike — because
  * splitting a rule into declarations and a body would show the reader two
  * halves of a file they wrote as one — and with nothing read out, nothing can
- * fail to be read either, so the kind produces no extraction diagnostic. The
- * kind is Claude's alone in this release: a Codex `.codex/rules/*.rules` file
- * is a permission policy rather than a rule, and its detail is
- * {@link PermissionPolicyDetailDto}.
+ * fail to be read either, so the kind produces no extraction diagnostic.
+ * `diagnostics` lists what another kind's reading of the same file recorded:
+ * a rules directory below `.claude/commands/` holds files that are commands
+ * too, and a command's frontmatter can fail to parse (FR-028). The kind is
+ * Claude Code's and Antigravity CLI's in this release: a Codex
+ * `.codex/rules/*.rules` file is a permission policy rather than a rule, and
+ * its detail is {@link PermissionPolicyDetailDto}.
  *
  * Its own variant rather than the unrecognized one, because a recognition
  * does own this file: the page it opens is headed as a rule, returns to the
@@ -1636,7 +1693,11 @@ export interface OutputStyleFileDetailDto extends FileDetailBase {
  * whole answer, and a parser-resolved declaration list would drop the
  * comments, authored spellings, and section order a reader compares against
  * their own file. With nothing read out, nothing can fail to be read, so the
- * kind produces no extraction diagnostic.
+ * kind produces no extraction diagnostic. `diagnostics` lists what the same
+ * document's other readings recorded: a `.claude/settings.json` holding a
+ * comment fails the permission policy's and the hooks' strict readings, and
+ * a `.codex/config.toml` TOML cannot parse fails its MCP servers' and its
+ * hooks' (FR-028).
  *
  * A Codex `.codex/config.toml` reaches this variant whole, its
  * `[mcp_servers.*]` tables included. Those tables are a different row's

@@ -134,22 +134,6 @@ test.beforeEach(async () => {
   // offer no comparison entry.
   await mkdir(join(fixture, '.agents/skills/solo'), { recursive: true });
   await writeFile(join(fixture, '.agents/skills/solo/SKILL.md'), '---\nname: solo\n---\n', 'utf8');
-  // A second name spelled in both admitted shapes of one `.agents/skills/`:
-  // the flat Markdown file one vendor's own page documents, and the skill
-  // folder the other pages give (spec.md § FR-004). One row, two copies, and
-  // the copies are shaped differently — which is the pair T057 is about.
-  await mkdir(join(fixture, '.agents/skills/tide'), { recursive: true });
-  await writeFile(
-    join(fixture, '.agents/skills/tide.md'),
-    '---\nname: tide\ndescription: Report the tide.\n---\n\nRead the flat table.\n',
-    'utf8',
-  );
-  await writeFile(
-    join(fixture, '.agents/skills/tide/SKILL.md'),
-    '---\nname: tide\ndescription: Report the tide.\n---\n\nRead the folder table.\n',
-    'utf8',
-  );
-  await writeFile(join(fixture, '.agents/skills/tide/table.md'), '# tide table\n', 'utf8');
   host = await launchHost(fixture);
 });
 
@@ -560,32 +544,4 @@ test('rejects the same copy for both comparison inputs', async ({ page }) => {
   // a valid pair — no switchers render for a pair outside the model.
   await expect(page.locator('.aci-skill-compare')).toContainText('two distinct copies');
   await expect(page.locator('.aci-source-diff')).toHaveCount(0);
-});
-
-test('pairs a name’s two shapes entry to entry, with no file to step through', async ({ page }) => {
-  // A row whose copies are shaped differently: one is a flat Markdown file
-  // with no directory, the other a skill folder. The pair is the two entry
-  // files, because the copy-relative axis a directory pair steps through
-  // does not exist when one copy has no directory to be relative to
-  // (spec.md § FR-004).
-  await page.goto(host.origin);
-  await rowOf(page, '.agents/skills/tide.md')
-    .getByRole('link', { name: "Compare this skill's files" })
-    .click();
-  await page.waitForURL(/\/skills\/compare\/repository\?/u);
-  const sides = page.locator('.aci-compare-side');
-  await expect(sides.nth(0)).toContainText('.agents/skills/tide.md');
-  await expect(sides.nth(1)).toContainText('.agents/skills/tide/SKILL.md');
-  // Both sides hold their own content: neither is the stated absence a
-  // composed path that no copy has used to produce.
-  const diff = page.locator('.aci-skill-compare__source .aci-source-diff');
-  await expect(diff).toContainText('Read the flat table.');
-  await expect(diff).toContainText('Read the folder table.');
-  await expect(page.locator('main')).not.toContainText('No file at this path');
-  // Nothing to step, so nothing offers to: a switcher with one option would
-  // send a reader looking for the others.
-  await expect(page.locator('#aci-skill-compare-file')).toHaveCount(0);
-  // And the flat copy ships no companion, so the folder's own companion is
-  // not offered as a file the pair could step to.
-  await expect(page.locator('main')).not.toContainText('table.md');
 });

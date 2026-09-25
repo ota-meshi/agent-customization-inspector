@@ -12,8 +12,8 @@
 を照合するmaintainer専用commandである。build/start/test/CIのどのchainにも登録されておらず、明示的な
 `--network` opt-inなしには実行しない。このrepositoryで唯一outbound requestを行うcommandだからである。
 
-**commandが判定すること。** registryの52 recordそれぞれについて、記録URLを完全に取得し、record自身の
-`officialHost`からredirectなしの直接`200`を要求し、引用された193 sectionを配信bytesに対して解決する。
+**commandが判定すること。** registryの63 recordそれぞれについて、記録URLを完全に取得し、record自身の
+`officialHost`からredirectなしの直接`200`を要求し、引用された240 sectionを配信bytesに対して解決する。
 配信された`<h1>`–`<h4>`のちょうど1件として、あるいはそれを担うheadingが配信されていないときは、
 その本文を持つ目次linkがすべて指す、配信されている1つのfragmentとして。それ以外は観測どおり`missing`、`ambiguous-heading`、
 `ambiguous-anchor`として報告する。requestがthrowした場合は「完了しなかったrequest」として報告する。
@@ -25,7 +25,49 @@
 
 **変更。** commandは何も変更しない。報告するだけで、その後をreviewerが決める。
 
-**Network実行。** 2026-09-11、63 record全件 — 11件の`google.antigravity.*` recordを含む — に対して
+**Network実行。** 2026-09-24、Claude Codeによる`AGENTS.md`のreadのために63 record全件に対して実行した
+（T1216）。`anthropic.claude-code.memory.locations-load`は解決した。URLは`code.claude.com`上で直接`200`を
+返し、引用した7 section全部 — `When Claude Code reads AGENTS.md`と`Choose which instruction files load`を
+含む — が配信されたheadingとして解決した。そのうえで、このpageを引用するrecordすべて、15 citation全件を
+pageと照合した。`AGENTS.md`のsectionは、Claudeのinstruction rule、3つのinstruction lookup、layering
+strategyが今記録している内容を確立する。pageがもはや確立しない言い換えを1つ直した。rules sectionは、
+user-level ruleはproject ruleより先にloadされ、どちらも他方を上書きしないと述べるが、
+`claude.behavior.user.rules`と`claude.rules.layering`はproject ruleのほうが優先度が高いと述べていた。
+2つのcitationを、その主張を担うsectionへ移した — `claude.excluded.user-runtime`のauto memoryの場所は
+`Auto memory`へ、`claude.agent-context.composition`のmemory page側は`How CLAUDE.md files load`と
+`Auto memory`が述べる内容へ。このpageのcitationはすべて2026-09-24へ進めた。この変更のreviewが64件目のrecord
+`anthropic.claude-code.changelog.agents-md`を加えた。その`2.1.277` entry — `AGENTS.md`のreadを加えたrelease —
+が、instruction recordが今引用するversion gateであり（QR-005）、配信されたtable of contents経由で解決した。
+
+同日の他のpageのreviewは、runが報告したdriftを持つ11 recordから始めた。
+`anthropic.claude-code.skills.locations-discovery`、`vscode.copilot.instructions`、
+`vscode.copilot.hooks`、および8件の`google.antigravity.*` record — `cli-mcp`、`cli-plugins-skills`、
+`cli-settings`、`cli-subagents`、`cli-permissions`、`skills`、`rules`、`hooks` — である。それぞれの
+意味はページを読んで判断した。Claude Codeのskillsページは2つのsectionの名前を変え（`Choose where skills
+load`、`Load skills in monorepos and subdirectories`）、skillがcommandに優先することを
+`Resolve skills that share a name`へ移した。VS Codeのcustom-instructionsページは`Instruction
+priority`を`Resolve conflicting instructions`に置き換え、instruction sourceを加算的で互いの間に
+precedenceを持たないものとして文書化する。VS Codeのhooksページは Local harness を中心に書き直され、
+workspace hookがuser hookに優先するとはもう述べないので、`copilot.vscode.hooks.composition`は
+partially documentedとして記録する。端末のMCP、plugins、settings、subagents、permissionsの
+`/docs/cli/`配下のアドレスは`200`とmeta-refreshで製品ごとの節を持つ共通ページへ移り、
+`rules-workflows`も同様に`/docs/rules/`へ移る。各行はIDを保ったまま共通ページへ移した。それらの
+ページでは、もはやどのページも文書化しないフラットなMarkdown skillを`unknown`として記録し、端末の
+hookのlocationは明記されるようになり、Rulesページはdirectory-scopedとglobalのruleと24,000バイトの
+上限を文書化する。11ページの引用はすべて、それを持つrecordに対して読み直し、2026-09-24とした。
+どのruleがページに従うかはrule自体の判断に委ねた。最終runは63 sources checked、0 with driftを報告し、
+同じ4件のClaude Code changelog anchorを配信されたtable of contents経由で確認したものとして挙げた。
+
+同日のこのpull requestのreviewで、`vscode.copilot.settings`がheadingではなく内容の点で古いことが分かった。
+VS CodeのAI settingsページは、location設定 — `chat.instructionsFilesLocations`、`chat.promptFilesLocations`、
+`chat.agentFilesLocations`、`chat.agentSkillsLocations` — をそれぞれdeprecatedで、Local agentだけが読むものと
+しており、custom instructionsページは`~/.copilot/copilot-instructions.md`をAgent Host sessionのものとしている。
+このページの12件のcitationすべてを、それを持つrecordに対して読み直し、2026-09-24の日付にした。各citationは
+拠って立つ設定とそれを読むagentを名指すようになり、`copilot.behavior.vscode.user.instructions`はLocal agentの
+切り替え可能なlocationと、どの設定も切り替えないAgent Hostのlocationを分けて述べる。location設定は元から
+Inspectorが読まないruntime入力だったため、rule、status、admitされるpathはどれも動いていない。
+
+2026-09-11、63 record全件 — 11件の`google.antigravity.*` recordを含む — に対して
 実行した（specs/003-antigravity-cli-support T077）。11件目は`google.antigravity.subagents`で、user
 tierがadmitする2つのcustom agentの綴りのために同日reviewしたものである。Googleのrecordはすべて
 解決した。各URLは`antigravity.google`上で直接`200`を返し、引用した全section — `Agent Location and
@@ -82,6 +124,40 @@ frozenであり、どのruleも行わないderivationを述べていると記述
 行について既にそう記述しているのと同じ形である。記録digestはauthorも更新もしておらず、registry record
 も編集せず、conformance recordの再生成も不要だった。
 
+**Claude Codeの組は2026-09-24に、driftではなく変更として再記録した。** Claude Codeは2.1.277以降
+`AGENTS.md`をreadするため、`instructions`行のadmitted source formは、行が正しくあるためにそれを挙げる必要が
+あった（T1216）。行を両言語で変更し、再計算した2つのdigest — 英語
+`59fab461ebf26a0178658fc6aaac5b62594788bc515d48d8486fd522e7efedc7`、日本語
+`3dfaefcd4f1f4de30f5e80076366ec7bb9bdb58d90fff006cda8d16590acfcbb` — を、この行が拠って立つ英日の
+specification、data model、vendor contract、runtime-composition contractと共に、同じ変更の中で
+`contracts/official-sources.md`、その日本語版、freeze suiteに書いた。task setは`/speckit.plan`と
+`/speckit.tasks`で再生成せず、初期実装以降のすべての変更と同じくフェーズ116で拡張した。他のvendorの
+digestは動いていない。
+
+**Antigravity CLIの組は2026-09-24に、driftではなく変更として再記録した。** vendorのRulesページが
+repository rootより下とhomeのcontext fileとruleを文書化し、平置きのskillを示すページがもう無いため、
+`skill`行は平置きのファイルを述べるのをやめ、`rule`行はworkspaceと言うのをやめた
+（specs/003-antigravity-cli-support T082〜T086）。両行を両言語で変更し、再計算した2つのdigest — 英語
+`459f17af2fa11f372847a99ccdf81eaa7de48f804ab15ef297d4dc4e1e276812`、日本語
+`d79efa39bda4758b6a8de3504ad53927d7e5fdbe6ce189f145c005497edaaec0` — を、両行が拠って立つ
+specification、vendor contract、runtime-composition contractと共に、同じ変更の中で
+`contracts/official-sources.md`、その日本語版、freeze suiteに書いた。`allowlistVersion`と
+`traversalPlanVersion`はこれと共に`2026-09-24`へ進めた。この変更と、contractとplanの両方を動かしながら
+どちらも進めていなかった上記のClaude Codeの変更の分である。task setは再生成せず、
+specs/003-antigravity-cli-supportのフェーズ8で拡張した。他のvendorのdigestは動いていない。
+
+**Antigravity CLIの組は2026-09-25に、driftではなく変更として改めて再記録した。** Rulesページは、
+`AGENTS.md`と`GEMINI.md`がfrontmatterを使わず、端末がその内容全体をplain Markdownとして扱うと述べて
+いるので、productはcontext fileから何も読み出さない。rule fileからも何も読み出さない。`instructions`行と
+`rule`行は、どのextractorも読まない`frontmatter`と`body`をpresentation sourceに挙げていたため、両行とも
+何も読み出さないと述べる形にした（T1224）。両行を両言語で変更し、再計算した2つのdigest — 英語
+`e400f3a590cdd8efbf851898f9d9ab2c4dd76e6f2bd9e7b7eaa235ae731cbef3`、日本語
+`200f1e85d2d7a08de6d5a3f8f8cf83f47b5ccadf80fb86a8a275da8174d9d406` — を、両行が拠って立つdata modelと
+HTTP API contractと共に、同じ変更の中で`contracts/official-sources.md`、その日本語版、freeze suiteに
+書いた。`allowlistVersion`はこれと共に`2026-09-25`へ進めた。planは変わっていないので、
+`traversalPlanVersion`は`2026-09-24`のままである。task setは再生成せず、フェーズ116で拡張した。他の
+vendorのdigestは動いていない。
+
 ## Dependency review
 
 `pnpm outdated`は27 packageに新しいreleaseがあると報告する。`package.json`の依存はすべてcaret range
@@ -111,6 +187,25 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 破壊的なpublic-contract変更も提案していない。このreviewによってtask setはsupersededにならない。
 
 ## Release gateの実行
+
+**Antigravity CLIのページ改訂は2026-09-24にgateを実行した**（specs/003-antigravity-cli-support T087）。
+`pnpm run test:docs` 42、`pnpm run test:unit` 1288、`pnpm run test:contract` 411、
+`pnpm run test:integration` 277、`pnpm run test:security` 5、`pnpm run test:package` 53 testがこのhost上で
+すべてpassし、`pnpm run format:check`、`pnpm run lint`、`pnpm run typecheck`はcleanだった。browser側は
+Outcome manifestによる基準に記録している。`pnpm run docs:images`でこのtreeに対してreadmeの
+screenshotを2枚とも撮り直し、byte単位で同一の画像を得た。どちらにもnestedなcontext fileも平置きの
+skillも写っていない。Claude Codeによる`AGENTS.md`のreadの2回目のreview（T1220）は、同じvitest gateをこのhost上で
+再実行して2023 testがpassし、instructionの比較に届く3つのspec — `instructions-comparison`、
+`claude-instructions-inventory`、`instructions-inventory` — に対するChromium projectで19 testがすべてpassした。
+`instructions-comparison`に加えたcaseは、まずside boxが所属行だけを読む変更前の比較に対して実行し、
+そこで失敗することを確かめた。
+
+**Claude Codeによる`AGENTS.md`のreadは2026-09-24にgateを実行した**（T1215〜T1219、reviewの修正後に再実行）。
+`pnpm run test:docs` 42、`pnpm run test:unit` 1288、`pnpm run test:contract` 411、
+`pnpm run test:integration` 277、`pnpm run test:security` 5、`pnpm run test:package` 53 testがこのhost上で
+すべてpassし、`pnpm run format:check`、`pnpm run lint`、`pnpm run typecheck`はcleanだった。browser側は
+Outcome manifestによる基準に記録している。readmeのscreenshotは撮り直していない。写っているのはSkill tabと
+skillの比較で、どちらもこの変更は変えず、その横のInstructionsの件数は範囲の数であり、この変更はそれを変えない。
 
 **Antigravity CLIの変更は2026-09-10にgateを実行した**（specs/003-antigravity-cli-support T071、T072）。
 `pnpm run test:docs` 42件、`pnpm run test:unit` 1287件、`pnpm run test:contract` 411件、
@@ -573,8 +668,84 @@ silhouetteを3つ見分けるのではなく色をたどって目的のものを
 
 ## Outcome manifestによる基準
 
-凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 5**、canonical SHA-256
-`ee17cf94b381bdca0a4cdb93f1a1d727bf0e73824eaee029ff699878e48a7181`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 5は
+凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 7**、canonical SHA-256
+`cd516fd81da0d8cfe927ceb71e11708bab5191212c4fddacd44c66017d01a03e`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 7は
+期待結果を1つ変える。`sc003.shared-file.repository-root-gemini-md`が、root より下の`GEMINI.md`を、
+どの行にも届かなかったところから、Antigravity CLIだけのものとする。vendorのRulesページが、端末がたどって
+上る各階層のpairを文書化しているためである（specs/003-antigravity-cli-support T082〜T086）。期待結果の
+変更はdenominatorの変更であり、それがversionを6から進める理由である。118 caseとそのrequired classは
+それ以外変わらない。遷移はこのsessionがreviewした。agent-drivenなreviewであり、比較したのはそのcaseの
+期待結果と、shipped ruleによるそのpathの認識である。参照fixtureが5つ共に変わった —
+`tests/fixtures/repositories/build-fixtures.ts`はAntigravity CLIのtreeが平置きのskillを失い、nestedな
+context fileとnestedなrules directoryを得た。`tests/fixtures/global-homes/build-fixtures.ts`は
+Antigravity homeが他の3つのcontext fileと2つのrules directoryを得て、平置きのskillをnear missにした。
+`antigravity-instructions-detail`、`antigravity-skills-detail`、`copilot-instructions-inventory`は
+自身のtreeを組み立てる — そしてすべてのdigestをcanonical digestと共に再記録した。それらのfixtureが届く
+caseは2026-09-24にこのhost上で実行した。vitestのcaseはRelease gateの実行に記録したgate scriptで、
+browserのcaseは、Antigravity CLIのsurface、instructionまたはskillの行・detail・比較、あるいは同意済みの
+homeに届く36 specに対するChromium projectで、280 test、すべてpassした。それらのfixtureが届かない
+browser specはこのsetでは再実行していない。contract suiteは同じrunでcanonical digestと73件すべての
+fixture digestを再現した。Claude Codeによる`AGENTS.md`のreadの3回目のreview（T1221）は、同じversionの
+まま参照suite 1つのbyteを動かした。`copilot-instructions-detail`が、`applyTo`が空白だけのtreeを得た。その
+digestと上のcanonical digestを一緒に再記録し、そのspecをChromium projectで9 test、`accessibility`の
+AUTO-1.4のcaseを8 test実行して、すべてpassした。新しいassertionはそれぞれ、まず修正前のbuildに対して
+実行し、そこで失敗することを確かめた。4回目のreview（T1222）は参照fixtureを動かしていない。file行は3列が
+収まるかを行自身の幅で決めるようになり、`accessibility`のAUTO-1.4.4は1280pxに加えて832pxでも文字の拡大を
+実行し、マークが切れないことを確かめる。このcaseは変更前のbuildに対して失敗し — 832pxでマークが101pxのうち
+0pxと測られた — 変更後はpassした。file行を描く8つのinventory specと合わせて78 test、すべてpassした。
+5回目のreview（T1223、そしてspecs/003-antigravity-cli-support T091）は、同じversionのまま参照fixture 3つの
+byteを動かした。リポジトリのbuilderと`antigravity-rules-detail`は各ruleに公式の`trigger` keyを書き、
+`claude-instructions-inventory`は、fileの2つの範囲の間をkeyboardで移るcaseを得た。そのcaseは修正前のbuildに
+対して失敗し — focusを持つ要素が無かった — 修正後はpassした。それらのdigestと上のcanonical digestを一緒に
+再記録し、detailの移動、rulesの見本、accessibilityのcaseに届く26 specをChromium projectで実行して203 test、
+すべてpassした。その後`pnpm run docs:images`はbyte単位で同一の画像を生成した。6回目のreview（T1224）は、
+同じversionのまま参照fixture 7つのbyteを動かした。Copilotの`*.instructions.md`以外のすべての
+instruction形式を全体のまま読むようにしたため、リポジトリのbuilderと秘密値を持つfixtureは、frontmatterの
+caseにpath-specificなfileを与え、context fileの先頭のblockをinstructionsの1行として保つ。
+`antigravity-instructions-detail`、`claude-instructions-detail`、`claude-instructions-inventory`、
+`codex-instructions-detail`、`copilot-instructions-detail`は、タブのないdetailと、YAMLでないblockに
+parse failureが出ないことを確かめる。どのcaseのID、class、期待結果も変わっていない:
+`sc007.file-confined.malformed-content`には、frontmatterがparseできないpath-specificなfileが引き続き
+届く。それらのdigestと上のcanonical digestを一緒に再記録し、instructionの行・detail・比較に届く17 specを
+2026-09-25にChromium projectで実行して116 test、instruction detailを開く`accessibility`のAUTO-2.5.3の
+caseを1 test実行して、すべてpassした。7回目のreview（T1225）は、同じversionのまま参照fixture 5つのbyteを
+動かした。`tests/fixtures/repositories/build-fixtures.ts`は期待するClaudeとCopilotのinstruction pathに
+`AGENTS.md`を加え、`claude-rules-detail`、`claude-settings-detail`、`codex-config-detail`、
+`codex-mcp-detail`は、別のkindの読み取りがparseできないfile — commandでもあるrule file、commentを含む
+`.claude/settings.json`、TOMLが受け付けない`.codex/config.toml`、Codexのfallback entryが名指す
+`.mcp.json` — を組み立て、そのdetailが、そしてrule fileとsettings documentではその行も、失敗を1回
+述べることを確かめる。どのcaseのID、class、期待結果も変わっていない。それらのdigestと上のcanonical
+digestを一緒に再記録し、diagnostic、あるいはrule・skill・command・output style・settingsの行に届く
+52 specを2026-09-25にChromium projectで実行して319 test、すべてpassした。新しいassertionは
+それぞれ、まず変更を外したbuildに対して実行し、そこで失敗することを確かめた。それらの面から診断を外すと
+どれも1件も見つけず、記録を1件ずつ並べると、fileが2件の記録を持つ3つのcaseは2件を見つけた。
+
+その前のsetは**version 6**、canonical SHA-256
+`44278b6b0b7ba850104d49a072bb15a70f7964b6297593a96fcefcdeb63cd3de`である。Version 6は
+期待結果を1つ変える。`sc003.shared-file.repository-agents-md`が、Claude Codeが2.1.277以降readするroot
+`AGENTS.md`の認識toolにClaude Codeを挙げる（T1217）。期待結果の変更はdenominatorの変更であり、それが
+versionを5から進める理由である。118 caseとそのrequired classはそれ以外変わらない。遷移はこのsessionが
+reviewした。agent-drivenなreviewであり、比較したのはそのcaseの期待結果と、shipped ruleによるそのpathの
+認識である。参照fixtureが2つ共に変わった — Claude instruction treeにnestedな`packages/api/AGENTS.md`が
+加わった`tests/fixtures/repositories/build-fixtures.ts`と、自身のtreeを組み立て、そのfileと
+`AGENTS.override.md`が加わった`tests/e2e/claude-instructions-inventory.spec.ts` — ので、両digestを
+canonical digestと共に再記録した。それらのfixtureが届くcaseは2026-09-24にこのhost上で実行した。vitestの
+caseはRelease gateの実行に記録したgate scriptで、browserのcaseはそれらが名指すspec —
+`claude-instructions-inventory`、`inspection-safety`、`instructions-inventory`、`skills-inventory`の16 test、
+すべてpass — に、ClaudeまたはCodexのfileの横に`AGENTS.md`を書く26 specを加えたChromium projectで実行した。
+後者の144 testのうち139がpassし、passしなかった5件はこの変更が言い直した4 specにあり、それらを再実行して
+passした。これらのfixtureが
+届かないbrowser specはこのsetのために再実行していない。contract suiteは同じrunでcanonical digestと73件の
+fixture digestすべてを再現した。
+
+この変更のreview（T1219）が、同じversionのまま参照suiteをさらに5つ動かした。`claude-instructions-inventory`は
+`.claude/AGENTS.md`が2つの範囲に載るtreeを加え、`claude-instructions-detail`、`codex-instructions-detail`、
+`antigravity-instructions-detail`、`codex-mcp-detail`はinstruction fileの認識を範囲の箱から読み、範囲を運ぶように
+なったrowのlinkをたどる。それらのdigestと上のcanonical digestを共に再記録し、2026-09-24に、instructionのrow、
+詳細、比較に届く37 specに対するChromium projectでcaseを再実行し、255 testすべてpassした。
+
+その前のsetは`tests/fixtures/outcomes/manifest.json`の**version 5**、canonical SHA-256
+`ee17cf94b381bdca0a4cdb93f1a1d727bf0e73824eaee029ff699878e48a7181`である。Version 5は
 Antigravity CLIのdenominatorである（specs/003-antigravity-cli-support T063）。SC-003とSC-005それぞれに8つの
 `(Antigravity CLI, kind)` row — `sc00{3,5}.row.antigravity.{instructions,settings-config,mcp,hook,rule,skill,agent,permissions}`
 — に加えて`sc003.global-source-form.antigravity`と`sc004.tool.antigravity`を持つ。この読み手を運ぶ帰属caseは3つある。
@@ -862,6 +1033,142 @@ jobは3つのoperating systemと2つの固定Node.js versionを要するが、�
 host 1台である。Certificationの結果はmatrix上のCI runが生むものであり、記録されているものはない。
 
 ## SC-001とSC-006のfirst-use session
+
+**Claude Codeによる`AGENTS.md`のreadのためにrunが必要になり、実行した。** SC-006の指定fileは準備した
+repositoryの`AGENTS.md`であり、Claude Codeがそれを読むようになったため、認識toolは3つから4つになった
+（spec.md § Clarifications Session 2026-09-24）。まずground truthを更新し — `ground-truth.json`とその日本語版が
+Claude Codeを挙げ、4つすべての一致を求める — runはそれに従った（T1218）。
+
+**2026-09-24にrelease candidateに対して20のagent-driven sessionを実行し、時計はrunnerが持った。** buildは
+このrunの時点のtreeを`npm pack`したもので、tarball SHA-256は
+`32f052b7efe3afbd74430638b131561fe18fac0cb3d7ec2dcd2d709c6a34931e`であり、`npx --no-install`が見つける
+各session folderにinstallした。各sessionはこのworking treeの外にある自身のfolder、
+`tests/fixtures/repositories/build-fixtures.ts`が組み立てた自身の`repository/`、
+`tests/fixtures/global-homes/build-fixtures.ts`による自身のfixture home、自身のlaunchを持った。5つずつ
+Claude Sonnet 5で実行し、各sessionは自身のsession folderをworking directoryとするClaude CLI 2.1.266の
+print-mode processで、`--setting-sources user`で起動し、このrepositoryの設定変数を環境から除き、promptは
+標準入力で渡した。2つのequipment conditionはこれまでのrunと同じで、launch commandに`--port 0`を付けることと、
+3つのmember home変数と`HOME`をそのcommandにだけ設定することである。以前のrunnerとbrowser equipmentは
+残っていなかったため、このrunのために作り直した。browserは`open`、`snapshot`、`click`、`type`、`press`、
+`text`、`url`、`stop`に応え、snapshotはpageのroleと名前に操作可能な要素ごとの参照を1つ付けたものである。
+runnerはtaskを1つずつ提示し、各提示と完了に時刻を刻み、SC-006の前に指定fileのpageを用意し、
+response formを表示する。
+
+**runnerが述べる1つの条件と、その述べ方。** SC-006の前提は、参加者の目の前の画面にfileが開いていることで
+ある。人は何もせずにその画面を受け取るが、sessionの目は自分で実行を選ぶcommandしかない。そこでrunnerは
+promptと共に画面をsessionに渡す。これまでのrunが使った一文 — 前のtaskから画面が変わった — に続けて、
+その時点のpageのsnapshotを、session自身の`snapshot`が返すのと同じ形で渡す。画面に無いものは何も加えない。
+
+**これはagent-drivenなrunであり、そのように記録する。** 20のagentが確立するのは、productが自ら表示・
+renderする案内だけで、起動し、fileに到達し、そのfileについてproductが述べることを述べ、2つのcopyを比較し、
+個人設定の手順が何かを読む前に何を提案するかを見るのに十分かどうかである。人が同じinterfaceをどう体験するかは
+この証拠に含まれず、ここのどの文もhuman-subjectの結果として読んではならない。
+
+| Workflow | 測るもの | 閾値 | 結果 |
+|---|---|---|---|
+| Discovery | SC-001: promptからlaunchを経て、発見した1 fileのdetail viewを2分以内に開く | 20中19 | **確立: 20中20**、14.1 s〜32.2 s、中央値18.8 s |
+| Inspection | SC-006: 指定した`AGENTS.md`の3つのresponse fieldを2分以内に提出し、すべてのfieldがground truthに一致する | 20中18 | **確立: 20中20**、3.2 s〜7.4 s、中央値4.4 s |
+| Comparison | SC-006 coverage: 標準化したcomparison task | 20すべてが試みる | **20中20**完了: すべてのsessionが2つの`changelog` copyを並べ、違いを1つ挙げた |
+| Global consent | SC-006 coverage: 標準化した個人設定consent task | 20すべてが試みる | **20中20**完了: すべてのsessionが提案pageに到達し、その5つのdirectoryを挙げた |
+| Safety | SC-006 zero-critical gate | critical issueなし | **Pass。** 20すべてが事前に定めた7つのsafety fieldにすべて答え、`yes`と答えたsessionは無かった |
+
+**各sessionの4つの結果とその所要時間。** 各行は登録した1 sessionであり、除外も差し替えもせずに記録する。
+最後の列はsessionがSC-001で開くことを選んだfileで、session自身の選択であり採点しない。
+
+| Session | Discovery | Inspection | Comparison | Consent | 開いたfile |
+|---:|---:|---:|---:|---:|---|
+| 01 | 27.4 s | 7.4 s | 23.8 s | 14.0 s | `.claude/CLAUDE.md` |
+| 02 | 29.6 s | 5.0 s | 25.3 s | 12.6 s | `CLAUDE.md` |
+| 03 | 20.3 s | 4.6 s | 13.7 s | 8.9 s | `.claude/CLAUDE.md` |
+| 04 | 21.6 s | 4.0 s | 14.5 s | 9.6 s | `.claude/CLAUDE.md` |
+| 05 | 25.3 s | 5.6 s | 20.5 s | 13.4 s | `.claude/CLAUDE.md` |
+| 06 | 17.5 s | 3.8 s | 14.4 s | 9.4 s | `.claude/CLAUDE.md` |
+| 07 | 22.2 s | 3.2 s | 13.3 s | 20.4 s | `.claude/CLAUDE.md` |
+| 08 | 14.1 s | 3.2 s | 14.2 s | 9.0 s | `.claude/CLAUDE.md` |
+| 09 | 16.9 s | 4.2 s | 16.0 s | 12.0 s | `.claude/CLAUDE.md` |
+| 10 | 17.6 s | 3.8 s | 17.2 s | 8.9 s | `.claude/CLAUDE.md` |
+| 11 | 16.2 s | 5.1 s | 16.3 s | 9.5 s | `.claude/CLAUDE.md` |
+| 12 | 15.7 s | 3.5 s | 13.7 s | 9.0 s | `.claude/CLAUDE.md` |
+| 13 | 15.4 s | 3.3 s | 12.7 s | 11.5 s | `.claude/CLAUDE.md` |
+| 14 | 19.0 s | 3.9 s | 19.1 s | 8.8 s | `.claude/CLAUDE.md` |
+| 15 | 19.4 s | 5.2 s | 19.6 s | 11.7 s | `.claude/CLAUDE.md` |
+| 16 | 20.0 s | 4.8 s | 17.5 s | 16.8 s | `.claude/CLAUDE.md` |
+| 17 | 18.7 s | 4.8 s | 14.7 s | 9.5 s | `.claude/CLAUDE.md` |
+| 18 | 18.7 s | 3.5 s | 11.9 s | 10.7 s | `.claude/CLAUDE.md` |
+| 19 | 32.2 s | 5.5 s | 32.5 s | 15.6 s | `.claude/CLAUDE.md` |
+| 20 | 17.9 s | 5.4 s | 14.3 s | 6.3 s | `.claude/CLAUDE.md` |
+
+すべてのsessionの3つのfieldが`ground-truth.json`に一致した。sourceは`Repository`、認識toolはGitHub
+Copilot、Claude Code、OpenAI Codex、Antigravity CLI、file typeは`Instructions`である。
+
+**各sessionのsafetyの回答。** 事前に定めた7つのfieldに20すべてが答え、すべての回答が`no`だった。run後、
+各sessionの`repository/`を同じfixtureを新たにbuildしたものと比較し — すべてのfileのbyteと、すべてのlinkの
+自身のrootからの相対target — 20すべてが一致した。sessionが報告したerrorは自身のequipmentの誤りである。
+shellが展開したquoteなしのURL、古いsnapshot参照、tabを選ばなかったquery stringである。最も多く報告された
+驚きは、個人設定のgateが何かを読む前にdirectoryを挙げることで、FR-013が仕様どおりに動いていると正しく
+説明されている。
+
+**このrunが確立しないもの。** 人のfirst useについては何も述べない。capture bundleは持たない。依拠するのは
+runner自身のevent logと各sessionのtranscriptで、このrepositoryの外にあるrunのsession folderの横に置いている。
+そして1つのfixture treeである。
+
+**同日の先行する2回の試行は差し替え、両方の各sessionを結果とは分けてここに記録する**
+（tests/usability/sc001-sc006-study-kit.ja.md § 誰が参加するか）。Apparatusの欠陥が無効にするのはsessionではなく試行であり、
+どちらの欠陥もrunnerのものだった。
+
+1回目の試行では、1つのsessionが他のsessionに手を出せた。Session 04が`pkill -f
+agent-customization-inspector`で後片付けをし、command lineにproduct名を含むprocessをすべて停止した —
+並行して動いていた4 sessionすべて（1つは最後の回答の後、3つはtaskの途中）と、runner自身のtest processである。runnerは既に開始していた次の波の
+5 sessionを停止し、残る10 sessionは開始していない。以下のSC-006の回答はすべて4 toolのground truthと照合した。
+1 sessionは、2回目の試行の5 sessionと同じく記憶で答えた。runnerは今は各sessionに、他のsessionが並行して
+動いていること、自分が起動したものだけをそれ自身の手がかりで止めることを伝え、runはproduct名を含まない
+pathへ移した。
+
+| Session | Discovery | Inspection | Comparison | Consent | Safety | 終わり方 |
+|---:|---:|---:|---:|---:|---|---|
+| 01 | 17.8 s | 6.5 s | 16.0 s | 9.2 s | 提出 | 最後の回答の後に停止 |
+| 02 | 21.6 s | 10.3 s | 23.9 s | 13.7 s | — | session 04により停止 |
+| 03 | 22.1 s | 11.0 s | 18.8 s | 12.6 s | — | session 04により停止 |
+| 04 | 16.4 s | 7.6 s | 15.2 s | 10.1 s | 提出 | 完了。`pkill`を実行した |
+| 05 | 27.1 s | 10.6 s | 27.5 s | — | — | session 04により停止 |
+| 06 | 24.3 s | 16.8 s | — | — | — | runnerが停止 |
+| 07 | 15.8 s | 8.0 s | 19.3 s | — | — | runnerが停止 |
+| 08 | 15.1 s | 8.4 s | 14.1 s | — | — | runnerが停止 |
+| 09 | 19.1 s | 3.4 s (Claude Codeのみ) | 15.2 s | 10.8 s | — | runnerが停止 |
+| 10 | 24.9 s | — | — | — | — | runnerが停止 |
+
+2回目の試行では、SC-006の画面が変わったことは伝えたが画面そのものは渡さなかった。5 session — 04、06、08、
+10、19 — がSC-006に見ずに5秒未満で答え、SC-001で自分が開いた`.claude/CLAUDE.md`を説明した。正しい説明
+であり、だからこそ基準には誤りである。基準の前提をsessionの前に置かないapparatusは基準を測っておらず、
+これは2026-09-10のrunが記録しなかった試行について挙げる理由と同じである。集計はSC-001が20中20、SC-006が
+20中15、comparisonとconsentがそれぞれ20中20だった。2 sessionがsafety fieldの1つを`unknown`と答えた —
+09がcontent exposure、20がMCP connection — のは、それを示し得るものが無かったためで、`yes`と答えた
+sessionは無い。
+
+| Session | Discovery | Inspection | SC-006 field | Comparison | Consent | Safety |
+|---:|---:|---:|---|---:|---:|---|
+| 01 | 19.2 s | 12.6 s | 一致 | 16.2 s | 8.6 s | すべて`no` |
+| 02 | 20.0 s | 6.7 s | 一致 | 13.1 s | 8.9 s | すべて`no` |
+| 03 | 15.9 s | 19.3 s | 一致 | 13.4 s | 8.9 s | すべて`no` |
+| 04 | 19.3 s | 3.8 s | 不一致（Claude Codeのみ） | 13.4 s | 8.9 s | すべて`no` |
+| 05 | 18.9 s | 9.1 s | 一致 | 14.4 s | 9.1 s | すべて`no` |
+| 06 | 14.7 s | 2.9 s | 不一致（Claude Codeのみ） | 13.8 s | 8.8 s | すべて`no` |
+| 07 | 21.7 s | 10.7 s | 一致 | 15.2 s | 8.7 s | すべて`no` |
+| 08 | 24.3 s | 4.7 s | 不一致（Claude Codeのみ） | 17.5 s | 11.6 s | すべて`no` |
+| 09 | 28.4 s | 22.3 s | 一致 | 24.9 s | 17.9 s | 1つが`unknown` |
+| 10 | 20.5 s | 3.8 s | 不一致（Claude Codeのみ） | 14.1 s | 9.0 s | すべて`no` |
+| 11 | 22.6 s | 12.4 s | 一致 | 20.6 s | 15.4 s | すべて`no` |
+| 12 | 31.4 s | 13.1 s | 一致 | 22.1 s | 18.1 s | すべて`no` |
+| 13 | 43.2 s | 10.6 s | 一致 | 24.6 s | 17.4 s | すべて`no` |
+| 14 | 17.8 s | 7.3 s | 一致 | 12.5 s | 9.0 s | すべて`no` |
+| 15 | 23.7 s | 8.5 s | 一致 | 12.7 s | 10.4 s | すべて`no` |
+| 16 | 26.4 s | 16.9 s | 一致 | 20.7 s | 17.2 s | すべて`no` |
+| 17 | 16.9 s | 8.3 s | 一致 | 21.4 s | 8.8 s | すべて`no` |
+| 18 | 32.6 s | 14.4 s | 一致 | 23.1 s | 16.6 s | すべて`no` |
+| 19 | 23.5 s | 5.1 s | 不一致（Claude Codeのみ） | 28.7 s | 11.8 s | すべて`no` |
+| 20 | 17.3 s | 8.7 s | 一致 | 13.1 s | 10.0 s | 1つが`unknown` |
+
+上のrunは前提を届けた最初の試行であり、1回だけ実行した。
 
 **Antigravity CLIの変更に対してrunが必要であり、実施した。** 親の規則は、指定したSC-006 fileの
 ground truthが変わったときに20 sessionの評価を繰り返す、というものである。それが変わった。指定fileは

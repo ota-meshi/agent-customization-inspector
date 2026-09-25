@@ -22,7 +22,7 @@ import { CodexCompiledDerivedRule, CodexCompiledRule } from '../vendor/codex';
 import { TraversalPlan } from '../registry';
 import type {
   CompiledDerivedInstructionRule,
-  CompiledStaticInstructionRule,
+  CompiledStaticWholeDocumentInstructionRule,
 } from './compiled-rule';
 import {
   PATH_CONDITION_FAILURE_CODES,
@@ -53,10 +53,17 @@ import type { SelectionPolicy } from '../registry';
  */
 export class CodexCompiledInstructionRule
   extends CodexCompiledRule
-  implements CompiledStaticInstructionRule
+  implements CompiledStaticWholeDocumentInstructionRule
 {
   /** Narrowed to the one kind this unit compiles; the constructor proves it. */
   declare public readonly kind: 'instructions';
+
+  /**
+   * Read whole: the `AGENTS.md` page documents no frontmatter for an
+   * instruction file (openai.codex.agents-md; api-types.ts
+   * § InstructionFileFormat).
+   */
+  public readonly format: 'whole-document';
 
   /** The Repository root's `**`; every Codex instruction candidate sits there. */
   public applicabilityRangeOf(): string {
@@ -69,6 +76,7 @@ export class CodexCompiledInstructionRule
     if (rule.kind !== 'instructions') {
       throw new TypeError(`rule ${rule.ruleId} is not a Codex instruction rule`);
     }
+    this.format = 'whole-document';
   }
 }
 
@@ -121,6 +129,13 @@ export class CodexCompiledDerivedInstructionRule
   declare public readonly kind: 'instructions';
 
   /**
+   * Read whole, like the `AGENTS.md` a configured fallback name stands in for
+   * (openai.codex.agents-md § Customize fallback filenames; api-types.ts
+   * § InstructionFileFormat).
+   */
+  public readonly format: 'whole-document';
+
+  /**
    * Builds the traversal plan for one configuration-read result: one exact
    * Repository-root selector per declared basename, in authored order, each
    * segment the name as the configuration wrote it — a name is compared to
@@ -158,6 +173,7 @@ export class CodexCompiledDerivedInstructionRule
     if (rule.kind !== 'instructions') {
       throw new TypeError(`rule ${rule.ruleId} derives a kind this unit cannot answer for`);
     }
+    this.format = 'whole-document';
   }
 }
 

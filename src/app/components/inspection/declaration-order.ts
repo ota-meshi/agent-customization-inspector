@@ -109,10 +109,11 @@ export const LEADING_SKILL_FRONTMATTER_KEYS: readonly string[] = [
  *
  * One product's table is the whole list here because it is the only one: a
  * repository `.github/copilot-instructions.md`, a `CLAUDE.md`, an `AGENTS.md`,
- * and a `GEMINI.md` are documented as Markdown with no frontmatter schema at
- * all, so `.instructions.md` is the one location of this kind whose header any
- * vendor specifies. A file of another location that writes frontmatter anyway
- * is published exactly as it wrote it, its keys trailing these three.
+ * and a `GEMINI.md` are documented as Markdown with no frontmatter at all, so
+ * `.instructions.md` is the one format of this kind whose header any vendor
+ * specifies — and the one whose declarations this product reads out
+ * (api-types.ts § InstructionFileFormat). A key the table does not name is
+ * published exactly as the file wrote it, trailing these three.
  *
  * `applyTo` is the field a reader of this kind looks for above all, because it
  * is what the file governs — the fact the inventory groups the row by. It sits

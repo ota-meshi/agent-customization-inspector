@@ -16,13 +16,16 @@
     "recognizing-tools": {
       "expected": [
         "GitHub Copilot",
+        "Claude Code",
         "OpenAI Codex",
         "Antigravity CLI"
       ],
-      "matchRule": "all three, in any order; a response naming fewer, or naming Claude Code, is incorrect",
+      "matchRule": "all four, in any order; a response naming fewer is incorrect",
       "accepted": [
         "GitHub Copilot",
         "Copilot",
+        "Claude Code",
+        "Claude",
         "OpenAI Codex",
         "Codex",
         "Antigravity CLI",

@@ -42,6 +42,7 @@ import {
   accessiblePresentationLabel,
 } from '../../../../shared/entities';
 import type {
+  CustomizationFileSummaryDto,
   OutputStyleDefinitionDto,
   OutputStyleInventoryEntryDto,
   SerializedDiagnostic,
@@ -50,6 +51,13 @@ import type {
 const props = defineProps<{
   /** The committed output-style entry to render: one style name. */
   entry: OutputStyleInventoryEntryDto;
+  /**
+   * Every published file by its Source and then its Source-relative Path —
+   * both halves of the file's identity (FR-030). A definition names its file
+   * by its own `sourceId` and path and repeats none of its facts, so this
+   * lookup resolves the diagnostics each file keeps.
+   */
+  filesBySource: ReadonlyMap<string, ReadonlyMap<string, CustomizationFileSummaryDto>>;
   /** The generation's diagnostics, resolved per file by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
@@ -120,11 +128,12 @@ const fileRows = computed(() => {
         query: originRowNameQuery(props.entry.name),
       },
       /**
-       * The extraction diagnostics this file's definitions reference,
-       * deduplicated: one extraction per `(file, kind)` means every definition
-       * of one file points at the same record (FR-028).
+       * The file's own diagnostic references, from its `files[]` entry: every
+       * record a reading of the file left, whichever kind's reading it was
+       * (FR-028).
        */
-      diagnosticIds: [...new Set(definitions.flatMap((definition) => definition.diagnosticIds))],
+      diagnosticIds:
+        props.filesBySource.get(sourceId)?.get(sourceRelativePath)?.diagnosticIds ?? [],
     };
   });
 });
@@ -177,10 +186,9 @@ const fileRows = computed(() => {
               "
               >{{ file.pathText }}</NuxtLink
             >
-            <!-- The file's own extraction diagnostics — its recognitions'
-                 reference to the kind's one shared failure record, not the
-                 file's aggregate, so a row reports its own kind's failure and
-                 never every problem its file carries (FR-028). -->
+            <!-- The file's diagnostics, whichever kind's reading left them:
+                 a file-confined outcome is about the file rather than about
+                 what recognized it (`RowDiagnostics.vue`, FR-028). -->
             <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
           </span>
           <RecognitionMarks :recognitions="file.recognitions" />

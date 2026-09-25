@@ -1,5 +1,5 @@
 {
-  "manifestVersion": 5,
+  "manifestVersion": 7,
   "fixtures": {
     "filesystem": {
       "kind": "deterministic-builder",
@@ -9,17 +9,17 @@
     "global-homes": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/global-homes/build-fixtures.ts",
-      "sha256": "8658cbc1557161efcfd95c6f2aed02ae66a5603d5d25161df7a36e80aa3d7847"
+      "sha256": "880d1d05daed51e5c459ba7026c388260bab14661bde3715a582a79a2a3f9f73"
     },
     "repositories": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/repositories/build-fixtures.ts",
-      "sha256": "f7f408f9d60cb523734bc4a280be2d4ddbd482059b8b7e181a4ccbbcb5eac2f7"
+      "sha256": "f14a0d42a1a7abb8caa2920e5a2cbae479c3bcc9c8c5fb25b1fc6e5a0c8dbdf3"
     },
     "secrets": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/secrets/build-fixtures.ts",
-      "sha256": "56622a679125058876471d2f25d1f3d0f728ff51dd45ee9c30581638682cbce4"
+      "sha256": "e1d0b413e03422cbf333d4d1812680efc3406356e0936dbce7467310637342c5"
     },
     "tests/contract/host-startup.test.ts": {
       "kind": "inline-fixture-suite",
@@ -44,7 +44,7 @@
     "tests/e2e/antigravity-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/antigravity-instructions-detail.spec.ts",
-      "sha256": "9e424a4a00d8fc315061e62a3e7676bb63c842d8320c5eef21b3cff9320b9eef"
+      "sha256": "108aea16220767677618a2a1da681f1aa0714a2c9c965481ff1b321da9a53657"
     },
     "tests/e2e/antigravity-mcp-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -54,7 +54,7 @@
     "tests/e2e/antigravity-rules-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/antigravity-rules-detail.spec.ts",
-      "sha256": "610d7c002277f1071a3783b851e5e3d4395df0943a39de22d2ae2883d17eb45a"
+      "sha256": "872fe9e23297122ead15eff5999c90962bb59808ccf6674592eb53592b0c43af"
     },
     "tests/e2e/antigravity-settings-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -64,7 +64,7 @@
     "tests/e2e/antigravity-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/antigravity-skills-detail.spec.ts",
-      "sha256": "928d3f46b787747f561ffad086ae765bcec97f04914d1de513f346d45e7be2f4"
+      "sha256": "f33e756d53b0f1b1adfb8ba118e2acda2b63bcd691e0aa8e8c0acb01de8297ed"
     },
     "tests/e2e/claude-commands-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -99,12 +99,12 @@
     "tests/e2e/claude-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-instructions-detail.spec.ts",
-      "sha256": "1511b6a3b6e81ceb1c150b39e4ef2aab6fdb4bebbe9ea695d2d2f03f6af867f9"
+      "sha256": "41e04fd492c59d43f52eec92530cd169e3fc88ea45c41ff5105df2f46302ccaf"
     },
     "tests/e2e/claude-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-instructions-inventory.spec.ts",
-      "sha256": "b32bdc67e26465d7379e1da7bba1971114728ec7390b40978dbcb80b66196e60"
+      "sha256": "19d4fdb805435744ca7c560af527394f7a7eed141438da92bee8e65c9ee2cb3b"
     },
     "tests/e2e/claude-mcp-files-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -134,7 +134,7 @@
     "tests/e2e/claude-rules-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-rules-detail.spec.ts",
-      "sha256": "069b4f08b9bd65722e3a0ccaeefece18459018ca9ac994e89a4f3bb2c628034e"
+      "sha256": "dd173f4c2b3c709c14c52804738e5ee1f4696c6289135da93e0f78494511c7f9"
     },
     "tests/e2e/claude-rules-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -144,7 +144,7 @@
     "tests/e2e/claude-settings-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-settings-detail.spec.ts",
-      "sha256": "09471c1ac878fb8944d8a3da71904dd9764166655e7cd99509b9d17c11a271a5"
+      "sha256": "9364c431beba143ac110f03b3d111c6eccb27a8b15e8f09bd405dc42a5bf3b42"
     },
     "tests/e2e/claude-settings-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -164,7 +164,7 @@
     "tests/e2e/codex-config-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-config-detail.spec.ts",
-      "sha256": "30823c3f0576c7d04cdce44b5300df5d1620c1f3819d5a97f88b8c61c8dd854c"
+      "sha256": "375b074f6f240908ecc1f03b3120c513313dfa2c47900120b3feabb58c055130"
     },
     "tests/e2e/codex-config-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -194,7 +194,7 @@
     "tests/e2e/codex-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-instructions-detail.spec.ts",
-      "sha256": "d07a6368b084cc16f55526a5fad05b2ce7f16a5f57d78bfe34427f0d30355e4c"
+      "sha256": "4f0c838b97f8b555f2fccc721c5ebd8972270dfff4cafa6c396a82559da0754a"
     },
     "tests/e2e/codex-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -204,7 +204,7 @@
     "tests/e2e/codex-mcp-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-mcp-detail.spec.ts",
-      "sha256": "dc647d437167399cbbe2ca556bcc3d3a75594f827a39825e2cd91218c5bef938"
+      "sha256": "ecb6d8330311a679da38a46f46124a2570928a04ad6ccd02a60e2244fc9926ac"
     },
     "tests/e2e/codex-mcp-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -279,12 +279,12 @@
     "tests/e2e/copilot-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-instructions-detail.spec.ts",
-      "sha256": "b3f10cc5d0eea38491eb62922d385003c1e46a40a525d9821c4ac97f68a5987e"
+      "sha256": "85ad229c96ea9db452722db7f68f9256b356666680059a4a7f58faec8670bac0"
     },
     "tests/e2e/copilot-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-instructions-inventory.spec.ts",
-      "sha256": "d32f5befd5c71d71d4843a8a809a11ee2a93cf4d938ded8a3654a236a6ddcce9"
+      "sha256": "e7039a5383e2d449fe591573d1c3c414f9db6ae893a2823ec054a356903be268"
     },
     "tests/e2e/copilot-plugins-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -629,7 +629,7 @@
           "caseId": "sc003.shared-file.repository-agents-md",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository-root `AGENTS.md` is attributed to OpenAI Codex and GitHub Copilot and Antigravity CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository-root `AGENTS.md` is attributed to Claude Code and OpenAI Codex and GitHub Copilot and Antigravity CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
         },
         {
@@ -762,7 +762,7 @@
           "caseId": "sc003.shared-file.repository-root-gemini-md",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository-root `GEMINI.md` is attributed to GitHub Copilot and Antigravity CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows, while a `GEMINI.md` below the root reaches no row at all.",
+          "expectedOutcome": "The repository-root `GEMINI.md` is attributed to GitHub Copilot and Antigravity CLI — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows, while a `GEMINI.md` below the root is attributed to Antigravity CLI alone.",
           "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
         },
         {

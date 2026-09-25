@@ -29,10 +29,10 @@ import type { InspectionRule } from '../../../../shared/registries/rule-types';
 
 /**
  * The key holding the hook map inside this vendor's settings document. The
- * plugins and skills page states that hooks are configured in a plugin's
- * `hooks.json` or in the primary `settings.json`, and gives no schema for the
- * settings form; the shared Hooks page gives the file's own shape, and the
- * settings form is read as that shape under this key
+ * shared Hooks page states that the terminal also defines hooks inside its
+ * primary `settings.json`, and gives no schema for the settings form; it
+ * gives the standalone file's own shape, and the settings form is read as that
+ * shape under this key
  * (contracts/vendors/antigravity-cli.md § Known uncertainties items 4 and 8).
  */
 const ANTIGRAVITY_HOOK_MAP_KEY = 'hooks';

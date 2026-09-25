@@ -1,13 +1,14 @@
-// T277: browser acceptance for the instruction comparison (Phase 22).
-// Launches the packaged CLI against an instruction-bearing fixture, enters
-// the comparison from an inventory row and from a detail page, and verifies
-// what can only be claimed against a rendered page: the complete literal
-// diff — credential and environment-reference differences included, with no
-// masking, reveal, or environment substitution — the exact metadata rows,
-// the typed layering and fallback differences stated per side, the
-// row-owned pair (a comparison never leaves the applicability-range row
-// that owns both files, exactly as a skill comparison never leaves its
-// name's row), and the reported (never compared) dead pairs.
+// T277, T1220, T1224: browser acceptance for the instruction comparison
+// (Phase 22). Launches the packaged CLI against an instruction-bearing
+// fixture, enters the comparison from an inventory row and from a detail page,
+// and verifies what can only be claimed against a rendered page: the complete
+// literal diff — credential and environment-reference differences included,
+// with no masking, reveal, or environment substitution — the exact metadata
+// rows of a pair whose format declares anything and their absence from a pair
+// read whole, the typed layering and fallback differences stated per side,
+// the row-owned pair (a comparison never leaves the applicability-range row
+// that owns both files, exactly as a skill comparison never leaves its name's
+// row), and the reported (never compared) dead pairs.
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -19,6 +20,10 @@ import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 const AGENTS_SECRET = 'ghp_E2ECOMPAREAGENTS000000000000000000000';
 const CLAUDE_SECRET = 'ghp_E2ECOMPARECLAUDE000000000000000000000';
 
+/** The path-specific pair: the one instruction format that opens with declarations. */
+const FRONTEND_PATH = '.github/instructions/frontend.instructions.md';
+const BACKEND_PATH = '.github/instructions/backend.instructions.md';
+
 /** A literal environment reference that must render nowhere resolved. */
 const ENVIRONMENT_REFERENCE = '${ACI_E2E_COMPARE_ENDPOINT}';
 
@@ -27,11 +32,10 @@ let host: LaunchedHost;
 
 test.beforeEach(async () => {
   fixture = await mkdtemp(join(tmpdir(), 'aci-instructions-comparison-'));
-  // The shared root pair: `AGENTS.md` (Codex+Copilot) and `CLAUDE.md`
-  // (Claude+Copilot). Their declarations overlap on `scope` (different
-  // values), agree on `retries` — authored `7` versus `007`, one resolved
-  // value with the literal difference kept for the source diff — and each
-  // declares one key the other does not.
+  // The shared root pair: `AGENTS.md` (Claude+Codex+Copilot+Antigravity) and
+  // `CLAUDE.md` (Claude+Copilot). Each opens with a `---` block, and neither
+  // declares anything by it: every product reading them reads them whole, so
+  // the block is a line of the file the source comparison shows (T1224).
   await writeFile(
     join(fixture, 'AGENTS.md'),
     [
@@ -88,6 +92,43 @@ test.beforeEach(async () => {
     'utf8',
   );
   await writeFile(join(fixture, 'packages/api/AGENTS.md'), '# Nested agent instructions\n', 'utf8');
+  // The path-specific pair, one `src/**` row by the range both declare. Their
+  // declarations overlap on `scope` (different values), agree on `retries` —
+  // authored `7` versus `007`, one resolved value with the literal difference
+  // kept for the source diff — and each declares one key the other does not.
+  await mkdir(join(fixture, '.github/instructions'), { recursive: true });
+  await writeFile(
+    join(fixture, FRONTEND_PATH),
+    [
+      '---',
+      "applyTo: 'src/**'",
+      'scope: project',
+      'retries: 7',
+      `token: ${AGENTS_SECRET}`,
+      '---',
+      '',
+      '# Frontend instructions',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
+  await writeFile(
+    join(fixture, BACKEND_PATH),
+    [
+      '---',
+      "applyTo: 'src/**'",
+      'scope: workspace',
+      'retries: 007',
+      `endpoint: ${ENVIRONMENT_REFERENCE}`,
+      '---',
+      '',
+      '# Backend instructions',
+      '',
+      `token: ${CLAUDE_SECRET}`,
+      '',
+    ].join('\n'),
+    'utf8',
+  );
   host = await launchHost(fixture);
 });
 
@@ -127,8 +168,7 @@ test('opens from an instruction row and shows the complete literal diff', async 
 
   // Both sides' complete literal sources are in the diff — the credentials
   // and the environment reference exactly as authored, unmasked and
-  // unresolved (FR-027, FR-025). `.first()`, because the declared-metadata
-  // section below mounts its own diff of the serialized frontmatter.
+  // unresolved (FR-027, FR-025).
   const diff = page.locator('.aci-instruction-compare__source .aci-source-diff');
   await expect(diff).toContainText(AGENTS_SECRET);
   await expect(diff).toContainText(CLAUDE_SECRET);
@@ -144,14 +184,14 @@ test('opens from an instruction row and shows the complete literal diff', async 
 });
 
 test('renders exact metadata rows and matches declarations by key', async ({ page }) => {
-  await page.goto(compareUrl('AGENTS.md', 'CLAUDE.md'));
+  await page.goto(compareUrl(FRONTEND_PATH, BACKEND_PATH));
   await expect(page.getByRole('heading', { name: 'Compare instruction files' })).toBeVisible();
 
   // Each side's identity: path, Source family, recognized kind, read
   // outcome (US3 scenario 1).
   const files = page.locator('.aci-compare-sides');
-  await expect(files).toContainText('AGENTS.md');
-  await expect(files).toContainText('CLAUDE.md');
+  await expect(files).toContainText(FRONTEND_PATH);
+  await expect(files).toContainText(BACKEND_PATH);
   await expect(files.locator('.aci-instruction-compare__file-facts').first()).toContainText(
     'Repository · Instructions',
   );
@@ -161,9 +201,10 @@ test('renders exact metadata rows and matches declarations by key', async ({ pag
   // distinguishable from the physical file (US3 scenario 2) — and the files'
   // declared metadata compared once, under no tool caption.
   const metadata = page.locator('.aci-instruction-recognition-comparison');
-  // The sections stand in the order a reader needs them: what each file
-  // declares, what each file says, then the complete files, and last the
-  // recognitions.
+  // The sections stand in the order a reader needs them: which products read
+  // each side, then what each file declares, what each file says, and last
+  // the complete files. The middle two stand because both formats open with
+  // declarations.
   await expect(metadata.locator('h3')).toHaveText([
     'Tool recognition',
     'Declared metadata',
@@ -171,20 +212,12 @@ test('renders exact metadata rows and matches declarations by key', async ({ pag
     'Source comparison',
   ]);
   const toolTable = metadata.locator('table').first();
-  await expect(toolTable.locator('tbody th')).toHaveText([
-    'GitHub Copilot',
-    'Claude Code',
-    'OpenAI Codex',
-    'Antigravity CLI',
-  ]);
-  // The single-product sides are stated, not fabricated into rows: Claude
-  // does not recognize `AGENTS.md`, Codex does not recognize `CLAUDE.md`.
-  await expect(
-    toolTable.locator('tr', { hasText: 'Claude Code' }).locator('td').first(),
-  ).toHaveText('Not recognized');
-  await expect(
-    toolTable.locator('tr', { hasText: 'OpenAI Codex' }).locator('td').nth(1),
-  ).toHaveText('Not recognized');
+  await expect(toolTable.locator('tbody th')).toHaveText(['GitHub Copilot']);
+  // The source comparison says what its sides are, frontmatter and all,
+  // because the blocks above took that frontmatter apart.
+  await expect(page.locator('.aci-instruction-compare__source .aci-note')).toHaveText(
+    'Each side is the file exactly as written, frontmatter included.',
+  );
 
   // The declared metadata is one canonical YAML document per side, every
   // key sorted, compared side by side under no tool caption
@@ -202,6 +235,44 @@ test('renders exact metadata rows and matches declarations by key', async ({ pag
   await expect(metadataDiff).toContainText('retries: 7');
   await expect(metadataDiff).toContainText('token');
   await expect(metadataDiff).toContainText('endpoint');
+});
+
+test('compares a pair read whole by its recognitions and its sources alone', async ({ page }) => {
+  // `AGENTS.md` and `CLAUDE.md` both open with a `---` block, and every
+  // product reading either reads it whole: there are no declarations to set
+  // side by side and no instructions below a block, so neither section
+  // stands, and the source comparison — block and all — is the whole of what
+  // the two files say (T1224).
+  await page.goto(compareUrl('AGENTS.md', 'CLAUDE.md'));
+  await expect(page.getByRole('heading', { name: 'Compare instruction files' })).toBeVisible();
+  const metadata = page.locator('.aci-instruction-recognition-comparison');
+  await expect(metadata.locator('h3')).toHaveText(['Tool recognition', 'Source comparison']);
+  await expect(metadata.locator('section .aci-source-diff')).toHaveCount(0);
+  const toolTable = metadata.locator('table').first();
+  await expect(toolTable.locator('tbody th')).toHaveText([
+    'GitHub Copilot',
+    'Claude Code',
+    'OpenAI Codex',
+    'Antigravity CLI',
+  ]);
+  // A product recognizing both sides says so on both, and a single-product
+  // side is stated, not fabricated into a row: Claude Code reads both files,
+  // Codex does not recognize `CLAUDE.md`.
+  await expect(toolTable.locator('tr', { hasText: 'Claude Code' }).locator('td')).toHaveText([
+    'Recognized(CLI and IDE clients)',
+    'Recognized(CLI and IDE clients)',
+  ]);
+  await expect(
+    toolTable.locator('tr', { hasText: 'OpenAI Codex' }).locator('td').nth(1),
+  ).toHaveText('Not recognized');
+  // The note names no frontmatter: a block opening a file read whole is a
+  // line of its instructions, and nothing above took it apart.
+  await expect(page.locator('.aci-instruction-compare__source .aci-note')).toHaveText(
+    'Each side is the file exactly as written.',
+  );
+  const diff = page.locator('.aci-instruction-compare__source .aci-source-diff');
+  await expect(diff).toContainText('scope: project');
+  await expect(diff).toContainText('scope: workspace');
 });
 
 test('states the typed layering and fallback differences per side', async ({ page }) => {
@@ -316,4 +387,48 @@ test('enters from the detail page and returns to the instructions tab', async ({
   // Back to the inventory's instructions tab, not the kind order's default.
   await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.getByRole('tab', { selected: true })).toContainText('Instructions');
+});
+
+test.describe('a pair whose file sits in two ranges', () => {
+  let twoRangeFixture: string;
+  let twoRangeHost: LaunchedHost;
+
+  test.beforeEach(async () => {
+    // `.claude/AGENTS.md` governs `**` for Claude Code, which reads it as the
+    // root directory's own, and `.claude/**` for Copilot, which reads it as
+    // one more `AGENTS.md` at some depth. `.claude/CLAUDE.local.md` governs
+    // `.claude/**` for Claude Code, so the two are a pair of the `.claude/**`
+    // row — the row where the first file's Claude Code recognition is not.
+    twoRangeFixture = await mkdtemp(join(tmpdir(), 'aci-instructions-two-ranges-'));
+    await mkdir(join(twoRangeFixture, '.claude'), { recursive: true });
+    await writeFile(join(twoRangeFixture, '.claude/AGENTS.md'), '# agents\n', 'utf8');
+    await writeFile(join(twoRangeFixture, '.claude/CLAUDE.local.md'), '# local\n', 'utf8');
+    twoRangeHost = await launchHost(twoRangeFixture);
+  });
+
+  test.afterEach(async () => {
+    await stopHost(twoRangeHost);
+    await rm(twoRangeFixture, { recursive: true, force: true });
+  });
+
+  test('states every product that reads each file, not only the owning row’s', async ({ page }) => {
+    // The pair stands on the `.claude/**` row, while what each side states
+    // is a fact about the file: Claude Code reads `.claude/AGENTS.md`, even
+    // though that recognition gives it the `**` range rather than this one.
+    await page.goto(
+      new URL(
+        `/instructions/compare/repository?leftSource=repository&left=${encodeURIComponent(
+          '.claude/AGENTS.md',
+        )}&rightSource=repository&right=${encodeURIComponent('.claude/CLAUDE.local.md')}`,
+        twoRangeHost.origin,
+      ).toString(),
+    );
+    const metadata = page.locator('.aci-instruction-recognition-comparison');
+    const claudeRow = metadata.locator('tr', { hasText: 'Claude Code' });
+    await expect(claudeRow.locator('td').first()).not.toHaveText('Not recognized');
+    await expect(claudeRow.locator('td').nth(1)).not.toHaveText('Not recognized');
+    const copilotRow = metadata.locator('tr', { hasText: 'GitHub Copilot' });
+    await expect(copilotRow.locator('td').first()).not.toHaveText('Not recognized');
+    await expect(copilotRow.locator('td').nth(1)).toHaveText('Not recognized');
+  });
 });

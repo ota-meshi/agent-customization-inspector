@@ -45,11 +45,9 @@ export interface CodexSkillFixture {
   /**
    * The paths in this tree that only Antigravity CLI's skill rules admit: the
    * skill folder under the superseded `.agent/` spelling that vendor still
-   * supports, and the flat Markdown file directly below `.agents/skills/`
-   * that its own page documents. Neither is a candidate for the two products
-   * `expectedSkillPaths` speaks for, and both are candidates for the third —
-   * which is why they are a list of their own rather than near misses
-   * (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
+   * supports. It is not a candidate for the two products `expectedSkillPaths`
+   * speaks for, and it is one for the third — which is why it is a list of its
+   * own rather than a near miss.
    */
   readonly expectedAntigravityOnlySkillPaths: readonly string[];
   /**
@@ -183,7 +181,8 @@ export function buildCodexSkillFixture(
   // (FR-003) — the one near miss a leading recursive step would wrongly
   // accept for either vendor's spelling.
   write(root, 'packages/api/.agents/skills/deploy/SKILL.md', '# Deploy\n');
-  // Near miss: no skill-name segment between `skills` and the file.
+  // Near miss: no skill-name segment between `skills` and the file — for
+  // every product, since none reads a flat file there as a skill.
   write(root, '.agents/skills/SKILL.md', 'no name segment\n');
   // Near miss: one level deeper than the single direct-child name step.
   write(root, '.agents/skills/greet/nested/SKILL.md', 'too deep\n');
@@ -262,7 +261,7 @@ export function buildCodexSkillFixture(
     // Copilot shares the root `.agents` spelling, so `copilot.repo.skill`
     // admits exactly this same set; both vendors' recognitions attach to it.
     expectedSkillPaths,
-    expectedAntigravityOnlySkillPaths: ['.agent/skills/solo/SKILL.md', '.agents/skills/SKILL.md'],
+    expectedAntigravityOnlySkillPaths: ['.agent/skills/solo/SKILL.md'],
     nearMissPaths: [
       '.agents/skill/solo/SKILL.md',
       '.agents/skills/greet/README.md',
@@ -604,18 +603,10 @@ export interface AllToolSkillFixture {
   readonly expectedCopilotSkillPaths: readonly string[];
   /**
    * Every Source-relative Path this tree's Antigravity CLI skill rules must
-   * admit, sorted: the `.agents/skills/` folders Codex reads, and the one flat
-   * file beside them that only this vendor's own rule admits. Each folder
-   * therefore carries three recognitions and the flat file carries one
-   * (spec.md § FR-004).
+   * admit, sorted: the `.agents/skills/` folders Codex reads, so each carries
+   * three recognitions (spec.md § FR-004).
    */
   readonly expectedAntigravitySkillPaths: readonly string[];
-  /**
-   * The subset of the above that only this vendor admits — a near miss for
-   * every other product's rules, which is why it is not in
-   * {@link AllToolSkillFixture.nearMissPaths}.
-   */
-  readonly expectedAntigravityOnlySkillPaths: readonly string[];
   /**
    * The admitted paths whose bytes this scan cannot use — the NUL-carrying
    * candidate and, when symlinks exist, the broken link. They publish as
@@ -723,14 +714,9 @@ export function buildAllToolSkillFixture(
   write(root, 'packages/api/.claude/skills/dup/SKILL.md', '# nested dup\n');
   write(root, 'packages/api/.claude/skills/deploy/SKILL.md', '# Nested deploy\n');
 
-  // A Markdown file directly below `.agents/skills/`, which one vendor's own
-  // page documents as a skill and the two products that read only the folder
-  // shape there treat as a near miss: one path, admitted by one rule and by no
-  // other (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
-  write(root, '.agents/skills/SKILL.md', 'no name segment\n');
-
   // Near misses, one per selector edge; see the earlier builders for why
   // each is the exact shape an over-broad rule would wrongly admit.
+  write(root, '.agents/skills/SKILL.md', 'no name segment\n');
   write(root, '.claude/skill/solo/SKILL.md', 'singular skill dir\n');
   write(root, 'agents/skills/solo/SKILL.md', 'no leading dot\n');
   write(root, '.github/skills/uppercase/SKILL.MD', 'wrong case\n');
@@ -755,12 +741,8 @@ export function buildAllToolSkillFixture(
     'packages/api/.claude/skills/dup/SKILL.md',
   ];
   const diagnosticOnlyPaths = ['.agents/skills/binary/SKILL.md'];
-  // The one path only Antigravity CLI's flat skill rule admits: a Markdown
-  // file directly below `.agents/skills/`, which is a near miss for the two
-  // products that read only the folder shape there
-  // (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
-  const expectedAntigravityOnlySkillPaths = ['.agents/skills/SKILL.md'];
   const nearMissPaths = [
+    '.agents/skills/SKILL.md',
     '.claude/skill/solo/SKILL.md',
     '.copilot/skills/tool/SKILL.md',
     '.git/.agents/skills/hidden/SKILL.md',
@@ -828,14 +810,9 @@ export function buildAllToolSkillFixture(
     expectedClaudeSkillPaths,
     expectedCopilotSkillPaths,
     // Antigravity CLI reads the `.agents/skills/` folders this tree holds,
-    // exactly as Codex does, and one file beside them that only its own flat
-    // rule admits; the two fields exist so a suite states which product it is
-    // counting rather than borrowing another's list.
-    expectedAntigravitySkillPaths: [
-      ...expectedCodexSkillPaths,
-      ...expectedAntigravityOnlySkillPaths,
-    ].sort(),
-    expectedAntigravityOnlySkillPaths,
+    // exactly as Codex does; the field exists so a suite states which product
+    // it is counting rather than borrowing another's list.
+    expectedAntigravitySkillPaths: expectedCodexSkillPaths,
     diagnosticOnlyPaths,
     nearMissPaths,
     expectedCompanionPaths,
@@ -844,7 +821,6 @@ export function buildAllToolSkillFixture(
         ...expectedCodexSkillPaths,
         ...expectedClaudeSkillPaths,
         ...expectedCopilotSkillPaths,
-        ...expectedAntigravityOnlySkillPaths,
         ...expectedCompanionPaths,
       ]),
     ].sort(),
@@ -912,7 +888,7 @@ export interface CodexInstructionFixture {
  * Builds the canonical Codex instruction fixture repository.
  *
  * Positive cases: the root `AGENTS.override.md` — carrying a secret, a
- * literal environment reference, an import-like line, and a malformed
+ * literal environment reference, an import-like line, and a
  * frontmatter-shaped block, none of which may fail a recognition that runs no
  * extractor — an empty root `AGENTS.md`, admitted like any readable candidate
  * even though the vendor's own selection would skip an empty file (FR-009),
@@ -935,15 +911,12 @@ export function buildCodexInstructionFixture(
   root = createRepositoryFixtureRoot(prefix),
 ): CodexInstructionFixture {
   // Positive: the override, with every content shape the inventory must keep
-  // inert — a frontmatter block whose declarations stay out of every session
-  // summary, an import-like reference that stays source text (no cited Codex
-  // page establishes a reference syntax, T217), a literal credential
-  // (readable only through the detail route, FR-027), and a literal
-  // environment reference that must never be resolved against the process
-  // environment (FR-025). The block parses: a malformed block is the
-  // instruction extraction's own `failed` state since T222, and that failure
-  // case lives in the Phase 16 suites rather than in this inventory fixture,
-  // whose committed generation stays complete.
+  // inert — a frontmatter-shaped block, which is a line of the instructions
+  // because Codex reads the file whole (T1224), an import-like reference that
+  // stays source text (no cited Codex page establishes a reference syntax,
+  // T217), a literal credential (readable only through the detail route,
+  // FR-027), and a literal environment reference that must never be resolved
+  // against the process environment (FR-025).
   write(
     root,
     'AGENTS.override.md',
@@ -5341,16 +5314,15 @@ export interface ClaudeInstructionFixture {
   /**
    * The Source-relative Paths `codex.repo.instructions` admits in the same
    * tree, sorted. The Codex-preservation half of the phase: the same scan
-   * that adds Claude rows must keep admitting exactly these, and no Claude
-   * rule may recognize one of them.
+   * that adds Claude rows must keep admitting exactly these.
    */
   readonly expectedCodexInstructionPaths: readonly string[];
   /**
    * The Source-relative Paths the Copilot instruction rules admit in the same
-   * tree, sorted. The root `AGENTS.md` and the root `CLAUDE.md` are shared
-   * files — one physical file, two products — while the nested and `.claude`
-   * spellings stay Claude's alone, because Copilot documents its `CLAUDE.md`
-   * alternative at the repository root only (T256).
+   * tree, sorted. The root `CLAUDE.md` and every `AGENTS.md` are shared
+   * files — one physical file, several products — while the nested and
+   * `.claude` `CLAUDE.md` spellings stay Claude's alone, because Copilot
+   * documents its `CLAUDE.md` alternative at the repository root only (T256).
    */
   readonly expectedCopilotInstructionPaths: readonly string[];
   /**
@@ -5361,12 +5333,12 @@ export interface ClaudeInstructionFixture {
    */
   readonly nearMissPaths: readonly string[];
   /**
-   * The admitted instruction file whose frontmatter block cannot be parsed:
-   * its recognition fails all-or-nothing and publishes the
-   * `recognition-parse-failed` Diagnostic while its complete source stays
-   * readable, making the attempt's generation `partial` (FR-028).
+   * The admitted instruction file opening with a `---` block that is not
+   * YAML. Claude Code reads the file whole, so the block is a line of its
+   * instructions: nothing parses it, nothing fails, and the attempt's
+   * generation stays `complete` (api-types.ts § InstructionFileFormat).
    */
-  readonly malformedInstructionPath: string;
+  readonly unparseableBlockInstructionPath: string;
   /**
    * The file the root `CLAUDE.md` names with an authored `@path` token. It
    * exists on disk precisely so a scan can prove no target is opened: this
@@ -5385,12 +5357,14 @@ export interface ClaudeInstructionFixture {
  * credential, an authored `@path` import token, and a literal environment
  * reference — the root `CLAUDE.local.md`, the root `.claude/CLAUDE.md` the
  * any-depth program reaches through its directory step, a nested
- * `packages/api/CLAUDE.md`, a nested `packages/api/.claude/CLAUDE.md`, and a
- * `docs/CLAUDE.md` whose frontmatter cannot be parsed.
+ * `packages/api/CLAUDE.md`, a nested `packages/api/.claude/CLAUDE.md`, a
+ * `docs/CLAUDE.md` whose frontmatter cannot be parsed, and the root and nested
+ * `AGENTS.md` Claude Code reads where and how it reads `CLAUDE.md` (memory
+ * page § When Claude Code reads AGENTS.md).
  *
- * Codex preservation: the root `AGENTS.md`. Claude Code reads `CLAUDE.md`,
- * not `AGENTS.md` (memory page § AGENTS.md), so the file stays a Codex
- * instruction row alone however many Claude rules ship.
+ * Codex preservation: the root `AGENTS.md` is a Codex instruction as well,
+ * and the nested one is not, because Codex's chain stops at the runtime
+ * working directory this product never selects.
  *
  * Near misses: spelling variants one step from each literal, VCS internals,
  * an installed package's own `CLAUDE.md` at the root's `node_modules` and at a
@@ -5438,15 +5412,17 @@ export function buildClaudeInstructionFixture(
   // can genuinely load — the same nesting that stays a near miss for Codex.
   write(root, 'packages/api/CLAUDE.md', '# Nested instructions\n');
   write(root, 'packages/api/.claude/CLAUDE.md', '# Nested directory-form instructions\n');
-  // Positive, and the attempt's one file-confined failure: a frontmatter block
-  // no parser can read. The recognition fails all-or-nothing, its diagnostic
-  // is confined to this file, and the complete source stays readable (FR-028).
+  // Positive: a `---` block that is not YAML. Claude Code reads the file
+  // whole, so the block is a line of its instructions and no reading of it
+  // can fail (T1224).
   write(root, 'docs/CLAUDE.md', '---\nscope: [docs\n---\n\n# Docs instructions\n');
 
-  // Codex preservation: `AGENTS.md` is a Codex instruction candidate and never
-  // a Claude one — the memory page states that Claude Code reads `CLAUDE.md`,
-  // not `AGENTS.md`.
-  write(root, 'AGENTS.md', '# Codex instructions\n');
+  // Positive for Claude and preserved for Codex: the root `AGENTS.md` is an
+  // instruction candidate of both, and the nested one of Claude alone —
+  // Claude reads a subdirectory's `AGENTS.md` on demand exactly as it reads a
+  // subdirectory's `CLAUDE.md`.
+  write(root, 'AGENTS.md', '# Shared agent instructions\n');
+  write(root, 'packages/api/AGENTS.md', '# Nested agent instructions\n');
 
   // Near miss: the target of the authored import. This phase emits no
   // relationship at all, and no scan may open it.
@@ -5476,14 +5452,16 @@ export function buildClaudeInstructionFixture(
     root,
     expectedClaudeInstructionPaths: [
       '.claude/CLAUDE.md',
+      'AGENTS.md',
       'CLAUDE.local.md',
       'CLAUDE.md',
       'docs/CLAUDE.md',
       'packages/api/.claude/CLAUDE.md',
+      'packages/api/AGENTS.md',
       'packages/api/CLAUDE.md',
     ],
     expectedCodexInstructionPaths: ['AGENTS.md'],
-    expectedCopilotInstructionPaths: ['AGENTS.md', 'CLAUDE.md'],
+    expectedCopilotInstructionPaths: ['AGENTS.md', 'CLAUDE.md', 'packages/api/AGENTS.md'],
     nearMissPaths: [
       '.git/CLAUDE.md',
       'CLAUDE-local.md',
@@ -5496,7 +5474,7 @@ export function buildClaudeInstructionFixture(
       'tools/CLAUDE.MD',
       'tools/claude.md',
     ],
-    malformedInstructionPath: 'docs/CLAUDE.md',
+    unparseableBlockInstructionPath: 'docs/CLAUDE.md',
     importTargetPath: 'docs/setup.md',
     secretInstructionPath: 'CLAUDE.md',
   };
@@ -6258,8 +6236,9 @@ export interface CopilotInstructionFixture {
    */
   readonly expectedCopilotInstructionPaths: Readonly<Record<string, readonly string[]>>;
   /**
-   * The Source-relative Paths the Claude and Codex instruction rules admit in
-   * the same tree, sorted. The preservation half of the phase: the same scan
+   * The Source-relative Paths the Claude instruction rule admits in the same
+   * tree, sorted — every `AGENTS.md` among them, which Claude Code reads where
+   * it reads `CLAUDE.md`. The preservation half of the phase: the same scan
    * that adds Copilot rows must keep admitting exactly these.
    */
   readonly expectedClaudeInstructionPaths: readonly string[];
@@ -6276,16 +6255,15 @@ export interface CopilotInstructionFixture {
    *
    * A path here is not necessarily unrecognized: `.claude/CLAUDE.md` and
    * `packages/api/CLAUDE.md` are Claude instruction files, and
-   * `packages/api/GEMINI.md` is nobody's — no shipped rule reaches a context
-   * file below the root under that name. What this states is that no
-   * *Copilot* rule admits them.
+   * `packages/api/GEMINI.md` is Antigravity CLI's. What this states is that
+   * no *Copilot* rule admits them.
    */
   readonly copilotNearMissPaths: readonly string[];
   /**
-   * The Source-relative Paths Antigravity CLI's context rules admit in the
-   * same tree, sorted: the repository root's `AGENTS.md` and `GEMINI.md`, both
-   * of which another product reads too. No depth below the root is admitted
-   * (specs/003-antigravity-cli-support FR-002).
+   * The Source-relative Paths Antigravity CLI's context rule admits in the
+   * same tree, sorted: every `AGENTS.md` and `GEMINI.md` at any depth, the
+   * root pair and the nested `AGENTS.md` among them read by another product
+   * too (specs/003-antigravity-cli-support FR-002, FR-007).
    */
   readonly expectedAntigravityInstructionPaths: readonly string[];
   /**
@@ -6327,9 +6305,9 @@ export interface CopilotInstructionFixture {
  *
  * Shared files: the root `AGENTS.md` is Codex's, Copilot's and Antigravity
  * CLI's, the root `CLAUDE.md` is Claude's and Copilot's, and the root
- * `GEMINI.md` is Copilot's and Antigravity CLI's. No product reads a context
- * file below the root under that name, so the nested one is nobody's
- * (specs/003-antigravity-cli-support FR-002).
+ * `GEMINI.md` is Copilot's and Antigravity CLI's. Below the root a
+ * `GEMINI.md` is Antigravity CLI's alone, because Copilot documents the root
+ * file only (specs/003-antigravity-cli-support FR-007).
  *
  * Exclusions, written as ordinary files so their absence from the Copilot
  * inventory is observable rather than assumed: the `.claude` instruction
@@ -6410,13 +6388,13 @@ export function buildCopilotInstructionFixture(
   // `.claude` instruction spellings and the local variant VS Code and the CLI
   // document, and the non-root alternatives the CLI documents. Each is
   // `copilot.excluded.additional-standard-locations`; the first three are
-  // Claude instruction files and the fourth one no product reads there, which is what
+  // Claude instruction files and the fourth Antigravity CLI's, which is what
   // makes "no Copilot rule admits it" a statement about Copilot rather than
   // about the file.
   write(root, '.claude/CLAUDE.md', '# Directory-form Claude instructions\n');
   write(root, 'CLAUDE.local.md', '# Local Claude instructions\n');
   write(root, 'packages/api/CLAUDE.md', '# Nested Claude instructions\n');
-  write(root, 'packages/api/GEMINI.md', '# Nested context file no rule admits\n');
+  write(root, 'packages/api/GEMINI.md', '# Nested Antigravity context\n');
   write(root, '.claude/rules/style.md', '# Claude-compatible rule\n');
 
   // Runtime-supplied lookup roots — `copilot.excluded.extra-directories`. A
@@ -6476,12 +6454,19 @@ export function buildCopilotInstructionFixture(
     },
     expectedClaudeInstructionPaths: [
       '.claude/CLAUDE.md',
+      'AGENTS.md',
       'CLAUDE.local.md',
       'CLAUDE.md',
+      'packages/api/AGENTS.md',
       'packages/api/CLAUDE.md',
     ],
     expectedCodexInstructionPaths: ['AGENTS.md'],
-    expectedAntigravityInstructionPaths: ['AGENTS.md', 'GEMINI.md'],
+    expectedAntigravityInstructionPaths: [
+      'AGENTS.md',
+      'GEMINI.md',
+      'packages/api/AGENTS.md',
+      'packages/api/GEMINI.md',
+    ],
     expectedClaudeRulePaths: ['.claude/rules/style.md'],
     copilotNearMissPaths: [
       '.claude/CLAUDE.md',
@@ -6557,25 +6542,26 @@ export interface AllVendorInstructionFixture {
    */
   readonly expectedCopilotInstructionPaths: Readonly<Record<string, readonly string[]>>;
   /**
-   * Every Source-relative Path Antigravity CLI's context rules admit, sorted:
-   * the repository root's `AGENTS.md` and `GEMINI.md`, each of which another
-   * product reads too (specs/003-antigravity-cli-support FR-002).
+   * Every Source-relative Path Antigravity CLI's context rule admits, sorted:
+   * every `AGENTS.md` and `GEMINI.md` at any depth, the root pair and the
+   * nested `AGENTS.md` files among them read by another product too
+   * (specs/003-antigravity-cli-support FR-002, FR-007).
    */
   readonly expectedAntigravityInstructionPaths: readonly string[];
   /**
    * The admitted paths whose bytes this scan cannot use — the NUL-carrying
    * nested `CLAUDE.md`. It publishes as a diagnostic-only file, gains no
-   * recognition, and is one of the deterministic file-confined outcomes that
-   * make the otherwise publishable generation `partial` (FR-028).
+   * recognition, and is the deterministic file-confined outcome that makes
+   * the otherwise publishable generation `partial` (FR-028).
    */
   readonly diagnosticOnlyPaths: readonly string[];
   /**
-   * The admitted instruction file whose frontmatter block cannot be parsed:
-   * its recognition fails all-or-nothing with the `recognition-parse-failed`
-   * Diagnostic while its complete source and its path-derived range stay
-   * published (FR-028) — the other deterministic file-confined outcome.
+   * The admitted instruction file opening with a `---` block that is not
+   * YAML. Every product reading it reads it whole, so the block is a line of
+   * its instructions: it publishes no diagnostic, and its path-derived range
+   * stands (api-types.ts § InstructionFileFormat).
    */
-  readonly malformedInstructionPath: string;
+  readonly unparseableBlockInstructionPath: string;
   /**
    * The Claude rule files this tree holds. They are near misses for every
    * instruction rule and candidates of `claude.repo.rules` at once, so a scan
@@ -6616,19 +6602,21 @@ export interface AllVendorInstructionFixture {
  * Builds the canonical all-vendor instruction fixture repository (T268): one
  * tree that exercises every supported static instruction selector, the
  * configured fallback derivation, and the complete shared-file matrix at once
- * (Phase 21): `AGENTS.md` is Codex+Copilot, root `CLAUDE.md` is
+ * (Phase 21): the root `AGENTS.md` is Claude+Codex+Copilot+Antigravity CLI and
+ * a nested one Claude+Copilot+Antigravity CLI, root `CLAUDE.md` is
  * Claude+Copilot, nested `CLAUDE.md` is Claude-only, and `CLAUDE.local.md` is
  * Claude-only, while a configured Codex fallback is an entry name matched at
  * the Repository root, so no nested file becomes one.
  *
- * Deterministic failures: the NUL-carrying nested `CLAUDE.md` publishes as
- * `binary` with its diagnostic, and the malformed `docs/CLAUDE.md` keeps its
- * complete source and range while its extraction fails — both file-confined,
- * so the generation commits `partial` while every other file publishes
- * (FR-028). Injected failures are runtime behavior, never tree state: suites
- * inject filesystem-operation failures against {@link injectionTargetPath}
- * through the mocked `fs-io` surface, while a recognition failure replaces
- * the recognizer callback itself, addressing no path.
+ * Deterministic failure: the NUL-carrying nested `CLAUDE.md` publishes as
+ * `binary` with its diagnostic — file-confined, so the generation commits
+ * `partial` while every other file publishes (FR-028). The block opening
+ * `docs/CLAUDE.md` is not YAML and fails nothing, because Claude Code reads the
+ * file whole (T1224). Injected failures are runtime behavior, never tree
+ * state: suites inject filesystem-operation failures against
+ * {@link injectionTargetPath} through the mocked `fs-io` surface, while a
+ * recognition failure replaces the recognizer callback itself, addressing no
+ * path.
  *
  * `root` overrides where the tree is written; the default is a fresh root
  * under the OS temporary directory. The dev fixture launcher
@@ -6674,9 +6662,9 @@ export function buildAllVendorInstructionFixture(
   write(root, '.claude/CLAUDE.md', '# Directory-form project instructions\n');
   write(root, 'packages/api/CLAUDE.md', '# Nested instructions\n');
   write(root, 'packages/api/.claude/CLAUDE.md', '# Nested directory-form instructions\n');
-  // Deterministic file-confined failure: a frontmatter block no parser can
-  // read. The recognition fails all-or-nothing while the complete source and
-  // the path-derived `docs/**` range stay published (FR-028).
+  // A `---` block that is not YAML, opening a file Claude Code reads whole:
+  // the block is a line of its instructions, so nothing fails and the
+  // path-derived `docs/**` range stands (T1224).
   write(root, 'docs/CLAUDE.md', '---\nscope: [docs\n---\n\n# Docs instructions\n');
   // Deterministic file-confined failure: NUL bytes in an admitted candidate
   // publish the textless `binary` item with its diagnostic and no
@@ -6721,17 +6709,16 @@ export function buildAllVendorInstructionFixture(
   write(root, '.github/instructions/nested/backend.instructions.md', '# Backend instructions\n');
   write(root, 'packages/api/.github/instructions/api.instructions.md', '# API path instructions\n');
   // The root `GEMINI.md` Copilot and Antigravity CLI both read, and the nested
-  // `AGENTS.md` files only Copilot's any-depth rule reaches — the exact shape
-  // that proves Codex's rule stays anchored at the root.
+  // `AGENTS.md` files the any-depth rules reach and Codex's does not — the
+  // exact shape that proves Codex's rule stays anchored at the root.
   write(root, 'GEMINI.md', '# Root Antigravity-compatible instructions\n');
   write(root, 'docs/AGENTS.md', '# docs instructions\n');
   write(root, 'packages/api/AGENTS.md', '# Nested agent instructions\n');
-  // The nested `GEMINI.md`: nobody's. Copilot documents the root alternative
-  // only, so its own exclusion
-  // (`copilot.excluded.additional-standard-locations`) keeps it out, and no
-  // other product reads that filename below the root
-  // (specs/003-antigravity-cli-support FR-002).
-  write(root, 'packages/api/GEMINI.md', '# Nested context file no rule admits\n');
+  // The nested `GEMINI.md`: Antigravity CLI's alone. Copilot documents the
+  // root alternative only, so its own exclusion
+  // (`copilot.excluded.additional-standard-locations`) keeps it out
+  // (specs/003-antigravity-cli-support FR-007).
+  write(root, 'packages/api/GEMINI.md', '# Nested Antigravity context\n');
 
   // Near miss: the target of the authored import. No scan may open it.
   write(root, 'docs/setup.md', '# setup\n');
@@ -6773,14 +6760,23 @@ export function buildAllVendorInstructionFixture(
   const expectedDerivedFallbackPaths = ['GUIDE.codex.md', 'TEAM_GUIDE.md'];
   const expectedClaudeInstructionPaths = [
     '.claude/CLAUDE.md',
+    'AGENTS.md',
     'CLAUDE.local.md',
     'CLAUDE.md',
+    'docs/AGENTS.md',
     'docs/CLAUDE.md',
     'packages/api/.claude/CLAUDE.md',
+    'packages/api/AGENTS.md',
     'packages/api/CLAUDE.md',
     'packages/web/CLAUDE.md',
   ];
-  const expectedAntigravityInstructionPaths = ['AGENTS.md', 'GEMINI.md'];
+  const expectedAntigravityInstructionPaths = [
+    'AGENTS.md',
+    'GEMINI.md',
+    'docs/AGENTS.md',
+    'packages/api/AGENTS.md',
+    'packages/api/GEMINI.md',
+  ];
   const expectedCopilotInstructionPaths = {
     'copilot.repo.instructions.agents': ['AGENTS.md', 'docs/AGENTS.md', 'packages/api/AGENTS.md'],
     'copilot.repo.instructions.claude-root': ['CLAUDE.md'],
@@ -6813,7 +6809,7 @@ export function buildAllVendorInstructionFixture(
     expectedCopilotInstructionPaths,
     expectedAntigravityInstructionPaths,
     diagnosticOnlyPaths: ['packages/web/CLAUDE.md'],
-    malformedInstructionPath: 'docs/CLAUDE.md',
+    unparseableBlockInstructionPath: 'docs/CLAUDE.md',
     expectedClaudeRulePaths: ['.claude/rules/style.md'],
     nearMissPaths: [
       '.copilot/instructions/personal.instructions.md',
@@ -8349,22 +8345,18 @@ export interface AntigravityFixture {
 /**
  * Builds the Antigravity CLI skills tree (T020).
  *
- * Positive cases: both admitted shapes in one `.agents/skills/` — a skill
- * folder holding a `SKILL.md`, which OpenAI Codex and GitHub Copilot read from
- * the same path, and the flat Markdown file only this vendor's own page
- * documents. One name is spelled in both shapes, which is one row with two
- * definitions and no precedence between them (spec.md § FR-004). Two files
- * declare no `name`, one of each shape, so each shape's fallback is
- * observable: a folder falls back to its folder, and a flat file to its own
- * name without the extension
+ * Positive cases: skill folders holding a `SKILL.md` in `.agents/skills/`,
+ * which OpenAI Codex and GitHub Copilot read from the same path. One declares
+ * no `name`, so the fallback is observable: a folder falls back to its folder
  * (contracts/vendors/antigravity-cli.md § Known uncertainties item 7). The
- * superseded `.agent/skills/` spelling carries the folder shape.
+ * superseded `.agent/skills/` spelling carries the folder shape too.
  *
- * Near misses: the flat shape under the superseded spelling, which no page
- * documents there; a second level below a skill folder, which is a companion
- * rather than a candidate; a nested `.agents/` belonging to a working
- * directory this product does not select; and the workspace plugin directory
- * no terminal page names.
+ * Near misses: a flat Markdown file directly below `skills/` under either
+ * spelling, which no page documents and the terminal filters out
+ * (§ Known uncertainties item 6); a second level below a skill folder, which
+ * is a companion rather than a candidate; a nested `.agents/` belonging to a
+ * working directory this product does not select; and the workspace plugin
+ * directory no terminal page names.
  */
 export function buildAntigravitySkillFixture(
   prefix = 'inspector-antigravity-skills',
@@ -8411,21 +8403,6 @@ export function buildAntigravitySkillFixture(
       '',
     ].join('\n'),
   );
-  // The flat shape the terminal's own page documents, and the same name in the
-  // folder shape beside it: one row, two definitions, no precedence.
-  write(
-    root,
-    '.agents/skills/deploy.md',
-    [
-      '---',
-      'name: deploy',
-      'description: Deploy the current branch to the staging environment.',
-      '---',
-      '',
-      'Run the staging pipeline and report the deployed revision.',
-      '',
-    ].join('\n'),
-  );
   write(
     root,
     '.agents/skills/deploy/SKILL.md',
@@ -8436,41 +8413,6 @@ export function buildAntigravitySkillFixture(
       '---',
       '',
       'Run the staging pipeline, then wait for the health check to pass.',
-      '',
-    ].join('\n'),
-  );
-  // A flat file declaring no `name`: this shape has no folder to take one
-  // from, so the row is the file's own name without its extension — `x`. The
-  // counterpart of the folder shape's fallback, which takes the folder
-  // (contracts/vendors/antigravity-cli.md § Known uncertainties item 7).
-  write(
-    root,
-    '.agents/skills/x.md',
-    [
-      '---',
-      'description: Expand the selected expression and explain each step.',
-      '---',
-      '',
-      'Show the expansion one step at a time and name the rule used at each.',
-      '',
-    ].join('\n'),
-  );
-  // A flat file whose frontmatter block is not YAML: the extraction fails
-  // all-or-nothing, so the skill has no declarations and no instructions to
-  // show, and the detail is left with its diagnostic and the file's own text
-  // (FR-028). The flat shape has no files tab to read that text in, which is
-  // why its panel carries the `Source` viewer every other single-file detail
-  // carries.
-  write(
-    root,
-    '.agents/skills/summarize.md',
-    [
-      '---',
-      'name: [',
-      'description: Summarize the selected text.',
-      '---',
-      '',
-      'Summarize the selection in three sentences.',
       '',
     ].join('\n'),
   );
@@ -8490,6 +8432,7 @@ export function buildAntigravitySkillFixture(
     ].join('\n'),
   );
   // Near misses.
+  write(root, '.agents/skills/deploy.md', '---\nname: deploy\n---\n\nA flat file, not a skill.\n');
   write(root, '.agent/skills/legacy.md', '---\nname: legacy\n---\n\nNot admitted there.\n');
   write(root, '.agents/skills/changelog/nested/SKILL.md', '---\nname: nested\n---\n');
   write(root, 'packages/api/.agents/skills/api/SKILL.md', '---\nname: api\n---\n');
@@ -8499,14 +8442,12 @@ export function buildAntigravitySkillFixture(
     candidatePaths: [
       '.agent/skills/format-tests/SKILL.md',
       '.agents/skills/changelog/SKILL.md',
-      '.agents/skills/deploy.md',
       '.agents/skills/deploy/SKILL.md',
       '.agents/skills/release-notes/SKILL.md',
-      '.agents/skills/summarize.md',
-      '.agents/skills/x.md',
     ],
     nearMissPaths: [
       '.agent/skills/legacy.md',
+      '.agents/skills/deploy.md',
       '.agents/plugins/team-tools/plugin.json',
       '.agents/skills/changelog/nested/SKILL.md',
       'packages/api/.agents/skills/api/SKILL.md',
@@ -8518,12 +8459,14 @@ export function buildAntigravitySkillFixture(
  * Builds the Antigravity CLI workspace rules tree (T020).
  *
  * Positive cases: one file per documented activation mode — always on, manual,
- * model decision, and a glob — under `.agents/rules/`, and one under the
- * superseded `.agent/rules/` spelling. Each activation reaches the page as the
- * file's own frontmatter and is never evaluated (spec.md § FR-016).
+ * model decision, and a glob — under `.agents/rules/`, one under the
+ * superseded `.agent/rules/` spelling, and one in a subdirectory's
+ * `.agents/rules/`, which the terminal loads while it works on a file below
+ * it. Each activation reaches the page as the file's own frontmatter and is
+ * never evaluated (spec.md § FR-016).
  *
- * Near misses: a non-Markdown sibling, a second level below the rules
- * directory the page shows no depth for, and a nested `.agents/rules/`.
+ * Near misses: a non-Markdown sibling and a second level below a rules
+ * directory, where the page scans only the immediate `.md` children.
  */
 export function buildAntigravityRuleFixture(
   prefix = 'inspector-antigravity-rules',
@@ -8534,7 +8477,7 @@ export function buildAntigravityRuleFixture(
     '.agents/rules/house-style.md',
     [
       '---',
-      'activation: always',
+      'trigger: always_on',
       '---',
       '',
       '# House style',
@@ -8548,7 +8491,7 @@ export function buildAntigravityRuleFixture(
     '.agents/rules/release-checklist.md',
     [
       '---',
-      'activation: manual',
+      'trigger: manual',
       'description: The steps a release runs through, on request.',
       '---',
       '',
@@ -8561,7 +8504,7 @@ export function buildAntigravityRuleFixture(
     '.agents/rules/api-review.md',
     [
       '---',
-      'activation: model-decision',
+      'trigger: model_decision',
       'description: Use when a public interface changes.',
       '---',
       '',
@@ -8574,8 +8517,8 @@ export function buildAntigravityRuleFixture(
     '.agents/rules/typescript.md',
     [
       '---',
-      'activation: glob',
-      'glob: "src/**/*.ts"',
+      'trigger: glob',
+      'globs: src/**/*.ts',
       '---',
       '',
       'No `any`. Narrow with a discriminant rather than a type assertion.',
@@ -8585,12 +8528,13 @@ export function buildAntigravityRuleFixture(
   write(
     root,
     '.agent/rules/legacy-imports.md',
-    ['---', 'activation: always', '---', '', 'Import from the package root.', ''].join('\n'),
+    ['---', 'trigger: always_on', '---', '', 'Import from the package root.', ''].join('\n'),
   );
-  // Near misses.
+  // A subdirectory's rules directory: positive, loaded while a file below it
+  // is read or edited. Near misses beside it follow.
   write(root, '.agents/rules/README.txt', 'not markdown\n');
-  write(root, '.agents/rules/frontend/components.md', '---\nactivation: always\n---\n');
-  write(root, 'packages/api/.agents/rules/api.md', '---\nactivation: always\n---\n');
+  write(root, '.agents/rules/frontend/components.md', '---\ntrigger: always_on\n---\n');
+  write(root, 'packages/api/.agents/rules/api.md', '---\ntrigger: always_on\n---\n');
   return {
     root,
     candidatePaths: [
@@ -8599,12 +8543,9 @@ export function buildAntigravityRuleFixture(
       '.agents/rules/house-style.md',
       '.agents/rules/release-checklist.md',
       '.agents/rules/typescript.md',
-    ],
-    nearMissPaths: [
-      '.agents/rules/README.txt',
-      '.agents/rules/frontend/components.md',
       'packages/api/.agents/rules/api.md',
     ],
+    nearMissPaths: ['.agents/rules/README.txt', '.agents/rules/frontend/components.md'],
   };
 }
 
@@ -8770,14 +8711,14 @@ export function buildAntigravityAgentFixture(
 /**
  * Builds the Antigravity CLI context tree (T020).
  *
- * Positive cases: the repository root's `GEMINI.md` and `AGENTS.md`, the pair
- * the migration page names as the workspace context files. Both are shared
- * files: the `GEMINI.md` carries GitHub Copilot's recognition beside this
- * vendor's, and the `AGENTS.md` carries Copilot's and OpenAI Codex's
- * (spec.md § FR-007, § FR-013).
+ * Positive cases: the repository root's `GEMINI.md` and `AGENTS.md`, the same
+ * pair in a subdirectory, and a directory's `.agents/` spelling of the pair —
+ * every level the terminal walks up through from a file it reads or edits.
+ * The root files are shared: the `GEMINI.md` carries GitHub Copilot's
+ * recognition beside this vendor's, and the `AGENTS.md` carries Copilot's,
+ * Claude Code's, and OpenAI Codex's (spec.md § FR-007, § FR-013).
  *
- * Near misses: the same two names below the root, where the migration page
- * states no depth.
+ * Near misses: spelling variants of the two names.
  */
 export function buildAntigravityContextFixture(
   prefix = 'inspector-antigravity-instructions',
@@ -8805,11 +8746,21 @@ export function buildAntigravityContextFixture(
       '',
     ].join('\n'),
   );
-  write(root, 'packages/api/GEMINI.md', '# a nested copy the rule is anchored above\n');
-  write(root, 'packages/api/AGENTS.md', '# read by Copilot alone below the root\n');
+  write(root, 'packages/api/GEMINI.md', '# The API package\n');
+  write(root, 'packages/api/AGENTS.md', '# Agent instructions for the API package\n');
+  write(root, 'docs/.agents/GEMINI.md', '# The documentation directory\n');
+  // Near misses.
+  write(root, 'tools/gemini.md', 'wrong case\n');
+  write(root, 'GEMINI.md.bak', 'backup suffix\n');
   return {
     root,
-    candidatePaths: ['AGENTS.md', 'GEMINI.md'],
-    nearMissPaths: ['packages/api/GEMINI.md'],
+    candidatePaths: [
+      'AGENTS.md',
+      'GEMINI.md',
+      'docs/.agents/GEMINI.md',
+      'packages/api/AGENTS.md',
+      'packages/api/GEMINI.md',
+    ],
+    nearMissPaths: ['GEMINI.md.bak', 'tools/gemini.md'],
   };
 }

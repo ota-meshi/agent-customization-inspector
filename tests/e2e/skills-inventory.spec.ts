@@ -45,14 +45,11 @@ function skillRows(page: import('@playwright/test').Page) {
 /** How many rows the fixture's committed inventory has, symlink cases included. */
 function expectedRowCount(): number {
   // alpha, dup, empty, orbit, packages/api:deploy, packages/api:dup,
-  // secretive, voyage, and SKILL — plus the linked skill when the platform
-  // could materialize symbolic links. `voyage` is the one name
+  // secretive, and voyage — plus the linked skill when the platform could
+  // materialize symbolic links. `voyage` is the one name
   // `.claude/skills/lander/SKILL.md` is invoked by: its authored `name`, which
-  // both Claude Code and Copilot resolve for a root skill (FR-007). `SKILL` is
-  // `.agents/skills/SKILL.md`, the flat shape one vendor's own page documents:
-  // it declares no name and has no folder, so it is named by its own file
-  // (specs/003-antigravity-cli-support/spec.md FR-004).
-  return fixture.capabilities.symlinks ? 10 : 9;
+  // both Claude Code and Copilot resolve for a root skill (FR-007).
+  return fixture.capabilities.symlinks ? 9 : 8;
 }
 
 test('lists one unified skill inventory with each file’s recognition badges', async ({ page }) => {

@@ -2,8 +2,9 @@
 // trusted-workspace inspection model (spec.md FR-024/FR-028,
 // data-model.md § Diagnostic). The registry fixes everything about a code
 // except its per-instance attachment values, so a record and its DTO carry
-// only `code` plus those values: scope, severity, and the actionable message
-// text are all derived from `code` through this one registry.
+// only `code` plus those values: scope, severity, the words naming the kind,
+// and the actionable message text are all derived from `code` through this
+// one registry.
 // `lifecycleOwnerKey` is internal routing state and never serializes.
 import { GLOBAL_MEMBER_ORDER } from './api-text';
 import { createOpaqueId } from './entities';
@@ -72,6 +73,20 @@ export interface DiagnosticRegistryEntry {
   /** Fixed UI ranking for this code; see {@link DiagnosticSeverity}. */
   readonly severity: DiagnosticSeverity;
   /**
+   * The kind of problem in the few words an inventory row's badge states
+   * beside the affected path at all times, so a reader learns which kind a
+   * row kept without opening anything (FR-028). The kinds a row can carry ask
+   * for different fixes — a failed parse is fixed in the file's own text, an
+   * unreadable file by checking that it is there and can be read — and one
+   * skill row can carry both. The words are the ones the product already uses
+   * for the same state, so an unreadable file reads `Could not be read` here
+   * as it does on the files-in-no-kind row and in a detail's attributes
+   * (`FILE_ENCODING_TEXT`). Every code has them, a source-scoped one included
+   * though no row carries it, because they name the kind rather than the row;
+   * {@link message} is what the badge discloses.
+   */
+  readonly label: string;
+  /**
    * The actionable sentence shown for this code, stating what happened and
    * what the user can do about it (FR-028). The wire DTO carries only the
    * code, so the text is derived here rather than sent per instance: it is
@@ -105,6 +120,7 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
     ownerKind: 'lifecycle',
     scope: 'source',
     severity: 'error',
+    label: 'Could not be read',
     message:
       'The selected root does not exist or cannot be read as a directory. Check that the directory exists and is readable, then rescan or run the inspector again.',
   },
@@ -113,6 +129,7 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
     ownerKind: 'candidate-file',
     scope: 'file',
     severity: 'error',
+    label: 'Could not be read',
     message:
       'This file could not be read. It may have been removed or its permissions may deny reading; other files were unaffected. Check that the file exists and is readable, then rescan.',
   },
@@ -126,6 +143,7 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
     ownerKind: 'candidate-file',
     scope: 'file',
     severity: 'warning',
+    label: 'Binary',
     message:
       'This file contains NUL bytes, so it is recorded without source text and nothing was parsed from it. Use a binary-capable viewer if you need to inspect its contents.',
   },
@@ -157,6 +175,7 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
     ownerKind: 'candidate-file',
     scope: 'file',
     severity: 'warning',
+    label: 'Could not be parsed',
     message:
       'This file could not be parsed, so the declarations and instructions that parse would have produced are unknown rather than absent. A product that reads the same file in another format reads it independently; a rescan reports the current state of the file.',
   },

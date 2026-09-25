@@ -88,7 +88,10 @@ test('inspects Claude and Codex from one confirmation, each as its own Source', 
     [
       '/instructions/detail/global-claude/CLAUDE.md',
       '/instructions/detail/global-codex/AGENTS.override.md',
+      '/instructions/detail/global-antigravity/AGENTS.md',
       '/instructions/detail/global-antigravity/GEMINI.md',
+      '/instructions/detail/global-antigravity/config/AGENTS.md',
+      '/instructions/detail/global-antigravity/config/GEMINI.md',
       '/instructions/detail/repository/CLAUDE.md',
       '/instructions/detail/global-copilot/copilot-instructions.md',
       ...homes.expectedCandidatePaths.copilot

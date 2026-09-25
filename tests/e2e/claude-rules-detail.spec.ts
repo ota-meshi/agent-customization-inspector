@@ -7,7 +7,8 @@
 // against a filesystem path, a credential shown exactly as authored with no
 // masking or reveal control, a literal environment reference never replaced
 // by the process value a same-named variable carries, and navigation back to
-// the rule tab.
+// the rule tab. A rule file another kind's reading could not parse states that
+// failure on its detail and its row (T1225).
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -184,11 +185,65 @@ test.describe('a Claude rule whose frontmatter is malformed', () => {
       new URL('/rules/detail/repository/.claude/rules/broken.md', host.origin).toString(),
     );
     const main = page.locator('main');
-    // Nothing is read out of a rule file, so nothing can fail to be read:
-    // the document reaches the page whole and this product passes no judgment
-    // on whether its vendor could load it (FR-032).
+    // Nothing is read out of a rule file, and no other kind reads this one, so
+    // nothing can fail to be read: the document reaches the page whole and this
+    // product passes no judgment on whether its vendor could load it (FR-032).
     await expect(main).toContainText('paths: [src/**');
     await expect(main).toContainText('# Broken');
     expect(await main.innerText()).not.toContain('could not be parsed');
+  });
+});
+
+test.describe('a rule file another kind cannot parse', () => {
+  let fixture: string;
+  let host: LaunchedHost;
+
+  test.beforeEach(async () => {
+    fixture = await mkdtemp(join(tmpdir(), 'aci-claude-rules-detail-command-'));
+    // A rules directory below `.claude/commands/`: the rule's leading
+    // any-depth step and the command's trailing one both reach the file, so it
+    // is a rule and a command at once. The command reading parses the
+    // frontmatter and fails; the rule reading reads nothing out (FR-028).
+    await mkdir(join(fixture, '.claude/commands/.claude/rules'), { recursive: true });
+    await writeFile(
+      join(fixture, '.claude/commands/.claude/rules/shared.md'),
+      '---\ndescription: [unterminated\n---\n\n# Shared\n',
+      'utf8',
+    );
+    host = await launchHost(fixture);
+  });
+
+  test.afterEach(async () => {
+    await stopHost(host);
+    await rm(fixture, { recursive: true, force: true });
+  });
+
+  test('states the command reading’s failure above the rule it shows whole', async ({ page }) => {
+    // The failure is the file's, so the rule detail states it as the command
+    // detail does (T1225).
+    await page.goto(
+      new URL(
+        '/rules/detail/repository/.claude/commands/.claude/rules/shared.md',
+        host.origin,
+      ).toString(),
+    );
+    const main = page.locator('main');
+    await expect(main).toContainText('description: [unterminated');
+    await expect(main.locator('li', { hasText: 'This file could not be parsed' })).toHaveCount(1);
+  });
+
+  test('marks its rule row with the file’s diagnostic', async ({ page }) => {
+    await page.goto(host.origin);
+    await page.getByRole('tab', { name: /Rule/u }).click();
+    const row = page
+      .getByRole('tabpanel')
+      .locator('.aci-item')
+      .filter({ hasText: '.claude/commands/.claude/rules/shared.md' });
+    const badges = row.locator('.aci-row-diagnostics__badge');
+    await expect(badges).toHaveCount(1);
+    await badges.click();
+    await expect(row.locator('.aci-row-diagnostics__explanation')).toContainText(
+      'This file could not be parsed',
+    );
   });
 });

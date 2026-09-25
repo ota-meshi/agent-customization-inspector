@@ -297,7 +297,7 @@ describe('evidence citations', () => {
   // the built artifact (see `src/shared/registries/evidence-types.ts`).
   const cited = [...behaviors, ...strategies, ...Object.values(INSPECTION_RULES)];
 
-  it('cites exactly the 63 source records the registries maintain', () => {
+  it('cites exactly the 64 source records the registries maintain', () => {
     // T1042: the final count. A source record is one page this repository has
     // reviewed, and the number of them is a fact about the maintained registry
     // rather than a derivation, so the literal is written here and a citation
@@ -307,11 +307,14 @@ describe('evidence citations', () => {
     // seven of the terminal's own and four shared ones. The literal was
     // written only after this assertion was watched failing against the
     // shipped registry.
+    //
+    // T1219: the sixty-fourth is the changelog release that version-anchors
+    // Claude Code's `AGENTS.md` reading, 2.1.277.
     const sourceIds = new Set<string>();
     for (const record of cited) {
       for (const citation of record.evidence) sourceIds.add(citation.sourceId);
     }
-    expect(sourceIds.size).toBe(63);
+    expect(sourceIds.size).toBe(64);
   });
 
   it('gives every maintained record at least one citation', () => {
@@ -901,17 +904,17 @@ describe('the pure User-only facts the consent exclusions need (T931)', () => {
 });
 
 describe('final registry counts and maintenance-only reach', () => {
-  it('ships exactly 120 behaviors, 103 rules, and 46 strategies', () => {
+  it('ships exactly 121 behaviors, 101 rules, and 46 strategies', () => {
     // T1042: the frozen sizes of the three registries. They are spelled out
     // rather than derived so that a record added without deciding to add one
     // fails here (AGENTS.md § freeze).
     //
-    // T004: Antigravity CLI declares fifteen behaviors, seven strategies, and
-    // twenty-three rules, which is what moved all three literals. Each was
-    // written only after this assertion was watched failing against the
-    // shipped registry.
-    expect(behaviors).toHaveLength(120);
-    expect(Object.values(INSPECTION_RULES)).toHaveLength(103);
+    // T004, T083–T084: Antigravity CLI declares sixteen behaviors, seven
+    // strategies, and twenty-one rules, which is what moved all three
+    // literals. Each was written only after this assertion was watched failing
+    // against the shipped registry.
+    expect(behaviors).toHaveLength(121);
+    expect(Object.values(INSPECTION_RULES)).toHaveLength(101);
     expect(strategies).toHaveLength(46);
   });
 

@@ -324,9 +324,10 @@ class SideDeclarations {
     // inventory's definitions rather than of the adopted variant, because the
     // two disagree exactly where it matters: a census companion that is also
     // its own recognition of another kind — an `AGENTS.md` inside a skill
-    // directory, which Copilot reads as an instruction file — arrives as that
-    // kind's variant carrying that kind's parse, and taking it would publish
-    // an instruction file's declarations as the skill's declared metadata.
+    // directory, which Copilot and Claude Code read as an instruction file —
+    // arrives as that kind's variant carrying that kind's parse, and taking it
+    // would publish an instruction file's declarations as the skill's declared
+    // metadata.
     // A file no definition owns declares nothing *here* whatever it declares
     // for itself; its own detail is where its declarations are read.
     if (side.definitions.length === 0) {

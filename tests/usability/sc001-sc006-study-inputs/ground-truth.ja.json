@@ -16,13 +16,16 @@
     "recognizing-tools": {
       "expected": [
         "GitHub Copilot",
+        "Claude Code",
         "OpenAI Codex",
         "Antigravity CLI"
       ],
-      "matchRule": "順不同で3つすべて。足りない回答、または Claude Code を挙げた回答は不正解とする。",
+      "matchRule": "順不同で4つすべて。足りない回答は不正解とする。",
       "accepted": [
         "GitHub Copilot",
         "Copilot",
+        "Claude Code",
+        "Claude",
         "OpenAI Codex",
         "Codex",
         "Antigravity CLI",

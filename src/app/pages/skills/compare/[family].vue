@@ -150,12 +150,9 @@ const rightSide = computed(() => querySideOf(route.query, 'rightSource', 'right'
  * pair's own default: each side's entry file.
  *
  * The default is the entries rather than a relative spelling, because the two
- * entries need not share one. A copy is a skill as one product resolves it,
- * and one vendor resolves a skill from a flat Markdown file with no directory
- * to be relative to (spec.md § FR-004); even among directory copies, the
- * entry is the copy's own file rather than a fixed name. The copy-relative
- * axis is how a pair of directory copies steps to their *other* files, not
- * how the pair itself is decided.
+ * entries need not share one: the entry is the copy's own file rather than a
+ * fixed name. The copy-relative axis is how a pair of copies steps to their
+ * *other* files, not how the pair itself is decided.
  */
 const requestedFile = computed(() => {
   const value = queryPath('file');
@@ -258,17 +255,11 @@ class SkillCopy {
   public readonly source: SourceSelector;
 
   /**
-   * The copy directory inside its Source, trailing slash kept — or null for a
-   * copy that has none.
-   *
-   * A copy is a skill as one product resolves it, and one vendor resolves a
-   * skill from a flat Markdown file directly below `.agents/skills/`
-   * (spec.md § FR-004). Such a copy is one file: the directory it happens to
-   * sit in holds every other flat skill beside it, so taking that as the
-   * copy's own would compose paths of files this copy does not have. Null is
-   * therefore left null rather than filled.
+   * The copy directory inside its Source, trailing slash kept: a skill is its
+   * directory (spec.md § FR-004), so this is also how the copy is spelled
+   * where one is named, and what its {@link key} is built from.
    */
-  public readonly directory: string | null;
+  public readonly directory: string;
 
   /** The copy's entry file — the identity path a copy switch writes. */
   public readonly entryPath: string;
@@ -284,10 +275,10 @@ class SkillCopy {
   public constructor(
     sourceId: string,
     source: SourceSelector,
-    directory: string | null,
+    directory: string,
     entryPath: string,
   ) {
-    this.key = fileIdentityKey(sourceId, directory ?? entryPath);
+    this.key = fileIdentityKey(sourceId, directory);
     this.sourceId = sourceId;
     this.source = source;
     this.directory = directory;
@@ -296,29 +287,12 @@ class SkillCopy {
   }
 
   /**
-   * How this copy is spelled where one is named: its directory, or its own
-   * file where it has none. The same value its {@link key} is built from, so
-   * the option a reader picks and the copy it resolves to are one spelling.
-   */
-  public get identityPath(): string {
-    return this.directory ?? this.entryPath;
-  }
-
-  /**
    * The path this copy holds at one compared-file coordinate: its entry for
    * the pair's own default, and the directory-relative composition for a
    * coordinate on the copy-relative axis.
-   *
-   * Null when the coordinate cannot name a file of this copy — a relative
-   * path against a copy with no directory. The callers report that as a link
-   * fault rather than composing a path the copy does not have
-   * ({@link standsAt}, {@link pairFault}).
    */
-  public pathAt(relative: string | null): string | null {
-    if (relative === null) {
-      return this.entryPath;
-    }
-    return this.directory === null ? null : this.directory + relative;
+  public pathAt(relative: string | null): string {
+    return relative === null ? this.entryPath : this.directory + relative;
   }
 }
 
@@ -425,13 +399,8 @@ const population = computed<CopyPopulation | null>(() => {
       // the switchers never offer a copy outside it.
       continue;
     }
-    // The row unit is the definition's own published fact, never re-derived
-    // from the path: a file-shaped definition has no directory, and the one it
-    // sits in is shared with every other flat skill there
-    // (`api-types.ts` § SkillDefinitionDto.rowUnit).
-    const directory =
-      definition.rowUnit === 'file' ? null : directoryOf(definition.sourceRelativePath);
-    const key = fileIdentityKey(definition.sourceId, directory ?? definition.sourceRelativePath);
+    const directory = directoryOf(definition.sourceRelativePath);
+    const key = fileIdentityKey(definition.sourceId, directory);
     let copy = files.get(key);
     if (copy === undefined) {
       copy = new SkillCopy(
@@ -471,14 +440,10 @@ function copyOfSide(side: ComparisonSide | null): SkillCopy | null {
   if (sourceId === null) {
     return null;
   }
-  // A copy is keyed by its own spelling ({@link SkillCopy.identityPath}): the
-  // side's entry path for a copy that is one file, and the directory that
-  // path sits in for one that is a directory. The two spellings cannot
-  // collide, because a directory's keeps its trailing slash.
+  // A copy is keyed by its directory, which is where the side's entry path
+  // sits ({@link SkillCopy.directory}).
   return (
-    population.value.get(fileIdentityKey(sourceId, side.sourceRelativePath)) ??
-    population.value.get(fileIdentityKey(sourceId, directoryOf(side.sourceRelativePath))) ??
-    null
+    population.value.get(fileIdentityKey(sourceId, directoryOf(side.sourceRelativePath))) ?? null
   );
 }
 
@@ -514,11 +479,6 @@ const composedRightPath = computed(() => rightCopy.value?.pathAt(currentFile.val
  */
 function readableRelatives(copy: SkillCopy): readonly string[] {
   const directory = copy.directory;
-  if (directory === null) {
-    // A copy that is one file has no relative axis of its own: its entry is
-    // the whole of it, and the pair reaches that through its own default.
-    return [];
-  }
   const relatives: string[] = [];
   for (const path of copy.members) {
     if (readablePaths.value.has(fileIdentityKey(copy.sourceId, path))) {
@@ -534,17 +494,14 @@ function readableRelatives(copy: SkillCopy): readonly string[] {
  * census's own fact rather than a re-attribution.
  */
 function ownedIn(copy: SkillCopy, relative: string | null): boolean {
-  const path = copy.pathAt(relative);
-  return path !== null && copy.members.has(path);
+  return copy.members.has(copy.pathAt(relative));
 }
 
 /** Whether one copy owns a readable file at `relative`; see {@link ownedIn}. */
 function readableIn(copy: SkillCopy, relative: string | null): boolean {
-  const path = copy.pathAt(relative);
   return (
-    path !== null &&
     ownedIn(copy, relative) &&
-    readablePaths.value.has(fileIdentityKey(copy.sourceId, path))
+    readablePaths.value.has(fileIdentityKey(copy.sourceId, copy.pathAt(relative)))
   );
 }
 
@@ -561,12 +518,10 @@ function readableIn(copy: SkillCopy, relative: string | null): boolean {
  * settles as this surface's own not-readable statement.
  */
 function opposableAt(copy: SkillCopy, relative: string | null): boolean {
-  const path = copy.pathAt(relative);
   return (
     readableIn(copy, relative) ||
-    (path !== null &&
-      !ownedIn(copy, relative) &&
-      !committedPaths.value.has(fileIdentityKey(copy.sourceId, path)))
+    (!ownedIn(copy, relative) &&
+      !committedPaths.value.has(fileIdentityKey(copy.sourceId, copy.pathAt(relative))))
   );
 }
 
@@ -645,12 +600,6 @@ const fileOptions = computed<readonly ComparedFileOption[]>(() => {
   if (left === null || right === null) {
     return [];
   }
-  if (left.directory === null || right.directory === null) {
-    // No copy-relative axis: a copy that is one file has nothing to be
-    // relative to, so the pair has the one position its own default names —
-    // the two entries — and there is nothing to step through.
-    return [];
-  }
   const committed = committedPaths.value;
   const options: ComparedFileOption[] = [];
   const offer = (relative: string, other: SkillCopy, onlyIn: 'left' | 'right'): void => {
@@ -705,12 +654,11 @@ const fileSwitcherShown = computed(() => switchersAvailable.value && fileOptions
 const copySwitchersRendered = computed(() => switchersAvailable.value && copySwitchersShown.value);
 
 /**
- * The copy-relative spelling of one copy's entry file, or null for a copy
- * with no relative axis of its own. What the pair's own default names on
- * that copy, said in the axis's vocabulary.
+ * The copy-relative spelling of one copy's entry file: what the pair's own
+ * default names on that copy, said in the axis's vocabulary.
  */
-function entryRelativeOf(copy: SkillCopy): string | null {
-  return copy.directory === null ? null : copy.entryPath.slice(copy.directory.length);
+function entryRelativeOf(copy: SkillCopy): string {
+  return copy.entryPath.slice(copy.directory.length);
 }
 
 /**
@@ -748,7 +696,7 @@ const fileSelection = computed({
       return relative;
     }
     const left = leftCopy.value;
-    return left === null ? '' : (entryRelativeOf(left) ?? '');
+    return left === null ? '' : entryRelativeOf(left);
   },
   set: (relative: string) => {
     const left = currentLeft.value;
@@ -767,14 +715,9 @@ const fileSelection = computed({
  * {@link fileOptions}.
  */
 function standsAt(copy: SkillCopy, relative: string | null): boolean {
-  const path = copy.pathAt(relative);
-  // A coordinate the copy cannot compose a path from stands nowhere: a
-  // relative path written by hand against a copy that is one file names no
-  // file of it, and reporting it is what keeps a composed path this copy does
-  // not have off the screen.
   return (
-    path !== null &&
-    (ownedIn(copy, relative) || !committedPaths.value.has(fileIdentityKey(copy.sourceId, path)))
+    ownedIn(copy, relative) ||
+    !committedPaths.value.has(fileIdentityKey(copy.sourceId, copy.pathAt(relative)))
   );
 }
 
@@ -919,11 +862,6 @@ function openCurrent(): void {
   const relative = currentFile.value;
   const leftPath = left.pathAt(relative);
   const rightPath = right.pathAt(relative);
-  if (leftPath === null || rightPath === null) {
-    // Narrowing only: every caller runs behind a null {@link pairFault},
-    // which rejects a coordinate a copy cannot compose a path from.
-    return;
-  }
   const leftComposed: ComparisonSide = { source: left.source, sourceRelativePath: leftPath };
   const rightComposed: ComparisonSide = { source: right.source, sourceRelativePath: rightPath };
   const committed = committedPaths.value;
@@ -1253,8 +1191,7 @@ const retryable = computed(
 
 /**
  * What a copy switcher option reads as: the copy's own spelling — its
- * directory, or its file where it has none ({@link SkillCopy.identityPath}) —
- * and, where the
+ * directory ({@link SkillCopy.directory}) — and, where the
  * copy's family holds more than one Source, the directory its Source was
  * admitted at — two homes can hold one directory spelling, and an option
  * list naming it once would offer the same word twice
@@ -1262,7 +1199,7 @@ const retryable = computed(
  */
 function copyLabel(copy: SkillCopy): string {
   return comparisonOptionLabel(
-    inlinePresentationLabel(copy.identityPath),
+    inlinePresentationLabel(copy.directory),
     comparisonSourceQualifierOf(sources.value, copy.sourceId),
   );
 }

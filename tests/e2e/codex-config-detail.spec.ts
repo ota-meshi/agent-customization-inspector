@@ -13,7 +13,9 @@
 // The MCP rows of the same physical file are checked here too, from the other
 // side: which detail answers for a file follows from the row it is reached
 // through, so the MCP page publishes declarations without the document's bytes
-// while this page publishes the document (FR-007).
+// while this page publishes the document (FR-007). A document TOML cannot
+// parse keeps its whole source here, with the failure its MCP and hook
+// readings recorded stated once (T1225).
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -259,11 +261,14 @@ test.describe('a configuration document no parser can read', () => {
     await rm(fixture, { recursive: true, force: true });
   });
 
-  test('still shows the document, because nothing is read out of it', async ({ page }) => {
-    // Nothing is extracted for this row, so nothing can fail to be read: the
+  test('still shows the document, with its MCP and hook readings’ failure stated once', async ({
+    page,
+  }) => {
+    // Nothing is extracted for this row, so its reading cannot fail: the
     // settings detail is the bytes their author wrote whether or not a parser
-    // accepts them. The MCP row of the same file is the one that reports the
-    // failure (FR-028).
+    // accepts them. The MCP servers' and the hooks' readings of the same
+    // document did fail — two records of one code — and those are the file's,
+    // so the page states them above the text, once (FR-028, T1225).
     await page.goto(
       new URL(
         '/settings-and-configuration/detail/repository/.codex/config.toml',
@@ -271,7 +276,10 @@ test.describe('a configuration document no parser can read', () => {
       ).toString(),
     );
     await expect(page.getByRole('heading', { name: '.codex/config.toml' })).toBeVisible();
-    await expect(page.locator('main')).toContainText('model = "unterminated');
-    await expect(page.locator('main')).not.toContainText('could not be read');
+    const main = page.locator('main');
+    await expect(main).toContainText('model = "unterminated');
+    await expect(main.locator('li', { hasText: 'This file could not be parsed' })).toHaveCount(1);
+    // The file itself was read, so nothing says it could not be.
+    await expect(main).not.toContainText('could not be read');
   });
 });

@@ -31,14 +31,10 @@ pnpm run start:fixture antigravity-skills --no-open --port 0
 1. tool filter と legend が4つのツールを名指し、4つ目が `Antigravity CLI` で、製品名を
    accessible name として持つ自身の mark を伴う。行が描く大きさで4つの mark を並べて見る。
    新しいものが隣の3つと同じ視覚的な重さに収まり、重すぎも一段軽くもないことを確かめる。
-2. skills inventory が `.agents/skills/deploy.md` を Antigravity CLI の skill として挙げ、その
-   隣に supporting file の数を出さない。そして `.agents/skills/release/SKILL.md` を、skill
-   ディレクトリを読む3製品すべて（Antigravity CLI を含む）を名指して挙げる。
-3. 両方の形で綴られた名前は1行になり、その定義が各ファイルとそれを読む製品を名指し、両者の間に
-   優先順位を述べない。
-4. ファイルの形の skill を開くと skill の panel だけが出る。Files タブも tab strip も出ず、その
-   panel の末尾にファイル自身の本文が `Source` として出る。frontmatter ブロックが YAML でない
-   `.agents/skills/summarize.md` は、同じ panel に診断とその viewer だけを示す。
+2. skills inventory が `.agents/skills/changelog/SKILL.md` を、skill フォルダを読む3製品すべて
+   （Antigravity CLI を含む）を名指し、その隣に supporting file の数を出して挙げる。
+3. フラットな `.agents/skills/deploy.md` はどの行にも載らない。`deploy` の行は
+   `.agents/skills/deploy/SKILL.md` だけを持つ。
 
 続いて他の tree を見る。
 
@@ -50,19 +46,24 @@ pnpm run start:fixture antigravity-agents --no-open --port 0
 pnpm run start:fixture antigravity-instructions --no-open --port 0
 ```
 
-- rules inventory が `.agents/rules/` 配下の Markdown ファイルごとに1行を挙げ、frontmatter が
-  宣言する activation — always on、manual、model decision、glob — を書かれたとおりに示し、
-  pattern はどこにも照合しない。同じ tree の `.agent/rules/` のファイルは旧綴りとして挙がる。
-  その隣の `.agent/skills/legacy.md` は挙がらない。その綴りでフラットな形を文書化するページが
-  ないからである。
-- hooks inventory が `.agents/hooks.json` を、その event map、matcher group、1つの hook が持つ
-  `enabled` フラグとともに挙げ、何も実行しない。
+- rules inventory が `.agents/rules/` 配下の Markdown ファイルごとに、Antigravity CLI を名指す
+  1行を挙げる。同じ tree の `.agent/rules/` のファイルは旧綴りとして挙がり、
+  `packages/api/.agents/rules/api.md` もそれらの隣に挙がる。行が示すのはファイルとそれを読む
+  製品で、行を開くとファイル全体が示される。frontmatter が宣言する `trigger` — `always_on`、
+  `manual`、`model_decision`、または `globs` を伴う `glob` — は書かれたとおりに現れ、pattern は
+  どこにも照合しない。
+- hooks inventory が `.agents/hooks.json` を、それが宣言する event — `PostToolUse` と
+  `PreToolUse` — ごとに挙げ、何も実行しない。宣言を開くと、その matcher group、carrier が hook に
+  付けた名前、そしてそれを書く1つの hook については `enabled: false` が、どれも書かれたとおりに
+  示される。
 
-- MCP inventory が `.agents/mcp_config.json` で宣言された名前ごとに1行を挙げ、リモート server の
-  `serverUrl` と legacy の `url` がどちらも書かれたとおりに現れる。
+- MCP inventory が `.agents/mcp_config.json` で宣言された名前ごとに1行を挙げる。リモート server の
+  行を開くと、その `serverUrl`、または1つの宣言がまだ綴る legacy の `httpUrl` が書かれたとおりに
+  示される。
 - agents inventory が `.agents/agents/<name>.md` と `.agents/agents/<name>/agent.md` を挙げる。
 - ルートの `GEMINI.md` とルートの `AGENTS.md` がそれぞれ1度だけ現れ、それらを読むすべての製品を
-  名指す。ネストした `GEMINI.md` は Antigravity CLI の recognition を名指さない。
+  名指す。`packages/api/GEMINI.md` と `docs/.agents/GEMINI.md` は Antigravity CLI を名指し、
+  それぞれ `packages/api/` と `docs/` を govern する。
 
 起動時に記録した process ID で host を停止し、ポートが空いたことを確認する。
 
@@ -75,7 +76,7 @@ pnpm run start:fixture all --inspect-personal-setup --no-open --port 0
 personal setup のページが、読む前に5つのディレクトリを挙げ、4つ目が `Antigravity home` と
 label され、root パスがその隣に出る。環境プロパティはその root を変えない。他の3つの home 向けに
 変数を設定して起動した session は、その3つを動かし、これは home ディレクトリ配下の `.gemini` の
-ままにする。consent の後、home の context file・MCP carrier・agents・skills・settings が挙がり、
+ままにする。consent の後、home の context file・rule・MCP carrier・agents・skills・settings が挙がり、
 その配下のインストール済み plugin コピーは挙がらない。
 
 ## 自動検証
@@ -89,8 +90,8 @@ pnpm exec vitest run
 
 この機能の主張を担う suite は次のとおり。
 
-- `unit` — vendor の rule と compiled unit。ファイルの形の skill unit、ディレクトリの形のもの、
-  workspace の rules と hook carrier、そして各 near miss を拒む selector を含む。
+- `unit` — vendor の rule と compiled unit。skill unit、2つの context の範囲、rules と hook
+  carrier、そして各 near miss を拒む selector を含む。
 - `contract` — rule・behavior・strategy・relationship の件数、Global rule-ID の一覧、
   presentation allowlist の digest、outcome manifest。
 - `integration` — 各 fixture tree の scan、5 member の consent transaction、Global boundary の
@@ -126,7 +127,7 @@ outcome manifest は、このツールが加える `(tool, customization file ty
 manifest version を増やし canonical digest を記録し直し、その実行を `validation.md` に両言語で
 記録する。
 
-親の初回利用評価はこの変更に対してやり直す。指定ファイルの読み手が2つから3つへ動くためである。
+親の初回利用評価はこの変更に対してやり直す。このツールが指定ファイルを読み、その読み手を1つ増やすためである。
 `tests/usability/sc001-sc006-study-inputs/` 配下の input はこのリリースがサポートするツールを
 名指し、なくなる環境プロパティを落とす。そして `validation.md` がその実行を記録する。
 

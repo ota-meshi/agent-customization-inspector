@@ -24,8 +24,9 @@
 // tool, and the exact surfaces whose documented behavior its admitting rules
 // rest on.
 //
-// No settings file is a statement here. `chat.instructionsFilesLocations`,
-// `chat.useClaudeMdFile`, and the CLI's own configuration decide at runtime
+// No settings file is a statement here. `chat.instructionsFilesLocations` —
+// deprecated, and read by the Local agent alone — `chat.useClaudeMdFile`, and
+// the CLI's own configuration decide at runtime
 // which of these locations participate, and that dependency stays a condition
 // on the record rather than a second behavior with a settings locator — a
 // settings statement would invite a settings rule, and this phase authorizes
@@ -72,9 +73,9 @@ export const COPILOT_VSCODE_INSTRUCTIONS_REPOSITORY_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use a .github/copilot-instructions.md file'],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
-            'VS Code automatically detects the one repository-wide instruction file at the workspace root and applies it to all chat requests within that workspace.',
+            'VS Code uses the one repository-wide instruction file in the .github folder at the repository root for project-wide guidance in Copilot sessions, and the Local agent also discovers it while its setting is on.',
         },
         {
           sourceId: 'vscode.copilot.customization',
@@ -125,7 +126,7 @@ export const COPILOT_VSCODE_INSTRUCTIONS_PATH_BEHAVIOR = {
             'Instructions file locations',
             'Use a CLAUDE.md file',
           ],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
             'File-based .instructions.md files apply when the applyTo pattern in their header matches what the agent works on, the default workspace location .github/instructions and the Claude-format .claude/rules folder are searched recursively, and a .claude/rules file declares its patterns with a paths property that defaults to every file when omitted.',
         },
@@ -134,9 +135,9 @@ export const COPILOT_VSCODE_INSTRUCTIONS_PATH_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
           officialHost: 'code.visualstudio.com',
           sections: ['Custom instructions settings'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Which instruction locations participate is setting-controlled, so an additional configured location is a runtime input rather than part of the documented default lookup.',
+            'Additional instruction locations come from chat.instructionsFilesLocations, a deprecated setting that configures the Local agent alone, so a configured location is a runtime input of that agent rather than part of the documented default lookup, and chat.includeApplyingInstructions decides whether a file whose applyTo matches is added at all.',
         },
       ]
     : [],
@@ -175,16 +176,16 @@ export const COPILOT_VSCODE_INSTRUCTIONS_AGENTS_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use an AGENTS.md file', 'Use multiple AGENTS.md files'],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
-            'VS Code automatically applies the workspace-root AGENTS.md to all chat requests when its setting is on, and nested files are an experimental, disabled-by-default setting under which VS Code searches every subfolder and leaves the choice of applicable instructions to the model.',
+            'VS Code takes the primary AGENTS.md at the repository root, which the Local agent reads while its setting is on, and nested AGENTS.md files are a disabled-by-default Local agent setting under which VS Code lists them with their folder locations and the agent loads the instructions relevant to its task.',
         },
         {
           sourceId: 'vscode.copilot.settings',
           url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
           officialHost: 'code.visualstudio.com',
           sections: ['Chat settings'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-24',
           establishes:
             'The chat.useAgentsMdFile setting defaults to on and the experimental chat.useNestedAgentsMdFiles setting defaults to off, which is what makes the root file read by default and the nested tier a disabled-by-default opt-in.',
         },
@@ -232,9 +233,9 @@ export const COPILOT_VSCODE_INSTRUCTIONS_CLAUDE_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use a CLAUDE.md file'],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
-            'With the chat.useClaudeMdFile setting enabled, VS Code applies CLAUDE.md as always-on instructions from its documented locations: the workspace root, the .claude folder, the user home, and the local CLAUDE.local.md variant.',
+            'With the chat.useClaudeMdFile setting enabled, the Local agent searches for CLAUDE.md in its documented locations: the workspace root, the .claude folder, the user home, and the local CLAUDE.local.md variant.',
         },
       ]
     : [],
@@ -287,9 +288,9 @@ export const COPILOT_VSCODE_SKILLS_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
           officialHost: 'code.visualstudio.com',
           sections: ['Agent skills settings'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Skill discovery locations are setting-controlled, which keeps enablement and any additional configured location a runtime condition rather than part of the documented default lookup.',
+            'chat.useAgentSkills switches skills on, and additional skill locations come from chat.agentSkillsLocations, a deprecated setting that configures the Local agent alone, which keeps enablement and any configured location runtime conditions rather than part of the documented default lookup.',
         },
       ]
     : [],
@@ -297,10 +298,11 @@ export const COPILOT_VSCODE_SKILLS_BEHAVIOR = {
 
 /**
  * Copilot VS Code User instructions: the personal instruction locations in
- * home and profile data, the highest documented instruction layer. Recorded
- * for maintenance only — no Repository rule rests on it, and only the
- * consented `<COPILOT_HOME>/instructions` subset is ever admitted, by the
- * Global rule that ships with its own phase.
+ * home and profile data, additive with the other instruction sources — among
+ * them the always-on `~/.copilot/copilot-instructions.md` of an Agent Host
+ * session. No Repository rule rests on it; the consented `<COPILOT_HOME>`
+ * subset — that file and the `instructions` directory — is admitted by the two
+ * Global instruction rules.
  */
 export const COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR = {
   behaviorId: 'copilot.behavior.vscode.user.instructions',
@@ -316,7 +318,7 @@ export const COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR = {
         // Relative to the base, like the other User locators: the home anchor
         // is what `profile-data` already says.
         relativeSelector:
-          '.copilot/instructions/<name>.instructions.md; .claude/rules/<name>.md; profile instruction files',
+          '.copilot/copilot-instructions.md; .copilot/instructions/<name>.instructions.md; .claude/rules/<name>.md; profile instruction files',
         traversal: 'recursive-under-base',
       }
     : null,
@@ -328,19 +330,24 @@ export const COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR = {
           sourceId: 'vscode.copilot.instructions',
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
-          sections: ['Instructions file locations', 'Instruction priority'],
-          reviewedOn: '2026-09-04',
+          sections: [
+            'Choose a scope',
+            'Use a .github/copilot-instructions.md file',
+            'Instructions file locations',
+            'Resolve conflicting instructions',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'User-level instruction files live in the documented user locations such as ~/.copilot/instructions and ~/.claude/rules, apply across workspaces, and personal instructions take the highest priority in the documented order while every applicable set is still provided.',
+            'User-level instruction files live in the documented user locations — ~/.copilot/copilot-instructions.md for personal always-on instructions and ~/.copilot/instructions and ~/.claude/rules for Agent Host sessions, VS Code profile storage for the Local agent — and serve personal preferences across projects; applicable instruction sources are additive, and the page documents no precedence among them.',
         },
         {
           sourceId: 'vscode.copilot.settings',
           url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
           officialHost: 'code.visualstudio.com',
           sections: ['Custom instructions settings'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-24',
           establishes:
-            'The same location setting enables or disables each instruction location, so participation is a runtime input rather than a fixed part of the lookup.',
+            'chat.instructionsFilesLocations, deprecated and configuring the Local agent alone, enables or disables that agent’s instruction locations, ~/.copilot/instructions and ~/.claude/rules among its defaults, so their participation there is a runtime input; the page names no setting that switches an Agent Host session’s locations, ~/.copilot/copilot-instructions.md included.',
         },
       ]
     : [],
@@ -374,7 +381,7 @@ export const COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use a CLAUDE.md file'],
-          reviewedOn: '2026-09-04',
+          reviewedOn: '2026-09-24',
           establishes:
             'The CLAUDE.md location table names the user-home file as personal instructions across all projects.',
         },
@@ -427,9 +434,9 @@ export const COPILOT_VSCODE_USER_SKILLS_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
           officialHost: 'code.visualstudio.com',
           sections: ['Agent skills settings'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-24',
           establishes:
-            'User skill locations participate in the same setting-controlled discovery configuration as workspace locations.',
+            'User skill locations participate in the same configuration as workspace ones: chat.useAgentSkills switches skills on, and chat.agentSkillsLocations, deprecated and configuring the Local agent alone, lists that agent’s locations.',
         },
       ]
     : [],
@@ -1405,9 +1412,9 @@ export const COPILOT_VSCODE_AGENTS_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
           officialHost: 'code.visualstudio.com',
           sections: ['Custom agents settings'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Custom-agent discovery locations are setting-controlled, which keeps enablement and any additional configured location a runtime condition rather than part of the documented default lookup.',
+            'Custom-agent locations for the Local agent come from chat.agentFilesLocations, a deprecated setting for that agent alone, and github.copilot.chat.cli.customAgents.enabled switches custom agents in Copilot sessions, which keeps enablement and any configured location runtime conditions rather than part of the documented default lookup.',
         },
         {
           sourceId: 'github.copilot.custom-agents',
@@ -1484,7 +1491,8 @@ export const COPILOT_VSCODE_MCP_BEHAVIOR = {
  * key at all.
  *
  * `partially-documented`: the page names `.github/prompts` as the workspace
- * default and says further locations come from `chat.promptFilesLocations`,
+ * default and says further locations come from `chat.promptFilesLocations` —
+ * for the Local agent alone, whose setting is deprecated with it —
  * but does not state precisely what it does with a nested directory below the
  * default one (contracts/vendors/github-copilot.md § Documented VS Code
  * behavior).
@@ -1528,9 +1536,9 @@ export const COPILOT_VSCODE_PROMPTS_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
           officialHost: 'code.visualstudio.com',
           sections: ['Reusable prompt files settings'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-24',
           establishes:
-            'The chat.promptFilesLocations setting searches the locations it lists and defaults to { ".github/prompts": true }, which is both why the located default is what this statement records and why the configured extras are a runtime input it does not.',
+            'The chat.promptFilesLocations setting configures prompt file locations for the Local agent, is deprecated with that agent, and defaults to { ".github/prompts": true }, which is both why the located default is what this statement records and why the configured extras are a runtime input it does not.',
         },
       ]
     : [],
@@ -1718,9 +1726,9 @@ export const COPILOT_VSCODE_USER_AGENTS_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agents/reference/ai-settings',
           officialHost: 'code.visualstudio.com',
           sections: ['Custom agents settings'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Custom-agent locations are setting-controlled, so the personal and profile locations a workspace session also loads are configuration rather than a fixed list; duplicate-name precedence against workspace, organization, and plugin agents is not established, which is the partially-documented remainder.',
+            'Custom-agent locations are configuration rather than a fixed list — chat.agentFilesLocations, deprecated and configuring the Local agent alone, and github.copilot.chat.cli.customAgents.enabled for Copilot sessions; duplicate-name precedence against workspace, organization, and plugin agents is not established, which is the partially-documented remainder.',
         },
       ]
     : [],
@@ -2377,10 +2385,14 @@ export const COPILOT_VSCODE_HOOKS_BEHAVIOR = {
           sourceId: 'vscode.copilot.hooks',
           url: 'https://code.visualstudio.com/docs/agent-customization/hooks',
           officialHost: 'code.visualstudio.com',
-          sections: ['Hook file locations', 'Hook configuration format', 'Agent-scoped hooks'],
-          reviewedOn: '2026-08-26',
+          sections: [
+            'Local hook file locations',
+            'Local hook configuration formats',
+            'Agent-scoped hooks for Local',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'VS Code loads workspace hooks from .github/hooks/*.json and, in the Claude format, from .claude/settings.json and .claude/settings.local.json; workspace hooks take precedence over user hooks for the same event type. A hook configuration file is JSON with a hooks object holding an array of hook commands per event, the same format Claude Code and Copilot CLI use. A custom agent may add a hooks field to its frontmatter, whose hooks run in addition to the workspace and user hooks for the same event.',
+            'The Local harness loads workspace hooks from .github/hooks/*.json and, in the Claude format behind the off-by-default chat.useClaudeHooks setting, from .claude/settings.json and .claude/settings.local.json. A hook file is JSON with a hooks object holding an array of commands per event, and the Local parser also accepts the Copilot and Claude formats. A custom agent may declare hooks in its frontmatter, which run in addition to the applicable user, workspace, and plugin hooks.',
         },
       ]
     : [],
@@ -2415,10 +2427,10 @@ export const COPILOT_VSCODE_USER_HOOKS_BEHAVIOR = {
           sourceId: 'vscode.copilot.hooks',
           url: 'https://code.visualstudio.com/docs/agent-customization/hooks',
           officialHost: 'code.visualstudio.com',
-          sections: ['Hook file locations'],
-          reviewedOn: '2026-08-26',
+          sections: ['Local hook file locations'],
+          reviewedOn: '2026-09-24',
           establishes:
-            'The user scope of the hook-locations table names ~/.copilot/hooks and ~/.claude/settings.json, and the default chat.hookFilesLocations value includes the user Claude settings document.',
+            'The user scope of the Local harness hook-locations table names ~/.copilot/hooks/*.json and, behind the chat.useClaudeHooks setting, ~/.claude/settings.json.',
         },
       ]
     : [],

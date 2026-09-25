@@ -21,6 +21,12 @@ interfaceを人がどう体験するかについては何も立証しない。ru
 Sessionは一度登録したら結果に残る。置換も除外も無い。Environment failureでもproduct
 failureでも同じであり、いずれも中断した基準の不成功として数える。
 
+Apparatusの欠陥が無効にするのはsessionではなく試行である。Runnerのequipmentが基準の前提をsessionの前に
+置かないとき、または1つのsessionが別のsessionに手を出せるとき、その試行は全体として基準以外のものを
+測っている。その試行は差し替える。登録したすべてのsessionの結果は、その試行の下に、結果とは分けて、
+それを無効にした欠陥と共に記録し、次の試行は新しい20 sessionでやり直す。基準を測った試行の中での失敗 —
+sessionの環境、product、誤った回答 — は何も差し替えず、そのsessionの不成功である。
+
 ## 各sessionに与えるもの
 
 自分だけのfolderとguideである。Folderは`repository/`としてall-kind fixtureを持つ。
@@ -67,6 +73,11 @@ sessionに与えたguidanceの一部である。
 
 SC-001の結果にかかわらず、全sessionが同じ指定fileから開始する。Timerはその状態が整い
 promptを提示した時点で開始する。
+
+人は何もせずにその画面を受け取るが、sessionの目はbrowser equipment、つまり自分で実行を選ぶcommandしか
+ない。そこでrunnerはpromptと共に画面を渡す。前のtaskから画面が変わったことと、その時点のpageのsnapshotを、
+session自身のsnapshot commandが返すのと同じ形で渡す。画面に無いものは何も加えないので、これはhintではなく
+基準の前提である。
 
 Sessionは3項目 — fileのsource、認識するtool、file type — を記録する。3つすべてを2分以内に
 提出し、3つすべてが[`ground-truth.json`](sc001-sc006-study-inputs/ground-truth.json)と一致

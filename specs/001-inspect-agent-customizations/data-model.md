@@ -1282,13 +1282,20 @@ An instruction row's applicability range is, for most files, derived from the fi
 never from the vendor's runtime: the range is the directory the file sits in, spelled as a
 glob relative to the Repository root, once a directory the recognizing product keeps its
 instruction files in is stripped from the tail. Claude Code keeps one at `.claude` for
-`CLAUDE.md` alone — the page names `./CLAUDE.md` **or** `./.claude/CLAUDE.md` as the one
-project instruction location while listing local instructions at `./CLAUDE.local.md`
-only — so `.claude/CLAUDE.md` and the root `CLAUDE.md` derive one range and share one row,
+`CLAUDE.md` and `AGENTS.md` alone — the page names `./CLAUDE.md` **or**
+`./.claude/CLAUDE.md` as the one project instruction location and reads a directory's
+`AGENTS.md` and `.claude/AGENTS.md` alike, while listing local instructions at
+`./CLAUDE.local.md` only — so `.claude/CLAUDE.md`, `.claude/AGENTS.md`, and the root
+`CLAUDE.md` and `AGENTS.md` derive one range and share one row,
 `packages/api/.claude/CLAUDE.md` derives `packages/api/**`, and a
 `.claude/CLAUDE.local.md` keeps its directory and derives `.claude/**`. What such a
 directory means is that product's own fact, so each product answers for its own rules
-rather than declaring a list some shared derivation reads.
+rather than declaring a list some shared derivation reads. A range is therefore each
+recognition's own, and one file can govern two: `.claude/AGENTS.md` is Claude Code's `**` and
+GitHub Copilot's `.claude/**`. It is then a file of both rows, each carrying only the
+recognitions that put it there; its detail shows one box per range, each with that range's
+products, comparison, and other files; and a comparison's block is the range whose rows hold
+both sides.
 
 A derived range is a pattern built from literals, so each directory name is escaped where
 a glob would read it as syntax — the wildcards, the class and brace delimiters, the
@@ -1376,8 +1383,8 @@ product's skill rule ships its strategy and its statement together.
 A recognition is an internal record of the committed generation, carried by no session
 response (FR-027): the inventory rows and the detail are both projected from these —
 a definition is one recognition's `(file, tool)` identity, and the detail's
-`presentation` is one Markdown recognition's parse, the skill's or the instruction
-file's. In code it is a class whose one
+`presentation` is one Markdown recognition's parse, the skill's or a frontmatter-led
+instruction file's. In code it is a class whose one
 production construction site is the recognizer, while the recognize seam
 (`CandidateRecognition`) stays an interface tests satisfy with literal doubles.
 
@@ -1388,9 +1395,21 @@ invocation name the admitting rule resolved — the declared `name` for a skill 
 selected root, the directory-qualified command for a nested Claude Code one (FR-007,
 FR-027) — never empty: a row whose file declares none, or declares it empty, is named by
 its skill directory instead. An instruction recognition's details
-carry the same one parse — the declared keys in authored order and the body the block
-was removed from — and deliberately no name: what identifies the recognition is the file
-it was found in, so the Source-relative Path it already carries is the whole identity.
+carry the format its admitting rule reads the file in, and deliberately no name: what
+identifies the recognition is the file it was found in, so the Source-relative Path it
+already carries is the whole identity. Where the format opens with declarations —
+Copilot's path-specific `*.instructions.md`, whose `applyTo` names the files it applies to
+— the details carry the same one parse, the declared keys in authored order and the body
+the block was removed from. Every other instruction format is read whole: no product that
+reads an `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`, `CLAUDE.local.md`, `GEMINI.md`,
+`copilot-instructions.md`, or Codex fallback name documents a frontmatter for it, and
+Antigravity's Rules page says that `AGENTS.md` and `GEMINI.md` use none and are read as
+plain Markdown throughout. Such details carry the range alone, and no extraction is
+attempted (`not-attempted`): a `---` block opening one of those files is a line of its
+instructions, so a block that is valid YAML publishes no declaration and one that is not
+fails nothing. The format is the admitting rule's fact, and one file's recognitions never
+disagree about it, because the files read for their declarations are the `*.instructions.md`
+below Copilot's own instruction directories, where no other product's rule admits a file.
 That is the recognition's identity and not the row's unit — the instructions inventory
 groups these records by the applicability range they carry (§ Inventory unit) — and the
 two stay separate questions: the range is derived once by the admitting rule, which is the
@@ -1438,9 +1457,9 @@ directory from.
 |---|---|---|
 | `sourceRelativePath` | `SourceRelativePath` | The file the recognition is attached to, by its identity (FR-030); many recognitions may reference one physical file |
 | `provenances` | ordered admission record[] | Sorted, non-empty set of rule/path admissions for this shared tool/kind interpretation; each record holds the compiled rule that authorized the read and derives its `ruleId` and `RuleDiscoveryClass` from it, beside the matched `SourceRelativePath` — and nothing beyond that |
-| `tool` | `copilot \| claude \| codex` | Required |
+| `tool` | `copilot \| claude \| codex` | Required. A feature's own data model adds a member and its place in the closed tool order: `specs/003-antigravity-cli-support/data-model.md` § SupportedTool adds `antigravity` |
 | `details` | kind-discriminated payload | The recognized kind plus what identifies a recognition of that kind — for a skill, its declared name. One field, so projecting it is a copy rather than a per-kind reconstruction |
-| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies; `failed` is all-or-nothing per `(file, kind)`: the Markdown kinds run one extraction shared by every recognizing tool, while the MCP kind runs each recognizing tool's own documented reading over the one decoded text (§ Field reading) — readings that share their parser family, so a text one rejects fails them all and the failure unit stays the `(file, kind)` pair |
+| `parseStatus` | `not-attempted \| parsed \| failed` | `not-attempted` means no allowlisted extractor applies — an instruction file its products read whole among them (§ ToolRecognition); `failed` is all-or-nothing per `(file, kind)`: the Markdown kinds run one extraction shared by every recognizing tool, while the MCP kind runs each recognizing tool's own documented reading over the one decoded text (§ Field reading) — readings that share their parser family, so a text one rejects fails them all and the failure unit stays the `(file, kind)` pair |
 | `diagnosticIds` | opaque string[] | The kind's extraction-failure record (FR-028): one per `(file, kind)`, referenced by each failed recognition of that kind and listed once by the file |
 
 The maintained supported-customization documentation is the normative presentation
@@ -1455,11 +1474,10 @@ reference that fails either gate remains visible only in the complete `sourceTex
 not create a published value or `Relationship`, and the parser does not infer an
 equivalent one from its shape or name.
 
-The authoritative enumerations are the Presentation Allowlist sections in the
-[GitHub Copilot](contracts/vendors/github-copilot.md), [Claude Code](contracts/vendors/claude-code.md),
-and [OpenAI Codex](contracts/vendors/openai-codex.md) contracts, with the six deterministic
-table digests and extraction algorithm recorded in the
-[official-source contract](contracts/official-sources.md). They are frozen design inputs
+The authoritative enumerations are the Presentation Allowlist sections of the vendor contracts
+under `contracts/vendors/`, with the deterministic table digests and extraction algorithm
+recorded in the [official-source contract](contracts/official-sources.md), which names every
+contract they cover. They are frozen design inputs
 before dependent implementation begins, and the implementation gate only recomputes and
 verifies them. If a field, relationship kind, source form, extractor applicability, or
 allowlist membership must change after implementation begins, dependent work stops before
@@ -1517,7 +1535,10 @@ key order (FR-007).
 An extractor reports what its format's parser resolves a declaration to — one
 documented, deterministic reading per admitted source form, and for the JSON family per
 `(tool, path)`: YAML 1.2's core schema for a Markdown file's frontmatter, TOML 1.0 for the
-`.codex/config.toml` carrier, and `JSON.parse` for every JSON carrier. That parse is strict
+`.codex/config.toml` carrier, and `JSON.parse` for every JSON carrier. A format its products
+read whole has no reading at all: an instruction file other than Copilot's
+`*.instructions.md` goes through no parser, so a `---` block opening one is neither a
+declaration nor a failure (§ ToolRecognition). That parse is strict
 except where the reading's own client accepts comments, which is Copilot's editor: its
 readings of `.vscode/mcp.json`, the root `.mcp.json`, the `.claude/settings.json` and
 `.claude/settings.local.json` pair, and the `.github/hooks/*.json` files have comments and a
@@ -1627,8 +1648,8 @@ instructs.
 
 The parse itself is published once, on the detail response's skill variant
 (`SkillFileDetailDto.presentation`, contracts/http-api.md § get-file-detail): it is the
-file's fact — every shipped vendor reads the same fixed YAML semantics — so no per-tool
-copy exists on the wire, and the internal `ToolRecognition.details` carries, for the
+file's fact — the declarations are read under this product's one fixed YAML semantics
+whichever rule admitted the file (§ Field reading) — so no per-tool copy exists on the wire, and the internal `ToolRecognition.details` carries, for the
 `skill` kind:
 
 | Field | Type | Rules |
@@ -1717,7 +1738,7 @@ retaining a relationship; only independent candidate admission can authorize a r
 | Field | Type | Rules |
 |---|---|---|
 | `diagnosticId` | opaque ASCII string | Server-generated and unique within generation/session |
-| `code` | stable closed code | Suitable for objective tests and documentation links; the shared registry fixes each code's scope, severity, and actionable English message/next-step text, so none of them serializes |
+| `code` | stable closed code | Suitable for objective tests and documentation links; the shared registry fixes each code's scope, severity, the words naming its kind, and actionable English message/next-step text, so none of them serializes |
 | `severity` | `info \| warning \| error` | Registry-fixed by `code` and not serialized; does not imply vendor validation |
 | `scope` | `file \| source` | Registry-fixed by `code` and not serialized; required attachment discriminator; independent of generation-scoped versus session-lifecycle lifetime |
 | `sourceId` | opaque ASCII ID | Required for both scopes: every diagnostic this product produces belongs to a Source, so none of them is pathless |
@@ -1735,8 +1756,9 @@ which of the two they are says nothing about whether they live inside a committe
 generation.
 
 The closed diagnostic-code registry lives beside the closed code union in the shared
-module and fixes each code's severity, attachment scope, and one actionable English
-message that identifies the problem and a practical next step. The server and browser read
+module and fixes each code's severity, attachment scope, the words naming its kind — which
+an inventory row states beside the affected path at all times (FR-028) — and one actionable
+English message that identifies the problem and a practical next step. The server and browser read
 that same registry; there is no client message catalog or localized/bilingual runtime
 variant. `lifecycleOwnerKey`
 identifies the one lifecycle instance and
@@ -1748,7 +1770,9 @@ order-only: each emitter creates every observation exactly once — legitimately
 records exist, because an extraction failure is one record per `(file, kind)` (FR-028)
 and one file's two kinds can each fail, sharing every public field — so there is
 no deduplication pass, and a double emission is an ordinary implementation bug owned by
-tests and review, not a runtime filter. A scan candidate belongs to one
+tests and review, not a runtime filter. The records stay two, and a surface listing one
+file's records states each code's message once: the message names neither reading, so a
+second copy tells the reader nothing the first did not. A scan candidate belongs to one
 committed generation. An out-of-generation lifecycle candidate—including a fatal scan attempt
 that cannot be committed—belongs to the session only and is never inserted into a
 generation or Source ID list. Malformed-request and other client-caused
@@ -1876,7 +1900,8 @@ This state is not authoritative and is never persisted.
   Source family it leads with and, per side, a Source and a `sourceRelativePath`
   identity (FR-030). The pair's owner is the block one applicability range holds for
   that family — the block the skill precedent's row becomes here, its range derived
-  from the identities because a file governs exactly one range — so a pair may hold
+  from the identities as the one whose block lists both files, since a file can sit in
+  more than one range when its products state different ones — so a pair may hold
   two consented homes' files and never spans two families. It resolves into zero or
   two readable files: an instruction file is complete in itself, so no side can be a
   stated absence, and a pair the owning block does not hold is reported rather than
@@ -2038,7 +2063,7 @@ ready/partial -- accepted per-source rescan --> scanning --> ready/partial
                                                      \-> failed/stale (creates own entry)
 failed/stale -- accepted per-source rescan --> scanning --> ready/partial (clears own entry + diagnostic)
                                                      \-> failed/stale (replaces own entry + diagnostic)
-active Global control (0..4 Sources) -- disable --> disabling barrier --> inactive / 0 Sources (Global sequence discarded; commits nothing)
+active Global control (0..5 Sources) -- disable --> disabling barrier --> inactive / 0 Sources (Global sequence discarded; commits nothing)
                                                                   \-> failed + retained error --> retry disable
 initial enable only -- disable --> cleanup-only barrier --> inactive / 0 Sources (no committed state changed)
                                                   \-> failed + retained error --> retry disable

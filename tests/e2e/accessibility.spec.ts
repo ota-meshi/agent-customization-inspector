@@ -218,12 +218,27 @@ test('AUTO-1.4.4 text stays readable and operable at 200% zoom', async ({ page }
   // which the root font size reproduces. Only the second can clip a control
   // against a fixed height, so a test that did the first alone would report the
   // easier half.
-  for (const presentation of ['browser-zoom', 'text-enlargement'] as const) {
+  //
+  // Text enlargement runs at two widths: 1280px, and 832px, the viewport a
+  // viewport query at 52rem switches at. A file line decides whether its
+  // three columns fit from the row's own width, and a threshold read from the
+  // viewport left both widths with three columns at 200% text — the path
+  // squeezed out at the first and the marks at the second
+  // (`main.css` § .aci-row-file).
+  for (const presentation of [
+    'browser-zoom',
+    'text-enlargement',
+    'text-enlargement-at-832px',
+  ] as const) {
     await page.setViewportSize(
-      presentation === 'browser-zoom' ? { width: 640, height: 360 } : { width: 1280, height: 720 },
+      presentation === 'browser-zoom'
+        ? { width: 640, height: 360 }
+        : presentation === 'text-enlargement'
+          ? { width: 1280, height: 720 }
+          : { width: 832, height: 720 },
     );
     await openInventory(page);
-    if (presentation === 'text-enlargement') {
+    if (presentation !== 'browser-zoom') {
       await page.addStyleTag({ content: ':root { font-size: 200% !important; }' });
     }
 
@@ -256,6 +271,31 @@ test('AUTO-1.4.4 text stays readable and operable at 200% zoom', async ({ page }
       return offenders;
     });
     expect(clipped, presentation).toEqual([]);
+
+    // Neither column of a file line squeezed out by the other: the path is the
+    // one column that breaks anywhere, so a row that gave the marks their
+    // whole width first drew a root `AGENTS.md` four products read one
+    // character per line, and a row that held the path's floor with no room
+    // left drew the marks 0px wide and cut their product names off
+    // (`main.css` § .aci-row-file). Six ems of its own font is a context
+    // file's name on one line.
+    const squeezed = await page.evaluate(() =>
+      [...document.querySelectorAll('.aci-row-file')].flatMap((row) => {
+        const path = row.querySelector('.aci-row-file__path');
+        const marks = path?.nextElementSibling;
+        if (path === null || marks === null || marks === undefined) return [];
+        const width = path.getBoundingClientRect().width;
+        const em = Number.parseFloat(getComputedStyle(path).fontSize);
+        const name = path.textContent?.trim() ?? '';
+        return [
+          ...(width < 6 * em ? [`${name}: path ${Math.round(width)}px`] : []),
+          ...(marks.scrollWidth > marks.clientWidth + 1
+            ? [`${name}: marks ${marks.clientWidth}px of ${marks.scrollWidth}px`]
+            : []),
+        ];
+      }),
+    );
+    expect(squeezed, presentation).toEqual([]);
   }
 });
 

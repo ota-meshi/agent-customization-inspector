@@ -184,7 +184,7 @@ The CLI captures the invocation `process.cwd()` once. Omission uses that exact s
 option is resolved against the captured invocation directory. An explicit empty value exits
 with fixed actionable, source-value-free output before a session or browser attempt. A
 missing value is rejected at the same boundary by Gunshi's typed argument validation.
-Before editor-launcher discovery and session creation, the CLI also captures the four
+Before editor-launcher discovery and session creation, the CLI also captures the three
 documented tool-home environment properties once in fixed order and calls
 `node:os.homedir()` once unconditionally. That retained capture supplies both the eligible
 personal roots excluded from launcher lookup and every preview. Selection never calls
@@ -765,10 +765,11 @@ real home directory. Verify:
 3. After opt-in, only the documented member candidates appear under zero to five
    separately identified member Global Sources—at most one each for Copilot, Claude,
    Codex, Antigravity CLI, and the shared agent home—and every Source has exactly one root.
-   The Antigravity CLI home publishes its `GEMINI.md`, its `config/mcp_config.json`,
-   `config/hooks.json`, `config/agents/*.md` and `config/agents/*/agent.md`, and
-   `config/skills/*/SKILL.md`, the terminal's
-   own `antigravity-cli/skills/` in both admitted shapes, and its
+   The Antigravity CLI home publishes its `GEMINI.md` and `AGENTS.md` and the same pair
+   below `config/`, `config/rules/*.md` and `antigravity-cli/rules/*.md`, its
+   `config/mcp_config.json`, `config/hooks.json`, `config/agents/*.md` and
+   `config/agents/*/agent.md`, `config/skills/*/SKILL.md` and
+   `antigravity-cli/skills/*/SKILL.md`, and its
    `antigravity-cli/settings.json` under the settings, permissions, and hook rows, and
    nothing beside them (specs/003-antigravity-cli-support/spec.md FR-009). Every admitted Source from the
    initial/retry transaction appears together in one atomic Global generation — the enable

@@ -21,11 +21,10 @@ class AntigravitySkillCollisionPolicy extends SkillCollisionPolicy {
   /**
    * Antigravity CLI's clash is confined to one row: it invokes what each file
    * declares, so two files it invokes by one name are the whole collision and
-   * no path elsewhere in the view bears on it. A file-shaped skill and a
-   * directory-shaped one that share a name are two definitions of that row,
-   * and this tool reads both shapes, so both are its own evidence — which is
-   * what makes the clash a real one for it rather than a difference between
-   * products (spec.md FR-004).
+   * no path elsewhere in the view bears on it: a workspace skill and a global
+   * one that share a name are two definitions of that row, and this tool reads
+   * both, so both are its own evidence — which is what makes the clash a real
+   * one for it rather than a difference between products (spec.md FR-004).
    */
   public override collisionGate(
     _viewDefinitions: readonly SameNameCollisionDefinition[],

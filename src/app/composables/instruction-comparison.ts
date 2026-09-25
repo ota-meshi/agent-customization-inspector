@@ -15,7 +15,8 @@
 // names the two files by their whole identity — the Source that holds each and
 // its Source-relative Path, the identity the inventory and the detail route use
 // (FR-030) — and the family they are both of. The owning range is derived from
-// them, because a file governs exactly one range, and the compare page's own
+// them as the range whose block lists both files — a file can sit in more than
+// one range, because each product states its own — and the compare page's own
 // pickers are how a reader moves those coordinates within the block.
 //
 // The family is the boundary a pair stays inside, and each side carries its own
@@ -77,8 +78,9 @@ export type InstructionComparisonViewStatus =
  * are of leads the address, and each side carries its own Source and
  * Source-relative Path — together the identity the inventory blocks and the
  * detail route use (FR-030). The applicability range that owns the pair is
- * derived from the sides rather than carried, because a file governs exactly one
- * range within its Source.
+ * derived from the sides rather than carried: it is the range whose block lists
+ * both files, which a file sitting in two ranges leaves unambiguous for any
+ * pair one block holds.
  *
  * The family leads rather than a Source, because a family is what a pair stays
  * inside and can hold two of them: a reader with two consented homes compares

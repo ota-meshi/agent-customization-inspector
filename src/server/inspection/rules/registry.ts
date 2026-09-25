@@ -40,7 +40,9 @@ import type { RuleRelations } from '../../../shared/registries/relation-types';
 // `rules/instructions/` or `rules/plugins/` directly.
 export type {
   CompiledDerivedInstructionRule,
+  CompiledStaticFrontmatterLedInstructionRule,
   CompiledStaticInstructionRule,
+  CompiledStaticWholeDocumentInstructionRule,
 } from './instructions/compiled-rule';
 export type {
   CompiledStaticPluginCatalogRule,

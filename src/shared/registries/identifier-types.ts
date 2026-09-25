@@ -262,11 +262,11 @@ export type CopilotBehaviorId =
  * § Documented Repository behavior, § Documented User behavior).
  */
 export type AntigravityBehaviorId =
-  /** Antigravity CLI workspace context files: the `GEMINI.md` and `AGENTS.md` of the active directory, parsed alongside the global context file. */
+  /** Antigravity CLI workspace context files: the `GEMINI.md` and `AGENTS.md` of each directory from a read or edited file's folder up to the workspace root, `.agents/` spelling included. */
   | 'antigravity.behavior.repo.context'
-  /** Antigravity CLI workspace skills: a Markdown file at `.agents/skills/<name>.md` or a skill folder's `SKILL.md`, whose frontmatter names it and which becomes a slash command. */
+  /** Antigravity CLI workspace skills: a skill folder's `SKILL.md` below `.agents/skills/`, whose frontmatter names it and which becomes a slash command. */
   | 'antigravity.behavior.repo.skills'
-  /** Antigravity CLI workspace rules below `.agents/rules/`, each activated manually, always, by model decision, or by a glob it declares. */
+  /** Antigravity CLI workspace rules below the `.agents/rules/` of each directory from a read or edited file's folder up to the workspace root, each activated manually, always, by model decision, or by a glob it declares. */
   | 'antigravity.behavior.repo.rules'
   /** Antigravity CLI workspace hook declarations: the standalone `.agents/hooks.json`. */
   | 'antigravity.behavior.repo.hooks'
@@ -276,13 +276,15 @@ export type AntigravityBehaviorId =
   | 'antigravity.behavior.repo.mcp'
   /** The Antigravity CLI user tier: the `~/.gemini` directory holding the global context file, the shared `config/`, and the terminal's own `antigravity-cli/`. */
   | 'antigravity.behavior.user.home'
-  /** Antigravity CLI global developer context: `<user tier>/GEMINI.md`. */
+  /** Antigravity CLI global developer context: `GEMINI.md` and `AGENTS.md` below the user tier and below its `config/`. */
   | 'antigravity.behavior.user.context'
   /** Antigravity CLI global MCP servers: `<user tier>/config/mcp_config.json`. */
   | 'antigravity.behavior.user.mcp'
   /** Antigravity CLI global custom agents below `<user tier>/config/agents/`. */
   | 'antigravity.behavior.user.agents'
-  /** Antigravity CLI global shared skills below `<user tier>/antigravity-cli/skills/`. */
+  /** Antigravity CLI global modular rules below `<user tier>/config/rules/` and `<user tier>/antigravity-cli/rules/`. */
+  | 'antigravity.behavior.user.rules'
+  /** Antigravity CLI global shared skill folders below `<user tier>/antigravity-cli/skills/`. */
   | 'antigravity.behavior.user.skills'
   /** Antigravity CLI user preferences: `<user tier>/antigravity-cli/settings.json`. */
   | 'antigravity.behavior.user.settings'
@@ -316,7 +318,7 @@ export type AnthropicSourceId =
   | 'anthropic.claude-code.subagents.scope-context'
   /** The Claude Code skills page: where skills live and how they are named. */
   | 'anthropic.claude-code.skills.locations-discovery'
-  /** The memory page: where CLAUDE.md files live, how they load, and that AGENTS.md is not read. */
+  /** The memory page: where CLAUDE.md and AGENTS.md files live, how they load, and which of them a session reads. */
   | 'anthropic.claude-code.memory.locations-load'
   /** The Agent SDK features page: the settingSources gate and the CLAUDE.md load-location table. */
   | 'anthropic.claude-code.sdk.setting-sources'
@@ -347,7 +349,12 @@ export type AnthropicSourceId =
    * introduced nested `.claude/skills` discovery, and 2.1.178 the
    * directory-qualified retention of a nested name clash (QR-005).
    */
-  | 'anthropic.claude-code.changelog.nested-skill-discovery';
+  | 'anthropic.claude-code.changelog.nested-skill-discovery'
+  /**
+   * The changelog release that version-anchors Claude Code's `AGENTS.md`
+   * reading: 2.1.277 added it (QR-005).
+   */
+  | 'anthropic.claude-code.changelog.agents-md';
 
 /**
  * OpenAI official documentation pages cited by the shipped records
@@ -447,23 +454,23 @@ export type GoogleSourceId =
   | 'google.antigravity.cli-migration'
   /** The MCP page: both configuration locations, the server schema, and the remote key. */
   | 'google.antigravity.cli-mcp'
-  /** The plugins and skills page: the plugin layout, both skill locations, and where hooks are configured. */
+  /** The shared Plugins page: the plugin layout, where the terminal stages an installed plugin, and the workspace plugin folder only the other products name. */
   | 'google.antigravity.cli-plugins-skills'
   /** The settings page: the user settings file and its location. */
   | 'google.antigravity.cli-settings'
-  /** The background tasks and subagents page: the custom-agent format and both locations. */
+  /** The terminal's custom-agents section of the shared Custom subagents page: the custom-agent format and both locations. */
   | 'google.antigravity.cli-subagents'
   /** The permissions page: the three lists and their precedence. */
   | 'google.antigravity.cli-permissions'
   /** The features page: the plugin staging layout and the settings-file customizations. */
   | 'google.antigravity.cli-features'
-  /** The vendor's shared Agent Skills page, which documents the skill folder holding a `SKILL.md` at the workspace's `.agents/skills/` and records `.agent/skills` as the still-supported earlier spelling. */
+  /** The vendor's shared Agent Skills page, which documents the skill folder holding a `SKILL.md`, gives each product's skill locations — the terminal's `.agents/skills/` and `~/.gemini/antigravity-cli/skills/` among them — and records `.agent/skills` as the still-supported earlier spelling. */
   | 'google.antigravity.skills'
-  /** The vendor's shared Rules page, which documents workspace rules at `.agents/rules`, the four activation modes, and the global `~/.gemini/GEMINI.md`. */
+  /** The vendor's shared Rules page, which documents each product's directory-scoped and global rule locations, the four triggers, the size limits, and how rules combine. */
   | 'google.antigravity.rules'
   /** The vendor's shared Subagents page, which gives the custom-agent discovery locations and states both spellings — `<name>.md` and `<name>/agent.md` — for the workspace's `.agents/agents/` and for the user tier's `config/agents/`. */
   | 'google.antigravity.subagents'
-  /** The vendor's shared Hooks page, which documents the `hooks.json` schema and places the file in the workspace's `.agents/` or the user tier's `config/`. */
+  /** The vendor's shared Hooks page, which documents the `hooks.json` schema and each product's hook locations, the terminal's settings file among them. */
   | 'google.antigravity.hooks';
 
 /**
@@ -560,7 +567,7 @@ export type CopilotStrategyId =
   | 'copilot.vscode.plugins.activation'
   /** Copilot VS Code MCP selection with the 1.118/current-guide location conflict and unknown total order. */
   | 'copilot.vscode.mcp.selection'
-  /** Copilot VS Code instruction layering, personal before Repository before organization. */
+  /** Copilot VS Code instruction layering: personal, Repository, and organization inputs combined additively in no documented order. */
   | 'copilot.vscode.instructions.layering'
   /** Copilot VS Code settings precedence: workspace scopes above User, with the other documented scopes retained. */
   | 'copilot.vscode.settings.precedence'
@@ -787,15 +794,11 @@ export type CopilotRuleId =
  * § Relationship-only and excluded groups).
  */
 export type AntigravityRuleId =
-  /** The repository root's `GEMINI.md`, which GitHub Copilot also reads. */
-  | 'antigravity.repo.context.gemini-root'
-  /** The repository root's `AGENTS.md`, which Copilot and Codex also read. */
-  | 'antigravity.repo.context.agents-root'
-  /** A flat workspace skill: one Markdown file directly below `.agents/skills/`. */
-  | 'antigravity.repo.skill.file'
+  /** Every `GEMINI.md` and `AGENTS.md` in the repository, at the root and at any depth, its `.agents/` spelling included. */
+  | 'antigravity.repo.context'
   /** A workspace skill folder's `SKILL.md`, below `.agents/skills/` or the superseded `.agent/skills/`. */
-  | 'antigravity.repo.skill.directory'
-  /** A workspace rule below `.agents/rules/` or the superseded `.agent/rules/`. */
+  | 'antigravity.repo.skill'
+  /** A workspace rule directly below a `.agents/rules/` or superseded `.agent/rules/` at any depth. */
   | 'antigravity.repo.rule'
   /** The workspace's standalone hook carrier, `.agents/hooks.json`. */
   | 'antigravity.repo.hooks'
@@ -805,8 +808,10 @@ export type AntigravityRuleId =
   | 'antigravity.repo.agent.directory'
   /** The workspace MCP carrier `.agents/mcp_config.json`. */
   | 'antigravity.repo.mcp'
-  /** The consented home's global context file. */
+  /** The consented home's standalone global context files, below the home and below its `config/`. */
   | 'antigravity.global.context'
+  /** A modular global rule directly below the consented home's `config/rules/` or `antigravity-cli/rules/`. */
+  | 'antigravity.global.rule'
   /** The consented home's global MCP carrier. */
   | 'antigravity.global.mcp'
   /** A custom agent written as one file directly below the consented home's `config/agents/`. */
@@ -814,9 +819,7 @@ export type AntigravityRuleId =
   /** A custom agent written as `agent.md` inside its own directory below that same `config/agents/`. */
   | 'antigravity.global.agent.directory'
   /** A skill folder's `SKILL.md` below the consented home, at either documented global skill root. */
-  | 'antigravity.global.skill.directory'
-  /** A flat skill file directly below the consented home's `antigravity-cli/skills/`. */
-  | 'antigravity.global.skill.file'
+  | 'antigravity.global.skill'
   /** The consented home's settings document, whose subject is the file. */
   | 'antigravity.global.settings'
   /** The permission lists the same settings carrier declares. */

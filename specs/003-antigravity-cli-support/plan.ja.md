@@ -15,9 +15,9 @@ Antigravity CLI を4つ目のサポート対象ツールにする。他の3つ�
 5つ目の member は同じ `~/.gemini` ディレクトリである。Antigravity CLI が個人設定をそこに置く
 からである。
 
-コードの形を決める判断は2つある。skill kind は行の単位が1つの Markdown ファイルである2つ目の
-compiled な形を得る。それはディレクトリの形に optional な field を足すのではなく、その隣に置く
-自身の unit である (research.ja.md § 2)。そして member の root は home ディレクトリだけから
+コードの形を決める判断は2つある。skill はこの vendor にとっても他のすべての vendor と同じく
+そのフォルダなので、skill kind は1つの compiled な形を保ち、`skills/` 直下のフラットな Markdown
+ファイルはどこでも admit しない (research.ja.md § 2)。そして member の root は home ディレクトリだけから
 導出する。これにより、member ごとの環境プロパティが必要としたはずの記述子の行と `settingNames` の
 field が取り除かれる (§ 4)。他はすべて、コードベースが既に持つ形を再利用する。Markdown の
 instruction unit と custom-agent unit、strict JSON の standalone carrier に対する共有の MCP
@@ -58,16 +58,17 @@ Vue 3.5.39。
 
 *GATE: Phase 0 research の前に通ること。Phase 1 design の後に再確認する。*
 
-- [x] **Root-cause design**: ファイルの形の skill は、ディレクトリの形の record を optional な
-      field で広げるのではなく自身の unit にする (research.ja.md § 2)。member の root は共有
+- [x] **Root-cause design**: skill は1つの compiled な形を保つ。フラットなものを admit する rule は
+      無く、値が1つしかない discriminant は1つの事実についての2つ目の state だからである
+      (research.ja.md § 2)。member の root は共有
       agent home が既にそうしているように home ディレクトリから来るので、分岐を足すのではなく
       field を削除する (§ 4)。kind も parser も package も仕組みも追加しない。
 - [x] **Readable implementation**: この vendor の答えは `src/shared/registries/antigravity/` と
       `src/server/inspection/rules/**/antigravity.ts` にあり、既存3つの vendor と同じ形なので、
-      1つを読んだ読み手はその知識を持ち越せる。自明でない判断には理由のコメントを置く。skill
-      kind が2つの unit を持つ理由、member が環境プロパティを持たない理由、legacy の MCP key を
+      1つを読んだ読み手はその知識を持ち越せる。自明でない判断には理由のコメントを置く。フラットな
+      skill を admit しない理由、member が環境プロパティを持たない理由、legacy の MCP key を
       注釈なしに示す理由、mark がその glyph である理由である。
-- [x] **Complete verification**: compiled unit ごとの unit test と skill の両方の形の test。
+- [x] **Complete verification**: compiled unit ごとの unit test と、context の2つの範囲の test。
       registry の件数・ID・evidence・freeze に対する contract test。near miss と、2製品・3製品が
       読むファイルを含む fixture の integration scan。hook 宣言・permission rule・MCP 宣言に対する
       security の zero-activation。containment gate。kind ごとと5つ目の member の end-to-end spec。
@@ -78,18 +79,19 @@ Vue 3.5.39。
       `validation.md`。
 - [x] **Safe boundaries**: home は同じ preview・admission・retry・disable のルールの下の consent
       済み member である。その配下の credential、session と history の state、インストール済み
-      plugin コピーは決して読まない (spec.ja.md QR-005)。DTO の形は変わらない。member enum は5つの
-      値を保ち、そのうち1つの名前が変わるだけであり、同梱ブラウザが唯一の client である。
+      plugin コピーは決して読まない (spec.ja.md QR-005)。DTO が変わるのは1か所で、skill の定義は
+      行の単位の field を持たない。どの skill もそのフォルダだからである (research.ja.md § 2)。member
+      enum は5つの値を保ち、そのうち1つの名前が変わるだけであり、同梱ブラウザが唯一の client である。
 - [x] **Welcoming participation**: fixture launcher は `antigravity-*` の行を得るので、貢献者は
       各 surface を見られる。legend はプロダクトを名指し、mark は accessible name を持ち、parse
       できない carrier の diagnostic はそのファイルを名指しする。
 
 ### Post-design re-check
 
-Phase 1 の後も6つの gate はすべて成り立つ。複雑さと読めたかもしれない1つの設計コスト — 1つの
-kind に2つ目の compiled な形 — は、著者が選んだ追加ではなく行の単位の規則が求めるものであり、
-足すより多くを取り除く。記述子の field と、それが存在する理由だった環境プロパティが消える。この
-member の root には記述すべきプロパティが無いからである。したがって Complexity Tracking は空である。
+Phase 1 の後も6つの gate はすべて成り立つ。この設計は仕組みを1つも足さず、2つを取り除く。skill
+kind は compiled な形を1つに保つので skill の定義から行の単位の field が消え、記述子の field と、
+それが存在する理由だった環境プロパティも消える。この member の root には記述すべきプロパティが
+無いからである。したがって Complexity Tracking は空である。
 
 ## Project Structure
 
@@ -116,13 +118,12 @@ contract の置き場であり、gate が読む場所である。
 src/shared/registries/
 └── antigravity/          # rule、behavior、strategy、relation、skill collision
 src/server/inspection/rules/
-├── skills/               # ディレクトリの unit の隣にファイルの形の compiled unit を得る
+├── skills/               # すべての vendor が共有するフォルダの形の unit
 ├── instructions/, agents/, mcp/, hooks/, permissions/, settings/
 └── **/antigravity.ts     # この vendor の unit。publish する kind ごとに1つ
 src/server/host/global-consent.ts   # 環境プロパティ3つ。settingNames の field は無し
 src/shared/entities.ts, api-text.ts, registries/behavior-text.ts  # label と順序
 src/app/components/ToolMark.vue     # vendor の mark
-src/app/pages/skills/detail/…       # ファイルの形の skill の panel だけの detail
 docs/which-files-are-listed.md, .ja.md
 tests/fixtures/repositories/, tests/fixtures/global-homes/, tests/fixtures/outcomes/
 ```
@@ -130,13 +131,14 @@ tests/fixtures/repositories/, tests/fixtures/global-homes/, tests/fixtures/outco
 ## Implementation Boundaries
 
 - **Read set**: vendor contract の Inspector の表にある selector だけ。`antigravity-cli/plugins/`
-  配下のものと、credential・session・history・cache のファイルは開かない。このリリースが出荷する
-  どの rule も、リポジトリの `.gemini/` 配下のパスを開かない。
+  配下のものと、credential・session・history・cache のファイルは開かない。リポジトリの
+  `.gemini/` ディレクトリが持つ customization は開かない。その中の context file や `.agents/rules/`
+  ディレクトリはそのディレクトリ自身のものであり、他の深さと同じく届く (spec.ja.md FR-003)。
 - **Recognition, not loading**: permission rule、hook 宣言、legacy の MCP key は、ファイルが宣言
   するものとして記録し、評価も解決もせず、vendor が受け付けるものとして分類もしない (親 FR-009)。
 - **One file, several products**: ルートの `GEMINI.md` は Copilot の recognition を保ち、この
-  ツールのものを得る。ルートの `AGENTS.md` は Copilot と Codex のものの隣にそれを得る。
-  `.agents/skills/` は2つの形を抱えるようになり、名前が同じなら行を共有する。
+  ツールのものを得る。すべての `AGENTS.md` は、既にそれを読む製品のものの隣にそれを得る。
+  `.agents/skills/` の skill フォルダは3つの recognition を持つ。
 - **tree が名指すのは4つのツールだけ**: このリリースがサポートしない製品を、module・contract・
   record・fixture・label・mark・文書の節・evidence entry・凍結された件数・outcome manifest の
   case のいずれも名指してはならず、tree が持たないものを引用する artifact もあってはならない

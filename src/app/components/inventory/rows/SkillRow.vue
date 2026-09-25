@@ -72,7 +72,7 @@ const props = defineProps<{
    * both to the files they name.
    */
   filesBySource: ReadonlyMap<string, ReadonlyMap<string, CustomizationFileSummaryDto>>;
-  /** The generation's diagnostics, resolved per definition by {@link RowDiagnostics}. */
+  /** The generation's diagnostics, resolved per file by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
 
@@ -145,6 +145,15 @@ const blockCompareRoutes = computed(() => {
   }
   return routes;
 });
+
+/**
+ * The file's own diagnostic references, from its `files[]` entry under the
+ * file's own Source (FR-030): every record a reading of the file left,
+ * whichever kind's reading it was (FR-028).
+ */
+function fileDiagnosticIds(file: SkillRowFile): readonly string[] {
+  return props.filesBySource.get(file.sourceId)?.get(file.sourceRelativePath)?.diagnosticIds ?? [];
+}
 
 /**
  * The census files of one file that carry a diagnostic, each with the
@@ -276,12 +285,12 @@ function affectedCompanions(
               "
               >{{ file.pathText }}</NuxtLink
             >
-            <!-- The extraction-failure record this file's recognitions
-                 reference. One record however many products recognize the file
-                 — the parse ran once (FR-028) — so it is stated for the file
-                 rather than once per recognition, which would read as several
-                 failures. -->
-            <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
+            <!-- The file's diagnostics, whichever kind's reading left them:
+                 a file-confined outcome is about the file rather than about
+                 what recognized it (`RowDiagnostics.vue`, FR-028). Stated for
+                 the file rather than once per recognition, which would read
+                 as several failures. -->
+            <RowDiagnostics :diagnostic-ids="fileDiagnosticIds(file)" :diagnostics="diagnostics" />
             <!-- A supporting file this scan could not use. Named rather than
                  counted: the reader has to know which file to open in the
                  skill's tree, and the path is the only thing that says so. It

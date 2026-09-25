@@ -15,9 +15,9 @@ and no surface names a product this release does not support. The member set hol
 fifth is the `~/.gemini` directory, because that is where Antigravity CLI keeps its personal
 setup.
 
-Two decisions shape the code. The skill kind gains a second compiled shape whose row unit is one
-Markdown file, as its own unit beside the directory-shaped one rather than as optional fields on
-it (research.md § 2). And the member's root is derived from the home directory alone, which
+Two decisions shape the code. A skill is its folder for this vendor as for every other, so the
+skill kind keeps one compiled shape and a flat Markdown file below `skills/` is admitted nowhere
+(research.md § 2). And the member's root is derived from the home directory alone, which
 removes the descriptor row and the `settingNames` field that a per-member environment property
 would have needed (§ 4). Everything else reuses a shape the codebase already has: the
 Markdown instruction and custom-agent units, the shared MCP server-map reading over a standalone
@@ -58,17 +58,18 @@ the closed kind set are the parent's and are unchanged. No kind is added.
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- [x] **Root-cause design**: The file-shaped skill is a unit of its own rather than optional
-      fields widening the directory-shaped record (research.md § 2); the member's root comes
+- [x] **Root-cause design**: A skill keeps one compiled shape, because no rule admits a flat
+      one and a discriminant with one value is a second state for one fact (research.md § 2);
+      the member's root comes
       from the home directory as the shared agent home's already does, which deletes a field
       rather than adding a branch (§ 4). No kind, parser, package, or mechanism is added.
 - [x] **Readable implementation**: The vendor's answers live in
       `src/shared/registries/antigravity/` and `src/server/inspection/rules/**/antigravity.ts`,
       shaped like the three existing vendors, so a reader carries what one taught them. The
-      non-obvious decisions carry rationale comments: why the skill kind has two units, why the
+      non-obvious decisions carry rationale comments: why no flat skill is admitted, why the
       member has no environment property, why a legacy MCP key is shown without comment, and
       why the mark is the glyph it is.
-- [x] **Complete verification**: Unit tests per compiled unit and for both skill shapes;
+- [x] **Complete verification**: Unit tests per compiled unit and for both context ranges;
       contract tests over the registry counts, IDs, evidence, and freezes; an integration scan
       over the fixtures including near misses and the files two and three products read;
       security zero-activation over hook declarations, permission rules, and MCP declarations;
@@ -80,19 +81,20 @@ the closed kind set are the parent's and are unchanged. No kind is added.
       inputs, and `validation.md`.
 - [x] **Safe boundaries**: The home is a consented member under the same preview, admission,
       retry, and disable rules; credentials, session and history state, and installed plugin
-      copies below it are never read (spec.md QR-005). No DTO shape changes: the member enum
-      holds five values, one of them this member's, and the bundled browser is the only client.
+      copies below it are never read (spec.md QR-005). The DTOs change in one place: a skill
+      definition carries no row-unit field, because every skill is its folder (research.md § 2).
+      The member enum holds five values, one of them this member's, and the bundled browser is
+      the only client.
 - [x] **Welcoming participation**: The fixture launcher gains `antigravity-*` rows so a
       contributor can see each surface; the legend names the product; the mark carries its
       accessible name; a diagnostic for an unparsable carrier names the file.
 
 ### Post-design re-check
 
-All six gates hold after Phase 1. The one design cost that could be read as complexity — a
-second compiled shape for one kind — is what the row-unit rule requires rather than an
-addition of the author's choosing, and it removes more than it adds: the descriptor field and
-the environment property it existed for both go, because this member's root has no property to
-describe. Complexity Tracking is therefore empty.
+All six gates hold after Phase 1. The design adds no mechanism and removes two: the skill kind
+keeps its one compiled shape, so the row-unit field goes from the skill definition, and the
+descriptor field and the environment property it existed for go too, because this member's root
+has no property to describe. Complexity Tracking is therefore empty.
 
 ## Project Structure
 
@@ -119,13 +121,12 @@ which is where the shipped vendor contracts live and where the gates read them.
 src/shared/registries/
 └── antigravity/          # rules, behaviors, strategies, relations, skill collisions
 src/server/inspection/rules/
-├── skills/               # gains the file-shaped compiled unit beside the directory one
+├── skills/               # the folder-shaped unit every vendor shares
 ├── instructions/, agents/, mcp/, hooks/, permissions/, settings/
 └── **/antigravity.ts     # this vendor's units, one per kind it publishes
 src/server/host/global-consent.ts   # three environment properties; no settingNames field
 src/shared/entities.ts, api-text.ts, registries/behavior-text.ts  # labels and orders
 src/app/components/ToolMark.vue     # the vendor mark
-src/app/pages/skills/detail/…       # the file-shaped skill's panel-only detail
 docs/which-files-are-listed.md, .ja.md
 tests/fixtures/repositories/, tests/fixtures/global-homes/, tests/fixtures/outcomes/
 ```
@@ -134,13 +135,15 @@ tests/fixtures/repositories/, tests/fixtures/global-homes/, tests/fixtures/outco
 
 - **Read set**: Exactly the selectors in the vendor contract's Inspector tables. Nothing under
   `antigravity-cli/plugins/`, and no credential, session, history, or cache file, is opened. No
-  `.gemini/` path in a repository is opened by any rule this release ships.
+  customization a repository's `.gemini/` directory holds is opened; a context file or a
+  `.agents/rules/` directory inside it is that directory's own, reached as at any other depth
+  (spec.md FR-003).
 - **Recognition, not loading**: A permission rule, a hook declaration, and a legacy MCP key are
   recorded as what the file declares, never evaluated, resolved, or classified as accepted by
   the vendor (parent FR-009).
 - **One file, several products**: The root `GEMINI.md` keeps Copilot's recognition and gains
-  this tool's; the root `AGENTS.md` gains it beside Copilot's and Codex's. `.agents/skills/`
-  now holds two shapes, which share a row when they share a name.
+  this tool's; every `AGENTS.md` gains it beside the products already reading it. A skill
+  folder in `.agents/skills/` carries three recognitions.
 - **The tree names four tools and no others**: no module, contract, record, fixture, label,
   mark, documentation section, evidence entry, frozen count, or outcome-manifest case may name
   a product this release does not support, and no artifact may cite one that the tree does not

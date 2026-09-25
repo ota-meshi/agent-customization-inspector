@@ -51,22 +51,22 @@ home is already in.
 ## Vendor registry records (Antigravity CLI)
 
 One vendor module directory holds the tool's rules, behaviors, strategies, and relations, shaped
-like the three that exist. The Repository rules admit the root context pair, the two skill
-shapes, the workspace rules directory, the standalone hooks carrier, the two custom-agent
+like the three that exist. The Repository rules admit the context pair at every depth, the skill
+folder, the rules directory at every depth, the standalone hooks carrier, the two custom-agent
 shapes, and the MCP carrier; the two whose pages state backward support for the superseded
-`.agent/` spelling carry a second selector for it. The Global rules admit the home's context
-file, its MCP carrier, its standalone hooks carrier, its agents directory, its skills at both
-documented global roots and in both shapes, and its settings carrier, the last under three
-rules. The excluded groups name installed plugin
+`.agent/` spelling carry a second selector for it. The Global rules admit the home's four
+context files, its two rules directories, its MCP carrier, its standalone hooks carrier, its
+agents directory, its skill folders at both documented global roots, and its settings carrier,
+the last under three rules. The excluded groups name installed plugin
 copies and their tracking manifest, the workspace plugin directory no terminal page documents,
 and the credentials, session and history state, caches, and logs the parent already excludes.
 
 ## Compiled units
 
-The skill kind gains a file-shaped compiled unit beside the directory-shaped one, and the two
-form a closed union the recognizer discriminates. The file-shaped unit publishes the file's own
-parse and no companion census; the directory-shaped unit is unchanged. Every other kind reuses
-the compiled shape it already has: the Markdown instruction unit, the Markdown custom-agent
+The skill kind keeps the one folder-shaped compiled unit every vendor shares. The context files
+take two instruction units, because the vendor states two ranges: a workspace file governs the
+directory holding it — the directory holding its `.agents/` when it sits in one — and a global
+file governs every project alike. Every other kind reuses the compiled shape it already has: the Markdown custom-agent
 unit, the shared MCP server-map reading over a standalone strict-JSON carrier, the shared hook
 event-map reading over both a standalone `hooks.json` and the settings carrier's inline
 declarations, the permissions reading, and the settings carrier. A workspace rule needs no
@@ -75,32 +75,26 @@ through the vendor's own catalog entry like every other kind that publishes the 
 
 ## Skill row and detail
 
-A skill row stays one invocation name with one definition per file per recognizing product, so a
-file-shaped and a directory-shaped skill sharing a name share a row. A file-shaped definition
-carries no companion files, which the row already draws only where a skill has them.
-
-The detail of a file-shaped skill shows the skill panel alone: no file panel, because that
-panel's subject is the directory the skill does not have, and no tab strip, because a strip
-offering one tab is not a choice. The heading stays the skill's own path, which is the one
-identity every product reading it shares while the names they invoke it by differ. Dropping that panel
-must not drop what it stated, so both of its facts move to the panel that remains: the file's
-own text, under the `Source` viewer every single-file detail carries and on the condition they
-use — readable, never parsed successfully — and the read outcome in full, the removed
-byte-order mark included, which the attributes line above the panel then carries rather than
-the short summary a page with a file panel shows there.
+A skill row stays one invocation name with one definition per file per recognizing product, and
+a folder in `.agents/skills/` carries three of them. The detail is the folder detail every skill
+has.
 
 ## Customization File and Tool Recognition
 
 Unchanged in shape. One file may carry an Antigravity CLI recognition beside another product's,
-which the root `GEMINI.md` and the root `AGENTS.md` both do.
+which the root `GEMINI.md` and every `AGENTS.md` do.
 
 ## Parser format table
 
 The formats this vendor needs are already read, and no parser is added: the shared JSON reader
 takes the MCP carriers, the settings carrier, and the two standalone hook carriers, and the
-shared frontmatter reading takes the
-context files, the skills, and the custom agents. That JSON reader is every vendor's and is
-unchanged; what moves is this vendor's own row in the format table, which records that the
+shared frontmatter reading takes the skills and the custom agents. The context files and the
+rule files go through no parser. The Rules page says `AGENTS.md` and `GEMINI.md` use no
+frontmatter and treats their entire content as plain Markdown, so a `---` block opening one is a
+line of its instructions; a rule file is published as the one document its author wrote, its
+`trigger` block included. Nothing is read out of either, so neither can fail to be read (the
+parent's data model § ToolRecognition and its vendor contract's presentation allowlist). That
+JSON reader is every vendor's and is unchanged; what moves is this vendor's own row in the format table, which records that the
 cited pages document strict JSON and that any divergence between the vendor's reading and the
 product's is recorded there as the others are.
 

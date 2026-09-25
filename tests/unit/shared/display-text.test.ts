@@ -31,9 +31,13 @@ import { VENDOR_SURFACE_TEXT } from '../../../src/shared/registries/behavior-tex
 /** Every table whose values reach a screen, named as its module names it. */
 const TABLES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   CUSTOMIZATION_KIND_TEXT,
-  // The diagnostic registry keys richer records; its rendered part is the
-  // message, so that is what joins the tables here.
-  DIAGNOSTIC_REGISTRY: Object.fromEntries(
+  // The diagnostic registry keys richer records. Two parts of one reach a
+  // screen — the words a row's badge states and the sentence it discloses — so
+  // both join the tables here.
+  DIAGNOSTIC_REGISTRY_LABEL: Object.fromEntries(
+    Object.entries(DIAGNOSTIC_REGISTRY).map(([code, entry]) => [code, entry.label]),
+  ),
+  DIAGNOSTIC_REGISTRY_MESSAGE: Object.fromEntries(
     Object.entries(DIAGNOSTIC_REGISTRY).map(([code, entry]) => [code, entry.message]),
   ),
   FILE_ENCODING_TEXT,

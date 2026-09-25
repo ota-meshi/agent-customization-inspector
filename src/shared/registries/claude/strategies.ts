@@ -96,9 +96,9 @@ export const CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['How CLAUDE.md files load', 'Auto memory'],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
-            'The CLAUDE.md hierarchy a subagent inherits is the one the main conversation loads, and auto memory is the separate per-project store a session maintains under the Claude configuration directory.',
+            'The CLAUDE.md hierarchy is every level from the working directory up, concatenated rather than overriding, and the main conversation’s auto memory — the per-project store under the Claude configuration directory — is not loaded into a subagent other than a fork.',
         },
         {
           sourceId: 'anthropic.claude-code.subagents.scope-context',
@@ -161,13 +161,14 @@ export const CLAUDE_COMMANDS_SELECTION_STRATEGY = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: [
-            'Where skills live',
-            'Discovery from parent and nested directories',
+            'Choose where skills load',
+            'Load skills in monorepos and subdirectories',
+            'Resolve skills that share a name',
             'How a skill gets its command name',
           ],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Command files in .claude/commands/ share the skill command namespace and work the same way, and when a skill and a command share a name the skill takes precedence — with both .claude/commands/deploy.md and .claude/skills/deploy/SKILL.md present, /deploy runs the skill. A command is invoked by its file name without the extension. The nested-directory discovery sentence is written about .claude/skills/ alone, so which layers contribute commands is not stated independently.',
+            'A command file in .claude/commands/ is the older format of a skill and still works, and when a skill and a command file share a name the skill runs. A command is invoked by its file name without the extension. The parent and nested discovery is written about .claude/skills/ alone, so which layers contribute commands is not stated independently.',
         },
       ]
     : [],
@@ -233,23 +234,37 @@ export const CLAUDE_HOOKS_ADDITIVE_STRATEGY = {
 } as const satisfies RuntimeCompositionStrategy;
 
 /**
- * Claude instruction layering: the User file, each ancestor directory's
+ * Claude instruction layering: which instruction filenames a session reads is
+ * decided first (`filter`), then the User file, each ancestor directory's
  * files, the launch directory's own, and the lazily discovered descendant
  * ones are all added to context in load order, broadest scope first
- * (`append`).
+ * (`append`), and an `AGENTS.md` already loaded is not added again
+ * (`deduplicate`).
  *
- * One operation and deliberately no second: every discovered file is added
- * rather than one winning, and the page states that there is no hard
- * precedence between levels — conflicting natural-language instructions are
- * left to the model rather than resolved into a setting-style winner. A
- * `select-first` or `replace` here would record a resolution the vendor does
- * not document (contracts/runtime-composition.md § claude.instructions.layering).
+ * The filter is the Project instructions setting of Claude Code 2.1.277+: by
+ * default a session reads `AGENTS.md` only when no `CLAUDE.md`,
+ * `.claude/CLAUDE.md`, or `CLAUDE.local.md` sits at or above its working
+ * directory — the user's own `~/.claude/CLAUDE.md` does not count — and a
+ * subdirectory's only when that subdirectory has none of them, while other
+ * values read both families, `CLAUDE.md` alone, or — `managed-only` — none of
+ * the project's or the user's at launch, a subdirectory's `CLAUDE.md` still
+ * loading once Claude reads a file there.
+ * The value is a user-level setting and the condition is the session's own
+ * path, neither of which this tool observes, so no row says which family a
+ * session reads.
+ *
+ * There is deliberately no `select-first` or `replace` across levels: every
+ * file that survives the filter is added rather than one winning, and the page
+ * states that there is no hard precedence between levels — conflicting
+ * natural-language instructions are left to the model rather than resolved
+ * into a setting-style winner
+ * (contracts/runtime-composition.md § claude.instructions.layering).
  */
 export const CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY = {
   strategyId: 'claude.instructions.layering',
   tool: 'claude',
   surfaces: ['claude-cli-and-ide-clients'],
-  operations: ['append'],
+  operations: ['filter', 'append', 'deduplicate'],
   documentationStatus: 'documented',
   lifecycleQualifiers: [],
   evidence: SHIPS_MAINTENANCE_DATA
@@ -258,10 +273,24 @@ export const CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY = {
           sourceId: 'anthropic.claude-code.memory.locations-load',
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
-          sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
-          reviewedOn: '2026-08-27',
+          sections: [
+            'Choose where to put CLAUDE.md files',
+            'How CLAUDE.md files load',
+            'When Claude Code reads AGENTS.md',
+            'Choose which instruction files load',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md.',
+            'The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md. By default Claude reads AGENTS.md only when no CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md is in the working directory or above it; the Project instructions setting can instead read both files — each directory’s CLAUDE.md files first and its AGENTS.md after them, skipping an AGENTS.md already loaded — CLAUDE.md alone, or at launch only the managed instructions, a subdirectory’s CLAUDE.md and .claude/rules/ files still loading when Claude reads a file there.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.agents-md',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['2.1.277'],
+          reviewedOn: '2026-09-24',
+          establishes:
+            'Release 2.1.277 added AGENTS.md support: in a project with no CLAUDE.md Claude Code reads AGENTS.md instead, and the choice is changed under Project instructions in /config, not yet on Bedrock, Vertex, or Foundry — the version and provider gate for the filter step (QR-005).',
         },
         {
           sourceId: 'anthropic.claude-code.sdk.setting-sources',
@@ -305,10 +334,14 @@ export const CLAUDE_SKILLS_SELECTION_STRATEGY = {
           sourceId: 'anthropic.claude-code.skills.locations-discovery',
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
-          sections: ['Where skills live', 'How a skill gets its command name'],
-          reviewedOn: '2026-08-27',
+          sections: [
+            'Load skills in monorepos and subdirectories',
+            'Resolve skills that share a name',
+            'How a skill gets its command name',
+          ],
+          reviewedOn: '2026-09-24',
           establishes:
-            'Within one root, a nested skill sharing a name with another stays available under a directory-qualified command and Claude picks the variant matching the files it is working on; invoking the unqualified name loads the project-root skill and appends the directory-qualified variants with an instruction to also invoke any whose directory holds those files. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one.',
+            'Within one root, a nested skill sharing a name with another stays available under a directory-qualified command: invoking the unqualified name runs the project-root skill while Claude Code lists the directory-qualified variants with an instruction to invoke the one whose directory holds the files Claude is working on, and the qualified command runs the nested skill on its own. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one.',
         },
         {
           sourceId: 'anthropic.claude-code.changelog.nested-skill-discovery',
@@ -449,7 +482,8 @@ export const CLAUDE_PLUGINS_ACTIVATION_STRATEGY = {
  * Claude rule layering: add the applicable User and project rule layers
  * (`append`), and keep a `paths` rule out of context until Claude works with
  * a file its glob matches (`filter`). User rules load before project rules,
- * which is what gives project rules the higher priority.
+ * and neither set overrides the other: a conflict between them is left to the
+ * model, so no operation here names a winner.
  *
  * `partially-documented`: the page states neither the trigger that loads a
  * nested `.claude/rules/` directory on demand nor the base an ancestor
@@ -473,9 +507,9 @@ export const CLAUDE_RULES_LAYERING_STRATEGY = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Organize rules with .claude/rules/'],
-          reviewedOn: '2026-08-27',
+          reviewedOn: '2026-09-24',
           establishes:
-            'Rules without paths frontmatter load at launch with the same priority as .claude/CLAUDE.md, path-scoped rules trigger when Claude reads a file matching one of their patterns rather than on every tool use, and user-level rules load before project rules so project rules take the higher priority.',
+            'Rules without paths frontmatter load at launch with the same priority as .claude/CLAUDE.md, path-scoped rules trigger when Claude reads a file matching one of their patterns rather than on every tool use, and user-level rules load before project rules while neither set overrides the other, so a conflict between them has no documented winner.',
         },
       ]
     : [],
