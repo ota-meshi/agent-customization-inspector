@@ -9,9 +9,9 @@
 // and a base declared in any of them would have to be imported back by the
 // others.
 //
-// There is no derived counterpart here: this vendor ships no derived rule,
-// because no cited page documents a terminal setting that renames or relocates
-// a workspace customization (contracts/vendors/antigravity-cli.md § Derived
+// There is no derived counterpart here: this vendor ships no derived rule, as
+// this release's scope — the `.agents/rules.json` registration the terminal
+// reads is not derived from (contracts/vendors/antigravity-cli.md § Derived
 // Repository rules).
 import { CompiledInspectionRule } from '../registry';
 import { ANTIGRAVITY_RULE_RELATIONS } from '../../../../shared/registries/antigravity/relations';

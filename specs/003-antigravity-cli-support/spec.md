@@ -147,7 +147,8 @@ on no row.
   under the superseded spelling the vendor still supports; one holding `.agents/skills/deploy.md`
   or `.agent/skills/deploy.md` lists neither, because no page documents a flat skill.
 - A rules directory's subdirectory lists nothing below it: the terminal scans a rules
-  directory's immediate `.md` children only.
+  directory's immediate `.md` children, and the nested files a `.agents/rules.json` registers are
+  outside this release (FR-016).
 - A home with no `antigravity-cli` directory at all is admitted and lists whatever of the other
   admitted paths it holds.
 - A repository holding `.gemini/commands/`, `.gemini/agents/`, or `.gemini/skills/` lists none
@@ -280,7 +281,10 @@ on no row.
 - **FR-016**: A rule MUST be published under the rule kind, one row per Markdown file directly
   in a rules directory FR-002 or FR-009 admits, with the activation its frontmatter declares — manual, always on,
   model decision, or a glob — shown exactly as written. No activation is evaluated: no glob is
-  matched against a path and no description is judged for relevance.
+  matched against a path and no description is judged for relevance. A file `.agents/rules.json`
+  registers beyond a rules directory's immediate children is outside this release: the terminal
+  reads it, and listing it would need a configuration-read derivation this release does not ship
+  for this tool.
 - **FR-017**: The two standalone hook carriers — the repository's `.agents/hooks.json` and the
   home's `config/hooks.json` — MUST be published under the hook kind through the same reading as
   the home settings file's inline declarations, each shown exactly as written. No hook is run,

@@ -13,8 +13,8 @@
 // what an already-admitted candidate is recognized as.
 //
 // Unlike `./codex.ts`, this module owns no configuration read: this vendor
-// ships no derived rule, because no cited page documents a terminal setting
-// that renames or relocates a workspace customization
+// ships no derived rule, as this release's scope — the `.agents/rules.json`
+// registration the terminal reads is not derived from
 // (contracts/vendors/antigravity-cli.md § Derived Repository rules). And
 // unlike `./codex.ts` and `./copilot.ts`, it contributes no shared-agent-home
 // catalog: this vendor's global skills live below `~/.gemini`, and no cited

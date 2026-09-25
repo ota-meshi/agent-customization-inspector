@@ -218,9 +218,11 @@ glob が rule の適用先ファイルを決め、description がモデルの適
 
 **Alternatives considered**: rules ファイルを `instructions` として publish する案は却下した。
 行が属する kind は vendor の主張であり、vendor はこれを rule と呼び、context file が持たない
-activation モデルを与えている。rules ディレクトリの中の `rules/` サブディレクトリの admit は
-却下した。ページは直下の `.md` の子だけが走査されると述べており、Claude の再帰的な rules
-ディレクトリは再帰的だと文書化されているが、こちらはされていない。
+activation モデルを与えている。rules ディレクトリのサブディレクトリの admit は、vendor
+ではなくこのリリースの範囲として却下した。端末は `.agents/rules.json` がさらに登録しない限り rules
+ディレクトリの直下の `.md` の子だけを走査し、その登録を読むこと — その entry は `.agents/` の外を
+指しうり、`inherits` は他の `rules.json` を名指す — は、このリリースがこの vendor について出荷しない
+設定読み取りの derivation である (contracts/vendors/antigravity-cli.ja.md § Derived Repository rule)。
 
 ## 8. mark は bundle 済みの collection から取り、どの glyph かは計測で決める
 

@@ -18,9 +18,12 @@
 // page states backward support for it and only in the shape that page shows
 // there (contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
 //
-// This vendor ships no derived rule: no cited page documents a terminal setting
-// that renames or relocates a workspace customization, so every path below is
-// literal (contracts/vendors/antigravity-cli.md § Derived Repository rules).
+// This vendor ships no derived rule, as this release's scope: the one terminal
+// setting that decides which paths are read, `.agents/rules.json`, registers
+// rule files beyond a rules directory's immediate children, and admitting what
+// it registers would be a configuration-read derivation this release does not
+// ship for this vendor. Every path below is literal
+// (contracts/vendors/antigravity-cli.md § Derived Repository rules).
 //
 // Each record is declared with `satisfies` so the keyed map's computed keys
 // keep resolving (see `codex/rules.ts`).
@@ -212,8 +215,9 @@ export const ANTIGRAVITY_REPO_RULE_RULE = {
    * includes a `.gemini/` directory and a workspace plugin directory, whose
    * own customizations this vendor's rules exclude: a rules directory there is
    * still that directory's own (spec.md FR-003). A nested file a
-   * `.agents/rules.json` registers is not admitted (§ Known uncertainties item
-   * 10).
+   * `.agents/rules.json` registers is read by the terminal and outside this
+   * release, which ships no derivation reading that registration
+   * (contracts/vendors/antigravity-cli.md § Derived Repository rules).
    */
   matcher: {
     base: { kind: 'repository' },

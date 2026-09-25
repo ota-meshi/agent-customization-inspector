@@ -95,10 +95,15 @@ documents a flat skill at either spelling, so `.agents/skills/<name>.md` and
 
 ## Derived Repository rules
 
-This vendor ships none. A derived rule exists where a documented setting decides which paths are
-admitted, and no cited page documents a terminal setting that renames or relocates a workspace
-customization: the settings file is the user tier's, and the customization paths above are
-literal on every page that states them.
+This vendor ships none, and that is this release's scope rather than the vendor's silence. A
+derived rule exists where a documented setting decides which paths are read, and one such
+setting is documented: `.agents/rules.json`, whose `entries` register rule files beyond a rules
+directory's immediate children — nested subdirectories, and directories outside `.agents/` —
+and whose `inherits` names further `rules.json` files. Admitting what it registers would be a
+configuration-read derivation like Codex's fallback basenames, and this release ships none for
+this vendor: `.agents/rules.json` is not admitted, and a file it registers is listed only where
+a static rule above reaches it anyway. Every other path above is literal on every page that
+states it.
 
 ## Documented User behavior
 
@@ -259,5 +264,6 @@ authorize a target read.
    that the more specific directory's take priority in a conflict; the terminal's migration page
    states that workspace rules keep their support. It states no order among the rules of one
    directory, which is why `antigravity.rules.activation` is `partially-documented`. The page
-   states that only a rules directory's immediate `.md` children are scanned, so each rule admits
-   a rules folder's direct children and nothing below them.
+   states that only a rules directory's immediate `.md` children are scanned unless
+   `.agents/rules.json` registers others; each rule admits a rules folder's direct children, and
+   what a `rules.json` registers is outside this release (§ Derived Repository rules).

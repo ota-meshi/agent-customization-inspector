@@ -93,10 +93,14 @@ rules フォルダ直下の Markdown ファイルである。フラットな ski
 
 ## Derived Repository rule
 
-この vendor は1つも出荷しない。derived rule は、文書化された設定がどのパスを admit するかを決める
-ところに存在するが、workspace のカスタマイズの名前を変えたり場所を移したりする端末の設定を文書化
-するページは引用先にない。settings ファイルは user tier のものであり、上のカスタマイズのパスは、
-それを述べるどのページでも literal である。
+この vendor は1つも出荷しない。それは vendor が述べないからではなく、このリリースの範囲による。
+derived rule は、文書化された設定がどのパスを読むかを決めるところに存在し、そうした設定が1つ
+文書化されている。`.agents/rules.json` であり、その `entries` は rules ディレクトリの直下の子を
+超えて rule ファイルを登録し — 入れ子のサブディレクトリや `.agents/` の外のディレクトリも —、
+`inherits` はさらに別の `rules.json` を名指す。それが登録するものを admit するには Codex の
+fallback basename のような設定読み取りの derivation が要り、このリリースはこの vendor について
+それを出荷しない。`.agents/rules.json` は admit せず、それが登録するファイルは、上の static rule が
+いずれにせよ届く場合にだけ挙がる。上の他のパスは、それを述べるどのページでも literal である。
 
 ## 文書化済み User behavior
 
@@ -246,6 +250,7 @@ relationship-only な `ruleId` の定義は
    ファイルあたり 24,000 バイトの上限、rule が累積的であること、衝突時はより具体的なディレクトリの
    ものが優先することを与える。端末の migration ページは workspace の rule のサポートが維持されると
    述べる。1つのディレクトリの rule の間の順序は述べず、`antigravity.rules.activation` が
-   `partially-documented` であるのはそのためである。ページは rules ディレクトリの直下の `.md`
-   だけが走査されると述べるので、各 rule は rules フォルダの直下の子を admit し、その下のものは
-   admit しない。
+   `partially-documented` であるのはそのためである。ページは `.agents/rules.json` が他を登録
+   しない限り rules ディレクトリの直下の `.md` だけが走査されると述べる。各 rule は rules フォルダの
+   直下の子を admit し、`rules.json` が登録するものはこのリリースの範囲外である (§ Derived Repository
+   rule)。

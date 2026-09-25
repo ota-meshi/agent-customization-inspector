@@ -142,7 +142,8 @@ Antigravity CLI はそろって、そこにある skill フォルダの `SKILL.m
   なお支える旧綴りとして両方を挙げる。`.agents/skills/deploy.md` や `.agent/skills/deploy.md`
   を持つリポジトリはどちらも挙げない。フラットな skill を文書化するページがないからである。
 - rules ディレクトリのサブディレクトリは、その配下を何も挙げない。端末は rules ディレクトリの
-  直下の `.md` の子だけを走査する。
+  直下の `.md` の子を走査し、`.agents/rules.json` が登録する入れ子のファイルはこのリリースの範囲外
+  である (FR-016)。
 - `antigravity-cli` ディレクトリを一切持たない home も admit され、admit される他のパスのうち
   持っているものを挙げる。
 - `.gemini/commands/`、`.gemini/agents/`、`.gemini/skills/` を持つリポジトリは、それらを1つも
@@ -274,7 +275,9 @@ Antigravity CLI はそろって、そこにある skill フォルダの `SKILL.m
 - **FR-016**: rule は rule kind の下に publish されなければならず (MUST)、FR-002 または FR-009
   が admit する rules ディレクトリの直下の Markdown ファイルごとに1行とし、frontmatter が宣言する activation — manual、
   always on、model decision、glob — を書かれたとおりに示さなければならない (MUST)。activation は
-  評価しない。glob をパスに照合せず、description の関連性も判定しない。
+  評価しない。glob をパスに照合せず、description の関連性も判定しない。`.agents/rules.json` が
+  rules ディレクトリの直下の子を超えて登録するファイルは、このリリースの範囲外である。端末はそれを
+  読むが、それを挙げるにはこのリリースがこのツールについて出荷しない設定読み取りの derivation が要る。
 - **FR-017**: 2つの独立した hook carrier — リポジトリの `.agents/hooks.json` と home の
   `config/hooks.json` — は、home の settings ファイルの inline 宣言と同じ読みを通して hook kind
   の下に publish されなければならず (MUST)、それぞれ書かれたとおりに示さなければならない (MUST)。

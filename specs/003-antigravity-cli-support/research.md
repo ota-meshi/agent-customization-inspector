@@ -230,10 +230,12 @@ invented `append`.
 
 **Alternatives considered**: Publishing a rules file as `instructions` was rejected: the kind a
 row belongs to is the vendor's claim, and the vendor calls these rules and gives them an
-activation model the context files do not have. Admitting a `rules/` subdirectory inside a
-rules directory was rejected: the page states that only the immediate `.md` children are
-scanned, and Claude's recursive rules directory is documented as recursive where this one is
-not.
+activation model the context files do not have. Admitting a rules directory's subdirectories was
+rejected as this release's scope rather than the vendor's: the terminal scans only a rules
+directory's immediate `.md` children unless `.agents/rules.json` registers more, and reading
+that registration — whose entries can point outside `.agents/` and whose `inherits` names other
+`rules.json` files — is a configuration-read derivation this release does not ship for this
+vendor (contracts/vendors/antigravity-cli.md § Derived Repository rules).
 
 ## 8. The mark comes from a bundled collection, and which glyph is a measurement
 

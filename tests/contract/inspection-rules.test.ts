@@ -798,7 +798,7 @@ describe('the unified instruction selector matrix (T269)', () => {
     // repository's `GEMINI.md` and `AGENTS.md` at every depth, and the
     // consented home's four context files — both static, because no cited
     // page documents a terminal setting that renames a context file, so this
-    // vendor ships no derived rule at all.
+    // vendor ships no derived instruction rule.
     expect(staticInstructionRules.map((rule) => rule.ruleId).sort()).toEqual([
       'antigravity.global.context',
       'antigravity.repo.context',
@@ -1271,8 +1271,9 @@ describe('the registry this release owns (T913)', () => {
     //
     // T004, T083–T084: every literal in this case was written only after it
     // was watched failing against the shipped registry. Antigravity CLI ships
-    // twenty-one rules, and where they fall follows from its own pages — no derived rule,
-    // because none documents a terminal setting that renames a customization;
+    // twenty-one rules, and where they fall follows from its own pages and
+    // this release's scope — no derived rule, because the one registration the
+    // terminal reads, `.agents/rules.json`, is outside this release;
     // one Repository exclusion for the workspace plugin directory, which needs
     // a reason the installed-copy exclusion does not give; and no
     // shared-agent-home rule at all.

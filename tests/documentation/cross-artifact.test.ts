@@ -359,9 +359,10 @@ describe('the missing-file page accounts for every location a rule reaches', () 
     // time. So the set is frozen instead — the page states the one that ships,
     // and a second cannot arrive without this failing and someone deciding
     // what the page now says (AGENTS.md § Implementation simplicity policy, on
-    // freezes). T059: the fourth vendor ships no derived rule, because no
-    // cited page documents a terminal setting that renames or relocates a
-    // workspace customization; this case was watched failing before the
+    // freezes). T059: the fourth vendor ships no derived rule, as this
+    // release's scope — the `.agents/rules.json` registration its terminal
+    // reads is not derived from (contracts/vendors/antigravity-cli.md
+    // § Derived Repository rules); this case was watched failing before the
     // literal below was written.
     const derived = [
       CLAUDE_INSPECTION_RULES,
@@ -485,15 +486,15 @@ describe('task set', () => {
   });
 
   it('freezes the Antigravity CLI feature’s task and phase counts in both languages', () => {
-    // The same freeze for specs/003-antigravity-cli-support (its T065, grown by T082–T091):
-    // eighty-nine tasks in eight phases, spelled here and in the task files
+    // The same freeze for specs/003-antigravity-cli-support (its T065, grown by T082–T092):
+    // ninety tasks in eight phases, spelled here and in the task files
     // both, so a task or phase added without deciding to add one fails. Two
     // IDs in that range are vacant, which the task file states; the freeze
     // counts tasks rather than the highest ID for that reason.
     const antigravityEnglish = readArtifact('specs/003-antigravity-cli-support/tasks.md');
     const antigravityJapanese = readArtifact('specs/003-antigravity-cli-support/tasks.ja.md');
-    expect(parseTasks(antigravityEnglish).size).toBe(89);
-    expect(parseTasks(antigravityJapanese).size).toBe(89);
+    expect(parseTasks(antigravityEnglish).size).toBe(90);
+    expect(parseTasks(antigravityJapanese).size).toBe(90);
     expect(antigravityEnglish.match(/^## Phase /gmu)).toHaveLength(8);
     expect(antigravityJapanese.match(/^## Phase /gmu)).toHaveLength(8);
   });
