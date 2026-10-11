@@ -67,7 +67,7 @@ jobs:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 'lts/*'
       - name: Install Dependencies
@@ -98,7 +98,7 @@ jobs:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 'lts/*'
       - name: Install Dependencies
@@ -131,7 +131,7 @@ jobs:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 'lts/*'
       - name: Install Dependencies
@@ -166,7 +166,7 @@ jobs:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 'lts/*'
       # `@changesets/cli` is what the publish action runs; the package it
