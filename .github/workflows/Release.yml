@@ -62,7 +62,7 @@ jobs:
       publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
@@ -90,7 +90,7 @@ jobs:
       pull-requests: write # to create the pull request (changesets/action/version)
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # @changesets/changelog-github attributes each entry to the commit
           # that added its changeset file, which it finds by walking history.
@@ -126,7 +126,7 @@ jobs:
       pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
@@ -161,7 +161,7 @@ jobs:
       id-token: write # the OIDC credential npm exchanges for a publish token
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
