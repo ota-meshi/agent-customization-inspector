@@ -81,7 +81,7 @@
     "@vitest/coverage-v8": "^5.0.0",
     "@vue/test-utils": "^2.4.11",
     "eslint": "^10.7.0",
-    "happy-dom": "^20.10.6",
+    "happy-dom": "^21.0.0",
     "nuxt": "^4.4.8",
     "playwright": "^1.61.1",
     "prettier": "^3.9.6",
