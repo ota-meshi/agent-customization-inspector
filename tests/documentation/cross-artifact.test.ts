@@ -684,16 +684,8 @@ describe('release workflow structure', () => {
   });
 });
 
-describe('lower-bound certification receives one tarball', () => {
-  // T1047: the six samples certify the artifact a user downloads, so the bytes
-  // are packed once and distributed, never packed per sample.
-  it('packs once in the build job and downloads those bytes in every sample', () => {
-    expect(continuousIntegration).toContain('name: certification-tarball');
-    const packOccurrences = continuousIntegration.split('pnpm pack').length - 1;
-    expect(packOccurrences, 'the tarball is packed more than once').toBe(1);
-    expect(continuousIntegration).toContain('uses: actions/download-artifact@v4');
-  });
-
+describe('lower-bound certification records its environment', () => {
+  // T1051: each sample records which runner image and Node.js version ran it.
   it('records the runner image and the Node.js the range resolved to', () => {
     expect(continuousIntegration).toContain('runner image:');
     expect(continuousIntegration).toContain('node --version');

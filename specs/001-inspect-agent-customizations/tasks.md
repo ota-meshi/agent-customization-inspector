@@ -8651,9 +8651,9 @@ material the evaluation reads stays under `tests/usability/sc001-sc006-study-inp
   matrix: Node.js 24.11.0 and 26.0.0 on `ubuntu-latest`, `macos-latest`, and
   `windows-latest`, each receiving the identical tarball the `build` job packs and each
   recording its runner image, resolved Node.js version, and the tarball digest before
-  installing and launching it. `tests/documentation/cross-artifact.test.ts` asserts that
-  shape — packed once, downloaded per sample, environment recorded. The traversal,
-  per-file diagnostic, one-read, and byte-decode behaviours the record also names are
+  installing and launching it. `tests/documentation/cross-artifact.test.ts` checks the
+  workflow's runner-image and Node.js version output commands. The traversal, per-file
+  diagnostic, one-read, and byte-decode behaviours the record also names are
   owned by `tests/integration/boundaries/traversal.test.ts` and
   `tests/integration/repository-scan.test.ts`, which run in every one of those jobs.
   Record the assumption in `specs/001-inspect-agent-customizations/validation.md` and

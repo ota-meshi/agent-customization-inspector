@@ -1208,8 +1208,8 @@ section below.
 bytes to six `certify-lower-bounds` jobs — Node.js 24.11.0 and 26.0.0 on `ubuntu-latest`,
 `macos-latest`, and `windows-latest` — each of which records the runner image, the Node.js
 version the range resolved to, and the SHA-256 of the received tarball before installing and
-launching it. `tests/documentation/cross-artifact.test.ts` asserts that shape: packed once,
-downloaded per sample, environment recorded.
+launching it. `tests/documentation/cross-artifact.test.ts` checks the workflow's runner-image
+and Node.js version output commands.
 
 **Not executed here.** The six jobs need three operating systems and two pinned Node.js
 versions; this session has one macOS host. The certification result is what a CI run on the
