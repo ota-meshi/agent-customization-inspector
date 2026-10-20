@@ -18,8 +18,8 @@ importers:
         specifier: ^0.37.0
         version: 0.37.0
       h3:
-        specifier: ^2.0.1-rc.22
-        version: 2.0.1-rc.22(crossws@0.4.15(srvx@0.11.22))
+        specifier: ^2.0.3
+        version: 2.0.3(crossws@0.4.15(srvx@0.11.22))
       open:
         specifier: ^11.0.1
         version: 11.0.1
@@ -8763,13 +8763,6 @@ snapshots:
       srvx: 0.11.22
     optionalDependencies:
       crossws: 0.4.10(srvx@0.11.22)
-
-  h3@2.0.1-rc.22(crossws@0.4.15(srvx@0.11.22)):
-    dependencies:
-      rou3: 0.8.1
-      srvx: 0.11.22
-    optionalDependencies:
-      crossws: 0.4.15(srvx@0.11.22)
 
   h3@2.0.3(crossws@0.4.15(srvx@0.11.22)):
     dependencies:

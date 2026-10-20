@@ -3,7 +3,7 @@
 [日本語](http-api.ja.md)
 
 **API version**: 1
-**Transport**: devframe 0.7.5 standalone host, bound to `localhost` (loopback only),
+**Transport**: devframe 1.2.5 standalone host, bound to `localhost` (loopback only),
 authentication disabled (`auth: false`)
 **RPC namespace**: every session function is registered under the
 `agent-customization-inspector:` name prefix
@@ -21,7 +21,7 @@ FR-022 authorizes exactly two closed internal-loopback classes at the issued `lo
 authority:
 
 1. **Packaged UI serving** — unauthenticated `GET`/`HEAD` for the packaged UI assets: the
-   built Nuxt SPA output served by devframe from `cli.distDir` (`dist/public`) at `/`,
+   built Nuxt SPA output served by devframe from `clientAssets` (`dist/public`) at `/`,
    including the SPA shell, its client-route fallback, and devframe's own
    connection-discovery metadata. Served static content contains no session data.
 2. **Local session RPC channel** — the devframe RPC channel (WebSocket upgrade plus
@@ -57,9 +57,10 @@ another machine remains prohibited.
    protection (QR-003, Constitution § Quality and Safety Standards). The residual limitation is documented: other
    local processes and, via DNS rebinding, a malicious web page can reach the session
    while the inspector runs. devframe applies its own origin gate to the WebSocket
-   upgrade — the reason no product-owned check stands beside it — but that gate admits
-   any hostname its loopback test matches, so it does not narrow this limitation
-   (research.md § 8). Served content may include the user's own secrets, so the
+   upgrade — the reason no product-owned check stands beside it — accepting requests
+   with no `Origin` and origins whose hostname passes its loopback test. That gate is
+   framework-owned policy rather than a product-owned boundary (research.md § 8).
+   Served content may include the user's own secrets, so the
    host is never exposed beyond the initiating machine.
 3. Static byte serving is devframe-owned. The served SPA shell and assets are exactly what
    the Nuxt build emitted into the packaged `dist/public`; the product defines no
@@ -237,7 +238,7 @@ semantics: queued command acceptance is the documented acceptance result, and ea
 outcomes with fixed codes, not sanitization.
 
 An unexpected thrown or rejected handler failure is not wrapped in a product envelope: it
-crosses the devframe channel as an ordinary serialized RPC error (devframe/birpc
+crosses the devframe channel as an ordinary serialized RPC error (devframe
 behavior), and the client shows the real error message. A failure before asynchronous job
 acceptance rejects only that invocation; no job or `scanRequestId` is created and nothing
 is retained in the session. An accepted job's terminal failure is retained where the data

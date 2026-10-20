@@ -254,6 +254,29 @@ describe('packaged launch', () => {
     expect(await readdir(fixture)).toEqual(['AGENTS.md']);
     expect(await readFile(join(fixture, 'AGENTS.md'), 'utf8')).toBe('# fixture instructions\n');
   });
+
+  it('saves no devframe instance discovery record', async () => {
+    // Closing the host awaits devframe's asynchronous registration. The
+    // framework leaves its registry directory behind after removing its
+    // record, so this observes whether registration saved anything without
+    // racing startup.
+    const root = await mkdtemp(join(tmpdir(), 'aci-npx-registry-'));
+    const preload = [
+      `process.env.DEVFRAME_INSTANCES_DIR = ${JSON.stringify(join(root, 'instances'))};`,
+      "process.env.DEVFRAME_DISABLE_INSTANCE_REGISTRY = '0';",
+    ].join('\n');
+    try {
+      const host = await launchCli(
+        tmpdir(),
+        ['--no-open', '--root', root],
+        ['--import', `data:text/javascript,${encodeURIComponent(preload)}`],
+      );
+      await expect(shutdown(host)).resolves.toBe(0);
+      expect(await readdir(root)).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 60_000);
 });
 
 describe('graceful shutdown', () => {

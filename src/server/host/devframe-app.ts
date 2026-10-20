@@ -5,15 +5,14 @@
 // unauthenticated (`auth: false`): loopback binding is the complete
 // host-side protection (QR-003, Constitution § Quality and Safety Standards). devframe applies an origin
 // gate of its own to the WebSocket upgrade, which is why no product-owned
-// check stands beside it — but it is not part of that boundary: its loopback
-// test passes any hostname beginning with `127.` or ending in `.localhost`,
-// so a page whose author chose such a hostname is admitted (research.md
-// § 8). Threat-model boundary and residual limitation:
+// check stands beside it — but the product does not rely on that transport
+// policy as its host boundary (research.md § 8).
+// Threat-model boundary and residual limitation:
 // other local processes and, via DNS rebinding, a malicious web page can
 // reach the session while the inspector runs, and served content may
 // include the user's own secrets — so the host is never exposed beyond the
 // initiating machine and no configuration can bind another interface.
-// devframe owns static SPA serving from `cli.distDir` and port selection;
+// devframe owns static SPA serving from `clientAssets` and port selection;
 // the product owns best-effort startup browser opening through its startup
 // opener (`./browser-opener`, research.md § 3), adds no asset manifest or
 // per-asset re-verification, and its only routes of its own are the shell
@@ -22,15 +21,15 @@
 // `/prompts-and-commands/**`, `/permissions/**`, `/agents/**`,
 // `/plugins/**`, `/output-styles/**`, and `/settings-and-configuration/**` —
 // which devframe's static handler cannot serve (Constitution Principle I). An unexpected
-// thrown/rejected RPC handler error is serialized as-is by devframe/birpc
+// thrown/rejected RPC handler error is serialized as-is by devframe
 // and the client shows the real error (contracts/http-api.md § Common
 // results and errors); deterministic conflicts are returned as their fixed
 // closed rejection variants, which are declared functional outcomes, not
 // sanitization.
 import { fileURLToPath } from 'node:url';
 // The `/node` subpath, not bare `h3`: Nuxt's generated tsconfig aliases the
-// bare specifier to its own bundled h3 v1 for the app project's benefit, so
-// the bare import would typecheck against the wrong major. Both spellings
+// bare specifier for the app project's benefit. The subpath keeps this host
+// import tied to the direct dependency. Both spellings
 // resolve to the same installed h3 2 module instance devframe itself loads.
 import { H3, defineHandler } from 'h3/node';
 import { createDevServer, type CreateDevServerOptions } from 'devframe/adapters/dev';
@@ -117,7 +116,7 @@ export interface InspectorHostContext {
 // The packaged SPA shell directory. The server bundle is emitted to the
 // dist root (dist/cli.mjs), so the built Nuxt output is its `public`
 // sibling; resolving from import.meta.url keeps the path correct wherever
-// the package is installed, because devframe resolves a relative distDir
+// the package is installed, because devframe resolves relative client assets
 // against the invocation cwd (which is the inspected repository, not the
 // package). Browser-emulating test environments rewrite module URLs to a
 // non-file scheme; the relative spelling is only reachable there, where no
@@ -534,9 +533,6 @@ export function createInspectorDevframe(
   preferredPort?: number,
   consent: GlobalConsentDomain = new GlobalConsentDomain(),
 ): DevframeDefinition {
-  // devframe 0.7.5 declares `defineDevframe` in its types but does not
-  // export it at runtime; the helper is an identity function, so the typed
-  // literal below is the same definition value it would return.
   return {
     // The id is the contract-fixed product identity that also prefixes
     // every RPC function name (contracts/http-api.md § RPC namespace); it
@@ -547,15 +543,15 @@ export function createInspectorDevframe(
     packageName: packageJson.name,
     homepage: packageJson.homepage,
     description: packageJson.description,
-    // This cli block deliberately has no `host` key: devframe 0.7.5 binds
+    clientAssets: packagedPublicDir(),
+    // This cli block deliberately has no `host` key: devframe binds
     // its default 'localhost' (loopback) for both the HTTP listener and the
     // WS transport with no environment fallback, so the printed and opened
     // URL reads http://localhost:<port>/ (contracts/http-api.md § Host
-    // requirements). The exact devframe pin and the startup contract tests
+    // requirements). The lockfile and the startup contract tests
     // own that guarantee; re-declaring the framework default here would be
     // the duplicated policy AGENTS.md forbids.
     cli: {
-      distDir: packagedPublicDir(),
       // Unauthenticated by decision: loopback binding is the complete
       // host-side protection (QR-003, Constitution § Quality and Safety Standards).
       auth: false,
@@ -569,9 +565,9 @@ export function createInspectorDevframe(
     },
     setup(ctx) {
       // None of these declare devframe's `jsonSerializable: true`, although
-      // every DTO is JSON-plain by design (src/shared/api-types.ts). In
-      // devframe 0.7.5 the flag changes nothing on this adapter's wire: the
-      // dev adapter passes no definitions to the WS transport and publishes
+      // every DTO is JSON-plain by design (src/shared/api-types.ts). The
+      // flag changes nothing on this adapter's wire: the dev adapter
+      // passes no definitions to the WS transport and publishes
       // no `jsonSerializableMethods` in `__connection.json`, so both
       // directions use structured-clone frames regardless, and the flag's
       // strict-JSON dev validation never runs. A flag with no observable
@@ -1358,6 +1354,8 @@ export interface StartInspectorHostOptions {
 export async function startInspectorHost(
   options: StartInspectorHostOptions,
 ): Promise<Awaited<ReturnType<typeof createDevServer>>> {
+  // The session needs no instance discovery record on disk (research.md § 8).
+  process.env.DEVFRAME_DISABLE_INSTANCE_REGISTRY = '1';
   const serverOptions: CreateDevServerOptions = {
     app: createHostApp(),
     // Always explicit, never inherited: the product's helper below is the
@@ -1417,7 +1415,7 @@ export async function startInspectorHost(
  *
  * Percent-encoding the path into the URL is not an alternative: devframe's
  * resolver runs `decodeURIComponent` before its extension test (verified
- * against devframe 0.7.5), so an encoded `/` or `.` is already decoded when
+ * against devframe 1.2.5), so an encoded `/` or `.` is already decoded when
  * judged and the request still misses the fallback. Only double-encoding
  * slips through, which would make the URL unreadable and bind the client to
  * devframe decoding exactly once. This rewrite — and the direct `h3`

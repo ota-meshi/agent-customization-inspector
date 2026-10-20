@@ -4,7 +4,7 @@
 
 **API version**: 1
 **Transport**: `localhost`（loopbackのみ）へbindし、authenticationをdisable（`auth: false`）した
-devframe 0.7.5 standalone host
+devframe 1.2.5 standalone host
 **RPC namespace**: 全session functionを`agent-customization-inspector:` name prefixで登録する
 
 このcontractは、eslint/config-inspectorと同じ基盤であるdevframe local-tool frameworkを
@@ -20,7 +20,7 @@ FR-022は、発行済みの`localhost` authorityにおけるexactな2つのclose
 だけを認可する。
 
 1. **Packaged UI serving** — packaged UI assetへのunauthenticatedな`GET`/`HEAD`。すなわち
-   devframeが`cli.distDir`（`dist/public`）から`/`でserveするbuilt Nuxt SPA outputで、SPA shell、
+   devframeが`clientAssets`（`dist/public`）から`/`でserveするbuilt Nuxt SPA outputで、SPA shell、
    そのclient-route fallback、devframe自身のconnection-discovery metadataを含む。Serveされる
    static contentはsession dataを含まない。
 2. **Local session RPC channel** — 以下に宣言するfunctionを運ぶdevframe RPC channel（同じ
@@ -48,8 +48,9 @@ customization-selected destination、別machineへの調査content送信は禁�
    protectionの全てである（QR-003、Constitution § Quality and Safety Standards）。残余limitationを文書化する。すなわち
    inspector実行中は、他のlocal processと、DNS rebindingを介したmalicious web pageがsessionへ
    到達し得る。devframeはWebSocket upgradeへ自身のorigin gateを適用しており、それが
-   product所有のcheckを置かない理由である。ただしそのgateはloopback判定に一致する
-   hostnameをすべて許可するため、このlimitationを狭めない（research.md § 8）。Serveされるcontentはuser自身のsecretを含み得るため、hostを起動machineの外へ
+   product所有のcheckを置かない理由である。Gateは`Origin`を持たないrequestと、loopback判定に一致する
+   hostnameのoriginを許可する。このgateはproduct所有のboundaryではなく、framework所有のpolicyである
+   （research.md § 8）。Serveされるcontentはuser自身のsecretを含み得るため、hostを起動machineの外へ
    決して公開しない。
 3. Static byte servingはdevframe-ownedである。ServeされるSPA shellとassetはNuxt buildがpackaged
    `dist/public`へ出力したものそのままであり、productはstatic-assets manifest、per-asset
@@ -206,7 +207,7 @@ conflict/validation failureは同じ`code`を持つ名前付き決定的rejectio
 outcomeであって、sanitizationではない。
 
 Unexpectedにthrow/rejectされたhandler failureをproduct envelopeで包まない。devframe channelを
-ordinaryなserialized RPC error（devframe/birpcの挙動）として横断し、clientは実際のerror message
+ordinaryなserialized RPC error（devframeの挙動）として横断し、clientは実際のerror message
 を表示する。Async job accept前のfailureはそのinvocationだけをrejectし、jobも`scanRequestId`も
 作らず、sessionに何もretainしない。Accepted jobのterminal failureは、invocationへthrowするので
 はなくdata modelが定義する場所にretainする。すなわち明示rescanのfailureはaffected Sourceの

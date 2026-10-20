@@ -44,7 +44,7 @@ The security boundary is strict: the browser never reads the filesystem,
 the Node host never dynamically imports customization files, and the initial release has
 no static-export, MCP, remote-host, or automatic-watch mode. The local host is the
 devframe local-tool framework — the same foundation eslint/config-inspector uses — with
-authentication disabled: it serves the built SPA from `cli.distDir` (`dist/public`) and
+authentication disabled: it serves the built SPA from `clientAssets` (`dist/public`) and
 sends inert DTOs through devframe's RPC session API channel, and devframe owns port
 selection and host binding, while the product owns startup browser opening — the macOS
 Chromium tab reuse in front of the `open` package's helper (research.md § 3) — with
@@ -134,21 +134,19 @@ compatible minor/patch release. Versions below either floor, Node 25, and future
 outside the contract.
 
 **Primary Dependencies**: Nuxt 4.4.8, Vue Router 5.2.0, tsdown 0.22.8, Vite 7.3.6
-(latest Nuxt-compatible release), `devframe` 0.7.5 (the pre-1.0 local-tool
+(latest Nuxt-compatible release), `devframe` 1.2.5 (the local-tool
 host framework), `gunshi` 0.37.0, `open` 11.0.1, `yaml` 2.9.0,
-`strip-json-comments` 5.0.3, `smol-toml` 1.7.0, `h3` 2.0.1-rc.22, `shiki` 4.4.3,
+`strip-json-comments` 5.0.3, `smol-toml` 1.7.0, `h3` 2.0.3, `shiki` 4.4.3,
 `@shikijs/themes` 4.4.3, and `vscode-diff` 3.0.1.
 Each is declared as a caret range in `package.json`,
 and the committed lockfile pins these exact resolved versions with integrity; `h3`'s
 resolution coincides with devframe's own h3, so the host's `/skills/**` shell fallback
 and devframe resolve one H3 module instance (research.md § 3). The rest of
 devframe's transitive
-tree (birpc, crossws, valibot, destr, mrmime, nostics, pathe, ufo) is
+tree (crossws, nostics, pathe, rou3, srvx) is
 owned by devframe and the lockfile rather than declared as direct dependencies. The first lockfile
 MUST revalidate these exact stable resolved versions; prereleases and incompatible newer majors
-are not considered eligible “latest” versions, and the devframe choice plus its
-lockfile-owned h3 release candidate are the one reviewed exception, accepted with the
-framework adoption decision (spec Clarifications § Session 2026-07-22).
+are not considered eligible “latest” versions.
 That revalidation is a planning gate, not permission for a task-local package or version
 edit. If any selected package or version changes, implementation stops before configuration
 work, the compatibility decision is reviewed again, every dependency-baseline-bearing
@@ -457,7 +455,7 @@ uncancellable kernel operation settles.
 
 Packaged artifacts that ship together are never re-verified against each other at user
 runtime: `dist/` is owned by the clean → `nuxt build` → tsdown pipeline that produced it,
-the devframe host serves that tree as-is from `cli.distDir`, and exact-value assertions
+the devframe host serves that tree as-is from `clientAssets`, and exact-value assertions
 about the packaged file set live only in the `verify:package` CI/release gate and the
 package tests (Constitution Principle I).
 
@@ -948,7 +946,7 @@ The build first removes only the root-resolved package-owned `.output/` and
 `dist/` trees. It runs `nuxt build`, which emits the browser application directly into
 `dist/public` via `nitro.output.publicDir` while build metadata stays in `.output/`, and
 then runs tsdown. There is no staging copy, post-build validator, asset manifest, or
-CSP-hash step: the emitted tree is served as-is by the devframe host from `cli.distDir`
+CSP-hash step: the emitted tree is served as-is by the devframe host from `clientAssets`
 (`dist/public`), and packaged-artifact assertions live only in the `verify:package`
 CI/release gate and the package tests, because the pipeline that just produced `dist/`
 owns its contents (Implementation simplicity policy).
@@ -1194,10 +1192,10 @@ configuration.
   compliance/quality verdict, or remediation advice. The same prohibition applies to every
   inventory, detail, comparison, Global-control, Diagnostic, API,
   CLI, and documentation projection.
-- The Node host is devframe 0.7.5: the CLI starts the app definition through
+- The Node host is devframe 1.2.5: the CLI starts the app definition through
   `createDevServer` from
   `devframe/adapters/dev`, sets `auth: false`, and binds the loopback `localhost` only. devframe serves
-  the built SPA from `cli.distDir` (`dist/public`) and owns port selection and host
+  the built SPA from `clientAssets` (`dist/public`) and owns port selection and host
   binding, while startup browser opening is product-owned — the macOS Chromium tab
   reuse in front of the `open` package's helper (research.md § 3) — with devframe's
   bundled opener disabled; the session API is the set of devframe RPC functions
@@ -1572,7 +1570,7 @@ The remaining unavoidable implementation costs are tracked explicitly:
 
 | Complexity                                                                                                                   | Why it is required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Simpler option rejected                                                                                                                                                                                                                                                                                                                                                                           |
 | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Lockfile-pinned pre-1.0 devframe 0.7.5 host with lockfile-owned transitives (including the h3 2.0.1-rc.22 release candidate) | Reuse the config-inspector-proven local-tool host for static serving and the RPC session API instead of maintaining a hand-written router, token authentication, and static-manifest pipeline; within this repository's own development and CI, the committed lockfile — which the published package does not carry — holds pre-1.0 API churn and the RC transitive at one reviewed baseline for every build and test run, and the manifest's `^0.7.5` only declares the range a deliberate update may move within here (a pre-1.0 caret stays below 0.8.0). A published-package consumer's package manager resolves that same `^0.7.5` fresh against the registry at install time, exactly as it does for any other pre-1.0 dependency; nothing in the package pins a runtime baseline for them | An exact manifest pin would duplicate, for this repository's own builds, the resolution the committed lockfile already owns there — every version move is a reviewed lockfile change either way — without changing what a package consumer resolves, since the published tarball carries no lockfile either way; re-implementing the host in-repo re-creates the complexity devframe already owns |
+| Lockfile-pinned devframe 1.2.5 host with lockfile-owned transitives | Reuse the config-inspector-proven local-tool host for static serving and the RPC session API instead of maintaining a hand-written router, token authentication, and static-manifest pipeline; within this repository's own development and CI, the committed lockfile — which the published package does not carry — holds one reviewed baseline for every build and test run, and the manifest's `^1.0.0` declares the accepted range. A published-package consumer's package manager resolves that same range fresh against the registry at install time; nothing in the package pins a runtime baseline for them | An exact manifest pin would duplicate, for this repository's own builds, the resolution the committed lockfile already owns there — every version move is a reviewed lockfile change either way — without changing what a package consumer resolves, since the published tarball carries no lockfile either way; re-implementing the host in-repo re-creates the complexity devframe already owns |
 | Publication-authority revocation with cleanup-only late continuations                                                        | Prevent work completed after disable, shutdown, or cancellation from mutating a newer session state                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Treating cancellation as physical kernel-I/O termination would make an unsupported guarantee                                                                                                                                                                                                                                                                                                      |
 
 These controls are required boundary implementations, not Constitution exceptions or waivers.
