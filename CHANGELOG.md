@@ -1,5 +1,11 @@
 # agent-customization-inspector
 
+## 0.8.0
+
+### Minor Changes
+
+- [#30](https://github.com/ota-meshi/agent-customization-inspector/pull/30) [`ef568fd`](https://github.com/ota-meshi/agent-customization-inspector/commit/ef568fd563d7c7bc0b00069ab9abc248e60c668a) Thanks [@renovate](https://github.com/apps/renovate)! - Upgrade the local session host to devframe 1, migrate packaged SPA serving to its client-assets API, and disable saved instance discovery records.
+
 ## 0.7.0
 
 ### Minor Changes
