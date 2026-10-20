@@ -413,7 +413,7 @@ dispositionである。
 ### テスト先行
 
 - [X] T040 [P] [US1] devframe dev serverに関するfailing host startup contractを追加する:
-  `cli.distDir`（`dist/public`）からbuild済みSPA shellをdevframe所有のstatic
+  `clientAssets`（`dist/public`）からbuild済みSPA shellをdevframe所有のstatic
   handlingと`auth: false`で配信し、loopbackだけにbindし、startup documentation/network accessが0件で、customization
   contentをclassifyしないこと、およびexactな宣言済み`engines.node`と`bin: dist/cli.mjs` package
   fieldが成立することを検証する。Ownerless automatic-startup throw/rejectionがproduct liveness
@@ -474,7 +474,7 @@ dispositionである。
 
 - [X] T045 [US1] devframe host により supersede（2026-07-22）: build 済み shell の static asset 配信、SPA
   fallback、media type は、`src/server/host/devframe-app.ts`（T038）で設定する
-  `cli.distDir`（`dist/public`）を通じて devframe が所有する。手書きの static-file module も build 時の asset manifest
+  `clientAssets`（`dist/public`）を通じて devframe が所有する。手書きの static-file module も build 時の asset manifest
   も存在しない
 - [X] T046 [US1] 直接実行されるCLIのloopback host startup boundaryを実装する（Node.js互換性はpacked `engines.node`
   rangeの宣言とpackage managerのenforceに委ね、runtimeでは再検査しない）。Automatic inspected-source workを含む全ownerless

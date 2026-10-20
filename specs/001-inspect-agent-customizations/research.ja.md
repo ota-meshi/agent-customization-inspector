@@ -55,7 +55,7 @@ clean → `nuxt build` → `tsdown`の3 stepとする。開始時に
 root-resolvedなpackage所有の`.output/`、`dist/` treeだけを除去する。`nuxt build`は
 `nitro.output.publicDir`によりbrowser applicationを`dist/public`へ直接出力し、build metadataは
 `.output/`に残す。Post-Nuxtのvalidation/manifest stepは存在しない: 出力treeはNuxtが所有し、
-devframe hostが`cli.distDir`からそのまま配信する（§ 8）。
+devframe hostが`clientAssets`からそのまま配信する（§ 8）。
 
 tsdownは単一のnamed entry
 `{ cli: 'src/server/cli.ts' }`、Node ESM、
@@ -171,10 +171,10 @@ majorの越境、pre-1.0のcaret rangeの移動は今もこのgateに届く（AG
 | tsdown                |                                                                                       0.22.8 | 現行stable release。Node 24.11+をsupport                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Vite                  |                                                                                        7.3.6 | Nuxt 4.4.8が宣言するbuilder range `^7.3.3`内の最新version                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | pnpm                  |                                                                                      11.13.0 | 現行stable package manager                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| Local host            |                                                                             `devframe` 0.7.5 | `@eslint/config-inspector`の基盤であるlocal-tool host framework。Packaged SPAを`cli.distDir`から配信し、session APIをRPC channelとして担い、認証は無効化する。Port/host解決を所有し（§ 8）、bundled openerはproductが`open`でbrowser openingを所有するため無効化される（§ 3）。Pre-1.0のため、commit済みlockfileがreview済みbaselineを固定し、manifestのcaret rangeは0.7.x内にとどまる                                                                                                                                                                                                                                                                                                                                                                                    |
+| Local host            |                                                                             `devframe` 1.2.5 | `@eslint/config-inspector`の基盤であるlocal-tool host framework。Packaged SPAを`clientAssets`から配信し、session APIをRPC channelとして担い、認証は無効化する。Port/host解決を所有し（§ 8）、bundled openerはproductが`open`でbrowser openingを所有するため無効化される（§ 3）。commit済みlockfileがreview済みbaselineを固定し、manifestのcaret rangeは1.x内にとどまる                                                                                                                                                                                                                                                                                                                                                                                    |
 | CLI                   |                                                                              `gunshi` 0.37.0 | 現行のruntime dependency 0件のESM CLI framework。Node.js `>=22` engine requirementは宣言済みrangeと互換                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Browser opener        |                                                                                `open` 11.0.1 | Startup openerのfallback（FR-001）を担う現行stableなcross-platform opener: macOSのChromium tab再利用が適用されないか失敗した場合に（§ 3）、bind済みloopback originをOS default handlerへbest-effortで渡し、devframeのbundled openerを無効化してproductのopenerだけが動くようにする。VendoredなPOSIX shell `xdg-open` — Linuxでは実行可能な限りそれを使い、そうでなければsystem helper — は記録済みのFR-038 closure例外である（§ 3）                                                                                                                                                                                                                                                                                                                                       |
-| Host HTTP app         |                                                                             `h3` 2.0.1-rc.22 | Hostはdevframeがmountする先のH3 appを自ら構築し、devframeの拡張子guard付きSPA fallbackでは配信できないdetail familyのshell fallbackを載せる — shipped kind detailごとに1 family（§ 3）で、各detail URLは`SKILL.md`のようにfile自身の最終segmentで終わり、devframeは拡張子判定の前にdecodeするためpercent-encodeは代案にならないからである。他の直接依存と同じくcaret rangeで宣言し、lockfileがdevframe自身のh3へresolveするため、両者は1つのmodule instanceへ解決される。devframe自身が拡張子付きclient-route missをserveできるようになれば、この依存はhost shimとともに無くなる                                                                                                                                                                                          |
+| Host HTTP app         |                                                                             `h3` 2.0.3 | Hostはdevframeがmountする先のH3 appを自ら構築し、devframeの拡張子guard付きSPA fallbackでは配信できないdetail familyのshell fallbackを載せる — shipped kind detailごとに1 family（§ 3）で、各detail URLは`SKILL.md`のようにfile自身の最終segmentで終わり、devframeは拡張子判定の前にdecodeするためpercent-encodeは代案にならないからである。他の直接依存と同じくcaret rangeで宣言し、lockfileがdevframe自身のh3へresolveするため、両者は1つのmodule instanceへ解決される。devframe自身が拡張子付きclient-route missをserveできるようになれば、この依存はhost shimとともに無くなる                                                                                                                                                                                          |
 | Parser                |                                                              `yaml` 2.9.0、`smol-toml` 1.7.0 | 現行stable inert data parser。strict JSONはplatformの`JSON.parse`である                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | JSONC pre-parse       |                                                                  `strip-json-comments` 5.0.3 | JSONCのcommentとtrailing commaを空白へ置き換え、残りをstrict JSONと同じ`JSON.parse`へ通す — JSON family全体で解決は1つになる。独自にobjectを構築するlenient parserは、authoredな`__proto__` keyをown propertyとして保持できず、その名前の`.vscode/mcp.json` serverを無診断で消すため採らない                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | Frontmatter           |                                                          `vfile-matter` 5.0.1、`vfile` 6.0.3 | Frontmatterのdelimiter処理。Frontmatter blockの開始と終了を決めることはBOM処理、改行、閉じfenceの形を決め直すことであり、正規表現ではなくparserの仕事である。これは同表の`yaml` engineでblockをparseする。独自の`js-yaml`を持つpackageは1つのdocumentに2つの意味を与えてしまう。js-yaml 3はYAML 1.1、`yaml`はYAML 1.2だからである                                                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -243,15 +243,14 @@ import-boundary digestの監査対象とする。Lockfileがpinするresolved ve
 selector、shell/native/binary/Wasm payloadを含まない。これにより既存Node-only package gateを維持しつつ、
 Gunshiのより大きなbundle済みJavaScript payloadをrelease auditで明示する。
 
-devframe 0.7.5は意図的にleaf packageではない: transitiveなruntime treeとして`h3` 2.0.1-rc.22、`birpc`、
-`crossws`、`valibot`、`@valibot/to-json-schema`、`destr`、`mrmime`、`nostics`、`pathe`、`ufo`を持ち込む。
-このtree（`h3` release-candidate pinを含む）はdevframe自身のdependency宣言とcommit済みlockfileが所有し、
+devframe 1.2.5は意図的にleaf packageではない: transitiveなruntime treeとして`h3` 2.0.3、
+`crossws`、`nostics`、`pathe`、`rou3`、`srvx`を持ち込む。
+このtreeはdevframe自身のdependency宣言とcommit済みlockfileが所有し、
 member単位のproduct決定として再判断するのではなく、maintainされたhost layerの採用の一部として受け入れる。
 lockfileが全memberをname/version/integrity hashでpinし（OS間で同一）、payload byteはdependency review時に
-固定される。devframe自身のtarball payloadはJavaScript/TypeScript textだけであるためNode-only package gateは維持される。
-devframeはpre-1.0であり、0.x minorがAPIをmigrateし得るため、caret rangeがそれらを除外し、commit済み
-lockfileがresolved versionをpinし、その
-minorを越えることは自動mergeされるbumpではなく§ 3のplanning-gate changeとして扱う。`tests/package/production-graph.test.ts`は、承認済みの11個の
+固定される。devframe自身のtarball payloadはtextだけであるためNode-only package gateは維持される。
+Manifestのcaret rangeは1.x releaseを受け入れ、commit済みlockfileがresolved versionをpinし、その
+majorを越えることは自動mergeされるbumpではなく§ 3のplanning-gate changeとして扱う。`tests/package/production-graph.test.ts`は、承認済みの11個の
 direct dependencyであることを正確にassertする。versionとintegrityはlockfileが所有し続ける。
 
 ### 有限なrelease-certification行列
@@ -281,7 +280,7 @@ Versionの一次根拠はnpm registryの[Nuxt](https://www.npmjs.com/package/nux
 [tsdown](https://www.npmjs.com/package/tsdown)、
 [TypeScript](https://www.npmjs.com/package/typescript)、[Vite](https://www.npmjs.com/package/vite)、
 [pnpm](https://www.npmjs.com/package/pnpm)、[shiki](https://www.npmjs.com/package/shiki)、[diff](https://www.npmjs.com/package/diff)、
-[devframe 0.7.5 registry metadata](https://registry.npmjs.org/devframe/0.7.5)、
+[devframe 1.2.5 registry metadata](https://registry.npmjs.org/devframe/1.2.5)、
 [Gunshi 0.37.0 registry metadata](https://registry.npmjs.org/gunshi/0.37.0)、
 [Vitest](https://www.npmjs.com/package/vitest)、
 [Playwright](https://www.npmjs.com/package/@playwright/test)である。Node公式の
@@ -815,10 +814,10 @@ inert renderingによってcontent自体の実行、load、navigateを防ぐ。
 
 ## 8. Local session transport
 
-**決定**: `@eslint/config-inspector`の基盤であるlocal-tool frameworkの`devframe` 0.7.5をsession hostとして
+**決定**: `@eslint/config-inspector`の基盤であるlocal-tool frameworkの`devframe` 1.2.5をsession hostとして
 採用し、devframe認証を無効化する（`auth: false`。2026-07-22のowner決定、spec.md § Clarifications
 Session 2026-07-22、Constitution § Quality and Safety Standards）。CLIは`devframe/adapters/dev`の`createDevServer`でhostを起動する:
-devframeがloopbackの`localhost`へbindし、build済みNuxt SPAを`cli.distDir`（`dist/public`）から直接配信し、
+devframeがloopbackの`localhost`へbindし、build済みNuxt SPAをdefinition直下の`clientAssets`（`dist/public`）から直接配信し、
 session APIを、`defineRpcFunction`で宣言してdefinitionの`setup`で登録するdevframe RPC functionとして
 担う。同じchannelにはdevframe自身のbuilt-in — `devframe:agent:*`、`devframe:rpc:server-state:*`、
 `devframe:streaming:*` — もframeworkが無条件に登録する。Productはそれらにagent tool、shared server
@@ -832,16 +831,17 @@ bundled openerは無効化される（§ 3）。ただしstatic配信の前段�
 1 route family）で、extension-guardedなfallbackがserveできない
 detail deep linkにdevframe自身のhandlerがshellをserveできるようにする(§ 3 h3行)。Session保護はloopback bindingとする: productはper-session tokenも、独自のOrigin/Host分類も、
 hand-written HTTP routerも追加しない。devframeはWebSocket upgradeへ自身のorigin gateを適用して
-おり、それがproduct所有のcheckを置かない理由である。ただしこのgateは以下のexposureを有界化する
-ものではなく、そう読んではならない。Gateは`Origin`を持たないrequest（非browser client）と、
-loopback判定に一致するhostnameのoriginをすべて許可する。そしてその判定はspelling testである:
-`127.`で始まる、または`.localhost`で終わるhostnameは通過するため、攻撃者が登録した
-`127.<label>.example`から配信されるpageは許可され、全session functionへ到達する。Gateが止めるのは
-通常のremote originであって、hostnameを自分で選んだpageではない。ここから狭めることもできない:
-devframeの`allowedOrigins`はallow-listを広げるだけで、`false`はgate自体を取り除く。残余
+おり、それがproduct所有のcheckを置かない理由である。Gateは`Origin`を持たないrequest（非browser client）、
+`localhost`とそのsubdomain、IPv6 `::1`、`127.0.0.0/8`内のIPv4 literalを許可し、通常のremote originを拒否する。
+このgateはproduct所有のboundaryではなく、framework所有のpolicyである。devframeの`allowedOrigins`は
+allow-listを広げるだけで、`false`はgate自体を取り除く。残余
 limitationは防御ではなく文書化する: Inspectorの実行中、他の
 local processと、DNS rebinding経由のmalicious web pageが無認証sessionへ到達し得る（QR-003）。Session APIは
 引き続きSource-relative pathとclosed commandだけを公開し、絶対filesystem pathを使わない。
+
+devframeの起動前に、hostは`DEVFRAME_DISABLE_INSTANCE_REGISTRY=1`を設定し、frameworkの起動情報fileの
+保存を無効化する。Registrationを無効化していても、終了時にframeworkが自身のrecord pathへの
+削除要求を発行する実装は残る。
 
 Session startupでeditor-launcher探索より前に、1つのimmutableなGlobal root-input captureをretainする。
 `COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で1回ずつreadし、`undefined`だけをabsentとし、

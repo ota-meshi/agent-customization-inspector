@@ -51,10 +51,10 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "devframe": "^0.7.5",
+    "devframe": "^1.0.0",
     "env-editor": "^1.3.0",
     "gunshi": "^0.37.0",
-    "h3": "^2.0.1-rc.22",
+    "h3": "^2.0.3",
     "open": "^11.0.1",
     "smol-toml": "^1.7.0",
     "strip-json-comments": "^5.0.3",

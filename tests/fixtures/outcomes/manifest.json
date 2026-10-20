@@ -24,7 +24,7 @@
     "tests/contract/host-startup.test.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/contract/host-startup.test.ts",
-      "sha256": "0b29860e9784338b8c4cf277ea52db9f545dcd27dc9963441fe8683e5bdac14f"
+      "sha256": "b79be2de72b522ec0f1169a20078a1bfd8e8097b758f64d627315e5d83a7f5c9"
     },
     "tests/contract/http-api-session.test.ts": {
       "kind": "inline-fixture-suite",

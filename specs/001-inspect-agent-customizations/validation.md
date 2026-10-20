@@ -2423,3 +2423,19 @@ What the rework reached, and why each record had to be taken over this tree:
 
 Nothing here is a finding against the rework. It is why this document's evidence is of one tree
 rather than of the feature's whole history.
+
+## devframe 1.2.5 compatibility — 2026-10-20
+
+This agent-run targeted compatibility check passed the host-startup and outcome-fixture-manifest
+contract suites: 45 tests. The manifest-bound case exercised is
+`sc007.failure.startup-failure`; this is not a complete SC-003, SC-004, SC-005, or SC-007 run.
+The package suite passed 54 tests, the targeted Chromium browser run passed 6 tests, and
+the performance suite passed 4 tests.
+
+`tests/fixtures/outcomes/manifest.json` remains **version 7**, with canonical SHA-256
+`0e8d67b85b1d3deab3822b257b2217f61abf4cc957bd723e189de508140ad81f`.
+The `tests/contract/host-startup.test.ts` fixture digest is
+`b79be2de72b522ec0f1169a20078a1bfd8e8097b758f64d627315e5d83a7f5c9`.
+Only fixture bytes changed; case IDs, required classes, and expected outcomes are unchanged.
+This starts a new, non-comparable measurement set under spec.md § Release-Evidence Fixture
+Governance. Earlier full SC records remain evidence for the manifest digest each record names.

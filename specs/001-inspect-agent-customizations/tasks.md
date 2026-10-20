@@ -484,7 +484,7 @@ the task would have built.
 ### Tests first
 
 - [X] T040 [P] [US1] Add failing host startup contracts for the devframe dev server: it serves the
-  built SPA shell from `cli.distDir` (`dist/public`) with devframe-owned static handling and
+  built SPA shell from `clientAssets` (`dist/public`) with devframe-owned static handling and
   `auth: false`, binds loopback only, performs zero startup documentation/network access, and never
   classifies customization content; the exact declared `engines.node` and `bin: dist/cli.mjs`
   package fields hold; prove any ownerless automatic-startup throw/rejection reaches the process top
@@ -555,7 +555,7 @@ the task would have built.
 ### Implementation
 
 - [X] T045 [US1] Superseded by the devframe host (2026-07-22): static asset serving, SPA fallback,
-  and media types for the built shell are owned by devframe through `cli.distDir` (`dist/public`)
+  and media types for the built shell are owned by devframe through `clientAssets` (`dist/public`)
   configured in `src/server/host/devframe-app.ts` (T038); no hand-written static-file module or
   build-time asset manifest exists
 - [X] T046 [US1] Implement the loopback host startup boundary of the directly executed CLI (Node.js

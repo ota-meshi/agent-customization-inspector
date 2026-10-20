@@ -2103,3 +2103,18 @@ reworkが到達したものと、各記録をこのtreeで取り直すことに�
 
 ここに書いたものはreworkに対する指摘ではない。この文書のevidenceが、featureの歴史全体ではなく
 1つのtreeのものである理由である。
+
+## devframe 1.2.5 compatibility — 2026-10-20
+
+Agent駆動のtargeted compatibility checkで、host-startupとoutcome-fixture-manifestのcontract suite
+45件が成功した。実行したmanifest-bound caseは`sc007.failure.startup-failure`であり、
+SC-003、SC-004、SC-005、SC-007全体の実行ではない。
+Package suiteは54件、対象を絞ったChromium browser runは6件、performance suiteは4件が成功した。
+
+`tests/fixtures/outcomes/manifest.json`は引き続き**version 7**で、canonical SHA-256は
+`0e8d67b85b1d3deab3822b257b2217f61abf4cc957bd723e189de508140ad81f`である。
+`tests/contract/host-startup.test.ts`のfixture digestは
+`b79be2de72b522ec0f1169a20078a1bfd8e8097b758f64d627315e5d83a7f5c9`である。
+変わったのはfixture byteだけであり、case ID、required class、expected outcomeは不変である。
+spec.ja.md § Release-Evidence Fixtureのガバナンスに従い、新しい比較不能なmeasurement setとなる。
+以前のfull SC記録は、それぞれの記録が名指すmanifest digestに対するevidenceのままである。

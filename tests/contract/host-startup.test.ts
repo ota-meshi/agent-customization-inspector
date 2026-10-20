@@ -179,17 +179,19 @@ function registerFunctions(context: InspectorHostContext): {
 describe('devframe host definition', () => {
   it('serves the packaged SPA shell from the CLI bundle its own `public` sibling', () => {
     const { definition } = registerFunctions(hostContext());
-    const distDir = definition.cli?.distDir ?? '';
+    const clientAssets = definition.clientAssets;
     // The directory is resolved from `import.meta.url`, so from source it is
     // this module's `public` sibling and from the bundle it is `dist/public`.
     // What the contract fixes is the shape: an absolute path ending in
     // `public`, never a cwd-relative one — devframe resolves a relative
-    // distDir against the invocation cwd, which is the *inspected*
+    // client-assets path against the invocation cwd, which is the *inspected*
     // repository. That the packaged value really is `dist/public` is proven
     // by the package suite, which serves the built shell from an unrelated
     // working directory.
-    expect(isAbsolute(distDir)).toBe(true);
-    expect(basename(distDir)).toBe('public');
+    expect(clientAssets).toSatisfy((value) => typeof value === 'string' && isAbsolute(value));
+    expect(clientAssets).toSatisfy(
+      (value) => typeof value === 'string' && basename(value) === 'public',
+    );
   });
 
   it('runs unauthenticated behind the loopback binding', () => {

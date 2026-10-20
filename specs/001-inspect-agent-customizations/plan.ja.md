@@ -39,7 +39,7 @@ Repository Sourceをsynchronousに含む。
 Security boundaryを厳密にする。Browserはfilesystemを読まず、Node hostは
 カスタマイズファイルをdynamic importせず、初期リリースにはstatic export、MCP、remote host、
 自動watch modeを設けない。Local hostにはeslint/config-inspectorと同じ基盤であるdevframe local-tool
-frameworkをauthentication無効で採用する。devframeはbuild済みSPAを`cli.distDir`（`dist/public`）から
+frameworkをauthentication無効で採用する。devframeはbuild済みSPAを`clientAssets`（`dist/public`）から
 配信し、devframeのRPC session API channelを通じてinert DTOを送り、port選択とhost bindingを所有する。
 起動時のbrowser openはproductが所有する — macOSのChromium tab再利用を`open` packageのhelperの
 前段に置く（research.md § 3）— 形で、devframeのbundled openerは無効化される。
@@ -110,19 +110,17 @@ Vue 3.5.39とする。6つのNode/OS floor jobはcompatibleな全minor/patch rel
 宣言した2つの下限をcertifyする。各floor未満、Node 25、将来のmajorはcontract外とする。
 
 **主要依存関係**: Nuxt 4.4.8、Vue Router 5.2.0、tsdown 0.22.8、Vite 7.3.6
-（Nuxtと互換性のある最新release）、`devframe` 0.7.5（pre-1.0 local-tool host framework）、
+（Nuxtと互換性のある最新release）、`devframe` 1.2.5（local-tool host framework）、
 `gunshi` 0.37.0、`open` 11.0.1、`yaml` 2.9.0、
-`strip-json-comments` 5.0.3、`smol-toml` 1.7.0、`h3` 2.0.1-rc.22、`shiki` 4.4.3、
+`strip-json-comments` 5.0.3、`smol-toml` 1.7.0、`h3` 2.0.3、`shiki` 4.4.3、
 `@shikijs/themes` 4.4.3、`vscode-diff` 3.0.1。いずれも`package.json`には
 caret rangeで宣言し、commit済みlockfileがこれらのexactなresolved versionとintegrityをpinする。
 `h3`のresolved versionはdevframe自身のh3と一致するため、hostの`/skills/**` shell fallbackと
 devframeは1つのH3 module instanceに解決される（research.md § 3）。devframeの残りのtransitive tree
-（birpc、crossws、valibot、destr、mrmime、nostics、pathe、ufo）はdirect dependencyとして
+（crossws、nostics、pathe、rou3、srvx）はdirect dependencyとして
 宣言せず、devframeとlockfileが所有する。最初のlockfile作成時に
 これらの正確なstable resolved versionを再確認しなければならない（MUST）。Prereleaseや互換性のない
-新しいmajorは「最新」の対象にしないが、devframeの選定とそのlockfile所有h3 release candidateは、
-framework採用決定（spec Clarifications § Session 2026-07-22）とともにacceptした唯一のreview済み
-例外とする。
+新しいmajorは「最新」の対象にしない。
 この再確認はplanning gateであり、task内だけでpackageまたはversionを変更する許可ではない。選択済み
 packageまたはversionが1つでも変わる場合、configuration作業前にimplementationを停止してcompatibility
 decisionを再reviewし、dependency baselineを記載する英日両方のresearch、plan、quickstart、task artifactを
@@ -336,7 +334,7 @@ cleanup-only continuationとなり、late byte/result、DTOをすべて破棄す
 APIをresponsiveに保つが、取消不能なkernel operationがsettleする前のphysical cleanupは保証しない。
 
 同時に配布されるpackaged artifactをuser runtimeで相互検証しない。`dist/`はそれを生成した
-clean → `nuxt build` → tsdown pipelineが所有し、devframe hostはそのtreeを`cli.distDir`からそのまま
+clean → `nuxt build` → tsdown pipelineが所有し、devframe hostはそのtreeを`clientAssets`からそのまま
 配信し、packaged file setへのexact-value assertionは`verify:package` CI/release gateとpackage testだけに
 置く（Constitution Principle I）。
 
@@ -750,7 +748,7 @@ generationを再実行し、regenerate済みtask setだけを継続する。
 Buildは最初にroot-resolvedなpackage所有の`.output/`、`dist/` treeだけを除去する。`nuxt build`は
 `nitro.output.publicDir`によりbrowser applicationを`dist/public`へ直接出力し、build metadataは`.output/`に
 残り、その後tsdownを実行する。Staging copy、build後のvalidator、asset manifest、CSP-hash stepは存在しない。
-出力treeはdevframe hostが`cli.distDir`（`dist/public`）からそのまま配信し、`dist/`を生成したpipeline自身が
+出力treeはdevframe hostが`clientAssets`（`dist/public`）からそのまま配信し、`dist/`を生成したpipeline自身が
 その内容を所有するため、packaged-artifactへのassertionは`verify:package` CI/release gateとpackage testだけに
 置く（Implementation simplicity policy）。
 
@@ -943,8 +941,8 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   rank、validity/correctness/effectiveness/compliance/quality verdict、remediation adviceを一切保持しない。同じ禁止は、
   すべてのinventory、detail、comparison、Global-control、Diagnostic、API、CLI、documentation
   projectionへ適用する。
-- Node hostはdevframe 0.7.5とする。CLIは`devframe/adapters/dev`の`createDevServer`でapp definitionを
-  起動し、`auth: false`を設定してloopbackの`localhost`だけへbindする。devframeはbuild済みSPAを`cli.distDir`
+- Node hostはdevframe 1.2.5とする。CLIは`devframe/adapters/dev`の`createDevServer`でapp definitionを
+  起動し、`auth: false`を設定してloopbackの`localhost`だけへbindする。devframeはbuild済みSPAを`clientAssets`
   （`dist/public`）から配信し、port選択とhost bindingを所有する。起動時のbrowser openはproductが
   所有し — macOSのChromium tab再利用を`open` packageのhelperの前段に置く（research.md § 3）—、
   devframeのbundled openerは無効化される。Session APIは
@@ -1212,7 +1210,7 @@ generic error-envelopeもoperational-log/telemetry機構も存在せず、それ
 
 | 複雑さ                                                                                                             | 必要な理由                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | 不採用とした単純案                                                                                                                                                                                                                                                                                                                                                   |
 | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Lockfile所有transitive（h3 2.0.1-rc.22 release candidateを含む）を持つlockfile-pinnedなpre-1.0 devframe 0.7.5 host | Hand-writtenなrouter、token authentication、static-manifest pipelineを維持する代わりに、config-inspectorで実証済みのlocal-tool hostをstatic配信とRPC session APIに再利用する。本repository自身のdevelopmentとCIの中では、公開packageが持たないcommit済みlockfileが、全build/test runでpre-1.0のAPI churnとRC transitiveを1つのreview済みbaselineに固定し、manifestの`^0.7.5`はここでの意図的なupdateが動ける受け入れrangeを宣言するだけである（pre-1.0のcaretは0.8.0未満にとどまる）。公開package consumerのpackage managerは、他の任意のpre-1.0 dependencyと同様に、install時にその同じ`^0.7.5`をregistryに対して新たにresolveする。Packageのどこもconsumerのruntime baselineを固定しない | Exactなmanifest pinは、本repository自身のbuildについてはcommit済みlockfileがそこですでに所有するresolutionを重複させるだけである — どちらでもversionの移動はreviewされるlockfile変更である — が、package consumerがresolveするものは変えない。公開tarballはどちらの場合もlockfileを運ばないためである。Hostのin-repo再実装はdevframeがすでに所有する複雑さを再現する |
+| Lockfile所有transitiveを持つlockfile-pinnedなdevframe 1.2.5 host | Hand-writtenなrouter、token authentication、static-manifest pipelineを維持する代わりに、config-inspectorで実証済みのlocal-tool hostをstatic配信とRPC session APIに再利用する。本repository自身のdevelopmentとCIの中では、公開packageが持たないcommit済みlockfileが、全build/test runで1つのreview済みbaselineを固定し、manifestの`^1.0.0`は受け入れrangeを宣言する。公開package consumerのpackage managerは、install時にその同じrangeをregistryに対して新たにresolveする。Packageのどこもconsumerのruntime baselineを固定しない | Exactなmanifest pinは、本repository自身のbuildについてはcommit済みlockfileがそこですでに所有するresolutionを重複させるだけである — どちらでもversionの移動はreviewされるlockfile変更である — が、package consumerがresolveするものは変えない。公開tarballはどちらの場合もlockfileを運ばないためである。Hostのin-repo再実装はdevframeがすでに所有する複雑さを再現する |
 | Publication-authority revocationとcleanup-onlyなlate continuation                                                  | Disable、shutdown、cancellation後に完了したworkが新しいsession stateを変更するのを防ぐ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Cancellationをphysicalなkernel-I/O terminationと扱うと未対応の保証になる                                                                                                                                                                                                                                                                                             |
 
 これらはConstitutionの例外またはwaiverではなく、既存のclosed authority、privacy、provenance、verification原則を実装するためのboundary controlである。不採用とした単純案はそれらの原則を満たさない。

@@ -70,7 +70,7 @@ same-origin assets. The full build is exactly three steps — clean → `nuxt bu
 `.output/` and `dist/` trees. Let `nuxt build` emit the browser application
 directly into `dist/public` via `nitro.output.publicDir`, keeping build metadata in
 `.output/`. There is no post-Nuxt validation or manifest step: the emitted tree is owned
-by Nuxt and is served as-is by the devframe host from `cli.distDir` (§ 8).
+by Nuxt and is served as-is by the devframe host from `clientAssets` (§ 8).
 
 Configure tsdown with the single named entry
 `{ cli: 'src/server/cli.ts' }`, Node ESM,
@@ -209,10 +209,10 @@ policy).
 | tsdown                |                                                                                       0.22.8 | Current stable release; supports Node 24.11+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | Vite                  |                                                                                        7.3.6 | Newest version in Nuxt 4.4.8's declared `^7.3.3` builder range                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | pnpm                  |                                                                                      11.13.0 | Current stable package manager                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Local host            |                                                                             `devframe` 0.7.5 | Local-tool host framework behind `@eslint/config-inspector`; serves the packaged SPA from `cli.distDir` and carries the session API as its RPC channel with authentication disabled; owns port/host resolution (§ 8), while its bundled opener stays disabled because the product owns browser opening through `open` (§ 3); pre-1.0, so the committed lockfile pins the reviewed baseline and the manifest's caret range stays within 0.7.x                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Local host            |                                                                             `devframe` 1.2.5 | Local-tool host framework behind `@eslint/config-inspector`; serves the packaged SPA from `clientAssets` and carries the session API as its RPC channel with authentication disabled; owns port/host resolution (§ 8), while its bundled opener stays disabled because the product owns browser opening through `open` (§ 3); the committed lockfile pins the reviewed baseline and the manifest's caret range stays within 1.x                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | CLI                   |                                                                              `gunshi` 0.37.0 | Current zero-runtime-dependency ESM CLI framework; its Node.js `>=22` engine requirement fits the declared range                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Browser opener        |                                                                                `open` 11.0.1 | Current stable cross-platform opener behind the startup opener's fallback (FR-001): passes the bound loopback origin to the OS default handler, best-effort, whenever the macOS Chromium tab reuse does not apply or fails (§ 3), with devframe's bundled opener disabled so only the product's opener runs; its vendored POSIX-shell `xdg-open` — used whenever executable on Linux, the system helper otherwise — is the recorded FR-038 closure exception (§ 3)                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Host HTTP app         |                                                                             `h3` 2.0.1-rc.22 | The host builds the H3 app devframe mounts onto, carrying the detail families' shell fallbacks devframe's extension-guarded SPA fallback cannot serve — one family per shipped kind detail (§ 3), each detail URL ending with the file's own last segment, such as `SKILL.md`, and percent-encoding is no alternative because devframe decodes before its extension test. Declared as a caret range like every other direct dependency, with the lockfile resolving it to devframe's own h3 so both resolve one module instance; the dependency leaves with the host shim once devframe can serve extension-ful client-route misses itself                                                                                                                                                                                                                                                  |
+| Host HTTP app         |                                                                             `h3` 2.0.3 | The host builds the H3 app devframe mounts onto, carrying the detail families' shell fallbacks devframe's extension-guarded SPA fallback cannot serve — one family per shipped kind detail (§ 3), each detail URL ending with the file's own last segment, such as `SKILL.md`, and percent-encoding is no alternative because devframe decodes before its extension test. Declared as a caret range like every other direct dependency, with the lockfile resolving it to devframe's own h3 so both resolve one module instance; the dependency leaves with the host shim once devframe can serve extension-ful client-route misses itself                                                                                                                                                                                                                                                  |
 | Parsers               |                                                              `yaml` 2.9.0, `smol-toml` 1.7.0 | Current stable inert data parsers; strict JSON is the platform's `JSON.parse`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | JSONC pre-parse       |                                                                  `strip-json-comments` 5.0.3 | Blanks JSONC comments and trailing commas to whitespace so the remainder goes through the same `JSON.parse` as strict JSON — one resolution for the whole JSON family. A lenient parser that builds its own objects is rejected because it cannot hold an authored `__proto__` key as an own property, which would drop a `.vscode/mcp.json` server of that name with no diagnostic                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Frontmatter           |                                                          `vfile-matter` 5.0.1, `vfile` 6.0.3 | Frontmatter delimiter handling. Deciding where a frontmatter block begins and ends means re-deciding BOM handling, line endings, and the closing-fence forms, so it is a parser rather than a regular expression. This one parses the block with the `yaml` engine already listed here; a package carrying its own `js-yaml` would give one document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is YAML 1.2                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -297,17 +297,14 @@ dependency, no install lifecycle hook or platform selector, and no shell, native
 or Wasm payload. This preserves the existing Node-only package gate while making Gunshi's
 larger bundled JavaScript payload explicit in the release audit.
 
-devframe 0.7.5 is deliberately not a leaf package: it brings the transitive runtime tree
-`h3` 2.0.1-rc.22, `birpc`, `crossws`, `valibot`, `@valibot/to-json-schema`, `destr`,
-`mrmime`, `nostics`, `pathe`, and `ufo`. That tree — including the `h3`
-release-candidate pin — is owned by devframe's own dependency declarations and the
+devframe 1.2.5 is deliberately not a leaf package: it brings the transitive runtime tree
+`h3` 2.0.3, `crossws`, `nostics`, `pathe`, `rou3`, and `srvx`. That tree is owned by devframe's own dependency declarations and the
 committed lockfile, and is accepted as part of adopting the maintained host layer rather
 than re-decided per member; the lockfile pins every member by name, version, and integrity
 hash — identical across OSes — so the payload bytes are fixed at dependency review, and
-devframe's own tarball payload is JavaScript/TypeScript text only, so the Node-only package gate holds. devframe is
-pre-1.0: 0.x minors may migrate APIs, so the caret range excludes them, the committed
-lockfile pins the resolved version, and crossing that minor is a § 3 planning-gate change
-rather than an automerged bump.
+devframe's own tarball payload is text only, so the Node-only package gate holds. The
+manifest's caret range accepts 1.x releases, the committed lockfile pins the resolved
+version, and crossing that major is a § 3 planning-gate change rather than an automerged bump.
 `tests/package/production-graph.test.ts` asserts exactly the eleven approved direct
 dependencies; their versions and integrity stay owned by the lockfile.
 
@@ -347,7 +344,7 @@ Primary version evidence is the npm registry for
 [tsdown](https://www.npmjs.com/package/tsdown),
 [TypeScript](https://www.npmjs.com/package/typescript),
 [Vite](https://www.npmjs.com/package/vite), [pnpm](https://www.npmjs.com/package/pnpm),
-[devframe 0.7.5 registry metadata](https://registry.npmjs.org/devframe/0.7.5),
+[devframe 1.2.5 registry metadata](https://registry.npmjs.org/devframe/1.2.5),
 [Gunshi 0.37.0 registry metadata](https://registry.npmjs.org/gunshi/0.37.0),
 [shiki](https://www.npmjs.com/package/shiki), [diff](https://www.npmjs.com/package/diff),
 [Vitest](https://www.npmjs.com/package/vitest), and
@@ -1017,12 +1014,12 @@ executing, loading, or navigating.
 
 ## 8. Local session transport
 
-**Decision**: Adopt `devframe` 0.7.5 — the local-tool framework behind
+**Decision**: Adopt `devframe` 1.2.5 — the local-tool framework behind
 `@eslint/config-inspector` — as the session host, with devframe authentication disabled
 (`auth: false`; owner decision 2026-07-22, spec.md § Clarifications Session 2026-07-22,
 Constitution § Quality and Safety Standards). The CLI starts the host with `createDevServer` from
 `devframe/adapters/dev`: devframe binds the loopback `localhost`, serves the built Nuxt SPA directly
-from `cli.distDir` (`dist/public`), and carries the session API as devframe RPC functions
+from the definition's top-level `clientAssets` (`dist/public`), and carries the session API as devframe RPC functions
 declared with `defineRpcFunction` and registered in the definition's `setup`. Port and
 host resolution, static serving with the SPA fallback, and the RPC channel are devframe
 policy rather than product code, while browser opening is product-owned through the
@@ -1040,20 +1037,21 @@ registers no agent tools, shared server state, or streaming channels on them, an
 editor/finder helpers (`devframe:open-in-editor`, `devframe:open-in-finder`) are opt-in
 recipes this product does not import. Session protection is the loopback
 binding: the product adds no per-session token, no Origin or Host classification of its
-own, and no hand-written HTTP router. devframe does apply an origin gate of its own to
-the WebSocket upgrade — which is why no product-owned check stands beside it — but that
-gate is not what bounds the exposure below and must not be read as if it were. It admits
-a request carrying no `Origin` at all (a non-browser client) and any origin whose
-hostname its loopback test matches, and that test is a spelling test: a hostname
-beginning with `127.` or ending in `.localhost` passes, so a page served from an
-attacker-registered `127.<label>.example` is admitted and reaches every session
-function. The gate stops an ordinary remote origin, not a page whose author chose the
-hostname. Nor can it be narrowed from here: devframe's `allowedOrigins` only widens the
-allow-list, and `false` removes the gate altogether. The residual limitation is
+own, and no hand-written HTTP router. devframe applies its own origin gate to the
+WebSocket upgrade — which is why no product-owned check stands beside it. It admits a
+request carrying no `Origin` at all (a non-browser client), `localhost` and its subdomains,
+IPv6 `::1`, and IPv4 literals in `127.0.0.0/8`; an ordinary remote origin is rejected.
+This gate is framework-owned policy rather than a product-owned boundary. devframe's
+`allowedOrigins` only widens the allow-list, and `false` removes the gate altogether.
+The residual limitation is
 documented rather than defended:
 while the inspector runs, other local processes and — via DNS rebinding — a malicious web
 page can reach the unauthenticated session (QR-003). The session API still exposes only
 Source-relative paths and closed commands, never absolute filesystem paths.
+
+Before starting devframe, the host sets `DEVFRAME_DISABLE_INSTANCE_REGISTRY=1` to disable
+saving the framework's instance information files. On shutdown, the framework still issues
+a deletion request for its own record path, even when registration is disabled.
 
 At session startup, before editor-launcher discovery, retain one immutable Global root-input
 capture: read `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` once each in that order;
