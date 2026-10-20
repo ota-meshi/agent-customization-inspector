@@ -7351,8 +7351,8 @@ projectには得られず、それが存在する理由であるmoderated study�
 - [X] T1051 6つのlower-bound jobは`.github/workflows/ci.yml`の`certify-lower-bounds` matrixである。
   Node.js 24.11.0と26.0.0を`ubuntu-latest`・`macos-latest`・`windows-latest`に掛けたもので、各jobは
   `build` jobがpackした同一tarballを受け取り、installとlaunchの前にrunner image、解決したNode.js
-  version、tarball digestを記録する。`tests/documentation/cross-artifact.test.ts`がその形
-  （1回pack、sampleごとにdownload、環境を記録）をassertする。recordが併せて名指すtraversal、
+  version、tarball digestを記録する。`tests/documentation/cross-artifact.test.ts`がworkflowの
+  runner imageとNode.js versionの出力commandを検査する。recordが併せて名指すtraversal、
   file単位diagnostic、1回read、byte-decodeの各挙動は`tests/integration/boundaries/traversal.test.ts`と
   `tests/integration/repository-scan.test.ts`が所有し、6 jobすべてで実行される。前提を
   `specs/001-inspect-agent-customizations/validation.md`と

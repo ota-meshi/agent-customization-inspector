@@ -1026,7 +1026,7 @@ Session 2026-09-01）。
 
 `.github/workflows/ci.yml`は`build` jobでtarballを1回packし、そのexact
 byteを6つの`certify-lower-bounds` jobへ配布する。Node.js 24.11.0と26.0.0を`ubuntu-latest`・`macos-latest`・`windows-latest`に掛けたもので、各jobはinstallとlaunchの前にrunner
-image、rangeが解決したNode.js version、受け取ったtarballのSHA-256を記録する。`tests/documentation/cross-artifact.test.ts`がその形をassertする（1回pack、sampleごとにdownload、環境を記録）。
+image、rangeが解決したNode.js version、受け取ったtarballのSHA-256を記録する。`tests/documentation/cross-artifact.test.ts`がworkflowのrunner imageとNode.js versionの出力commandを検査する。
 
 **ここでは未実行。** 6
 jobは3つのoperating systemと2つの固定Node.js versionを要するが、このsessionが持つのはmacOS
