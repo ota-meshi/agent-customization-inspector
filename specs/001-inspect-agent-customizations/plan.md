@@ -133,7 +133,7 @@ Node/OS floor jobs certify the two declared lower bounds rather than enumerating
 compatible minor/patch release. Versions below either floor, Node 25, and future majors are
 outside the contract.
 
-**Primary Dependencies**: Nuxt 4.4.8, Vue Router 5.2.0, tsdown 0.22.8, Vite 7.3.6
+**Primary Dependencies**: Nuxt 4.4.8, Vue Router 5.2.0, tsdown 0.23.1, Vite 7.3.6
 (latest Nuxt-compatible release), `devframe` 1.2.5 (the local-tool
 host framework), `gunshi` 0.37.0, `open` 11.0.1, `yaml` 2.9.0,
 `strip-json-comments` 5.0.3, `smol-toml` 1.7.0, `h3` 2.0.3, `shiki` 4.4.3,
@@ -982,7 +982,7 @@ macOS, Linux, and Windows. tsdown uses the single named `cli` entry
 output with `clean: false` (the pipeline's own clean step owns `dist/` removal), disabled
 source maps/declarations, Node ESM, bundled
 project modules, and external declared runtime dependencies via
-`deps.skipNodeModulesBundle: true`. The pipeline's
+`deps.neverBundle: true`. The pipeline's
 clean step guarantees a fresh `dist/`, so every dist-root `.mjs` is by construction a
 tsdown output; the `verify:package` gate requires
 `cli.mjs` as a regular file. The bundled parsers run in-process on the scan path,

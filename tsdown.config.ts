@@ -24,6 +24,6 @@ export default defineConfig({
   // wipe the Nuxt output already written to dist/public.
   clean: false,
   deps: {
-    skipNodeModulesBundle: true,
+    neverBundle: true,
   },
 });

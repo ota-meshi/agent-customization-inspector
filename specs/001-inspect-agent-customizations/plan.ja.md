@@ -109,7 +109,7 @@ path追跡なしで示す。Codex instruction-byte limitとexcluded non-file inp
 Vue 3.5.39とする。6つのNode/OS floor jobはcompatibleな全minor/patch releaseを列挙するものではなく、
 宣言した2つの下限をcertifyする。各floor未満、Node 25、将来のmajorはcontract外とする。
 
-**主要依存関係**: Nuxt 4.4.8、Vue Router 5.2.0、tsdown 0.22.8、Vite 7.3.6
+**主要依存関係**: Nuxt 4.4.8、Vue Router 5.2.0、tsdown 0.23.1、Vite 7.3.6
 （Nuxtと互換性のある最新release）、`devframe` 1.2.5（local-tool host framework）、
 `gunshi` 0.37.0、`open` 11.0.1、`yaml` 2.9.0、
 `strip-json-comments` 5.0.3、`smol-toml` 1.7.0、`h3` 2.0.3、`shiki` 4.4.3、
@@ -775,7 +775,7 @@ Cross-platform CIはmacOS、Linux、Windowsで同じpure Node.js inspection-file
 実行する。tsdownは単一のnamed `cli` entry（`src/server/cli.ts`）、
 `fixedExtension: true`、`dist/`への直接出力と`clean: false`（`dist/`の除去はpipeline自身のclean stepが
 所有する）、source map/declaration無効、Node ESM
-target、project moduleのbundle、`deps.skipNodeModulesBundle: true`による宣言済みruntime dependencyのexternal
+target、project moduleのbundle、`deps.neverBundle: true`による宣言済みruntime dependencyのexternal
 維持を行う。Pipelineのclean stepが新鮮な`dist/`を保証するため、
 dist直下の全`.mjs`は構成上tsdown outputであり、`verify:package` gateは`cli.mjs`を
 regular fileとして要求する。Bundleされたparserはscan path上でin-processに実行するため、
